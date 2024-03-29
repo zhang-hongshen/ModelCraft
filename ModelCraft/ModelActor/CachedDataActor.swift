@@ -64,4 +64,10 @@ extension ModelContext {
         }
         try? save()
     }
+    
+    func delete<T>(_ models: [T])  where T : PersistentModel  {
+        for model in models {
+            delete(model)
+        }
+    }
 }

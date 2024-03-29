@@ -36,7 +36,8 @@ struct SettingsView: View {
                         Image(systemName: "person.bubble")
                         Text("Personalization")
                     }
-            }.safeAreaPadding()
+            }.padding()
         }
+        .tabViewStyle(.automatic)
     }
 }

@@ -10,10 +10,12 @@ import Foundation
 extension UserDefaults {
     // General
     static let appearance = "appearance"
+    static let language = "language"
+    static let showInMenuBar = "showInMenuBar"
+    static let threadNumber = "threadNumber"
     
     static let modelShouldKnow = "modelShouldKnow"
     static let modelShouldRespond = "modelShouldRespond"
-    
     
     func value<T>(forKey key: String, default defaultValue: T) -> T {
         return self.value(forKey: key) as? T ?? defaultValue

@@ -12,10 +12,10 @@ struct ServerStatusView: View {
     @Environment(\.serverStatus) private var serverStatus
     
     var body: some View {
-        Label(serverStatus.wrappedValue.localizedName, systemImage: "circle.fill")
+        Label(serverStatus.wrappedValue.localizedDescription, systemImage: "circle.fill")
             .foregroundStyle({switch serverStatus.wrappedValue {
             case .disconnected: Color.red
-            case .starting: Color.yellow
+            case .launching: Color.orange
             case .connected: Color.green
             }}())
     }

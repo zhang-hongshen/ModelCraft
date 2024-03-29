@@ -9,4 +9,5 @@ import Foundation
 
 struct Default {
     static let cornerRadius: CGFloat = 8
+    static let padding: CGFloat = 8
 }

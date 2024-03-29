@@ -9,7 +9,7 @@ import Foundation
 import SwiftUI
 
 extension Date {
-    func daysAgoString() -> LocalizedStringKey {
+    var localizedDaysAgo : LocalizedStringKey {
         let calendar = Calendar.current
         let now = Date()
         let components = calendar.dateComponents([.day], from: self, to: now)

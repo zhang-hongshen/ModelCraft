@@ -7,48 +7,70 @@
 
 import SwiftUI
 import SwiftData
+import TipKit
+
+struct OpenStoreTip: Tip {
+    var title: Text {
+        Text("Open ModelStore")
+    }
+    
+    var message: Text? {
+        Text("Explore and download models to chat.")
+    }
+}
 
 struct ModelsView: View {
     
-    @State private var models: [ModelInfo] = []
     @State private var selectedModelNames = Set<String>()
     @State private var isFetchingData = false
     @State private var sheetPresented = false
     
-    @Query private var modelTasks: [ModelTask] = []
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.downaloadedModels) private var models
+    
+    @Query(filter: ModelTask.predicateByType(.download))
+    private var downloadTasks: [ModelTask] = []
+    @Query(filter: ModelTask.predicateByType(.delete))
+    private var deleteTasks: [ModelTask] = []
+    
+    private let openStoreTip = OpenStoreTip()
     
     var body: some View {
         VStack(alignment: .leading) {
             List(selection: $selectedModelNames) {
-                ForEach(models, id: \.name) { model in
+                ForEach(models, id: \.digest) { model in
                     HStack {
-                        Text(verbatim: model.name)
+                        Label(model.name, systemImage: "shippingbox")
                         Spacer()
-                        Text(verbatim: ByteCountFormatter.string(fromByteCount: Int64(model.size), countStyle: .file))
+                        
+                        Group {
+                            if let task = deleteTasks.first(where: { $0.modelName == model.name }) {
+                                Text(task.statusLocalizedDescription)
+                            } else {
+                                Text(verbatim: ByteCountFormatter.string(fromByteCount: Int64(model.size), countStyle: .file))
+                            }
+                        }.foregroundStyle(.secondary)
+                        
                     }.tag(model.name)
-                    .padding(.vertical, 5)
+                    .padding(.vertical, Default.padding)
                 }
                 
-                ForEach(modelTasks) { task in
+                ForEach(downloadTasks) { task in
                     HStack {
-                        Text(verbatim: task.modelName)
+                        Label(task.modelName, systemImage: "shippingbox")
                         Spacer()
-                        FileDownloadProgress(task)
+                        ModelDownloadProgress(task: task)
                     }.tag(task.modelName)
-                    .padding(.vertical, 5)
+                    .padding(.vertical, Default.padding)
                 }
             }
             .listStyle(.inset)
             .safeAreaInset(edge: .bottom, content: OpearationButton)
-            .padding()
-            
         }
         .sheet(isPresented: $sheetPresented){
-            ModelDownloadView()
+            ModelStore()
                 .presentationDetents([.medium])
         }
-        .task { fetchData() }
     }
 }
 
@@ -57,50 +79,23 @@ extension ModelsView {
     @ViewBuilder
     func OpearationButton() -> some View {
         HStack(alignment: .center) {
-            Button(action: { sheetPresented = true }, label: { Image(systemName: "plus") })
+            Button(action: {
+                sheetPresented = true
+                openStoreTip.invalidate(reason: .actionPerformed)
+            }, label: { Image(systemName: "plus") })
+            .popoverTip(openStoreTip, arrowEdge: .top)
+            
             Button(action: createDeleteModelTask, label: { Image(systemName: "minus") })
                 .disabled(selectedModelNames.isEmpty)
 
             Spacer()
-            
-            if isFetchingData {
-                ProgressView().controlSize(.small)
-            } else {
-                Button(action: fetchData, label: { Image(systemName: "arrow.clockwise") })
-                    .disabled(isFetchingData)
-            }
         }
-        .padding(5)
+        .padding(Default.padding)
         .buttonStyle(.borderless)
-    }
-    
-    @ViewBuilder
-    func FileDownloadProgress(_ task: ModelTask) -> some View {
-        HStack(alignment: .center) {
-            if task.value > 0 &&  task.total > 0 {
-                Text("\(ByteCountFormatter.string(fromByteCount: Int64(task.value), countStyle: .file))/\(ByteCountFormatter.string(fromByteCount: Int64(task.total), countStyle: .file))")
-            }
-            ProgressView(value: task.value,
-                         total: task.total)
-                .controlSize(.small)
-                .progressViewStyle(.circular)
-        }
     }
 }
 
 extension ModelsView {
-    
-    func fetchData() {
-        isFetchingData = true
-        Task {
-            do {
-                models = try await OllamaClient.shared.models().models
-            } catch {
-                debugPrint(error.localizedDescription)
-            }
-            isFetchingData = false
-        }
-    }
     
     func createDeleteModelTask() {
         let tasks = selectedModelNames.compactMap { modelName in

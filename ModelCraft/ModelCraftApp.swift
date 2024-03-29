@@ -8,18 +8,24 @@
 import SwiftUI
 import SwiftData
 import Combine
+import TipKit
+
+import OllamaKit
 
 @main
 struct ModelCraftApp: App {
     
     var sharedModelContainer: ModelContainer
     
-    @State private var serverStatus: ServerStatus = .disconnected
     @State private var cancellables: Set<AnyCancellable> = []
-    @State private var modelTaskCancellation: Set<AnyCancellable> = []
+    @State private var checkServerStatusTimer: Timer? = nil
     
-    @Query var modelTasks: [ModelTask] = []
-    @Environment(\.modelContext) private var modelContext
+    @State private var serverStatus: ServerStatus = .disconnected
+    @State private var models: [ModelInfo] = []
+    @State private var selectedModel: ModelInfo? = nil
+    
+    @AppStorage(UserDefaults.showInMenuBar)
+    private var showInMenuBar: Bool = true
     
     init() {
         self.sharedModelContainer = {
@@ -38,47 +44,77 @@ struct ModelCraftApp: App {
         }()
         CachedDataActor.configure(modelContainer: sharedModelContainer)
         startOllamaServer()
+        try? Tips.resetDatastore()
+        try? Tips.configure([
+            .displayFrequency(.immediate),
+            .datastoreLocation(.applicationDefault)
+        ])
     }
     
+    // write an background task to download model
     
     var body: some Scene {
         Group {
             WindowGroup {
-                ContentView().applyUserSettings()
-            }
+                ContentView()
+                    .background(.ultraThinMaterial)
+                    .applyUserSettings()
+                    .task {
+                        
+                        checkServerStatusTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { timer in
+                            guard timer.isValid else { return }
+                            checkServerStatus()
+                            Task.detached {
+                                models = try await OllamaService.shared.models()
+                                if let model = selectedModel {
+                                    if !models.contains(model) {
+                                        selectedModel = models.first
+                                    }
+                                } else {
+                                    selectedModel = models.first
+                                }
+                            }
+                        }
+                    }
+                }
 #if os(macOS)
             Settings {
-                SettingsView().applyUserSettings()
+                SettingsView().background(.ultraThinMaterial)
+                    .applyUserSettings()
                     .frame(minWidth: 200, minHeight: 200)
+            }
+            
+            MenuBarExtra(isInserted: $showInMenuBar) {
+                Button("Open \(Bundle.main.applicationName)") {
+                    // show the main window
+                    NSApp.windows.first?.makeKeyAndOrderFront(nil)
+                }
+                Divider()
+                Button("Quit") {
+                    NSApp.terminate(nil)
+                }.keyboardShortcut("q")
+            } label: {
+                Image(systemName: "wrench.adjustable")
             }
 #endif
         }
         .modelContainer(sharedModelContainer)
         .environment(\.serverStatus, $serverStatus)
+        .environment(\.downaloadedModels, models)
+        .environment(\.selectedModel, $selectedModel)
         .windowResizability(.contentSize)
-        .backgroundTask(.urlSession("CheckServerStatus")) { urlSession in
-            // check server status
-            print("Checking server status...")
-            checkServerStatus()
-            
-        }
-        .backgroundTask(.urlSession("HandleModelTask")) { urlSession in
-            // check server status
-            print("Handling Model Task...")
-            do {
-                try handleModelTask()
-            } catch {
-                debugPrint(error.localizedDescription)
-            }
-            
+        .commands {
+            SidebarCommands()
+            ToolbarCommands()
+            InspectorCommands()
         }
     }
     
     func startOllamaServer() {
         DispatchQueue.global(qos: .background).async {
-            
+            // send user notification
             let executableName = "ollama"
-            let path = (ProcessInfo.processInfo.environment["PATH"] ?? "").split(separator: ":")
+            let paths = ProcessInfo.processInfo.environment["PATH"]?.split(separator: ":") ?? []
             let process = Process()
             // run commana 'ollama serve' ollama is an exectuable, use system's ollama if exists or use the one in the bundle
             process.launchPath = "/usr/local/bin/ollama"
@@ -86,7 +122,7 @@ struct ModelCraftApp: App {
             let pipe = Pipe()
             process.standardOutput = pipe
             do {
-                serverStatus = .starting
+                serverStatus = .launching
                 try process.run()
                 process.waitUntilExit()
                 let data = pipe.fileHandleForReading.readDataToEndOfFile()
@@ -94,57 +130,19 @@ struct ModelCraftApp: App {
                     print(output)
                 }
             } catch {
-                print("Error running command: \(error)")
+                print("Running command error, \(error)")
             }
         }
     }
     
     private func checkServerStatus() {
-        OllamaClient.shared.reachable()
+        OllamaService.shared.reachable()
             .sink { reachable in
                 // modify environment server status
                 self.serverStatus = reachable ? ServerStatus.connected : .disconnected
-                print("updated server status...")
+                print("Ollama server status, \(serverStatus.localizedDescription)")
             }
             .store(in: &cancellables)
-    }
-    
-    private func handleModelTask() throws {
-        // write an multable loop
-        for task in modelTasks {
-            @Bindable var task = task
-            guard task.status == .new else { continue }
-            task.status = .running
-            switch task.type {
-            case .download: 
-                OllamaClient.shared.pullModel(PullModelRequest(name: task.modelName))
-                    .sink { completion in
-                        switch completion {
-                        case .finished: task.status = .completed
-                        case .failure(let error): task.status = .failed
-                            debugPrint("failure \(error.localizedDescription)")
-                        }
-                    } receiveValue: { response in
-                        debugPrint("status \(response.status), completed \(response.completed ?? 0), total \(response.total ?? 0)")
-                        if let completed = response.completed, let total = response.total {
-                            task.value = Double(completed)
-                            task.total = Double(total)
-                        }
-                    }.store(in: &modelTaskCancellation)
-            case .delete: 
-                OllamaClient.shared.deleteModel(DeleteModelRequest(name: task.modelName))
-                    .sink { completion in
-                        switch completion {
-                        case .finished: task.status = .completed
-                        case .failure(_): task.status = .failed
-                        }
-                    } receiveValue: {_ in }
-                    .store(in: &modelTaskCancellation)
-            }
-        }
-        try modelContext.delete(model: ModelTask.self,
-                                where: ModelTask.predicateByStatus(.completed))
-        try modelContext.save()
     }
     
 }

@@ -7,6 +7,7 @@
 
 import Foundation
 import SwiftData
+import SwiftUI
 
 enum TaskStatus: Int {
     case new
@@ -37,6 +38,27 @@ class ModelTask {
         get { TaskStatus(rawValue: typeID) ?? .new }
         set { self.statusID = newValue.rawValue }
     }
+    @Transient var progress: Double {
+        if total == 0 { return 0 }
+        return (value / total).clamp(to: 0...1)
+    }
+    
+    var statusLocalizedDescription: LocalizedStringKey {
+        switch status {
+        case .new:
+            switch type {
+                case .download: "Waiting to download"
+                case .delete: "Waiting to delete"
+            }
+        case .running:
+            switch type {
+                case .download: "Downloading..."
+                case .delete: "Deleting..."
+            }
+        case .completed: "Completed"
+        case .failed: "Failed"
+        }
+    }
     
     init(modelName: String = "", value: Double = 0, total: Double = 0,
          status: TaskStatus = .new, type: TaskType) {
@@ -55,5 +77,10 @@ extension ModelTask {
         let statusID = status.rawValue
         return #Predicate<ModelTask> { $0.statusID == statusID }
     }
-
+    
+    // Predicate by Type
+    static func predicateByType(_ type: TaskType) -> Predicate<ModelTask> {
+        let typeID = type.rawValue
+        return #Predicate<ModelTask> { $0.typeID == typeID }
+    }
 }

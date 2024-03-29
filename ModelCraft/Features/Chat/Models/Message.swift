@@ -47,7 +47,7 @@ class Message: Codable {
     
     var chat: Chat?
     
-    init(role: MessageRole = .user, content: String = "", images: [Data] = []) {
+    init(role: MessageRole, content: String = "", images: [Data] = []) {
         self.roleString = role.rawValue
         self.content = content
         self.images = images

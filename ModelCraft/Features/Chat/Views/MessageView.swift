@@ -56,6 +56,7 @@ struct MessageView: View {
                             .interpolation(.none)
                             .aspectRatio(image.aspectRatio, contentMode: .fit)
                             .frame(height: imageHeight)
+                            .cornerRadius()
                     }
                 }
             }

@@ -31,7 +31,19 @@ final class ModelCraftTests: XCTestCase {
         let path = (ProcessInfo.processInfo.environment["PATH"] ?? "").split(separator: ":")
         print("path: \(path)")
     }
-
+    
+    func testLocale() {
+        let supportedLanguages = Bundle.main.localizations
+        print("Supported languages: \(supportedLanguages)")
+        for languageCode in supportedLanguages {
+            let languageName = Locale(identifier: languageCode).localizedString(forLanguageCode: languageCode)
+            print("Language code: \(languageCode), Language name: \(languageName ?? "Unknown")")
+        }
+        let deviceLanguage = Locale.preferredLanguages.first ?? Bundle.main.localizations.first!
+        print("Device language code : \(deviceLanguage ?? "Unknown")")
+        let languageName = Locale(identifier: deviceLanguage).localizedString(forLanguageCode: deviceLanguage)
+        print("Device language: \(languageName ?? "Unknown")")
+    }
     func testPerformanceExample() throws {
         // This is an example of a performance test case.
         measure {

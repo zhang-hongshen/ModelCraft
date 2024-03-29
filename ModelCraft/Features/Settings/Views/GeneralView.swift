@@ -12,11 +12,15 @@ struct GeneralView: View {
     
     @AppStorage(UserDefaults.appearance)
     private var appearance: Appearance = .system
-    
-    @Environment(\.serverStatus) private var serverStatus
-    
+    @AppStorage(UserDefaults.showInMenuBar)
+    private var showInMenuBar: Bool = true
+    @AppStorage(UserDefaults.language)
+    private var language = Locale.defaultLanguage
+    @AppStorage(UserDefaults.threadNumber)
+    private var threadNumber: Int = ProcessInfo.processInfo.processorCount / 2
     @State private var isCheckingServerStatus = false
     @State private var cancellables: Set<AnyCancellable> = []
+    @Environment(\.serverStatus) private var serverStatus
     
     var body: some View {
         Form {
@@ -25,22 +29,47 @@ struct GeneralView: View {
                 Text("Light").tag(Appearance.light)
                 Text("Dark").tag(Appearance.dark)
             }
-            HStack {
-                ServerStatusView()
-                if isCheckingServerStatus {
-                    ProgressView().controlSize(.small)
-                } else {
-                    Button("Check", action: checkServerStatus)
+            
+            Toggle("Show menu bar icon", isOn: $showInMenuBar)
+            
+            Picker("Language", selection: $language) {
+                ForEach(Bundle.main.localizations, id:\.self) { languageCode in
+                    if let language = Locale(identifier: languageCode)
+                        .localizedString(forLanguageCode: languageCode) {
+                        Text(verbatim: language).tag(languageCode)
+                    }
+                }
+            }
+            Section {
+                HStack {
+                    Stepper("Thread", value: $threadNumber, in: 1...ProcessInfo.processInfo.processorCount, step: 1)
+                    Text("\(threadNumber)")
+                }
+            } footer: {
+                Text("You should modify the value according your device.")
+                    .foregroundStyle(.secondary)
+                    .font(.footnote)
+            }
+         
+            LabeledContent("Status") {
+                HStack {
+                    ServerStatusView()
+                    if isCheckingServerStatus {
+                        ProgressView().controlSize(.small)
+                    } else {
+                        Button("Check", action: checkServerStatus)
+                    }
                 }
             }
         }
+        .formStyle(.grouped)
     }
 }
 
 extension GeneralView {
     private func checkServerStatus() {
         isCheckingServerStatus = true
-        OllamaClient.shared.reachable()
+        OllamaService.shared.reachable()
             .sink { reachable in
                 // modify environment server status
                 self.serverStatus.wrappedValue = reachable ? ServerStatus.connected : .disconnected

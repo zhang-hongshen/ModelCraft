@@ -12,14 +12,18 @@ struct SettingsModifier: ViewModifier {
     @AppStorage(UserDefaults.appearance)
     private var apperance = Appearance.system
     
+    @AppStorage(UserDefaults.language)
+    private var language = Locale.preferredLanguages.first ?? Bundle.main.localizations.first!
+    
     func body(content: Content) -> some View {
         content.preferredColorScheme({
-                switch apperance {
-                case .system:   nil
-                case .light:    .light
-                case .dark:     .dark
-                }
-            }())
+            switch apperance {
+            case .system:   nil
+            case .light:    .light
+            case .dark:     .dark
+            }
+        }())
+        .environment(\.locale, .init(identifier: language))
     }
 }
 
@@ -30,7 +34,7 @@ struct HoverEffectModifier: ViewModifier {
     
     func body(content: Content) -> some View {
         content.onHover { isHovering = $0 }
-            .padding(5)
+            .padding(Default.padding)
             .background {
                 if isHovering {
                     RoundedRectangle().fill(.selection)
