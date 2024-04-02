@@ -7,6 +7,7 @@
 
 import SwiftUI
 import OllamaKit
+import AVFoundation
 
 // implement enum server status
 enum ServerStatus: String {
@@ -25,6 +26,10 @@ enum ServerStatus: String {
 
 private struct ServerStatusKey: EnvironmentKey {
     static var defaultValue: Binding<ServerStatus> = .constant(.disconnected)
+}
+
+private struct SpeechSynthesizerKey: EnvironmentKey {
+    static var defaultValue: AVSpeechSynthesizer = AVSpeechSynthesizer()
 }
 
 private struct DownaloadedModelKey: EnvironmentKey {
@@ -59,5 +64,10 @@ extension EnvironmentValues {
     var selectedModel: Binding<ModelInfo?> {
         get { self[SelectedModelKey.self] }
         set { self[SelectedModelKey.self] = newValue }
+    }
+    
+    var speechSynthesizer: AVSpeechSynthesizer {
+        get { self[SpeechSynthesizerKey.self] }
+        set { self[SpeechSynthesizerKey.self] = newValue }
     }
 }

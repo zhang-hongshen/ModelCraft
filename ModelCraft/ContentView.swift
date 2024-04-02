@@ -11,82 +11,108 @@ import Combine
 import OrderedCollections
 import ActivityIndicatorView
 
+
+enum Tab: Hashable {
+    case chat(Chat?), modelStore, knowledgeBase(KnowledgeBase)
+}
+
 struct ContentView: View {
-    
     
     @State private var selectedChat: Chat?
     @State private var modelTaskTimer: Timer? = nil
     @State private var modelTaskCancellation: Set<AnyCancellable> = []
-    @State private var sheetPresented = false
     
     @Environment(\.modelContext) private var modelContext
+    
     @Query(sort: \Chat.createdAt, order: .reverse) private var chats: [Chat]
     @Query(sort: \ModelTask.createdAt, order: .reverse) var modelTasks: [ModelTask] = []
+    @Query private var knowledgeBases: [KnowledgeBase] = []
     
-    private let openStoreTip = OpenStoreTip()
-    
-    private var groupChats: OrderedDictionary<Date, [Chat]> {
-        let groupedDictionary = OrderedDictionary(grouping: chats) { (chat) -> Date in
-            return Calendar.current.startOfDay(for: chat.createdAt)
-        }
-        
-        return groupedDictionary
-    }
+    @State private var currentTab: Tab = .chat(nil)
+    @State private var selectedKnowledgeBase: KnowledgeBase? = nil
     
     var body: some View {
         NavigationSplitView {
-            List(selection: $selectedChat) {
-                ForEach(groupChats.elements, id: \.key) { (date, chats) in
-                    Section {
-                        ForEach(chats) { chat in
-                            Text(chat.title).tag(chat)
-                        }
-                    } header: {
-                        Text(date.localizedDaysAgo)
-                    }
-                }
-                .onDelete(perform: deleteChats)
+            List(selection: $currentTab) {
+                ChatSection()
+                KnowledgeBaseSection()
+                Label("Model Store", systemImage: "storefront").tag(Tab.modelStore)
             }
             .listStyle(.sidebar)
-            .contextMenu(forSelectionType: Chat.self){ chats in
-                if !chats.isEmpty {
-                    Button("Delete", systemImage: "trash", role: .destructive) {
-                        deleteChats(chats: chats)
-                    }
-                }
-            }
             .navigationSplitViewColumnWidth(min: 180, ideal: 200)
-            .toolbar {
-#if os(iOS)
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    EditButton()
-                }
-#endif
-                ToolbarItem {
-                    Button("New Chat", systemImage: "plus", action: addChat)
-                        .disabled(chats.last?.messages.isEmpty ?? false)
-                }
-            }
-            .safeAreaInset(edge: .bottom) {
-                HStack {
-                    Button("", systemImage: "shippingbox", action: { sheetPresented = true })
-                        .buttonStyle(.borderless)
-                        .popoverTip(openStoreTip, arrowEdge: .top)
-                    Spacer()
-                }.padding(Default.padding)
-            }
-            .sheet(isPresented: $sheetPresented) {
-                ModelStore()
-            }
         } detail: {
-            ChatView(chat: $selectedChat)
-                .navigationTitle(selectedChat?.title ?? Bundle.main.applicationName)
-            
+            switch currentTab {
+            case .chat(let chat):
+                ChatView(chat: chat)
+                    .navigationTitle(chat?.title ?? Bundle.main.applicationName)
+            case .modelStore:
+                ModelStore().navigationTitle("Model Store")
+            case .knowledgeBase(let knowledgeBase):
+                KnowledgeBaseDetailView(konwledgeBase: knowledgeBase)
+                    .navigationTitle(knowledgeBase.title)
+            }
         }
         .task {
             modelTaskTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { timer in
                 guard timer.isValid else { return }
                 Task.detached { try self.handleModelTask() }
+            }
+        }
+        .sheet(item: $selectedKnowledgeBase) { knowledgeBase in
+            KnowledgeBaseEdition(konwledgeBase: knowledgeBase)
+        }
+    }
+}
+
+extension ContentView {
+    
+    @ViewBuilder
+    func ChatSection() -> some View {
+        Section {
+            ForEach(chats) { chat in
+                Text(chat.title).tag(Tab.chat(chat))
+                    .contextMenu{
+                        Button("Delete") {
+                            modelContext.delete(chat)
+                        }
+                    }
+            }
+            .onDelete(perform: deleteChats)
+        } header: {
+            HStack {
+                Text("Chat")
+                Button(action: addChat, label: {
+                    Image(systemName: "plus")
+                }).buttonStyle(.borderless)
+                .disabled(chats.last?.messages.isEmpty ?? false)
+            }
+        }
+    }
+    
+    @ViewBuilder
+    func KnowledgeBaseSection() -> some View {
+        Section {
+            ForEach(knowledgeBases) { knowledgeBase in
+                Label(knowledgeBase.title,
+                      systemImage: knowledgeBase.icon)
+                .tag(Tab.knowledgeBase(knowledgeBase))
+                .contextMenu{
+                    Button("Edit") {
+                        selectedKnowledgeBase = knowledgeBase
+                    }
+                    Button("Delete") {
+                        modelContext.delete(knowledgeBase)
+                    }
+                }
+            }
+        } header: {
+            HStack {
+                Text("Knowledge Base")
+                Button(action: {
+                    selectedKnowledgeBase = KnowledgeBase()
+                }, label: {
+                    Image(systemName: "plus")
+                }).buttonStyle(.borderless)
             }
         }
     }

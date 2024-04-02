@@ -6,6 +6,8 @@
 //
 
 import XCTest
+import PDFKit
+@testable import ModelCraft
 
 final class ModelCraftTests: XCTestCase {
 
@@ -43,6 +45,59 @@ final class ModelCraftTests: XCTestCase {
         print("Device language code : \(deviceLanguage ?? "Unknown")")
         let languageName = Locale(identifier: deviceLanguage).localizedString(forLanguageCode: deviceLanguage)
         print("Device language: \(languageName ?? "Unknown")")
+    }
+    
+    func testMarkdownToString() throws {
+        let thankYouString = try AttributedString(
+            markdown:"**Thank you!** Please visit our [website](https://example.com)")
+        print("string: \(thankYouString)")
+    }
+    
+    func testReadFileToString() throws {
+        let pdf = URL(filePath: "/Users/zhanghongshen/Documents/Interview/20230410.pdf")
+        let text = URL(filePath: "/Users/zhanghongshen/Documents/Interview/test.txt")
+        let xml = URL(filePath: "/Users/zhanghongshen/Documents/Interview/xml.xml")
+        print("pdf, \(try pdf.readContent())")
+        print("text, \(try text.readContent())")
+        print("xml, \(try xml.readContent())")
+    }
+    
+    func testFileCopy() throws {
+        let fileManager = FileManager.default
+        let documents = try fileManager.url(for: .documentDirectory, in: .userDomainMask,
+                        appropriateFor: nil,
+                        create: true)
+        let source =  documents.appending(path: "test/source/test.pdf")
+        print("source: \(source)")
+        let destination   =  documents.appending(path: "test/destination/test.pdf")
+        print("destination: \(destination)")    
+        try fileManager.copyItem(at: source, to: destination)
+        try fileManager.copyItem(at: source, to: fileManager.temporaryDirectory.appending(path: source.lastPathComponent))
+        print("temporaryDirectory: \(fileManager.temporaryDirectory)")
+        print("currentDirectoryPath: \(fileManager.currentDirectoryPath)")
+        print("homeDirectoryForCurrentUser: \(fileManager.homeDirectoryForCurrentUser)")
+        
+    }
+    
+    func testFileCopyFromOutsideSandboxToSanbox() throws {
+        let fileManager = FileManager.default
+        let userDocument = URL(filePath: "/Users/zhanghongshen/Documents")
+        let userSource =  userDocument.appending(path: "test/source/test.pdf")
+        let sanboxDocument = try fileManager.url(for: .documentDirectory, in: .userDomainMask,
+                        appropriateFor: nil,
+                        create: true)
+        var sanboxDestination =  sanboxDocument.appending(path: "test/destination/test.pdf")
+        print("source: \(userSource), destination: \(sanboxDestination)")
+        try fileManager.copyItem(at: userSource, to: sanboxDestination)
+        sanboxDestination = fileManager.temporaryDirectory.appending(path: userSource.lastPathComponent)
+        print("source: \(userSource), destination: \(sanboxDestination)")
+        try fileManager.copyItem(at: userSource, to: sanboxDestination)
+    }
+    
+    
+    func testOllamaModels() async throws {
+        let models = try await OllamaService.shared.models()
+        print(models)
     }
     func testPerformanceExample() throws {
         // This is an example of a performance test case.

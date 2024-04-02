@@ -14,6 +14,8 @@ struct GeneralView: View {
     private var appearance: Appearance = .system
     @AppStorage(UserDefaults.showInMenuBar)
     private var showInMenuBar: Bool = true
+    @AppStorage(UserDefaults.automaticallyScrollToBottom)
+    private var automaticallyScrollToBottom = false
     @AppStorage(UserDefaults.language)
     private var language = Locale.defaultLanguage
     @AppStorage(UserDefaults.threadNumber)
@@ -31,7 +33,7 @@ struct GeneralView: View {
             }
             
             Toggle("Show menu bar icon", isOn: $showInMenuBar)
-            
+            Toggle("Scroll to bottom automatically when chatting", isOn: $automaticallyScrollToBottom)
             Picker("Language", selection: $language) {
                 ForEach(Bundle.main.localizations, id:\.self) { languageCode in
                     if let language = Locale(identifier: languageCode)

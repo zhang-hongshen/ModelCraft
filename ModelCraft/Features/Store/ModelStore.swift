@@ -14,75 +14,89 @@ import OllamaKit
 struct ModelStore: View {
     
     @State private var models: [ModelInfo] = []
+    @State private var filtedModels: [ModelInfo] = []
     @State private var isLoading = false
     @State private var selectedModelNames = Set<String>()
     @State private var searchText = ""
     @State private var cancellables = Set<AnyCancellable>()
     
-    @Environment(\.dismiss) private var dismiss
+    @Query(filter: ModelTask.predicateByType(.download))
+    private var downloadTasks: [ModelTask] = []
+    @Environment(\.downaloadedModels) private var downloadedModels
     @Environment(\.modelContext) private var modelContext
     
-    private var filtedModels: [ModelInfo] {
+    private var filteredModels: [ModelInfo] {
         if searchText.isEmpty {
             return models
         }
         return models.filter { $0.name.hasPrefix(searchText) }
     }
-    
     var body: some View {
-        VStack(alignment: .center) {
-            Text("Select models to download")
-            
-            TextField("Filter", text: $searchText)
-            
+        ContentView()
+            .toolbar(content: ToolbarItems)
+            .searchable(text: $searchText)
+            .task { fetchModels() }
+    }
+}
+
+extension ModelStore {
+    @ToolbarContentBuilder
+    func ToolbarItems() -> some ToolbarContent {
+        ToolbarItemGroup {
             if isLoading {
-                ProgressView()
+                ProgressView().controlSize(.small)
             } else {
-                List(selection: $selectedModelNames) {
-                    ForEach(filtedModels, id: \.name) { model in
-                        HStack{
-                            Label(model.name, systemImage: "shippingbox")
-                            Spacer()
-                        }.tag(model.name)
-                        .padding(.vertical, Default.padding)
-                    }
+                Button("Refresh", systemImage: "arrow.counterclockwise") {
+                    fetchModels()
                 }
-                .listStyle(.inset)
-                .frame(minWidth: 200, minHeight: 100)
             }
+        }
+    }
+    
+    @ViewBuilder
+    func ContentView() -> some View {
+        List(selection: $selectedModelNames) {
+            ForEach(filteredModels, id: \.name) { model in
+                ListCell(model).tag(model.name)
+            }
+        }
+        .listStyle(.inset)
+    }
+    
+    @ViewBuilder
+    func ListCell(_ model: ModelInfo) -> some View {
+        HStack{
+            Label(model.name, systemImage: "shippingbox")
             
-        }
-        .safeAreaPadding()
-        .background(.ultraThinMaterial)
-        .toolbar {
-            ToolbarItem(placement: .cancellationAction) {
-                Button("Cancel", action: dismiss.callAsFunction)
+            Spacer()
+            
+            if let task = downloadTasks.first(where: { $0.modelName == model.name }) {
+                ModelDownloadProgress(task: task)
+            } else if downloadedModels.contains(model) {
+                Text("Downloaded")
+            } else {
+                Button("Download") {
+                    createDownloadModelTask(model.name)
+                }
             }
-            ToolbarItem(placement: .confirmationAction) {
-                Button("Download", action: createDownloadModelTask)
-            }
         }
-        .task { fetchModels() }
     }
 }
 
 extension ModelStore {
     
     func fetchModels() {
-        Task.detached(priority: .userInitiated){
+        Task(priority: .userInitiated){
             isLoading = true
-            models = try await OllamaClient.shared.undownloadedModels()
+            models = try await OllamaClient.shared.libraryModels()
             isLoading = false
         }
     }
     
-    func createDownloadModelTask() {
-        let tasks = selectedModelNames.compactMap { modelName in
-            ModelTask(modelName: modelName, type: .download)
-        }
-        modelContext.persist(tasks)
-        dismiss.callAsFunction()
+    func createDownloadModelTask(_ modelName: String) {
+        modelContext.persist(ModelTask(modelName: modelName, type: .download))
     }
+
 }
 
 #Preview {

@@ -33,6 +33,9 @@
         }
       }
     },
+    "Add Files" : {
+
+    },
     "Appearance" : {
       "localizations" : {
         "zh-Hans" : {
@@ -53,6 +56,12 @@
         }
       }
     },
+    "Bad" : {
+
+    },
+    "Bad Response" : {
+
+    },
     "Cancel" : {
       "localizations" : {
         "zh-Hans" : {
@@ -62,6 +71,9 @@
           }
         }
       }
+    },
+    "Chat" : {
+
     },
     "Check" : {
       "localizations" : {
@@ -74,6 +86,7 @@
       }
     },
     "Choose a model to chat" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -99,6 +112,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "已连接"
+          }
+        }
+      }
+    },
+    "Copy" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "复制"
           }
         }
       }
@@ -153,6 +176,9 @@
         }
       }
     },
+    "Downloaded" : {
+
+    },
     "Downloading..." : {
       "localizations" : {
         "zh-Hans" : {
@@ -163,7 +189,11 @@
         }
       }
     },
+    "Edit" : {
+
+    },
     "Explore and download models to chat." : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -183,9 +213,6 @@
         }
       }
     },
-    "Filter" : {
-
-    },
     "General" : {
       "localizations" : {
         "zh-Hans" : {
@@ -195,6 +222,15 @@
           }
         }
       }
+    },
+    "Good" : {
+
+    },
+    "Good Response" : {
+
+    },
+    "Grid" : {
+
     },
     "How can I help you today ?" : {
       "localizations" : {
@@ -212,6 +248,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "你想要模型如何回答？"
+          }
+        }
+      }
+    },
+    "Knowledge Base" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "知识库"
           }
         }
       }
@@ -246,6 +292,9 @@
         }
       }
     },
+    "List" : {
+
+    },
     "Message" : {
       "localizations" : {
         "zh-Hans" : {
@@ -255,6 +304,9 @@
           }
         }
       }
+    },
+    "Model Store" : {
+
     },
     "Models" : {
       "localizations" : {
@@ -286,6 +338,9 @@
         }
       }
     },
+    "None" : {
+
+    },
     "Open %@" : {
       "localizations" : {
         "zh-Hans" : {
@@ -297,6 +352,7 @@
       }
     },
     "Open ModelStore" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -326,7 +382,27 @@
         }
       }
     },
+    "Read" : {
+
+    },
+    "Refresh" : {
+
+    },
+    "Save" : {
+
+    },
+    "Scroll to bottom automatically when chatting" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "对话时自动滚动到底部"
+          }
+        }
+      }
+    },
     "Select models to download" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -367,6 +443,9 @@
         }
       }
     },
+    "Submit" : {
+
+    },
     "System" : {
       "localizations" : {
         "zh-Hans" : {
@@ -387,6 +466,16 @@
         }
       }
     },
+    "Title" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "标题"
+          }
+        }
+      }
+    },
     "Today" : {
       "localizations" : {
         "zh-Hans" : {
@@ -396,6 +485,9 @@
           }
         }
       }
+    },
+    "View" : {
+
     },
     "Waiting to delete" : {
       "localizations" : {

@@ -5,11 +5,11 @@
 //  Created by 张鸿燊 on 24/3/2024.
 //
 
+import SwiftUI
+
 #if canImport(UIKit)
-import UIKit
 typealias PlatformImage = UIImage
 #elseif canImport(AppKit)
-import AppKit
 typealias PlatformImage = NSImage
 #endif
 

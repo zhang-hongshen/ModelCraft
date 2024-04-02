@@ -44,8 +44,9 @@ class OllamaService {
     }
     
     func chat(model: String, messages: [Message]) -> AnyPublisher<ChatResponse, AFError> {
-        client.chat(ChatRequest(model: model,
-                                messages: messages.compactMap{ toChatRequestMessage($0) }))
+        let msgs = messages.compactMap{ toChatRequestMessage($0) }
+        return client.chat(ChatRequest(model: model,
+                                messages: msgs))
         
     }
     

@@ -8,7 +8,7 @@ import Foundation
 import SwiftData
 import SwiftUI
 
-enum MessageRole: String {
+enum MessageRole: Codable {
     case user, assistant, system
     
     var localizedName: LocalizedStringKey {
@@ -32,23 +32,19 @@ enum MessageRole: String {
 }
 
 @Model
-class Message: Codable {
+class Message {
     @Attribute(.unique) let id = UUID()
-    private var roleString: String
     
-    var createdAt: Date = Date.now
-    
-    @Transient var role: MessageRole {
-        get { MessageRole(rawValue: roleString) ?? .user }
-        set { self.roleString = newValue.rawValue }
-    }
+    let createdAt: Date = Date.now
+
+    var role: MessageRole
     var content: String
     var images: [Data]
     
     var chat: Chat?
     
     init(role: MessageRole, content: String = "", images: [Data] = []) {
-        self.roleString = role.rawValue
+        self.role = role
         self.content = content
         self.images = images
     }
@@ -57,16 +53,4 @@ class Message: Codable {
         case content, role, images
     }
     
-    required init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        self.roleString = try container.decode(String.self, forKey: .role)
-        self.content = try container.decode(String.self, forKey: .content)
-        self.images = try container.decodeIfPresent([Data].self, forKey: .images) ?? []
-    }
-    func encode(to encoder: Encoder) throws {
-        var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(content, forKey: .content)
-        try container.encode(roleString, forKey: .role)
-        try container.encode(images, forKey: .images)
-    }
 }

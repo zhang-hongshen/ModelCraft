@@ -6,39 +6,25 @@
 //
 
 import SwiftUI
+import SwiftData
 import Combine
 import CoreSpotlight
 import TipKit
 
 import OllamaKit
 import ActivityIndicatorView
-
-struct SelectModelTip: Tip {
-    
-    @Parameter
-    static var presented: Bool = false
-    
-    var title: Text {
-        Text("Choose a model to chat")
-    }
-    
-    var rules: [Rule] {
-        [
-            #Rule(Self.$presented) {
-                $0 == true
-            },
-        ]
-    }
-}
+import NaturalLanguage
 
 struct ChatView: View {
     
-    @Binding var chat: Chat?
+    @State var chat: Chat?
+    @Query private var knowledgeBases: [KnowledgeBase] = []
     
     @State private var draft = Message(role: .user)
     @State private var assistantMessage = Message(role: .assistant)
     @State private var selectedImages = Set<Data>()
     @State private var fileImporterPresented = false
+    @State private var selectedKnowledgeBase: KnowledgeBase? = nil
     
     // Possible values of the `chatStatus` property.
     
@@ -52,57 +38,58 @@ struct ChatView: View {
     @State private var cancellables = Set<AnyCancellable>()
     @State private var columns: [GridItem] = []
     private let promptCardIdealWidth: CGFloat = 250
-    private let selectModelTip = SelectModelTip()
-    private let openStoreTip = OpenStoreTip()
     
     @Environment(\.modelContext) private var modelContext
     @Environment(\.serverStatus) private var serverStatus
     @Environment(\.downaloadedModels) private var models
     @Environment(\.selectedModel) private var selectedModel
+    @AppStorage(UserDefaults.automaticallyScrollToBottom)
+    private var automaticallyScrollToBottom = false
     
     var body: some View {
         MainView()
-        .frame(minHeight: 250)
-        .toolbar(content: ToolbarItems)
-        .safeAreaInset(edge: .bottom, content: MessageInput)
-        .onDrop(of: [.image], isTargeted: nil) { providers in
-            for provider in providers {
-                let progress = provider.loadDataRepresentation(for: .image) { dataOrNil, errorOrNil in
-                    guard let data = dataOrNil else { return }
-                    DispatchQueue.main.async {
-                        draft.images.append(data)
+            .frame(minWidth: promptCardIdealWidth,
+                   minHeight: 250)
+            .toolbar(content: ToolbarItems)
+            .safeAreaInset(edge: .bottom, content: MessageInput)
+            .onDrop(of: [.image], isTargeted: nil) { providers in
+                for provider in providers {
+                    let progress = provider.loadDataRepresentation(for: .image) { dataOrNil, errorOrNil in
+                        guard let data = dataOrNil else { return }
+                        DispatchQueue.main.async {
+                            draft.images.append(data)
+                        }
                     }
+                    print("progress: \(progress.fractionCompleted)%, total: \(progress.totalUnitCount)")
                 }
-                print("progress: \(progress.fractionCompleted)%, total: \(progress.totalUnitCount)")
+                return true
             }
-            return true
-        }
-        .fileImporter(isPresented: $fileImporterPresented,
-                      allowedContentTypes: [.image],
-                      allowsMultipleSelection: true) { result in
-            switch result {
-            case .success(let urls):
-                uploadImages(urls)
-            case .failure(let error):
-                debugPrint(error.localizedDescription)
+            .fileImporter(isPresented: $fileImporterPresented,
+                          allowedContentTypes: [.image],
+                          allowsMultipleSelection: true) { result in
+                switch result {
+                case .success(let urls):
+                    uploadImages(urls)
+                case .failure(let error):
+                    debugPrint(error.localizedDescription)
+                }
             }
-        }
-        // write an spotlight user search handler
-        .userActivity("com.hanson.ModelCraft.chat") { userActivity in
-            userActivity.isEligibleForSearch = true
-            userActivity.title = "Ice Cream"
-            
-            print("userActivity: ")
-        }
-        .onContinueUserActivity("com.hanson.ModelCraft.chat") { userActivity in
-            guard let searchString = userActivity.userInfo?[CSSearchQueryString] as? String else {
-              return
+            // write an spotlight user search handler
+            .userActivity("com.hanson.ModelCraft.chat") { userActivity in
+                userActivity.isEligibleForSearch = true
+                userActivity.title = "Ice Cream"
+                
+                print("userActivity: ")
             }
-            print("onContinueUserActivity, \(searchString)")
-            chat = Chat(messages: [])
-            self.draft.content = searchString
-            submitMessage(Message(role: .user, content: searchString))
-        }
+            .onContinueUserActivity("com.hanson.ModelCraft.chat") { userActivity in
+                guard let searchString = userActivity.userInfo?[CSSearchQueryString] as? String else {
+                  return
+                }
+                print("onContinueUserActivity, \(searchString)")
+                chat = Chat(messages: [])
+                self.draft.content = searchString
+                submitMessage(Message(role: .user, content: searchString))
+            }
     }
 }
 
@@ -110,8 +97,7 @@ extension ChatView {
     
     @ToolbarContentBuilder
     func ToolbarItems() -> some ToolbarContent {
-        ToolbarItem(placement: .principal) {
-            
+        ToolbarItemGroup(placement: .principal) {
             if models.isEmpty {
                 Text("No Available Model")
             } else {
@@ -120,7 +106,12 @@ extension ChatView {
                         Text(verbatim: model.name).tag(model as ModelInfo?)
                     }
                 }
-                .popoverTip(selectModelTip, arrowEdge: .bottom)
+            }
+            Picker("Knowledge Base", selection: $selectedKnowledgeBase) {
+                ForEach(knowledgeBases) { knowledgeBase in
+                    Text(verbatim: knowledgeBase.title).tag(knowledgeBase as KnowledgeBase?)
+                }
+                Text("None").tag(nil as KnowledgeBase?)
             }
         }
         ToolbarItem(placement: .status) {
@@ -133,10 +124,13 @@ extension ChatView {
             ScrollViewReader { proxy in
                 ScrollView(content: MessageList)
                 .onChange(of: chat.messages) {
+                    // don't scroll when user are scrolling
                     scrollToBottom(proxy)
                 }
                 .onChange(of: chat.orderedMessages.last?.content) {
-                    scrollToBottom(proxy)
+                    if automaticallyScrollToBottom {
+                        scrollToBottom(proxy)
+                    }
                 }
             }
             .scrollDismissesKeyboard(.interactively)
@@ -170,7 +164,6 @@ extension ChatView {
                 }
                 .safeAreaPadding(.horizontal)
             }
-            .frame(minWidth: promptCardIdealWidth)
             .onChange(of: proxy.size.width, initial: true) { _, newValue in
                 columns = Array(repeating: .init(.fixed(promptCardIdealWidth), alignment: .top),
                                 count: Int(newValue / promptCardIdealWidth))
@@ -220,8 +213,13 @@ extension ChatView {
                                 .allowedDynamicRange(.high)
                                 .interpolation(.none)
                                 .aspectRatio(image.aspectRatio, contentMode: .fit)
-                                .frame(height: 40)
+                                .frame(height: 50)
                                 .cornerRadius()
+                                .contextMenu {
+                                    Button("Delete") {
+                                        draft.images.removeAll { $0 == data }
+                                    }
+                                }
                         }
                     }
                 }
@@ -249,10 +247,16 @@ extension ChatView {
                 if chatStatus != .assistantWaitingForRequest {
                     Button(action: stopGenerateMessage, label: {Image(systemName: "stop.circle.fill")})
                 } else {
-                    let submitDisabled = draft.content.isEmpty || selectedModel == nil
-                    Button(action: submitDraft, label: {Image(systemName: "arrow.up.circle.fill")})
-                        .tint(submitDisabled ? .secondary : .accentColor)
-                        .disabled(submitDisabled)
+                    let disabled = selectedModel.wrappedValue == nil
+                    Group {
+                        if draft.content.isEmpty {
+                            Button(action: {}, label: {Image(systemName: "waveform.badge.mic")})
+                        } else {
+                            Button(action: submitDraft, label: {Image(systemName: "arrow.up.circle.fill")})
+                        }
+                    }
+                    .tint(disabled ? .secondary : .accentColor)
+                    .disabled(disabled)
                 }
             }
             .padding(Default.padding)
@@ -299,7 +303,6 @@ extension ChatView {
         
         guard case .assistantWaitingForRequest = chatStatus else { return }
         guard let model = selectedModel.wrappedValue else {
-            SelectModelTip.presented = true
             return
         }
         if self.chat == nil {
@@ -308,43 +311,59 @@ extension ChatView {
         }
         guard let chat = self.chat else { return }
         DispatchQueue.main.async {
+            var template = message.content
+            if let knowledgeBase = selectedKnowledgeBase {
+                
+                let context = knowledgeBase.search(message.content)
+                let language = NLLanguageRecognizer.dominantLanguage(for: message.content) ?? .english
+                let languageLocalizedString = Locale(identifier: language.rawValue).localizedString(forLanguageCode: "en-US")
+                template = "Answer the question based only on the following context:\(context)"
+                            + ", Question:\(message.content)"
+                            + ", Answer in the following language: \(languageLocalizedString)"
+            }
+            
+            chatStatus = .userWaitingForResponse
+            let modelShouldKnow = UserDefaults.standard.value(forKey: UserDefaults.modelShouldKnow,
+                                                              default: "")
+            let modelShouldRespond = UserDefaults.standard.value(forKey: UserDefaults.modelShouldRespond,
+                                                              default: "")
+            let messages = [Message(role: .system, content: modelShouldKnow),
+                            Message(role: .system, content: modelShouldRespond)] 
+                            + chat.messages
+                            + [Message(role: .user, content: template, images: message.images)]
             message.chat = chat
             chat.messages.append(message)
             modelContext.persist(message)
             self.clearDraft()
-            chatStatus = .userWaitingForResponse
+            OllamaService.shared.chat(model: model.name, messages: messages)
+                .sink { completion in
+                    switch completion {
+                    case .finished: self.resetChat()
+                    case .failure(let error): self.resetChat()
+                        print("error, \(error.localizedDescription)")
+                    }
+                } receiveValue: { response in
+                    if case .userWaitingForResponse = chatStatus {
+                        DispatchQueue.main.async {
+                            assistantMessage = Message(role: .assistant)
+                            chat.messages.append(assistantMessage)
+                            chatStatus = .assistantResponding
+                        }
+                    }
+                    guard case .assistantResponding = chatStatus else { return }
+                    print("error \(response)")
+                    if let message = response.message {
+                        DispatchQueue.main.async {
+                            assistantMessage.content.append(message.content)
+                        }
+                    }
+                    if response.done {
+                        resetChat()
+                    }
+                }
+                .store(in: &cancellables)
         }
-        let modelShouldKnow = UserDefaults.standard.value(forKey: UserDefaults.modelShouldKnow,
-                                                          default: "")
-        let modelShouldRespond = UserDefaults.standard.value(forKey: UserDefaults.modelShouldRespond,
-                                                          default: "")
-        let messages = [Message(role: .system, content: "\(modelShouldKnow)\n\(modelShouldRespond)")] + chat.messages
-        OllamaService.shared.chat(model: model.name, messages: messages)
-            .sink { completion in
-                switch completion {
-                case .finished: self.resetChat()
-                case .failure(let error): print("error, \(error.localizedDescription)")
-                }
-            } receiveValue: { response in
-                if case .userWaitingForResponse = chatStatus {
-                    DispatchQueue.main.async {
-                        assistantMessage = Message(role: .assistant)
-                        chat.messages.append(assistantMessage)
-                        chatStatus = .assistantResponding
-                    }
-                }
-                guard case .assistantResponding = chatStatus else { return }
-                print("error \(response)")
-                if let message = response.message {
-                    DispatchQueue.main.async {
-                        assistantMessage.content.append(message.content)
-                    }
-                }
-                if response.done {
-                    resetChat()
-                }
-            }
-            .store(in: &cancellables)
+        
     }
     
     func stopGenerateMessage() {
@@ -361,7 +380,6 @@ extension ChatView {
     
     func resetChat() {
         chatStatus = .assistantWaitingForRequest
-        clearDraft()
     }
     
     func scrollToBottom(_ proxy: ScrollViewProxy) {
@@ -373,5 +391,5 @@ extension ChatView {
 }
 
 #Preview {
-    ChatView(chat: .constant(Chat()))
+    ChatView(chat: Chat())
 }

@@ -1,5 +1,5 @@
 {
-  "originHash" : "7cadc67ffb3b20ff4e3b9b3fa3927338b078c2325767eff38aaf81f6433fe061",
+  "originHash" : "86c6ec71823759732c67e45b59a362c86f5ea2744edf709c8f5279ff16491b1e",
   "pins" : [
     {
       "identity" : "activityindicatorview",
@@ -44,6 +44,15 @@
       "state" : {
         "revision" : "7f4df436eb78fe64fe2c32c58006e9949fa28ad8",
         "version" : "0.16.0"
+      }
+    },
+    {
+      "identity" : "svdb",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/Dripfarm/SVDB.git",
+      "state" : {
+        "revision" : "01e78b8bb9423e40201db450180f731c9a67c554",
+        "version" : "2.0.0"
       }
     },
     {

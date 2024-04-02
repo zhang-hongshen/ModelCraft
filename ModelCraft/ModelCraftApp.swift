@@ -8,6 +8,7 @@
 import SwiftUI
 import SwiftData
 import Combine
+import AVFoundation
 import TipKit
 
 import OllamaKit
@@ -15,7 +16,21 @@ import OllamaKit
 @main
 struct ModelCraftApp: App {
     
-    var sharedModelContainer: ModelContainer
+    let sharedModelContainer: ModelContainer = {
+        let schema = Schema([
+        Message.self,
+        Chat.self,
+        ModelTask.self,
+        KnowledgeBase.self,
+        ])
+        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
+
+        do {
+            return try ModelContainer(for: schema, configurations: [modelConfiguration])
+        } catch {
+            fatalError("Could not create ModelContainer: \(error)")
+        }
+    }()
     
     @State private var cancellables: Set<AnyCancellable> = []
     @State private var checkServerStatusTimer: Timer? = nil
@@ -26,23 +41,8 @@ struct ModelCraftApp: App {
     
     @AppStorage(UserDefaults.showInMenuBar)
     private var showInMenuBar: Bool = true
-    
+    private let speechSynthesizer = AVSpeechSynthesizer()
     init() {
-        self.sharedModelContainer = {
-            let schema = Schema([
-                Message.self,
-                Chat.self,
-                ModelTask.self,
-            ])
-            let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
-
-            do {
-                return try ModelContainer(for: schema, configurations: [modelConfiguration])
-            } catch {
-                fatalError("Could not create ModelContainer: \(error)")
-            }
-        }()
-        CachedDataActor.configure(modelContainer: sharedModelContainer)
         startOllamaServer()
         try? Tips.resetDatastore()
         try? Tips.configure([
@@ -60,7 +60,6 @@ struct ModelCraftApp: App {
                     .background(.ultraThinMaterial)
                     .applyUserSettings()
                     .task {
-                        
                         checkServerStatusTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { timer in
                             guard timer.isValid else { return }
                             checkServerStatus()
@@ -102,6 +101,7 @@ struct ModelCraftApp: App {
         .environment(\.serverStatus, $serverStatus)
         .environment(\.downaloadedModels, models)
         .environment(\.selectedModel, $selectedModel)
+        .environment(\.speechSynthesizer, speechSynthesizer)
         .windowResizability(.contentSize)
         .commands {
             SidebarCommands()
@@ -111,27 +111,11 @@ struct ModelCraftApp: App {
     }
     
     func startOllamaServer() {
-        DispatchQueue.global(qos: .background).async {
-            // send user notification
-            let executableName = "ollama"
-            let paths = ProcessInfo.processInfo.environment["PATH"]?.split(separator: ":") ?? []
-            let process = Process()
-            // run commana 'ollama serve' ollama is an exectuable, use system's ollama if exists or use the one in the bundle
-            process.launchPath = "/usr/local/bin/ollama"
-            process.arguments = ["serve"]
-            let pipe = Pipe()
-            process.standardOutput = pipe
-            do {
-                serverStatus = .launching
-                try process.run()
-                process.waitUntilExit()
-                let data = pipe.fileHandleForReading.readDataToEndOfFile()
-                if let output = String(data: data, encoding: .utf8) {
-                    print(output)
-                }
-            } catch {
-                print("Running command error, \(error)")
-            }
+        Task {
+            serverStatus = .launching
+            try shell("base64 --version")
+//            try shell("/opt/homebrew/bin/ollama serve")
+            try shell("ollama serve")
         }
     }
     
@@ -145,4 +129,25 @@ struct ModelCraftApp: App {
             .store(in: &cancellables)
     }
     
+    func shell(_ command: String) throws {
+        let process = Process()
+        process.arguments = ["-c",command]
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = pipe
+        process.standardInput = nil
+        // get user current shell, eg: bash , zsh
+        if let shellPath = ProcessInfo.processInfo.environment["SHELL"] {
+            process.executableURL = URL(filePath: shellPath)
+        }
+        if let path = ProcessInfo.processInfo.environment["PATH"] {
+            process.environment = ["PATH": "/opt/homebrew/bin:"+path]
+        }
+        try process.run()
+        process.waitUntilExit()
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        if let output = String(data: data, encoding: .utf8) {
+            print(output)
+        }
+    }
 }

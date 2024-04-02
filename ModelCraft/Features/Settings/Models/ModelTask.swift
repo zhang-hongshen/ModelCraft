@@ -9,41 +9,55 @@ import Foundation
 import SwiftData
 import SwiftUI
 
-enum TaskStatus: Int {
+enum TaskType: Int, Codable {
+    case download
+    case delete
+}
+
+enum TaskStatus: Int, Codable {
     case new
     case running
     case completed
     case failed
 }
 
-enum TaskType: Int {
-    case download
-    case delete
-}
-
 @Model
 class ModelTask {
+    
     @Attribute(.unique) let id = UUID()
     let createdAt: Date = Date.now
     var modelName: String
     var value: Double
     var total: Double
     var typeID: Int
-    @Transient var type: TaskType {
-        get { TaskType(rawValue: typeID) ?? .download }
-        set { self.typeID = newValue.rawValue }
-    }
     var statusID: Int
-    @Transient var status: TaskStatus {
-        get { TaskStatus(rawValue: typeID) ?? .new }
-        set { self.statusID = newValue.rawValue }
+    var type: TaskType {
+        get { TaskType(rawValue: typeID)! }
+        set { typeID = newValue.rawValue }
     }
+    var status: TaskStatus {
+        get { TaskStatus(rawValue: statusID)! }
+        set { statusID = newValue.rawValue }
+    }
+    
+    init(modelName: String = "", value: Double = 0, total: Double = 0,
+         status: TaskStatus = .new, type: TaskType) {
+        self.modelName = modelName
+        self.value = value
+        self.total = total
+        self.typeID = type.rawValue
+        self.statusID = status.rawValue
+    }
+}
+
+extension ModelTask {
+    
     @Transient var progress: Double {
         if total == 0 { return 0 }
         return (value / total).clamp(to: 0...1)
     }
     
-    var statusLocalizedDescription: LocalizedStringKey {
+    @Transient var statusLocalizedDescription: LocalizedStringKey {
         switch status {
         case .new:
             switch type {
@@ -58,15 +72,6 @@ class ModelTask {
         case .completed: "Completed"
         case .failed: "Failed"
         }
-    }
-    
-    init(modelName: String = "", value: Double = 0, total: Double = 0,
-         status: TaskStatus = .new, type: TaskType) {
-        self.modelName = modelName
-        self.value = value
-        self.total = total
-        self.typeID = type.rawValue
-        self.statusID = status.rawValue
     }
 }
 

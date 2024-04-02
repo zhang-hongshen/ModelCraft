@@ -16,4 +16,12 @@ extension Image {
         self.init(uiImage: image)
 #endif
     }
+    
+    init(platformImage image: PlatformImage) {
+#if canImport(AppKit)
+        self.init(nsImage: image)
+#elseif canImport(UIKit)
+        self.init(uiImage: image)
+#endif
+    }
 }
