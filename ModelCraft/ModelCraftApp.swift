@@ -12,6 +12,7 @@ import AVFoundation
 import TipKit
 
 import OllamaKit
+import Sparkle
 
 @main
 struct ModelCraftApp: App {
@@ -23,7 +24,7 @@ struct ModelCraftApp: App {
         ModelTask.self,
         KnowledgeBase.self,
         ])
-        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
+        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 
         do {
             return try ModelContainer(for: schema, configurations: [modelConfiguration])
@@ -42,7 +43,13 @@ struct ModelCraftApp: App {
     @AppStorage(UserDefaults.showInMenuBar)
     private var showInMenuBar: Bool = true
     private let speechSynthesizer = AVSpeechSynthesizer()
+    
+    private let updaterController: SPUStandardUpdaterController
+    
     init() {
+        updaterController = SPUStandardUpdaterController(startingUpdater: true,
+                                                         updaterDelegate: nil,
+                                                         userDriverDelegate: nil)
         startOllamaServer()
         try? Tips.resetDatastore()
         try? Tips.configure([
@@ -75,7 +82,7 @@ struct ModelCraftApp: App {
                             }
                         }
                     }
-                }
+            }
 #if os(macOS)
             Settings {
                 SettingsView().background(.ultraThinMaterial)
@@ -84,6 +91,7 @@ struct ModelCraftApp: App {
             }
             
             MenuBarExtra(isInserted: $showInMenuBar) {
+                ServerStatusView()
                 Button("Open \(Bundle.main.applicationName)") {
                     // show the main window
                     NSApp.windows.first?.makeKeyAndOrderFront(nil)
@@ -107,6 +115,9 @@ struct ModelCraftApp: App {
             SidebarCommands()
             ToolbarCommands()
             InspectorCommands()
+            CommandGroup(after: .appInfo) {
+                CheckForUpdatesView(updater: updaterController.updater)
+            }
         }
     }
     
@@ -114,8 +125,13 @@ struct ModelCraftApp: App {
         Task {
             serverStatus = .launching
             try shell("base64 --version")
-//            try shell("/opt/homebrew/bin/ollama serve")
             try shell("ollama serve")
+            try shell("env")
+            let db = try FileManager.default.url(for: .applicationSupportDirectory,
+                                    in: .userDomainMask,
+                                    appropriateFor: nil, create: true)
+            try shell("chroma run --path \(db)")
+            
         }
     }
     
@@ -141,7 +157,7 @@ struct ModelCraftApp: App {
             process.executableURL = URL(filePath: shellPath)
         }
         if let path = ProcessInfo.processInfo.environment["PATH"] {
-            process.environment = ["PATH": "/opt/homebrew/bin:"+path]
+            process.environment = ["PATH": "/opt/homebrew/bin:/opt/homebrew/anaconda3/envs/chroma-demo/bin:"+path]
         }
         try process.run()
         process.waitUntilExit()

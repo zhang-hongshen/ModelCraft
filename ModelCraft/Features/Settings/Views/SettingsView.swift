@@ -10,7 +10,7 @@ import SwiftUI
 struct SettingsView: View {
     
     enum Tab: String, CaseIterable, Identifiable {
-        case general, model, personalization
+        case general, personalization
         var id: Self { self }
     }
     
@@ -24,12 +24,6 @@ struct SettingsView: View {
                     .tabItem {
                         Image(systemName: "gearshape")
                         Text("General")
-                    }
-                
-                ModelsView().tag(Tab.model as Tab?)
-                    .tabItem {
-                        Image(systemName: "shippingbox")
-                        Text("Models")
                     }
                 PersonalizationView().tag(Tab.personalization as Tab?)
                     .tabItem {

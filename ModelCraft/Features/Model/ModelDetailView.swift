@@ -1,23 +1,22 @@
 //
-//  ModelStore.swift
+//  ModelDetailView.swift
 //  ModelCraft
 //
-//  Created by 张鸿燊 on 23/3/2024.
+//  Created by 张鸿燊 on 3/4/2024.
 //
 
 import SwiftUI
-import Combine
 import SwiftData
+import Combine
 
 import OllamaKit
 
-struct ModelStore: View {
+struct ModelDetailView: View {
     
+    @State var modelName: String
     @State private var models: [ModelInfo] = []
-    @State private var filtedModels: [ModelInfo] = []
     @State private var isLoading = false
     @State private var selectedModelNames = Set<String>()
-    @State private var searchText = ""
     @State private var cancellables = Set<AnyCancellable>()
     
     @Query(filter: ModelTask.predicateByType(.download))
@@ -25,38 +24,16 @@ struct ModelStore: View {
     @Environment(\.downaloadedModels) private var downloadedModels
     @Environment(\.modelContext) private var modelContext
     
-    private var filteredModels: [ModelInfo] {
-        if searchText.isEmpty {
-            return models
-        }
-        return models.filter { $0.name.hasPrefix(searchText) }
-    }
     var body: some View {
         ContentView()
             .toolbar(content: ToolbarItems)
-            .searchable(text: $searchText)
             .task { fetchModels() }
-    }
-}
-
-extension ModelStore {
-    @ToolbarContentBuilder
-    func ToolbarItems() -> some ToolbarContent {
-        ToolbarItemGroup {
-            if isLoading {
-                ProgressView().controlSize(.small)
-            } else {
-                Button("Refresh", systemImage: "arrow.counterclockwise") {
-                    fetchModels()
-                }
-            }
-        }
     }
     
     @ViewBuilder
     func ContentView() -> some View {
         List(selection: $selectedModelNames) {
-            ForEach(filteredModels, id: \.name) { model in
+            ForEach(models, id: \.name) { model in
                 ListCell(model).tag(model.name)
             }
         }
@@ -82,13 +59,26 @@ extension ModelStore {
         }
     }
 }
-
-extension ModelStore {
+extension ModelDetailView {
+    @ToolbarContentBuilder
+    func ToolbarItems() -> some ToolbarContent {
+        ToolbarItemGroup {
+            if isLoading {
+                ProgressView().controlSize(.small)
+            } else {
+                Button("Refresh", systemImage: "arrow.counterclockwise") {
+                    fetchModels()
+                }
+            }
+        }
+    }
+}
+extension ModelDetailView {
     
     func fetchModels() {
         Task(priority: .userInitiated){
             isLoading = true
-            models = try await OllamaClient.shared.libraryModels()
+            models = try await OllamaClient.shared.modelTags(modelName)
             isLoading = false
         }
     }
@@ -100,5 +90,5 @@ extension ModelStore {
 }
 
 #Preview {
-    ModelStore()
+    ModelDetailView(modelName: "gemma")
 }

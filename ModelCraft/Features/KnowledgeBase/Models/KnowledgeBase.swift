@@ -10,6 +10,10 @@ import NaturalLanguage
 
 import SVDB
 
+enum IndexStatus: Int, Codable {
+    case unindexed, indexing, indexed
+}
+
 @Model
 class KnowledgeBase {
     @Attribute(.unique) let id = UUID()
@@ -17,10 +21,13 @@ class KnowledgeBase {
     var icon: String = "book"
     var title: String
     var files: Set<URL>
+    var indexStatus: IndexStatus
     
-    init(title: String = "", files: Set<URL> = []) {
+    init(title: String = "", files: Set<URL> = [],
+         indexStatus: IndexStatus = .unindexed) {
         self.title = title
         self.files = files
+        self.indexStatus = indexStatus
     }
     
     var orderedFiles: [URL] {
@@ -30,49 +37,59 @@ class KnowledgeBase {
 
 extension KnowledgeBase {
     
+    var collectionName: String {
+        "knowledgeBase:\(id)"
+    }
+    
     func getVectorCollection() -> Collection {
         // collection只能创建collection
         do {
-            return try SVDB.shared.collection("knowledgeBase:\(id)")
+            return try SVDB.shared.collection(collectionName)
         } catch {
             debugPrint("error, \(error.localizedDescription)")
         }
-        return SVDB.shared.getCollection("knowledgeBase:\(id)")!
+        return SVDB.shared.getCollection(collectionName)!
     }
     
     func search(_ text: String) -> String {
-        var res = ""
-        do {
-            try generateEmbedding(orderedFiles)
-            guard let language = NLLanguageRecognizer.dominantLanguage(for: text) else { return ""}
-            guard let embed = NLEmbedding.sentenceEmbedding(for: language) else { return ""}
-            let collection = getVectorCollection()
-            guard let embedding = embed.vector(for: text) else { return ""}
-            let results = collection.search(query: embedding)
-            res = results.map{ $0.text }.joined(separator: "\n")
-        } catch {
-            print("search error, \(error.localizedDescription)")
+        let collection = SVDB.shared.getCollection(collectionName)
+        if indexStatus == .unindexed || collection == nil {
+            index(orderedFiles)
         }
-        return res
+        guard let collection = SVDB.shared.getCollection(collectionName) else { return ""}
+        guard let language = NLLanguageRecognizer.dominantLanguage(for: text) else { return ""}
+        guard let embed = NLEmbedding.sentenceEmbedding(for: language) else { return ""}
+        guard let embedding = embed.vector(for: text) else { return ""}
+        let results = collection.search(query: embedding)
+        return results.map{ $0.text }.joined(separator: "\n")
     }
     
-    func generateEmbedding(_ urls: [URL]) throws {
+    func index(_ urls: [URL]) {
         let collection = getVectorCollection()
         let fileManager = FileManager.default
-        for url in urls {
-            if url.hasDirectoryPath {
-                try generateEmbedding(try fileManager
-                    .contentsOfDirectory(at: url,
-                                         includingPropertiesForKeys: nil,
-                                         options: [.skipsHiddenFiles]))
-                continue
+        indexStatus = .indexing
+        do  {
+            for url in urls {
+                if url.hasDirectoryPath {
+                    index(try fileManager
+                        .contentsOfDirectory(at: url,
+                                             includingPropertiesForKeys: nil,
+                                             options: [.skipsHiddenFiles]))
+                    continue
+                }
+                if !fileManager.fileExists(at: url) { continue }
+                let document = try url.readContent()
+                guard let language = NLLanguageRecognizer.dominantLanguage(for: document) else { continue }
+                guard let embed = NLEmbedding.sentenceEmbedding(for: language) else { continue }
+                document.split(separator: .newlines, chunkSize: 100).forEach { chunk in
+                    guard let embedding = embed.vector(for: chunk) else { return }
+                    collection.addDocument(id: id, text: chunk, embedding: embedding)
+                }
             }
-            if !fileManager.fileExists(at: url) { continue }
-            let document = try url.readContent()
-            guard let language = NLLanguageRecognizer.dominantLanguage(for: document) else { continue }
-            guard let embed = NLEmbedding.sentenceEmbedding(for: language) else { continue }
-            guard let embedding = embed.vector(for: document) else { continue }
-            collection.addDocument(text: document, embedding: embedding)
+        } catch {
+            print("index error, \(error.localizedDescription)")
         }
+        indexStatus = .indexed
+        
     }
 }

@@ -11,13 +11,13 @@ import NaturalLanguage
 
 import MarkdownUI
 import Splash
+import ActivityIndicatorView
 
 struct MessageView: View {
     
     var message: Message
     
     @State private var copied = false
-    @State private var isEditing = false
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.speechSynthesizer) private var speechSynthesizer
     
@@ -36,55 +36,67 @@ struct MessageView: View {
     }
     
     var body: some View {
-        VStack(alignment: .leading) {
-            HStack(alignment: .center) {
-                message.role.icon.resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(width: 25)
+        HStack(alignment: .top) {
+            message.role.icon.resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(width: 25)
+            
+            VStack(alignment: .leading) {
+                
                 Text(message.role.localizedName)
                     .font(.headline)
-            }
-            
-            Markdown(message.content)
-                .markdownTheme(.docC)
-                .markdownCodeSyntaxHighlighter(.splash(theme: self.splashTheme))
-                .textSelection(.enabled)
-                .multilineTextAlignment(.leading)
-                .contextMenu {
-                    if message.role == .assistant {
-                        AssistantButtons()
+                
+                Markdown(message.content)
+                    .markdownTheme(.docC)
+                    .markdownCodeSyntaxHighlighter(.splash(theme: self.splashTheme))
+                    .textSelection(.enabled)
+                    .multilineTextAlignment(.leading)
+                    .contextMenu {
+                        if message.role == .assistant {
+                            AssistantButtons()
+                        }
+                    }
+                
+                LazyVGrid(columns: columns, spacing: 10){
+                    ForEach(message.images, id: \.self) { data in
+                        if let image = PlatformImage(data: data) {
+                            Image(data: data)?.resizable()
+                                .allowedDynamicRange(.high)
+                                .interpolation(.none)
+                                .aspectRatio(image.aspectRatio, contentMode: .fit)
+                                .frame(height: imageHeight)
+                                .cornerRadius()
+                        }
                     }
                 }
-            
-            LazyVGrid(columns: columns, spacing: 10){
-                ForEach(message.images, id: \.self) { data in
-                    if let image = PlatformImage(data: data) {
-                        Image(data: data)?.resizable()
-                            .allowedDynamicRange(.high)
-                            .interpolation(.none)
-                            .aspectRatio(image.aspectRatio, contentMode: .fit)
-                            .frame(height: imageHeight)
-                            .cornerRadius()
-                    }
-                }
-            }
-            
+                
 #if os(macOS)
-            HStack {
-                CopyButton()
-                if message.role == .assistant {
-                    AssistantButtons()
-                } else {
-                    if !isEditing {
-                        Button("", systemImage: "square.and.pencil", action: { isEditing = true })
-                            .help("Edit")
-                    } else {
-                        Button("Submit", action: {})
-                        Button("Cancel", role: .cancel, action: { isEditing = false} )
-                    }
+                if message.done {
+                    HStack {
+                        CopyButton()
+                        if message.role == .assistant {
+                            AssistantButtons()
+                        }
+                    }.buttonStyle(.borderless)
                 }
-            }.buttonStyle(.borderless)
 #endif
+            }
+        }
+    }
+    
+    @ViewBuilder
+    static func UserWaitingForResponseView() -> some View {
+        HStack(alignment: .top) {
+            MessageRole.assistant.icon.resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(width: 25)
+            VStack(alignment: .leading) {
+                Text(MessageRole.assistant.localizedName)
+                    .font(.headline)
+                ActivityIndicatorView(isVisible: .constant(true),
+                                      type: .opacityDots())
+                .frame(width: 30, height: 10)
+            }
         }
     }
 }
@@ -108,9 +120,9 @@ extension MessageView {
         Button("Read", systemImage: "mic") {
             speechSynthesizer.speak(message.content)
         }.help("Good Response")
-        Button("Good", systemImage: "hand.thumbsup", action: {})
-            .help("Good Response")
-        Button("Bad", systemImage: "hand.thumbsdown", action: {})
-            .help("Bad Response")
+//        Button("Good", systemImage: "hand.thumbsup", action: {})
+//            .help("Good Response")
+//        Button("Bad", systemImage: "hand.thumbsdown", action: {})
+//            .help("Bad Response")
     }
 }

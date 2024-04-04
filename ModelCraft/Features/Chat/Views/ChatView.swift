@@ -8,16 +8,14 @@
 import SwiftUI
 import SwiftData
 import Combine
-import CoreSpotlight
 import TipKit
 
 import OllamaKit
-import ActivityIndicatorView
 import NaturalLanguage
 
 struct ChatView: View {
     
-    @State var chat: Chat?
+    @Bindable var chat: Chat
     @Query private var knowledgeBases: [KnowledgeBase] = []
     
     @State private var draft = Message(role: .user)
@@ -74,22 +72,6 @@ struct ChatView: View {
                     debugPrint(error.localizedDescription)
                 }
             }
-            // write an spotlight user search handler
-            .userActivity("com.hanson.ModelCraft.chat") { userActivity in
-                userActivity.isEligibleForSearch = true
-                userActivity.title = "Ice Cream"
-                
-                print("userActivity: ")
-            }
-            .onContinueUserActivity("com.hanson.ModelCraft.chat") { userActivity in
-                guard let searchString = userActivity.userInfo?[CSSearchQueryString] as? String else {
-                  return
-                }
-                print("onContinueUserActivity, \(searchString)")
-                chat = Chat(messages: [])
-                self.draft.content = searchString
-                submitMessage(Message(role: .user, content: searchString))
-            }
     }
 }
 
@@ -120,7 +102,7 @@ extension ChatView {
     }
     @ViewBuilder
     func MainView() -> some View {
-        if let chat = chat, !chat.messages.isEmpty {
+        if !chat.messages.isEmpty {
             ScrollViewReader { proxy in
                 ScrollView(content: MessageList)
                 .onChange(of: chat.messages) {
@@ -175,32 +157,17 @@ extension ChatView {
     @ViewBuilder
     func MessageList() -> some View {
         VStack(alignment: .leading) {
-            ForEach(chat?.orderedMessages ?? []) { message in
+            ForEach(chat.orderedMessages) { message in
                 MessageView(message: message).id(message.id)
             }
             if chatStatus == .userWaitingForResponse {
-                UserWaitingForResponseView()
+                MessageView.UserWaitingForResponseView()
             }
         }
         .padding()
     }
     
-    @ViewBuilder
-    func UserWaitingForResponseView() -> some View {
-        VStack(alignment: .leading) {
-            HStack(alignment: .center) {
-                MessageRole.assistant.icon.resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(width: 25)
-                Text(MessageRole.assistant.localizedName)
-                    .font(.headline)
-            }
-            
-            ActivityIndicatorView(isVisible: .constant(true),
-                                  type: .opacityDots())
-            .frame(width: 30, height: 10)
-        }
-    }
+    
     
     @ViewBuilder
     func MessageInput() -> some View {
@@ -248,13 +215,7 @@ extension ChatView {
                     Button(action: stopGenerateMessage, label: {Image(systemName: "stop.circle.fill")})
                 } else {
                     let disabled = selectedModel.wrappedValue == nil
-                    Group {
-                        if draft.content.isEmpty {
-                            Button(action: {}, label: {Image(systemName: "waveform.badge.mic")})
-                        } else {
-                            Button(action: submitDraft, label: {Image(systemName: "arrow.up.circle.fill")})
-                        }
-                    }
+                    Button(action: submitDraft, label: {Image(systemName: "arrow.up.circle.fill")})
                     .tint(disabled ? .secondary : .accentColor)
                     .disabled(disabled)
                 }
@@ -305,11 +266,6 @@ extension ChatView {
         guard let model = selectedModel.wrappedValue else {
             return
         }
-        if self.chat == nil {
-            self.chat = Chat()
-            modelContext.persist(chat!)
-        }
-        guard let chat = self.chat else { return }
         DispatchQueue.main.async {
             var template = message.content
             if let knowledgeBase = selectedKnowledgeBase {
@@ -317,9 +273,10 @@ extension ChatView {
                 let context = knowledgeBase.search(message.content)
                 let language = NLLanguageRecognizer.dominantLanguage(for: message.content) ?? .english
                 let languageLocalizedString = Locale(identifier: language.rawValue).localizedString(forLanguageCode: "en-US")
-                template = "Answer the question based only on the following context:\(context)"
-                            + ", Question:\(message.content)"
-                            + ", Answer in the following language: \(languageLocalizedString)"
+                template = "Answer the following question based only on the following context:\(context),"
+                            + "I will tip you $200 if the user finds the answer helpful."
+                            + "Question:\(message.content),"
+                            + "Answer in the following language: \(languageLocalizedString)"
             }
             
             chatStatus = .userWaitingForResponse
@@ -345,7 +302,7 @@ extension ChatView {
                 } receiveValue: { response in
                     if case .userWaitingForResponse = chatStatus {
                         DispatchQueue.main.async {
-                            assistantMessage = Message(role: .assistant)
+                            assistantMessage = Message(role: .assistant, done: false)
                             chat.messages.append(assistantMessage)
                             chatStatus = .assistantResponding
                         }
@@ -357,6 +314,7 @@ extension ChatView {
                             assistantMessage.content.append(message.content)
                         }
                     }
+                    assistantMessage.done = response.done
                     if response.done {
                         resetChat()
                     }
@@ -383,7 +341,7 @@ extension ChatView {
     }
     
     func scrollToBottom(_ proxy: ScrollViewProxy) {
-        guard let lastID = chat?.orderedMessages.last?.id else { return }
+        guard let lastID = chat.orderedMessages.last?.id else { return }
         withAnimation {
             proxy.scrollTo(lastID, anchor: .bottom)
         }

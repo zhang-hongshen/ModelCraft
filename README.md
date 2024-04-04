@@ -1,1 +1,28 @@
+<img alt="ModelCraft" height="200px" src="./logo.png" />
+
 # ModelCraft
+
+ModelCraft is a macOS RAG app. It uses [Ollama](https://github.com/ollama/ollama) to run models locally.
+
+### QuickStart
+
+```shell
+brew install ollama
+brew services start ollama
+```
+
+
+
+
+
+### Customize chat by selecting model and knowledge base.
+
+![image-20240404232609329](./assets/image-20240404232609329.png)
+
+### Customize your own knowledge base
+
+![image-20240404231834812](./assets/image-20240404231834812.png)
+
+### Download models from Model Store
+
+![image-20240404232539302](./assets/image-20240404232539302.png)

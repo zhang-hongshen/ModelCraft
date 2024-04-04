@@ -7,6 +7,8 @@
 
 import Foundation
 import PDFKit
+import Vision
+
 import UniformTypeIdentifiers
 
 extension URL {
@@ -23,6 +25,8 @@ extension URL {
             return readPDFContent()
         } else if type.conforms(to: .xml) {
             return XMLFile().readContent(url: self)
+        } else if type.conforms(to: .image) {
+            return try readImageContent()
         } else if type.conforms(to: .text) {
             return try String(contentsOf: self, encoding: .utf8)
         }
@@ -40,5 +44,24 @@ extension URL {
         }
         print("content, \(content)")
         return content
+    }
+    
+    private func readImageContent() throws -> String {
+        let requestHandler = VNImageRequestHandler(url: self)
+        var recognizedStrings = [String]()
+        let request = VNRecognizeTextRequest { request, error in
+            guard let observations =
+                    request.results as? [VNRecognizedTextObservation] else {
+                return
+            }
+            recognizedStrings = observations.compactMap { observation in
+                // Return the string of the top VNRecognizedText instance.
+                return observation.topCandidates(1).first?.string
+            }
+            print("recognizedStrings, \(recognizedStrings)")
+        }
+        // Perform the text-recognition request.
+        try requestHandler.perform([request])
+        return recognizedStrings.joined(separator: "")
     }
 }
