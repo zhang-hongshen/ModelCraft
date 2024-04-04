@@ -22,20 +22,22 @@ struct KnowledgeBaseEdition: View {
     @Environment(\.modelContext) private var modelContext
     
     var body: some View {
-        Form {
+        VStack {
             Text("Knowledge Base").font(.headline)
             
             Button(action: {
                 emojiPickerPresented = true
             }, label: {
                 Image(systemName: konwledgeBase.icon)
-            }).buttonStyle(.borderless)
+            }).buttonStyle(.borderless).imageScale(.large)
             
-            TextField("Title", text: $konwledgeBase.title)
-            
-            ContentView()
-                .frame(minWidth: 200, minHeight: 100)
-                .safeAreaInset(edge: .bottom, content: OpearationButton)
+            Form {
+                TextField("Title", text: $konwledgeBase.title)
+                
+                ContentView()
+                    .frame(minWidth: 200, minHeight: 100)
+                    .safeAreaInset(edge: .bottom, content: OpearationButton)
+            }
         }
         .padding()
         .background(.ultraThinMaterial)

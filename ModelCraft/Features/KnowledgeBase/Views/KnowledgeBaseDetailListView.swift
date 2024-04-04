@@ -20,13 +20,8 @@ struct KnowledgeBaseDetailListView: View {
         }
         .listStyle(.inset)
         .contextMenu {
-            DeleteButton()
+            DeleteButton(action: deleteFiles)
         }
-    }
-    
-    @ViewBuilder
-    func DeleteButton() -> some View {
-        Button("Delete", systemImage: "trash", action: deleteFiles)
     }
     
     func deleteFiles() {

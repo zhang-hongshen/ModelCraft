@@ -40,17 +40,14 @@ class Message {
     var role: MessageRole
     var content: String
     var images: [Data]
-    
+    var done: Bool
     var chat: Chat?
     
-    init(role: MessageRole, content: String = "", images: [Data] = []) {
+    init(role: MessageRole, content: String = "", images: [Data] = [], done: Bool = true) {
         self.role = role
         self.content = content
         self.images = images
-    }
-    
-    private enum CodingKeys: String, CodingKey {
-        case content, role, images
+        self.done = done
     }
     
 }

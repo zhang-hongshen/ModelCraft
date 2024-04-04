@@ -1,19 +1,18 @@
 //
-//  ModelView.swift
+//  LocalModelsView.swift
 //  ModelCraft
 //
-//  Created by 张鸿燊 on 22/3/2024.
+//  Created by 张鸿燊 on 4/4/2024.
 //
 
 import SwiftUI
 import SwiftData
-import TipKit
 
-struct ModelsView: View {
+struct LocalModelsView: View {
     
     @State private var selectedModelNames = Set<String>()
     @State private var isFetchingData = false
-    @State private var sheetPresented = false
+    @State private var confirmationDialogPresented = false
     
     @Environment(\.modelContext) private var modelContext
     @Environment(\.downaloadedModels) private var models
@@ -34,31 +33,31 @@ struct ModelsView: View {
                     }
                 }.tag(model.name)
             }
+            .contextMenu {
+                DeleteButton(action: { confirmationDialogPresented = true})
+            }
         }
         .listStyle(.inset)
-        .safeAreaInset(edge: .bottom, content: OpearationButton)
-        .sheet(isPresented: $sheetPresented){
-            ModelStore()
+        .toolbar(content: ToolbarItems)
+        .confirmationDialog("Are you sure to delete these models",
+                            isPresented: $confirmationDialogPresented) {
+            DeleteButton(action: createDeleteModelTask)
         }
     }
-}
-
-extension ModelsView {
     
-    @ViewBuilder
-    func OpearationButton() -> some View {
-        HStack(alignment: .center) {
-            Button(action: createDeleteModelTask, label: { Image(systemName: "minus") })
-                .disabled(selectedModelNames.isEmpty)
+}
 
-            Spacer()
+extension LocalModelsView {
+    
+    @ToolbarContentBuilder
+    func ToolbarItems() -> some ToolbarContent {
+        ToolbarItem {
+            DeleteButton(action: { confirmationDialogPresented = true})
         }
-        .padding(Default.padding)
-        .buttonStyle(.borderless)
     }
 }
 
-extension ModelsView {
+extension LocalModelsView {
     
     func createDeleteModelTask() {
         let tasks = selectedModelNames.compactMap { modelName in
@@ -66,4 +65,8 @@ extension ModelsView {
         }
         modelContext.persist(tasks)
     }
+}
+
+#Preview {
+    LocalModelsView()
 }

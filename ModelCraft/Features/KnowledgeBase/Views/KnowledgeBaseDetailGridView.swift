@@ -23,9 +23,8 @@ struct KnowledgeBaseDetailGridView: View {
                     }
                 }
                 .contextMenu {
-                    DeleteButton()
+                    DeleteButton(action: deleteFiles)
                 }
-                .padding()
             }
             .onChange(of: proxy.size.width, initial: true) {
                 columns = Array(repeating: GridItem(.fixed(gridCellWidth), alignment: .top),
@@ -55,15 +54,11 @@ struct KnowledgeBaseDetailGridView: View {
         .frame(width: gridCellWidth)
     }
     
-    @ViewBuilder
-    func DeleteButton() -> some View {
-        Button("Delete", systemImage: "trash", action: deleteFiles)
-    }
-    
     func deleteFiles() {
         konwledgeBase.files.subtract(selectedFiles)
     }
 }
+
 
 #Preview {
     KnowledgeBaseDetailGridView(konwledgeBase: KnowledgeBase(),

@@ -77,6 +77,7 @@ struct FileItem: View {
             Text(url.lastPathComponent)
                 .lineLimit(2)
                 .truncationMode(.middle)
+                .multilineTextAlignment(.center)
         }
         .frame(width: frameWidth)
     }

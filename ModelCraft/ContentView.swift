@@ -13,7 +13,9 @@ import ActivityIndicatorView
 
 
 enum Tab: Hashable {
-    case chat(Chat?), modelStore, knowledgeBase(KnowledgeBase)
+    case chat(Chat)
+    case knowledgeBase(KnowledgeBase)
+    case localModel, modelStore
 }
 
 struct ContentView: View {
@@ -28,7 +30,7 @@ struct ContentView: View {
     @Query(sort: \ModelTask.createdAt, order: .reverse) var modelTasks: [ModelTask] = []
     @Query private var knowledgeBases: [KnowledgeBase] = []
     
-    @State private var currentTab: Tab = .chat(nil)
+    @State private var currentTab: Tab? = nil
     @State private var selectedKnowledgeBase: KnowledgeBase? = nil
     
     var body: some View {
@@ -36,20 +38,25 @@ struct ContentView: View {
             List(selection: $currentTab) {
                 ChatSection()
                 KnowledgeBaseSection()
-                Label("Model Store", systemImage: "storefront").tag(Tab.modelStore)
+                ModelSection()
             }
             .listStyle(.sidebar)
             .navigationSplitViewColumnWidth(min: 180, ideal: 200)
         } detail: {
-            switch currentTab {
-            case .chat(let chat):
-                ChatView(chat: chat)
-                    .navigationTitle(chat?.title ?? Bundle.main.applicationName)
-            case .modelStore:
-                ModelStore().navigationTitle("Model Store")
-            case .knowledgeBase(let knowledgeBase):
-                KnowledgeBaseDetailView(konwledgeBase: knowledgeBase)
-                    .navigationTitle(knowledgeBase.title)
+            NavigationStack {
+                switch currentTab {
+                case .chat(let chat):
+                    ChatView(chat: chat).navigationTitle(chat.title)
+                case .modelStore:
+                    ModelStore().navigationTitle("Model Store")
+                case .knowledgeBase(let knowledgeBase):
+                    KnowledgeBaseDetailView(konwledgeBase: knowledgeBase)
+                        .navigationTitle(knowledgeBase.title)
+                case .localModel:
+                    LocalModelsView().navigationTitle("Local Models")
+                case .none:
+                    EmptyView()
+                }
             }
         }
         .task {
@@ -114,6 +121,16 @@ extension ContentView {
                     Image(systemName: "plus")
                 }).buttonStyle(.borderless)
             }
+        }
+    }
+    
+    @ViewBuilder
+    func ModelSection() -> some View {
+        Section {
+            Label("Model Store", systemImage: "storefront").tag(Tab.modelStore)
+            Label("Local Models", systemImage: "shippingbox").tag(Tab.localModel)
+        } header: {
+            Text("Model")
         }
     }
 }

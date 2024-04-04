@@ -34,7 +34,14 @@
       }
     },
     "Add Files" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "添加文件"
+          }
+        }
+      }
     },
     "Appearance" : {
       "localizations" : {
@@ -46,6 +53,9 @@
         }
       }
     },
+    "Are you sure to delete these models" : {
+
+    },
     "Assistant" : {
       "localizations" : {
         "zh-Hans" : {
@@ -55,12 +65,6 @@
           }
         }
       }
-    },
-    "Bad" : {
-
-    },
-    "Bad Response" : {
-
     },
     "Cancel" : {
       "localizations" : {
@@ -73,7 +77,14 @@
       }
     },
     "Chat" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "对话"
+          }
+        }
+      }
     },
     "Check" : {
       "localizations" : {
@@ -84,6 +95,9 @@
           }
         }
       }
+    },
+    "Check for Updates…" : {
+
     },
     "Choose a model to chat" : {
       "extractionState" : "stale",
@@ -177,7 +191,14 @@
       }
     },
     "Downloaded" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已下载"
+          }
+        }
+      }
     },
     "Downloading..." : {
       "localizations" : {
@@ -190,7 +211,14 @@
       }
     },
     "Edit" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "编辑"
+          }
+        }
+      }
     },
     "Explore and download models to chat." : {
       "extractionState" : "stale",
@@ -222,9 +250,6 @@
           }
         }
       }
-    },
-    "Good" : {
-
     },
     "Good Response" : {
 
@@ -295,6 +320,16 @@
     "List" : {
 
     },
+    "Local Models" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "本地模型"
+          }
+        }
+      }
+    },
     "Message" : {
       "localizations" : {
         "zh-Hans" : {
@@ -305,8 +340,25 @@
         }
       }
     },
+    "Model" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "模型"
+          }
+        }
+      }
+    },
     "Model Store" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "模型商店"
+          }
+        }
+      }
     },
     "Models" : {
       "localizations" : {
@@ -383,13 +435,34 @@
       }
     },
     "Read" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "朗读"
+          }
+        }
+      }
     },
     "Refresh" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "刷新"
+          }
+        }
+      }
     },
     "Save" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "保存"
+          }
+        }
+      }
     },
     "Scroll to bottom automatically when chatting" : {
       "localizations" : {
@@ -442,9 +515,6 @@
           }
         }
       }
-    },
-    "Submit" : {
-
     },
     "System" : {
       "localizations" : {
