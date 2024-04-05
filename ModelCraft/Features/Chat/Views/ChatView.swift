@@ -214,7 +214,7 @@ extension ChatView {
                 if chatStatus != .assistantWaitingForRequest {
                     Button(action: stopGenerateMessage, label: {Image(systemName: "stop.circle.fill")})
                 } else {
-                    let disabled = selectedModel.wrappedValue == nil
+                    let disabled = selectedModel.wrappedValue == nil || draft.content.isEmpty
                     Button(action: submitDraft, label: {Image(systemName: "arrow.up.circle.fill")})
                     .tint(disabled ? .secondary : .accentColor)
                     .disabled(disabled)

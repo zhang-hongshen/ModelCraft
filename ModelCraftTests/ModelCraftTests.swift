@@ -87,19 +87,27 @@ final class ModelCraftTests: XCTestCase {
         try fileManager.copyItem(at: userSource, to: sanboxDestination)
     }
     
-    func testOllamaModels() async throws {
-        let models = try await OllamaService.shared.models()
-        print(models)
+    func testEchoPath() async throws {
+        if let paths = ProcessInfo.processInfo.environment["PATH"] {
+            for path in paths.split(separator: ":") {
+                print("xcode path = \(path)")
+            }
+        }
+        let paths = "/opt/homebrew/anaconda3/bin:/opt/homebrew/anaconda3/condabin:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/Library/Apple/usr/bin:/Users/zhanghongshen/Library/Application Support/JetBrains/Toolbox/scripts"
+            .split(separator: ":")
+        for path in paths {
+            print("path = \(path)")
+        }
     }
     
     func testReadFileToString() throws {
-//        let pdf = URL(filePath: "/Users/zhanghongshen/Documents/Interview/20230410.pdf")
-//        let text = URL(filePath: "/Users/zhanghongshen/Documents/Interview/test.txt")
-//        let xml = URL(filePath: "/Users/zhanghongshen/Documents/Interview/xml.xml")
+        let pdf = URL(filePath: "/Users/zhanghongshen/Documents/Interview/20230410.pdf")
+        let text = URL(filePath: "/Users/zhanghongshen/Documents/Interview/test.txt")
+        let xml = URL(filePath: "/Users/zhanghongshen/Documents/Interview/xml.xml")
         let image = URL(filePath: "/Users/zhanghongshen/Pictures/学生证.jpg")
-//        print("pdf, \(try pdf.readContent())")
-//        print("text, \(try text.readContent())")
-//        print("xml, \(try xml.readContent())")
+        print("pdf, \(try pdf.readContent())")
+        print("text, \(try text.readContent())")
+        print("xml, \(try xml.readContent())")
         print("image, \(try image.readContent())")
     }
     

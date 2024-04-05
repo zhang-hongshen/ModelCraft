@@ -12,7 +12,6 @@ import AVFoundation
 import TipKit
 
 import OllamaKit
-import Sparkle
 
 @main
 struct ModelCraftApp: App {
@@ -44,12 +43,7 @@ struct ModelCraftApp: App {
     private var showInMenuBar: Bool = true
     private let speechSynthesizer = AVSpeechSynthesizer()
     
-    private let updaterController: SPUStandardUpdaterController
-    
     init() {
-        updaterController = SPUStandardUpdaterController(startingUpdater: true,
-                                                         updaterDelegate: nil,
-                                                         userDriverDelegate: nil)
         startOllamaServer()
         try? Tips.resetDatastore()
         try? Tips.configure([
@@ -115,23 +109,13 @@ struct ModelCraftApp: App {
             SidebarCommands()
             ToolbarCommands()
             InspectorCommands()
-            CommandGroup(after: .appInfo) {
-                CheckForUpdatesView(updater: updaterController.updater)
-            }
         }
     }
     
     func startOllamaServer() {
         Task {
             serverStatus = .launching
-            try shell("base64 --version")
             try shell("ollama serve")
-            try shell("env")
-            let db = try FileManager.default.url(for: .applicationSupportDirectory,
-                                    in: .userDomainMask,
-                                    appropriateFor: nil, create: true)
-            try shell("chroma run --path \(db)")
-            
         }
     }
     
@@ -157,7 +141,7 @@ struct ModelCraftApp: App {
             process.executableURL = URL(filePath: shellPath)
         }
         if let path = ProcessInfo.processInfo.environment["PATH"] {
-            process.environment = ["PATH": "/opt/homebrew/bin:/opt/homebrew/anaconda3/envs/chroma-demo/bin:"+path]
+            process.environment = ["PATH": "/usr/local/bin:/opt/homebrew/bin:/opt/homebrew/bin:/opt/homebrew/sbin:"+path]
         }
         try process.run()
         process.waitUntilExit()

@@ -10,7 +10,7 @@ import SwiftUI
 struct KnowledgeBaseDetailGridView: View {
     
     @Bindable var konwledgeBase: KnowledgeBase
-    @Binding var selectedFiles: Set<URL>
+    @Binding var selection: Set<URL>
     @State private var columns: [GridItem] = []
     private let gridCellWidth: CGFloat = 80
     
@@ -22,45 +22,55 @@ struct KnowledgeBaseDetailGridView: View {
                         GridCell(url)
                     }
                 }
-                .contextMenu {
-                    DeleteButton(action: deleteFiles)
-                }
+                .safeAreaPadding(.top)
             }
+            .onTapGesture(perform: clearSelection)
             .onChange(of: proxy.size.width, initial: true) {
                 columns = Array(repeating: GridItem(.fixed(gridCellWidth), alignment: .top),
                                 count: Int(proxy.size.width / gridCellWidth))
             }
-            .frame(minWidth: gridCellWidth * 2)
         }
+        .frame(minWidth: gridCellWidth * 3)
     }
     
     @ViewBuilder
     func GridCell(_ url: URL) -> some View {
-        FileItem(url: url, layout: .grid,
-                 frameWidth: gridCellWidth - Default.padding * 2)
-        .onTapGesture {
-            if selectedFiles.contains(url) {
-                selectedFiles.remove(url)
-            } else {
-                selectedFiles.insert(url)
-            }
-        }
-        .padding(Default.padding)
-        .background {
-            if selectedFiles.contains(url) {
-                RoundedRectangle().fill(.selection)
-            }
+        VStack {
+            FileIcon(url: url, layout: .grid,
+                     frameWidth: gridCellWidth)
+                .frame(width: gridCellWidth)
+                .background {
+                    if selection.contains(url) {
+                        RoundedRectangle().fill(.selection)
+                    }
+                }
+            
+            Text(url.lastPathComponent)
+                .lineLimit(2)
+                .truncationMode(.middle)
+                .multilineTextAlignment(.center)
         }
         .frame(width: gridCellWidth)
+        .onTapGesture {
+            if NSApp.currentEvent?.modifierFlags.contains(.command) == true {
+                if selection.contains(url) {
+                    selection.remove(url)
+                } else {
+                    selection.insert(url)
+                }
+            } else {
+                selection = [url]
+            }
+        }
     }
-    
-    func deleteFiles() {
-        konwledgeBase.files.subtract(selectedFiles)
+
+    func clearSelection() {
+        selection = []
     }
 }
 
 
 #Preview {
     KnowledgeBaseDetailGridView(konwledgeBase: KnowledgeBase(),
-                                selectedFiles: .constant([]))
+                                selection: .constant([]))
 }

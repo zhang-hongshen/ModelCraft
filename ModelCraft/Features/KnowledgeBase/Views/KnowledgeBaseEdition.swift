@@ -13,7 +13,6 @@ import QuickLook
 struct KnowledgeBaseEdition: View {
     
     @Bindable var konwledgeBase: KnowledgeBase
-    
     @State private var fileImporterPresented: Bool = false
     @State private var selectedFiles: Set<URL> = []
     @State private var emojiPickerPresented = false
@@ -92,10 +91,19 @@ extension KnowledgeBaseEdition {
     func ContentView() -> some View {
         List(selection: $selectedFiles) {
             ForEach(konwledgeBase.orderedFiles, id: \.self) { url in
-                FileItem(url: url).tag(url)
+                ListCell(url).tag(url)
             }
         }
         .listStyle(.inset)
+    }
+    
+    @ViewBuilder
+    func ListCell(_ url: URL) -> some View {
+        Label {
+            Text(url.lastPathComponent).truncationMode(.middle)
+        } icon: {
+            FileIcon(url: url, layout: .list)
+        }
     }
 }
 
@@ -103,15 +111,8 @@ extension KnowledgeBaseEdition {
     
     func save() {
         dismiss.callAsFunction()
-        do {
-            let id = konwledgeBase.id
-            let exist = try modelContext.fetchCount(FetchDescriptor<KnowledgeBase>(
-                predicate: #Predicate { $0.id == id },
-                sortBy: [.init(\.createdAt)]
-            )) > 0
-            if !exist { modelContext.insert(konwledgeBase) }
-        } catch {
-            print("fetchCount error, \(error.localizedDescription)")
+        Task {
+            await KnowledgaBaseModelActor(modelContainer: modelContext.container).insert(konwledgeBase)
         }
     }
     

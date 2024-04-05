@@ -18,8 +18,6 @@ struct GeneralView: View {
     private var automaticallyScrollToBottom = false
     @AppStorage(UserDefaults.language)
     private var language = Locale.defaultLanguage
-    @AppStorage(UserDefaults.threadNumber)
-    private var threadNumber: Int = ProcessInfo.processInfo.processorCount / 2
     @State private var isCheckingServerStatus = false
     @State private var cancellables: Set<AnyCancellable> = []
     @Environment(\.serverStatus) private var serverStatus
@@ -42,27 +40,20 @@ struct GeneralView: View {
                     }
                 }
             }
+            
             Section {
-                HStack {
-                    Stepper("Thread", value: $threadNumber, in: 1...ProcessInfo.processInfo.processorCount, step: 1)
-                    Text("\(threadNumber)")
-                }
-            } footer: {
-                Text("You should modify the value according your device.")
-                    .foregroundStyle(.secondary)
-                    .font(.footnote)
-            }
-         
-            LabeledContent("Status") {
-                HStack {
-                    ServerStatusView()
-                    if isCheckingServerStatus {
-                        ProgressView().controlSize(.small)
-                    } else {
-                        Button("Check", action: checkServerStatus)
+                LabeledContent("Status") {
+                    HStack {
+                        ServerStatusView()
+                        if isCheckingServerStatus {
+                            ProgressView().controlSize(.small)
+                        } else {
+                            Button("Check", action: checkServerStatus)
+                        }
                     }
                 }
             }
+            
         }
         .formStyle(.grouped)
     }

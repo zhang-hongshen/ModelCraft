@@ -13,7 +13,6 @@ extension UserDefaults {
     static let language = "language"
     static let automaticallyScrollToBottom = "automaticallyScrollToBottom"
     static let showInMenuBar = "showInMenuBar"
-    static let threadNumber = "threadNumber"
     
     static let modelShouldKnow = "modelShouldKnow"
     static let modelShouldRespond = "modelShouldRespond"

@@ -20,7 +20,7 @@ struct ModelDownloadProgress: View {
             }
             switch task.status {
             case .new:
-                ProgressView().controlSize(.small)
+                ProgressView()
             case .running:
                 Button(action: /*@START_MENU_TOKEN@*/{}/*@END_MENU_TOKEN@*/, label: {
                     Image(systemName: "stop.fill")
@@ -28,7 +28,7 @@ struct ModelDownloadProgress: View {
                     ProgressView(value: task.value,
                                  total: task.total)
                         .progressViewStyle(.circular)
-                        .tint(.accentColor).controlSize(.regular)
+                        .tint(.accentColor)
                 }.buttonStyle(.borderless)
             default: EmptyView()
             }

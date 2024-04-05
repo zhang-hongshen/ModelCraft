@@ -20,7 +20,6 @@ enum Tab: Hashable {
 
 struct ContentView: View {
     
-    @State private var selectedChat: Chat?
     @State private var modelTaskTimer: Timer? = nil
     @State private var modelTaskCancellation: Set<AnyCancellable> = []
     
@@ -34,14 +33,15 @@ struct ContentView: View {
     @State private var selectedKnowledgeBase: KnowledgeBase? = nil
     
     var body: some View {
-        NavigationSplitView {
+
+        NavigationSplitView(preferredCompactColumn: .constant(.detail)) {
             List(selection: $currentTab) {
                 ChatSection()
                 KnowledgeBaseSection()
                 ModelSection()
             }
             .listStyle(.sidebar)
-            .navigationSplitViewColumnWidth(min: 180, ideal: 200)
+            .navigationSplitViewColumnWidth(min: 160, ideal: 180)
         } detail: {
             NavigationStack {
                 switch currentTab {
@@ -79,7 +79,7 @@ extension ContentView {
             ForEach(chats) { chat in
                 Text(chat.title).tag(Tab.chat(chat))
                     .contextMenu{
-                        Button("Delete") {
+                        DeleteButton {
                             modelContext.delete(chat)
                         }
                     }
@@ -107,7 +107,7 @@ extension ContentView {
                     Button("Edit") {
                         selectedKnowledgeBase = knowledgeBase
                     }
-                    Button("Delete") {
+                    DeleteButton {
                         modelContext.delete(knowledgeBase)
                     }
                 }
@@ -143,7 +143,6 @@ extension ContentView {
             }
             let newChat = Chat()
             modelContext.persist(newChat)
-            selectedChat = newChat
         }
     }
 
@@ -179,6 +178,7 @@ extension ContentView {
     
     func handleDownloadTask(_ task: ModelTask) {
         task.status = .running
+        
         OllamaService.shared.pullModel(model: task.modelName)
             .sink { completion in
                 switch completion {

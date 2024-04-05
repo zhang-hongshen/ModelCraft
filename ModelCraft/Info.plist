@@ -4,13 +4,5 @@
 <dict>
 	<key>NSAppTransportSecurity</key>
 	<dict/>
-	<key>SUEnableDownloaderService</key>
-	<true/>
-	<key>SUEnableInstallerLauncherService</key>
-	<true/>
-	<key>SUFeedURL</key>
-	<string>https://github.com/zhang-hongshen/ModelCraft/appcast.xml</string>
-	<key>SUPublicEDKey</key>
-	<string>kd8PcpzZyUDjtIcES6rUPqz0HKWVl1LY34wvhF0iPw4=</string>
 </dict>
 </plist>

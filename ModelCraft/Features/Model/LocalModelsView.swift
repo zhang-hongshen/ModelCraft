@@ -34,7 +34,7 @@ struct LocalModelsView: View {
                 }.tag(model.name)
             }
             .contextMenu {
-                DeleteButton(action: { confirmationDialogPresented = true})
+                DeleteButton(action: { confirmationDialogPresented = true })
             }
         }
         .listStyle(.inset)
@@ -52,7 +52,7 @@ extension LocalModelsView {
     @ToolbarContentBuilder
     func ToolbarItems() -> some ToolbarContent {
         ToolbarItem {
-            DeleteButton(action: { confirmationDialogPresented = true})
+            DeleteButton(action: { confirmationDialogPresented = true })
         }
     }
 }

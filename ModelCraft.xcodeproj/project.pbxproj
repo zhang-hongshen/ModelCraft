@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		70271B3A2BC0455000E21A6E /* ollama in CopyFiles */ = {isa = PBXBuildFile; fileRef = 70271B382BC0452C00E21A6E /* ollama */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		70271B3C2BC046F300E21A6E /* KnowledgaBaseModelActor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70271B3B2BC046F300E21A6E /* KnowledgaBaseModelActor.swift */; };
 		703422112BB6A38C00332E04 /* OllamaKit in Frameworks */ = {isa = PBXBuildFile; productRef = 703422102BB6A38C00332E04 /* OllamaKit */; };
 		703845832BB6674600E3128B /* Locale+.swift in Sources */ = {isa = PBXBuildFile; fileRef = 703845822BB6674600E3128B /* Locale+.swift */; };
 		7041EA702BB2AACB00286AE3 /* EnvironmentValues+.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7041EA6F2BB2AACB00286AE3 /* EnvironmentValues+.swift */; };
@@ -14,8 +16,6 @@
 		7045BF452BB314E700CE61D1 /* Bundle+.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7045BF442BB314E700CE61D1 /* Bundle+.swift */; };
 		705483F62BBE96AF00256094 /* LocalModelsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 705483F52BBE96AF00256094 /* LocalModelsView.swift */; };
 		705483F82BBE992800256094 /* DeleteButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 705483F72BBE992800256094 /* DeleteButton.swift */; };
-		705483FB2BBE9DD600256094 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = 705483FA2BBE9DD600256094 /* Sparkle */; };
-		705483FD2BBE9EB100256094 /* CheckForUpdatesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 705483FC2BBE9EB100256094 /* CheckForUpdatesView.swift */; };
 		7078AB342BB514A9004B3819 /* ModelDownloadProgress.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7078AB332BB514A9004B3819 /* ModelDownloadProgress.swift */; };
 		70896C632BB727AB006FEF6A /* ModelContext+.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70896C622BB727AB006FEF6A /* ModelContext+.swift */; };
 		70955E8E2BB2E29B00015B79 /* Comparable+.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70955E8D2BB2E29B00015B79 /* Comparable+.swift */; };
@@ -29,12 +29,12 @@
 		70A574BA2BB14D38008E3750 /* PromptCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70A574B92BB14D38008E3750 /* PromptCard.swift */; };
 		70B13D022BBAF27700A42F3C /* SVDB in Frameworks */ = {isa = PBXBuildFile; productRef = 70B13D012BBAF27700A42F3C /* SVDB */; };
 		70B13D042BBB1F3300A42F3C /* XMLFile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70B13D032BBB1F3300A42F3C /* XMLFile.swift */; };
-		70B13D062BBBDC2100A42F3C /* FileItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70B13D052BBBDC2100A42F3C /* FileItem.swift */; };
+		70B13D062BBBDC2100A42F3C /* FileIcon.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70B13D052BBBDC2100A42F3C /* FileIcon.swift */; };
 		70B13D132BBC66FC00A42F3C /* KnowledgeBaseDetailListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70B13D122BBC66FC00A42F3C /* KnowledgeBaseDetailListView.swift */; };
 		70B13D152BBC678400A42F3C /* KnowledgeBaseDetailGridView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70B13D142BBC678400A42F3C /* KnowledgeBaseDetailGridView.swift */; };
 		70B13D172BBD290500A42F3C /* String+.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70B13D162BBD290500A42F3C /* String+.swift */; };
 		70B13D192BBD58DD00A42F3C /* ModelDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70B13D182BBD58DD00A42F3C /* ModelDetailView.swift */; };
-		70C22FC22BAEC581002754C7 /* Splash in Frameworks */ = {isa = PBXBuildFile; productRef = 70C22FC12BAEC581002754C7 /* Splash */; };
+		70C22FC22BAEC581002754C7 /* Splash in Frameworks */ = {isa = PBXBuildFile; productRef = 70C22FC12BAEC581002754C7 /* Splash */; settings = {ATTRIBUTES = (Required, ); }; };
 		70C22FC42BAECC95002754C7 /* Color+.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70C22FC32BAECC95002754C7 /* Color+.swift */; };
 		70C22FC62BAECD10002754C7 /* VIew+.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70C22FC52BAECD10002754C7 /* VIew+.swift */; };
 		70C22FC82BAECD55002754C7 /* Default.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70C22FC72BAECD55002754C7 /* Default.swift */; };
@@ -92,8 +92,23 @@
 		};
 /* End PBXContainerItemProxy section */
 
+/* Begin PBXCopyFilesBuildPhase section */
+		70271B392BC0454600E21A6E /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 6;
+			files = (
+				70271B3A2BC0455000E21A6E /* ollama in CopyFiles */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
 		70271B362BBEFAA500E21A6E /* OllamaKit */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = OllamaKit; path = ../OllamaKit; sourceTree = "<group>"; };
+		70271B382BC0452C00E21A6E /* ollama */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.executable"; path = ollama; sourceTree = "<group>"; };
+		70271B3B2BC046F300E21A6E /* KnowledgaBaseModelActor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KnowledgaBaseModelActor.swift; sourceTree = "<group>"; };
 		703845822BB6674600E3128B /* Locale+.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Locale+.swift"; sourceTree = "<group>"; };
 		7041EA6F2BB2AACB00286AE3 /* EnvironmentValues+.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "EnvironmentValues+.swift"; sourceTree = "<group>"; };
 		7041EA712BB2AC8D00286AE3 /* ServerStatusView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerStatusView.swift; sourceTree = "<group>"; };
@@ -101,7 +116,6 @@
 		7045BF462BB3FE0A00CE61D1 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		705483F52BBE96AF00256094 /* LocalModelsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalModelsView.swift; sourceTree = "<group>"; };
 		705483F72BBE992800256094 /* DeleteButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeleteButton.swift; sourceTree = "<group>"; };
-		705483FC2BBE9EB100256094 /* CheckForUpdatesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CheckForUpdatesView.swift; sourceTree = "<group>"; };
 		7078AB332BB514A9004B3819 /* ModelDownloadProgress.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelDownloadProgress.swift; sourceTree = "<group>"; };
 		70896C622BB727AB006FEF6A /* ModelContext+.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ModelContext+.swift"; sourceTree = "<group>"; };
 		70955E8D2BB2E29B00015B79 /* Comparable+.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "Comparable+.swift"; sourceTree = "<group>"; };
@@ -112,7 +126,7 @@
 		70A574B72BB13965008E3750 /* Prompt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Prompt.swift; sourceTree = "<group>"; };
 		70A574B92BB14D38008E3750 /* PromptCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptCard.swift; sourceTree = "<group>"; };
 		70B13D032BBB1F3300A42F3C /* XMLFile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XMLFile.swift; sourceTree = "<group>"; };
-		70B13D052BBBDC2100A42F3C /* FileItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileItem.swift; sourceTree = "<group>"; };
+		70B13D052BBBDC2100A42F3C /* FileIcon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileIcon.swift; sourceTree = "<group>"; };
 		70B13D122BBC66FC00A42F3C /* KnowledgeBaseDetailListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KnowledgeBaseDetailListView.swift; sourceTree = "<group>"; };
 		70B13D142BBC678400A42F3C /* KnowledgeBaseDetailGridView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KnowledgeBaseDetailGridView.swift; sourceTree = "<group>"; };
 		70B13D162BBD290500A42F3C /* String+.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "String+.swift"; sourceTree = "<group>"; };
@@ -163,7 +177,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				705483FB2BBE9DD600256094 /* Sparkle in Frameworks */,
 				70A574A82BB0716A008E3750 /* OrderedCollections in Frameworks */,
 				70C22FDF2BAFD463002754C7 /* Kingfisher in Frameworks */,
 				70E201722BADE31700CFE1D7 /* Alamofire in Frameworks */,
@@ -296,7 +309,7 @@
 				70C22FE42BAFD53E002754C7 /* ImageLoader.swift */,
 				7041EA712BB2AC8D00286AE3 /* ServerStatusView.swift */,
 				7078AB332BB514A9004B3819 /* ModelDownloadProgress.swift */,
-				70B13D052BBBDC2100A42F3C /* FileItem.swift */,
+				70B13D052BBBDC2100A42F3C /* FileIcon.swift */,
 				705483F72BBE992800256094 /* DeleteButton.swift */,
 			);
 			path = Components;
@@ -333,6 +346,7 @@
 		70CE605B2BAD2D4500A2D0B0 = {
 			isa = PBXGroup;
 			children = (
+				70271B382BC0452C00E21A6E /* ollama */,
 				70271B362BBEFAA500E21A6E /* OllamaKit */,
 				70CE60662BAD2D4500A2D0B0 /* ModelCraft */,
 				70CE607A2BAD2D4700A2D0B0 /* ModelCraftTests */,
@@ -371,7 +385,7 @@
 				70CE60702BAD2D4600A2D0B0 /* Preview Content */,
 				706D729D2BB6B076004ACF35 /* Services */,
 				7097F9672BB0234E001A91E3 /* Utils */,
-				705483FC2BBE9EB100256094 /* CheckForUpdatesView.swift */,
+				70271B3B2BC046F300E21A6E /* KnowledgaBaseModelActor.swift */,
 			);
 			path = ModelCraft;
 			sourceTree = "<group>";
@@ -455,6 +469,7 @@
 				70CE60602BAD2D4500A2D0B0 /* Sources */,
 				70CE60612BAD2D4500A2D0B0 /* Frameworks */,
 				70CE60622BAD2D4500A2D0B0 /* Resources */,
+				70271B392BC0454600E21A6E /* CopyFiles */,
 			);
 			buildRules = (
 			);
@@ -470,7 +485,6 @@
 				70A574AC2BB0894A008E3750 /* ActivityIndicatorView */,
 				703422102BB6A38C00332E04 /* OllamaKit */,
 				70B13D012BBAF27700A42F3C /* SVDB */,
-				705483FA2BBE9DD600256094 /* Sparkle */,
 			);
 			productName = ModelCraft;
 			productReference = 70CE60642BAD2D4500A2D0B0 /* ModelCraft.app */;
@@ -553,7 +567,6 @@
 				70A574A62BB0716A008E3750 /* XCRemoteSwiftPackageReference "swift-collections" */,
 				70A574AB2BB0894A008E3750 /* XCRemoteSwiftPackageReference "ActivityIndicatorView" */,
 				70B13D002BBAF27700A42F3C /* XCRemoteSwiftPackageReference "SVDB" */,
-				705483F92BBE9DD600256094 /* XCRemoteSwiftPackageReference "Sparkle" */,
 			);
 			productRefGroup = 70CE60652BAD2D4500A2D0B0 /* Products */;
 			projectDirPath = "";
@@ -599,8 +612,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				7078AB342BB514A9004B3819 /* ModelDownloadProgress.swift in Sources */,
-				70B13D062BBBDC2100A42F3C /* FileItem.swift in Sources */,
-				705483FD2BBE9EB100256094 /* CheckForUpdatesView.swift in Sources */,
+				70B13D062BBBDC2100A42F3C /* FileIcon.swift in Sources */,
 				70CE4D2C2BB93DDA00E1DEE2 /* AVSpeechSynthesizer+.swift in Sources */,
 				70A574B82BB13965008E3750 /* Prompt.swift in Sources */,
 				70CE60C82BAD705E00A2D0B0 /* Chat.swift in Sources */,
@@ -611,6 +623,7 @@
 				70CE4D332BB9522F00E1DEE2 /* KnowledgeBaseEdition.swift in Sources */,
 				70B13D172BBD290500A42F3C /* String+.swift in Sources */,
 				7041EA722BB2AC8D00286AE3 /* ServerStatusView.swift in Sources */,
+				70271B3C2BC046F300E21A6E /* KnowledgaBaseModelActor.swift in Sources */,
 				70C22FE72BAFD5C2002754C7 /* DefaultImageView.swift in Sources */,
 				70C22FC42BAECC95002754C7 /* Color+.swift in Sources */,
 				70B13D042BBB1F3300A42F3C /* XMLFile.swift in Sources */,
@@ -839,11 +852,10 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.zhanghongshen.ModelCraft;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTED_PLATFORMS = macosx;
 				SUPPORTS_MACCATALYST = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
 		};
@@ -883,11 +895,10 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.zhanghongshen.ModelCraft;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTED_PLATFORMS = macosx;
 				SUPPORTS_MACCATALYST = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
 		};
@@ -1023,14 +1034,6 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		705483F92BBE9DD600256094 /* XCRemoteSwiftPackageReference "Sparkle" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/sparkle-project/Sparkle";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 2.6.0;
-			};
-		};
 		70A574A62BB0716A008E3750 /* XCRemoteSwiftPackageReference "swift-collections" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/apple/swift-collections.git";
@@ -1093,11 +1096,6 @@
 		703422102BB6A38C00332E04 /* OllamaKit */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = OllamaKit;
-		};
-		705483FA2BBE9DD600256094 /* Sparkle */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 705483F92BBE9DD600256094 /* XCRemoteSwiftPackageReference "Sparkle" */;
-			productName = Sparkle;
 		};
 		70A574A72BB0716A008E3750 /* OrderedCollections */ = {
 			isa = XCSwiftPackageProductDependency;

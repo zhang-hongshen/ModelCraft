@@ -42,7 +42,6 @@ extension KnowledgeBase {
     }
     
     func getVectorCollection() -> Collection {
-        // collection只能创建collection
         do {
             return try SVDB.shared.collection(collectionName)
         } catch {
@@ -54,7 +53,9 @@ extension KnowledgeBase {
     func search(_ text: String) -> String {
         let collection = SVDB.shared.getCollection(collectionName)
         if indexStatus == .unindexed || collection == nil {
-            index(orderedFiles)
+            Task.detached {
+                self.embed()
+            }
         }
         guard let collection = SVDB.shared.getCollection(collectionName) else { return ""}
         guard let language = NLLanguageRecognizer.dominantLanguage(for: text) else { return ""}
@@ -64,14 +65,19 @@ extension KnowledgeBase {
         return results.map{ $0.text }.joined(separator: "\n")
     }
     
-    func index(_ urls: [URL]) {
+    func embed() {
+        indexStatus = .indexing
+        embed(orderedFiles)
+        indexStatus = .indexed
+    }
+    
+    func embed(_ urls: [URL]) {
         let collection = getVectorCollection()
         let fileManager = FileManager.default
-        indexStatus = .indexing
         do  {
             for url in urls {
                 if url.hasDirectoryPath {
-                    index(try fileManager
+                    embed(try fileManager
                         .contentsOfDirectory(at: url,
                                              includingPropertiesForKeys: nil,
                                              options: [.skipsHiddenFiles]))
@@ -89,7 +95,10 @@ extension KnowledgeBase {
         } catch {
             print("index error, \(error.localizedDescription)")
         }
-        indexStatus = .indexed
-        
+    }
+    
+    func clearEmbedding() {
+        getVectorCollection().clear()
+        SVDB.shared.releaseCollection(collectionName)
     }
 }

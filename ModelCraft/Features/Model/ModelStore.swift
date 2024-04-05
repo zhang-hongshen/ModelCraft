@@ -70,7 +70,7 @@ extension ModelStore {
         GeometryReader { proxy in
             ScrollView {
                 LazyVGrid(columns: columns, spacing: 0){
-                    ForEach(orderedModels, id: \.name) { model in
+                    ForEach(filteredModels, id: \.name) { model in
                         GridCell(model)
                     }
                 }
@@ -87,7 +87,7 @@ extension ModelStore {
     @ViewBuilder
     func GridCell(_ model: ModelInfo) -> some View {
         NavigationLink(value: model.name) {
-            VStack{
+            VStack {
                 Image(systemName: "shippingbox")
                     .resizable()
                     .aspectRatio(1, contentMode: .fit)
@@ -101,7 +101,6 @@ extension ModelStore {
             }
         }
         .buttonStyle(.borderless)
-        .padding(Default.padding)
         .frame(width: gridCellWidth)
     }
 }

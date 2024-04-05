@@ -20,9 +20,6 @@
         }
       }
     },
-    "%lld" : {
-
-    },
     "%lld days ago" : {
       "localizations" : {
         "zh-Hans" : {
@@ -95,9 +92,6 @@
           }
         }
       }
-    },
-    "Check for Updates…" : {
-
     },
     "Choose a model to chat" : {
       "extractionState" : "stale",
@@ -371,6 +365,7 @@
       }
     },
     "New Chat" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -527,6 +522,7 @@
       }
     },
     "Thread" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -608,9 +604,6 @@
           }
         }
       }
-    },
-    "You should modify the value according your device." : {
-
     }
   },
   "version" : "1.0"

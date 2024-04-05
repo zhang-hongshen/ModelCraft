@@ -18,6 +18,10 @@ struct KnowledgeBaseDetailView: View {
 
     var body: some View {
         ContentView()
+            .contextMenu {
+                DeleteButton(action: deleteFiles)
+            }
+            .onDeleteCommand(perform: deleteFiles)
             .toolbar(content: ToolbarItems)
             .fileImporter(isPresented: $fileImporterPresented,
                           allowedContentTypes: [.data, .folder],
@@ -59,10 +63,15 @@ extension KnowledgeBaseDetailView {
     func ContentView() -> some View {
         switch selectedViewType {
         case .list: KnowledgeBaseDetailListView(konwledgeBase: konwledgeBase,
-                                                selectedFiles: $selectedFiles)
+                                                selection: $selectedFiles)
         case .grid: KnowledgeBaseDetailGridView(konwledgeBase: konwledgeBase,
-                                                selectedFiles: $selectedFiles)
+                                                selection: $selectedFiles)
         }
+            
+    }
+    
+    func deleteFiles() {
+        konwledgeBase.files.subtract(selectedFiles)
     }
     
 }

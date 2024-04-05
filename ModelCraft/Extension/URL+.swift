@@ -11,7 +11,9 @@ import Vision
 
 import UniformTypeIdentifiers
 
-extension URL {
+extension URL: Identifiable {
+    
+    public var id: Self { self }
     
     static let ollamaBaseURL =  URL(string: "http://localhost:11434")!
     
