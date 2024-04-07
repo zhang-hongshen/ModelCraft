@@ -119,10 +119,6 @@ extension MessageView {
     func AssistantButtons() -> some View {
         Button("Read", systemImage: "mic") {
             speechSynthesizer.speak(message.content)
-        }.help("Good Response")
-//        Button("Good", systemImage: "hand.thumbsup", action: {})
-//            .help("Good Response")
-//        Button("Bad", systemImage: "hand.thumbsdown", action: {})
-//            .help("Bad Response")
+        }
     }
 }

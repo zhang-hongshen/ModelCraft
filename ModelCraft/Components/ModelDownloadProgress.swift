@@ -10,6 +10,7 @@ import SwiftUI
 struct ModelDownloadProgress: View {
     
     @State var task: ModelTask
+    @Environment(\.modelContext) private var modelContext
     
     var body: some View {
         HStack(alignment: .center) {
@@ -20,23 +21,27 @@ struct ModelDownloadProgress: View {
             }
             switch task.status {
             case .new:
-                ProgressView()
+                ProgressView().controlSize(.small)
             case .running:
-                Button(action: /*@START_MENU_TOKEN@*/{}/*@END_MENU_TOKEN@*/, label: {
-                    Image(systemName: "stop.fill")
-                }).overlay {
-                    ProgressView(value: task.value,
-                                 total: task.total)
-                        .progressViewStyle(.circular)
-                        .tint(.accentColor)
+                Button {
+                    modelContext.delete(task)
+                    try? modelContext.save()
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
                 }.buttonStyle(.borderless)
+            case .failed:
+                Button("Retry") {
+                    modelContext.delete(task)
+                    modelContext.insert(ModelTask(modelName: task.modelName, type: .download))
+                    try? modelContext.save()
+                }
             default: EmptyView()
             }
         }
-        .tint(.accentColor)
+        
     }
 }
 
 #Preview {
-    ModelDownloadProgress(task: ModelTask(type: .download))
+    ModelDownloadProgress(task: ModelTask(modelName: "", type: .download))
 }

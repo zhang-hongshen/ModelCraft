@@ -12,7 +12,9 @@ extension UserDefaults {
     static let appearance = "appearance"
     static let language = "language"
     static let automaticallyScrollToBottom = "automaticallyScrollToBottom"
-    static let showInMenuBar = "showInMenuBar"
+    // Speaking
+    static let speakingRate = "speakingRate"
+    static let speakingVolume = "speakingVolume"
     
     static let modelShouldKnow = "modelShouldKnow"
     static let modelShouldRespond = "modelShouldRespond"

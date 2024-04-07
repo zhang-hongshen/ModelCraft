@@ -17,6 +17,7 @@ enum TaskType: Int, Codable {
 enum TaskStatus: Int, Codable {
     case new
     case running
+    case stopped
     case completed
     case failed
 }
@@ -40,7 +41,7 @@ class ModelTask {
         set { statusID = newValue.rawValue }
     }
     
-    init(modelName: String = "", value: Double = 0, total: Double = 0,
+    init(modelName: String, value: Double = 0, total: Double = 0,
          status: TaskStatus = .new, type: TaskType) {
         self.modelName = modelName
         self.value = value
@@ -69,6 +70,7 @@ extension ModelTask {
                 case .download: "Downloading..."
                 case .delete: "Deleting..."
             }
+        case .stopped: "Stopped"
         case .completed: "Completed"
         case .failed: "Failed"
         }

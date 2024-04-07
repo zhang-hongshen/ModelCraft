@@ -7,6 +7,7 @@
 
 import AVFoundation
 import NaturalLanguage
+import SwiftUI
 
 extension AVSpeechSynthesizer {
     func speak(_ text: String) {
@@ -15,9 +16,12 @@ extension AVSpeechSynthesizer {
         if isSpeaking {
             pauseSpeaking(at: .immediate)
         }
+        @AppStorage(UserDefaults.speakingRate) var speakingRate = 0.5
+        @AppStorage(UserDefaults.speakingVolume) var speakingVolume = 0.8
         let utterance = AVSpeechUtterance(string: text)
         utterance.voice = AVSpeechSynthesisVoice(language: language.rawValue)
-        utterance.rate = 0.5
+        utterance.rate = Float(speakingRate)
+        utterance.volume = Float(speakingVolume)
         speak(utterance)
     }
 }

@@ -21,48 +21,33 @@ enum Tab: Hashable {
 struct ContentView: View {
     
     @State private var modelTaskTimer: Timer? = nil
-    @State private var modelTaskCancellation: Set<AnyCancellable> = []
+    @State private var modelTaskCancellables: Set<AnyCancellable> = []
+    @State private var currentTab: Tab? = nil
+    @State private var selectedKnowledgeBase: KnowledgeBase? = nil
     
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.scenePhase) private var scenePhase
     
     @Query(sort: \Chat.createdAt, order: .reverse) private var chats: [Chat]
     @Query(sort: \ModelTask.createdAt, order: .reverse) var modelTasks: [ModelTask] = []
     @Query private var knowledgeBases: [KnowledgeBase] = []
     
-    @State private var currentTab: Tab? = nil
-    @State private var selectedKnowledgeBase: KnowledgeBase? = nil
-    
     var body: some View {
-
         NavigationSplitView(preferredCompactColumn: .constant(.detail)) {
-            List(selection: $currentTab) {
-                ChatSection()
-                KnowledgeBaseSection()
-                ModelSection()
-            }
-            .listStyle(.sidebar)
-            .navigationSplitViewColumnWidth(min: 160, ideal: 180)
+            Sidebar()
         } detail: {
-            NavigationStack {
-                switch currentTab {
-                case .chat(let chat):
-                    ChatView(chat: chat).navigationTitle(chat.title)
-                case .modelStore:
-                    ModelStore().navigationTitle("Model Store")
-                case .knowledgeBase(let knowledgeBase):
-                    KnowledgeBaseDetailView(konwledgeBase: knowledgeBase)
-                        .navigationTitle(knowledgeBase.title)
-                case .localModel:
-                    LocalModelsView().navigationTitle("Local Models")
-                case .none:
-                    EmptyView()
-                }
-            }
+            Detail()
         }
         .task {
             modelTaskTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { timer in
                 guard timer.isValid else { return }
                 Task.detached { try self.handleModelTask() }
+            }
+        }
+        .onChange(of: scenePhase, initial: true) {
+            switch scenePhase {
+            case.background: stopModelTask()
+            default: break
             }
         }
         .sheet(item: $selectedKnowledgeBase) { knowledgeBase in
@@ -72,6 +57,20 @@ struct ContentView: View {
 }
 
 extension ContentView {
+    
+    @ViewBuilder
+    func Sidebar() -> some View {
+        List(selection: $currentTab) {
+            ChatSection()
+            KnowledgeBaseSection()
+            ModelSection()
+        }
+        .listStyle(.sidebar)
+        .navigationSplitViewColumnWidth(min: 160, ideal: 180)
+        .safeAreaInset(edge: .bottom) {
+            ServerStatusView().padding()
+        }
+    }
     
     @ViewBuilder
     func ChatSection() -> some View {
@@ -100,8 +99,13 @@ extension ContentView {
     func KnowledgeBaseSection() -> some View {
         Section {
             ForEach(knowledgeBases) { knowledgeBase in
-                Label(knowledgeBase.title,
-                      systemImage: knowledgeBase.icon)
+                HStack {
+                    Label(knowledgeBase.title, systemImage: knowledgeBase.icon)
+                    if case .indexing = knowledgeBase.indexStatus {
+                        Text("Indexing...").font(.footnote)
+                    }
+                }
+                
                 .tag(Tab.knowledgeBase(knowledgeBase))
                 .contextMenu{
                     Button("Edit") {
@@ -131,6 +135,25 @@ extension ContentView {
             Label("Local Models", systemImage: "shippingbox").tag(Tab.localModel)
         } header: {
             Text("Model")
+        }
+    }
+    
+    @ViewBuilder
+    func Detail() -> some View {
+        NavigationStack {
+            switch currentTab {
+            case .chat(let chat):
+                ChatView(chat: chat).navigationTitle(chat.title)
+            case .modelStore:
+                ModelStore().navigationTitle("Model Store")
+            case .knowledgeBase(let knowledgeBase):
+                KnowledgeBaseDetailView(konwledgeBase: knowledgeBase)
+                    .navigationTitle(knowledgeBase.title)
+            case .localModel:
+                LocalModelsView().navigationTitle("Local Models")
+            case .none:
+                EmptyView()
+            }
         }
     }
 }
@@ -167,8 +190,7 @@ extension ContentView {
     private func handleModelTask() throws {
         modelContext.delete(modelTasks.filter({ $0.status == .completed }))
         try modelContext.save()
-        for task in modelTasks.filter({ $0.status == .new }) {
-            @Bindable var task = task
+        for task in modelTasks.filter({ $0.status == .new}) {
             switch task.type {
             case .download: handleDownloadTask(task)
             case .delete: handleDeleteTask(task)
@@ -183,7 +205,7 @@ extension ContentView {
             .sink { completion in
                 switch completion {
                 case .finished: task.status = .completed
-                case .failure(let error): debugPrint("failure \(error.localizedDescription)")
+                case .failure(let error): task.status = .failed
                 }
             } receiveValue: { response in
                 debugPrint("status: \(response.status), "
@@ -198,15 +220,25 @@ extension ContentView {
                     task.value = Double(completed)
                     task.total = Double(total)
                 }
-            }.store(in: &modelTaskCancellation)
+            }.store(in: &modelTaskCancellables)
     }
     
     func handleDeleteTask(_ task: ModelTask) {
-        Task.detached {
-            task.status = .running
-            try await OllamaService.shared.deleteModel(model: task.modelName)
-            task.status = .completed
-        }
+        task.status = .running
+        OllamaService.shared.deleteModel(model: task.modelName)
+            .sink { completion in
+                switch completion {
+                case .finished: task.status = .completed
+                case .failure(let error): task.status = .failed
+                }
+            } receiveValue: { _ in
+                task.status = .completed
+            }.store(in: &modelTaskCancellables)
+    }
+    
+    func stopModelTask() {
+        modelTasks.filter({ $0.status != .new})
+            .forEach { $0.status = .stopped }
     }
 }
 

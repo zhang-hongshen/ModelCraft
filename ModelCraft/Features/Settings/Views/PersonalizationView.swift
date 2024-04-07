@@ -26,8 +26,7 @@ struct PersonalizationView: View {
             } header: {
                 Text("How would you like model to respond ?")
             }
-            
-        }
+        }.safeAreaPadding()
     }
 }
 

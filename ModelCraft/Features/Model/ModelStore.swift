@@ -19,13 +19,7 @@ struct ModelStore: View {
     @State private var selectedModelName : String? = nil
     @State private var searchText = ""
     @State private var cancellables = Set<AnyCancellable>()
-    @State private var columns: [GridItem] = []
-    private let gridCellWidth: CGFloat = 100
-    
-    @Query(filter: ModelTask.predicateByType(.download))
-    private var downloadTasks: [ModelTask] = []
-    @Environment(\.downaloadedModels) private var downloadedModels
-    
+
     
     private var orderedModels: [ModelInfo] {
         models.sorted(using: KeyPathComparator(\.name))
@@ -40,13 +34,11 @@ struct ModelStore: View {
     
     var body: some View {
         ContentView()
-            .frame(minWidth: gridCellWidth * 2)
             .toolbar(content: ToolbarItems)
             .searchable(text: $searchText)
             .task { fetchModels() }
             .navigationDestination(for: String.self) { modelName in
                 ModelDetailView(modelName: modelName)
-                    .navigationTitle(modelName)
             }
     }
 }
@@ -58,7 +50,7 @@ extension ModelStore {
             if isLoading {
                 ProgressView().controlSize(.small)
             } else {
-                Button("Refresh", systemImage: "arrow.counterclockwise") {
+                Button("Refresh", systemImage: "arrow.triangle.2.circlepath") {
                     fetchModels()
                 }
             }
@@ -67,48 +59,27 @@ extension ModelStore {
     
     @ViewBuilder
     func ContentView() -> some View {
-        GeometryReader { proxy in
-            ScrollView {
-                LazyVGrid(columns: columns, spacing: 0){
-                    ForEach(filteredModels, id: \.name) { model in
-                        GridCell(model)
-                    }
-                }
-                .padding(.horizontal)
+        List(selection: $selectedModelName) {
+            ForEach(filteredModels, id: \.name) { model in
+                ListCell(model)
             }
-            .onChange(of: proxy.size.width, initial: true) {
-                columns = Array(repeating: GridItem(.fixed(gridCellWidth), alignment: .top),
-                                count: Int(proxy.size.width / gridCellWidth))
-            }
-            .frame(minWidth: gridCellWidth * 2)
         }
     }
     
     @ViewBuilder
-    func GridCell(_ model: ModelInfo) -> some View {
+    func ListCell(_ model: ModelInfo) -> some View {
         NavigationLink(value: model.name) {
-            VStack {
-                Image(systemName: "shippingbox")
-                    .resizable()
-                    .aspectRatio(1, contentMode: .fit)
-                    .frame(width: gridCellWidth)
-                    .scaleEffect(.init(width: 0.6, height: 0.6))
-                
-                Text(verbatim: model.name)
-                    .lineLimit(2)
-                    .truncationMode(.middle)
-                    .multilineTextAlignment(.center)
-            }
+            Label(model.name, systemImage: "shippingbox")
         }
         .buttonStyle(.borderless)
-        .frame(width: gridCellWidth)
     }
+    
 }
 
 extension ModelStore {
     
     func fetchModels() {
-        Task(priority: .userInitiated){
+        Task(priority: .userInitiated) {
             isLoading = true
             models = try await OllamaClient.shared.libraryModels()
             isLoading = false

@@ -8,34 +8,31 @@
 import SwiftUI
 import SwiftData
 
+import OllamaKit
+
 struct LocalModelsView: View {
     
-    @State private var selectedModelNames = Set<String>()
+    @State private var selectedModelNames: Set<String> = []
+    @State private var selectedTasks: Set<ModelTask> = []
     @State private var isFetchingData = false
     @State private var confirmationDialogPresented = false
     
     @Environment(\.modelContext) private var modelContext
     @Environment(\.downaloadedModels) private var models
     
-    @Query(filter: ModelTask.predicateByType(.delete))
+    @Query(filter: ModelTask.predicateByType(.delete),
+           sort: \ModelTask.createdAt,
+           order: .reverse)
     private var deleteTasks: [ModelTask] = []
     
     var body: some View {
         List(selection: $selectedModelNames) {
-            ForEach(models, id: \.digest) { model in
-                HStack {
-                    Label(model.name, systemImage: "shippingbox")
-                    Spacer()
-                    if let task = deleteTasks.first(where: { $0.modelName == model.name }) {
-                        Text(task.statusLocalizedDescription)
-                    } else {
-                        Text(verbatim: ByteCountFormatter.string(fromByteCount: Int64(model.size), countStyle: .file))
-                    }
-                }.tag(model.name)
+            ForEach(models, id: \.name) { model in
+                ListCell(model).tag(model.name)
             }
-            .contextMenu {
-                DeleteButton(action: { confirmationDialogPresented = true })
-            }
+        }
+        .contextMenu {
+            DeleteButton(action: { confirmationDialogPresented = true })
         }
         .listStyle(.inset)
         .toolbar(content: ToolbarItems)
@@ -55,6 +52,19 @@ extension LocalModelsView {
             DeleteButton(action: { confirmationDialogPresented = true })
         }
     }
+    
+    @ViewBuilder
+    func ListCell(_ model: ModelInfo) -> some View {
+        HStack {
+            Label(model.name, systemImage: "shippingbox")
+            Spacer()
+            if let task = deleteTasks.first(where: { $0.modelName == model.name }) {
+                Text(task.statusLocalizedDescription)
+            } else {
+                Text(verbatim: ByteCountFormatter.string(fromByteCount: Int64(model.size), countStyle: .file))
+            }
+        }
+    }
 }
 
 extension LocalModelsView {
@@ -64,6 +74,7 @@ extension LocalModelsView {
             ModelTask(modelName: modelName, type: .delete)
         }
         modelContext.persist(tasks)
+        modelContext.delete(selectedTasks)
     }
 }
 

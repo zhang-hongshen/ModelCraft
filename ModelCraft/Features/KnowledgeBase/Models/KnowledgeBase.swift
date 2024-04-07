@@ -20,7 +20,11 @@ class KnowledgeBase {
     let createdAt: Date = Date.now
     var icon: String = "book"
     var title: String
-    var files: Set<URL>
+    var files: Set<URL> {
+        didSet {
+            embed()
+        }
+    }
     var indexStatus: IndexStatus
     
     init(title: String = "", files: Set<URL> = [],
@@ -67,6 +71,7 @@ extension KnowledgeBase {
     
     func embed() {
         indexStatus = .indexing
+        SVDB.shared.releaseCollection(collectionName)
         embed(orderedFiles)
         indexStatus = .indexed
     }
@@ -76,6 +81,9 @@ extension KnowledgeBase {
         let fileManager = FileManager.default
         do  {
             for url in urls {
+                if !url.startAccessingSecurityScopedResource() {
+                    continue
+                }
                 if url.hasDirectoryPath {
                     embed(try fileManager
                         .contentsOfDirectory(at: url,

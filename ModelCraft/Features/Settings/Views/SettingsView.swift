@@ -19,18 +19,16 @@ struct SettingsView: View {
     var body: some View {
         
         TabView(selection: $currentTab) {
-            Group {
-                GeneralView().tag(Tab.general as Tab?)
-                    .tabItem {
-                        Image(systemName: "gearshape")
-                        Text("General")
-                    }
-                PersonalizationView().tag(Tab.personalization as Tab?)
-                    .tabItem {
-                        Image(systemName: "person.bubble")
-                        Text("Personalization")
-                    }
-            }.padding()
+            GeneralView().tag(Tab.general as Tab?)
+                .tabItem {
+                    Image(systemName: "gearshape")
+                    Text("General")
+                }
+            PersonalizationView().tag(Tab.personalization as Tab?)
+                .tabItem {
+                    Image(systemName: "person.bubble")
+                    Text("Personalization")
+                }
         }
         .tabViewStyle(.automatic)
     }

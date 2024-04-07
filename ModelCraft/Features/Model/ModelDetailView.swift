@@ -46,11 +46,10 @@ struct ModelDetailView: View {
             Label(model.name, systemImage: "shippingbox")
             
             Spacer()
-            
-            if let task = downloadTasks.first(where: { $0.modelName == model.name }) {
-                ModelDownloadProgress(task: task)
-            } else if downloadedModels.contains(model) {
+            if downloadedModels.map({ $0.name }).contains(model.name) {
                 Text("Downloaded")
+            } else if let task = downloadTasks.first(where: { $0.modelName == model.name }) {
+                ModelDownloadProgress(task: task)
             } else {
                 Button("Download") {
                     createDownloadModelTask(model.name)
@@ -66,7 +65,7 @@ extension ModelDetailView {
             if isLoading {
                 ProgressView().controlSize(.small)
             } else {
-                Button("Refresh", systemImage: "arrow.counterclockwise") {
+                Button("Refresh", systemImage: "arrow.triangle.2.circlepath") {
                     fetchModels()
                 }
             }

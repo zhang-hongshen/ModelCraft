@@ -98,6 +98,7 @@ final class ModelCraftTests: XCTestCase {
         for path in paths {
             print("path = \(path)")
         }
+        print(Bundle.main.bundlePath)
     }
     
     func testReadFileToString() throws {

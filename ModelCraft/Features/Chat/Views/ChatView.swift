@@ -96,9 +96,6 @@ extension ChatView {
                 Text("None").tag(nil as KnowledgeBase?)
             }
         }
-        ToolbarItem(placement: .status) {
-            ServerStatusView()
-        }
     }
     @ViewBuilder
     func MainView() -> some View {

@@ -39,8 +39,6 @@ struct ModelCraftApp: App {
     @State private var models: [ModelInfo] = []
     @State private var selectedModel: ModelInfo? = nil
     
-    @AppStorage(UserDefaults.showInMenuBar)
-    private var showInMenuBar: Bool = true
     private let speechSynthesizer = AVSpeechSynthesizer()
     
     init() {
@@ -61,7 +59,7 @@ struct ModelCraftApp: App {
                     .background(.ultraThinMaterial)
                     .applyUserSettings()
                     .task {
-                        checkServerStatusTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { timer in
+                        checkServerStatusTimer = Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { timer in
                             guard timer.isValid else { return }
                             checkServerStatus()
                             Task.detached {
@@ -83,20 +81,6 @@ struct ModelCraftApp: App {
                     .applyUserSettings()
                     .frame(minWidth: 200, minHeight: 200)
             }
-            
-            MenuBarExtra(isInserted: $showInMenuBar) {
-                ServerStatusView()
-                Button("Open \(Bundle.main.applicationName)") {
-                    // show the main window
-                    NSApp.windows.first?.makeKeyAndOrderFront(nil)
-                }
-                Divider()
-                Button("Quit") {
-                    NSApp.terminate(nil)
-                }.keyboardShortcut("q")
-            } label: {
-                Image(systemName: "wrench.adjustable")
-            }
 #endif
         }
         .modelContainer(sharedModelContainer)
@@ -115,7 +99,25 @@ struct ModelCraftApp: App {
     func startOllamaServer() {
         Task {
             serverStatus = .launching
-            try shell("ollama serve")
+            do {
+                let process = Process()
+                
+                let pipe = Pipe()
+                process.standardOutput = pipe
+                process.standardError = pipe
+                process.standardInput = nil
+                
+                process.executableURL = Bundle.main.url(forAuxiliaryExecutable: "ollama")
+                process.arguments = ["serve"]
+                try process.run()
+                process.waitUntilExit()
+                let data = pipe.fileHandleForReading.readDataToEndOfFile()
+                if let output = String(data: data, encoding: .utf8) {
+                    print(output)
+                }
+            } catch {
+                print("Failed to start Ollama server: \(error)")
+            }
         }
     }
     
@@ -125,23 +127,28 @@ struct ModelCraftApp: App {
                 // modify environment server status
                 self.serverStatus = reachable ? ServerStatus.connected : .disconnected
                 print("Ollama server status, \(serverStatus.localizedDescription)")
+                if serverStatus == .disconnected {
+                    startOllamaServer()
+                }
             }
             .store(in: &cancellables)
     }
-    
     func shell(_ command: String) throws {
         let process = Process()
-        process.arguments = ["-c",command]
+        
         let pipe = Pipe()
         process.standardOutput = pipe
         process.standardError = pipe
         process.standardInput = nil
         // get user current shell, eg: bash , zsh
+        process.arguments = ["-c", command]
         if let shellPath = ProcessInfo.processInfo.environment["SHELL"] {
             process.executableURL = URL(filePath: shellPath)
         }
+        
         if let path = ProcessInfo.processInfo.environment["PATH"] {
-            process.environment = ["PATH": "/usr/local/bin:/opt/homebrew/bin:/opt/homebrew/bin:/opt/homebrew/sbin:"+path]
+            var paths = "/usr/local/bin:/opt/homebrew/bin:/opt/homebrew/bin:/opt/homebrew/sbin:"+path
+            process.environment = ["PATH": paths]
         }
         try process.run()
         process.waitUntilExit()

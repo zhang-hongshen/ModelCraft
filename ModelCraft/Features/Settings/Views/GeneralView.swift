@@ -12,12 +12,16 @@ struct GeneralView: View {
     
     @AppStorage(UserDefaults.appearance)
     private var appearance: Appearance = .system
-    @AppStorage(UserDefaults.showInMenuBar)
-    private var showInMenuBar: Bool = true
     @AppStorage(UserDefaults.automaticallyScrollToBottom)
     private var automaticallyScrollToBottom = false
     @AppStorage(UserDefaults.language)
     private var language = Locale.defaultLanguage
+    
+    @AppStorage(UserDefaults.speakingRate)
+    private var speakingRate = 0.5
+    @AppStorage(UserDefaults.speakingVolume)
+    private var speakingVolume = 0.8
+    
     @State private var isCheckingServerStatus = false
     @State private var cancellables: Set<AnyCancellable> = []
     @Environment(\.serverStatus) private var serverStatus
@@ -29,9 +33,6 @@ struct GeneralView: View {
                 Text("Light").tag(Appearance.light)
                 Text("Dark").tag(Appearance.dark)
             }
-            
-            Toggle("Show menu bar icon", isOn: $showInMenuBar)
-            Toggle("Scroll to bottom automatically when chatting", isOn: $automaticallyScrollToBottom)
             Picker("Language", selection: $language) {
                 ForEach(Bundle.main.localizations, id:\.self) { languageCode in
                     if let language = Locale(identifier: languageCode)
@@ -40,6 +41,28 @@ struct GeneralView: View {
                     }
                 }
             }
+            Toggle("Scroll to bottom automatically when chatting", isOn: $automaticallyScrollToBottom)
+            
+            
+            Section {
+                
+                Slider(value: $speakingRate, in: 0...1) {
+                    Text("Speaking Rate")
+                } minimumValueLabel: {
+                    Image(systemName: "tortoise.fill")
+                } maximumValueLabel: {
+                    Image(systemName: "hare.fill")
+                }
+                
+                Slider(value: $speakingVolume, in: 0...1) {
+                    Text("Speaking Volume")
+                } minimumValueLabel: {
+                    Image(systemName: "speaker.fill")
+                } maximumValueLabel: {
+                    Image(systemName: "speaker.wave.3.fill")
+                }
+            }
+            
             
             Section {
                 LabeledContent("Status") {
