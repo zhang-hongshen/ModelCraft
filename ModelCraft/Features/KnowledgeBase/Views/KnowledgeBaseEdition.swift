@@ -110,7 +110,7 @@ extension KnowledgeBaseEdition {
 extension KnowledgeBaseEdition {
     
     func save() {
-        dismiss.callAsFunction()
+        dismiss()
         Task {
             await KnowledgaBaseModelActor(modelContainer: modelContext.container).insert(konwledgeBase)
         }
