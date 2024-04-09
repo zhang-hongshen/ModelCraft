@@ -68,6 +68,7 @@ extension ModelDetailView {
                 Button("Refresh", systemImage: "arrow.triangle.2.circlepath") {
                     fetchModels()
                 }
+                
             }
         }
     }

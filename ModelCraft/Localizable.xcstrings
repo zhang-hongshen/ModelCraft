@@ -1,13 +1,21 @@
 {
-  "version" : "1.0",
   "sourceLanguage" : "en",
   "strings" : {
-    "Download" : {
+    "" : {
+
+    },
+    "%@ / %@" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ / %2$@"
+          }
+        },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "下载"
+            "value" : "%1$@ / %2$@"
           }
         }
       }
@@ -22,122 +30,12 @@
         }
       }
     },
-    "Check" : {
+    "Add Files" : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "检查"
-          }
-        }
-      }
-    },
-    "No Available Model" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "value" : "没有可用的模型",
-            "state" : "translated"
-          }
-        }
-      }
-    },
-    "Status" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "value" : "状态",
-            "state" : "translated"
-          }
-        }
-      }
-    },
-    "%@ \/ %@" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$@ \/ %2$@"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "value" : "%1$@ \/ %2$@",
-            "state" : "new"
-          }
-        }
-      }
-    },
-    "Are you sure to delete these models" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "你确定要删除这些模型吗？"
-          }
-        }
-      }
-    },
-    "Failed" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "value" : "失败",
-            "state" : "translated"
-          }
-        }
-      }
-    },
-    "Stopped" : {
-
-    },
-    "Choose a model to chat" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "value" : "选择一个模型进行对话",
-            "state" : "translated"
-          }
-        }
-      }
-    },
-    "Waiting to delete" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "等待删除"
-          }
-        }
-      }
-    },
-    "Downloading..." : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "value" : "下载中",
-            "state" : "translated"
-          }
-        }
-      }
-    },
-    "Personalization" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "定制化"
-          }
-        }
-      }
-    },
-    "Knowledge Base" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "知识库"
+            "value" : "添加文件"
           }
         }
       }
@@ -152,159 +50,12 @@
         }
       }
     },
-    "Speaking Rate" : {
+    "Are you sure to delete these models" : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "说话速度"
-          }
-        }
-      }
-    },
-    "Thread" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "value" : "线程",
-            "state" : "translated"
-          }
-        }
-      }
-    },
-    "Refresh" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "刷新"
-          }
-        }
-      }
-    },
-    "What would you like model to know about you to provide better responses ?" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "为了提供更好的回答，您希望模型了解您的哪些信息？"
-          }
-        }
-      }
-    },
-    "Grid" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "网格"
-          }
-        }
-      }
-    },
-    "Open %@" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "value" : "打开 %@",
-            "state" : "translated"
-          }
-        }
-      }
-    },
-    "How can I help you today ?" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "我能帮您什么吗？"
-          }
-        }
-      }
-    },
-    "Indexing..." : {
-
-    },
-    "Open ModelStore" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "value" : "打开",
-            "state" : "translated"
-          }
-        }
-      },
-      "extractionState" : "stale"
-    },
-    "You" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "你"
-          }
-        }
-      }
-    },
-    "Explore and download models to chat." : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "value" : "浏览并下载模型进行对话",
-            "state" : "translated"
-          }
-        }
-      }
-    },
-    "Today" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "今天"
-          }
-        }
-      }
-    },
-    "Model Store" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "模型商店"
-          }
-        }
-      }
-    },
-    "General" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "value" : "通用",
-            "state" : "translated"
-          }
-        }
-      }
-    },
-    "Speaking Volume" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "说话音量"
-          }
-        }
-      }
-    },
-    "Completed" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "已完成"
+            "value" : "你确定要删除这些模型吗？"
           }
         }
       }
@@ -319,175 +70,12 @@
         }
       }
     },
-    "Select or" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "value" : "选择或者",
-            "state" : "translated"
-          }
-        }
-      },
-      "extractionState" : "stale"
-    },
-    "Copy" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "value" : "复制",
-            "state" : "translated"
-          }
-        }
-      }
-    },
-    "Save" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "value" : "保存",
-            "state" : "translated"
-          }
-        }
-      }
-    },
-    "Add Files" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "value" : "添加文件",
-            "state" : "translated"
-          }
-        }
-      }
-    },
-    "Show menu bar icon" : {
-      "extractionState" : "stale",
+    "Cancel" : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "显示菜单栏图标"
-          }
-        }
-      }
-    },
-    "Language" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "语言"
-          }
-        }
-      }
-    },
-    "Downloaded" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "value" : "已下载",
-            "state" : "translated"
-          }
-        }
-      }
-    },
-    "None" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "value" : "无",
-            "state" : "translated"
-          }
-        }
-      }
-    },
-    "Quit" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "退出"
-          }
-        }
-      },
-      "extractionState" : "stale"
-    },
-    "Yesterday" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "value" : "昨天",
-            "state" : "translated"
-          }
-        }
-      }
-    },
-    "Model" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "模型"
-          }
-        }
-      }
-    },
-    "Models" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "value" : "模型",
-            "state" : "translated"
-          }
-        }
-      }
-    },
-    "Connected" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "value" : "已连接",
-            "state" : "translated"
-          }
-        }
-      }
-    },
-    "Light" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "浅色"
-          }
-        }
-      }
-    },
-    "Read" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "朗读"
-          }
-        }
-      }
-    },
-    "List" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "列表"
-          }
-        }
-      }
-    },
-    "Waiting to download" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "value" : "等待下载",
-            "state" : "translated"
+            "value" : "取消"
           }
         }
       }
@@ -496,18 +84,59 @@
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
-            "value" : "对话",
-            "state" : "translated"
+            "state" : "translated",
+            "value" : "对话"
           }
         }
       }
     },
-    "Deleting..." : {
+    "Check" : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
-            "value" : "删除中",
-            "state" : "translated"
+            "state" : "translated",
+            "value" : "检查"
+          }
+        }
+      }
+    },
+    "Choose a model to chat" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "选择一个模型进行对话"
+          }
+        }
+      }
+    },
+    "Completed" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已完成"
+          }
+        }
+      }
+    },
+    "Connected" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已连接"
+          }
+        }
+      }
+    },
+    "Copy" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "复制"
           }
         }
       }
@@ -522,12 +151,22 @@
         }
       }
     },
-    "Message" : {
+    "Delete" : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
-            "value" : "信息",
-            "state" : "translated"
+            "state" : "translated",
+            "value" : "删除"
+          }
+        }
+      }
+    },
+    "Deleting..." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "删除中"
           }
         }
       }
@@ -542,12 +181,313 @@
         }
       }
     },
-    "Title" : {
+    "Download" : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
-            "value" : "标题",
-            "state" : "translated"
+            "state" : "translated",
+            "value" : "下载"
+          }
+        }
+      }
+    },
+    "Downloaded" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已下载"
+          }
+        }
+      }
+    },
+    "Downloading..." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "下载中"
+          }
+        }
+      }
+    },
+    "Edit" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "编辑"
+          }
+        }
+      }
+    },
+    "Explore and download models to chat." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "浏览并下载模型进行对话"
+          }
+        }
+      }
+    },
+    "Failed" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "失败"
+          }
+        }
+      }
+    },
+    "General" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "通用"
+          }
+        }
+      }
+    },
+    "Grid" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "网格"
+          }
+        }
+      }
+    },
+    "How can I help you today ?" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "我能帮您什么吗？"
+          }
+        }
+      }
+    },
+    "How would you like model to respond ?" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "你想要模型如何回答？"
+          }
+        }
+      }
+    },
+    "Indexing..." : {
+
+    },
+    "Knowledge Base" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "知识库"
+          }
+        }
+      }
+    },
+    "Language" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "语言"
+          }
+        }
+      }
+    },
+    "Launching" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "启动中"
+          }
+        }
+      }
+    },
+    "Light" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "浅色"
+          }
+        }
+      }
+    },
+    "List" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "列表"
+          }
+        }
+      }
+    },
+    "Local Models" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "本地模型"
+          }
+        }
+      }
+    },
+    "Message" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "信息"
+          }
+        }
+      }
+    },
+    "Model" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "模型"
+          }
+        }
+      }
+    },
+    "Model Store" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "模型商店"
+          }
+        }
+      }
+    },
+    "Models" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "模型"
+          }
+        }
+      }
+    },
+    "New Chat" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "新的对话"
+          }
+        }
+      }
+    },
+    "No Available Model" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "没有可用的模型"
+          }
+        }
+      }
+    },
+    "None" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无"
+          }
+        }
+      }
+    },
+    "Open %@" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "打开 %@"
+          }
+        }
+      }
+    },
+    "Open ModelStore" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "打开"
+          }
+        }
+      }
+    },
+    "Personalization" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "定制化"
+          }
+        }
+      }
+    },
+    "Quit" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "退出"
+          }
+        }
+      }
+    },
+    "Read" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "朗读"
+          }
+        }
+      }
+    },
+    "Refresh" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "刷新"
+          }
+        }
+      }
+    },
+    "Retry" : {
+
+    },
+    "Save" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "保存"
           }
         }
       }
@@ -567,21 +507,104 @@
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
-            "value" : "选择模型下载",
-            "state" : "translated"
+            "state" : "translated",
+            "value" : "选择模型下载"
           }
         }
       }
     },
-    "Retry" : {
+    "Select or" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "选择或者"
+          }
+        }
+      }
+    },
+    "Show menu bar icon" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "显示菜单栏图标"
+          }
+        }
+      }
+    },
+    "Speaking Rate" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "说话速度"
+          }
+        }
+      }
+    },
+    "Speaking Volume" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "说话音量"
+          }
+        }
+      }
+    },
+    "Status" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "状态"
+          }
+        }
+      }
+    },
+    "Stopped" : {
 
     },
     "System" : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
-            "value" : "系统",
-            "state" : "translated"
+            "state" : "translated",
+            "value" : "系统"
+          }
+        }
+      }
+    },
+    "Thread" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "线程"
+          }
+        }
+      }
+    },
+    "Title" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "标题"
+          }
+        }
+      }
+    },
+    "Today" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "今天"
           }
         }
       }
@@ -590,85 +613,62 @@
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
-            "value" : "视图",
-            "state" : "translated"
+            "state" : "translated",
+            "value" : "视图"
           }
         }
       }
     },
-    "" : {
-
-    },
-    "Cancel" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "value" : "取消",
-            "state" : "translated"
-          }
-        }
-      }
-    },
-    "Launching" : {
+    "Waiting to delete" : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "启动中"
+            "value" : "等待删除"
           }
         }
       }
     },
-    "How would you like model to respond ?" : {
+    "Waiting to download" : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "你想要模型如何回答？"
+            "value" : "等待下载"
           }
         }
       }
     },
-    "Local Models" : {
+    "What would you like model to know about you to provide better responses ?" : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "本地模型"
+            "value" : "为了提供更好的回答，您希望模型了解您的哪些信息？"
           }
         }
       }
     },
-    "Delete" : {
+    "Yesterday" : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
-            "value" : "删除",
-            "state" : "translated"
+            "state" : "translated",
+            "value" : "昨天"
           }
         }
       }
     },
-    "New Chat" : {
+    "You" : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "新的对话"
-          }
-        }
-      },
-      "extractionState" : "stale"
-    },
-    "Edit" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "编辑"
+            "value" : "你"
           }
         }
       }
     }
-  }
+  },
+  "version" : "1.0"
 }

@@ -24,12 +24,23 @@ struct LocalModelsView: View {
            sort: \ModelTask.createdAt,
            order: .reverse)
     private var deleteTasks: [ModelTask] = []
+    @Query(filter: ModelTask.predicateByType(.download),
+           sort: \ModelTask.createdAt,
+           order: .reverse)
+    private var downloadTasks: [ModelTask] = []
     
     var body: some View {
         List(selection: $selectedModelNames) {
             ForEach(models, id: \.name) { model in
                 ListCell(model).tag(model.name)
             }
+            ForEach(downloadTasks) { task in
+                HStack{
+                    Label(task.modelName, systemImage: "shippingbox")
+                    Spacer()
+                    ModelDownloadProgress(task: task)
+                }.tag(task)
+            }.foregroundStyle(.secondary)
         }
         .contextMenu {
             DeleteButton(action: { confirmationDialogPresented = true })

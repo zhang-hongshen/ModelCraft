@@ -6,14 +6,7 @@ ModelCraft is a macOS RAG app.  It allows you to run models locally and build yo
 
 ##  🚀  Get Started
 
-1. make sure that [Ollama](https://github.com/ollama/ollama) is running.
-
-```shell
-brew install ollama
-brew services start ollama
-```
-
-2. open app
+No pre-operations. Just download the app to use it !
 
 ### Customize chat by selecting model and knowledge base.
 
@@ -25,7 +18,7 @@ brew services start ollama
 
 ### Download models from Model Store
 
-![image-20240404232539302](./assets/image-20240404232539302.png)
+![image-20240409120017524](./assets/image-20240409120017524.png)
 
 ##  License
 
