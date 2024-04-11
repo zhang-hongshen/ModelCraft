@@ -100,6 +100,9 @@
         }
       }
     },
+    "Check for Updates…" : {
+
+    },
     "Choose a model to chat" : {
       "extractionState" : "stale",
       "localizations" : {

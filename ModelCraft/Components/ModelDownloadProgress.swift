@@ -24,21 +24,34 @@ struct ModelDownloadProgress: View {
                 ProgressView().controlSize(.small)
             case .running:
                 Button {
-                    modelContext.delete(task)
-                    try? modelContext.save()
+                    deleteTask(task)
                 } label: {
                     Image(systemName: "xmark.circle.fill")
                 }.buttonStyle(.borderless)
+            case .stopped:
+                Button {
+                    restartTask(task)
+                } label: {
+                    Image(systemName: "play.fill")
+                }.buttonStyle(.borderless)
             case .failed:
                 Button("Retry") {
-                    modelContext.delete(task)
-                    modelContext.insert(ModelTask(modelName: task.modelName, type: .download))
-                    try? modelContext.save()
+                    restartTask(task)
                 }
             default: EmptyView()
             }
         }
-        
+    }
+    
+    func deleteTask(_ task: ModelTask) {
+        modelContext.delete(task)
+        try? modelContext.save()
+    }
+    
+    func restartTask(_ task: ModelTask) {
+        modelContext.delete(task)
+        modelContext.insert(ModelTask(modelName: task.modelName, type: .download))
+        try? modelContext.save()
     }
 }
 

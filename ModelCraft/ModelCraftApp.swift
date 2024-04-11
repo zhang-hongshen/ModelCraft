@@ -7,10 +7,11 @@
 
 import SwiftUI
 import SwiftData
-import Combine
 import AVFoundation
+import Combine
 import TipKit
 
+import Sparkle
 import OllamaKit
 
 @main
@@ -33,7 +34,7 @@ struct ModelCraftApp: App {
     }()
     
     @State private var cancellables: Set<AnyCancellable> = []
-    @State private var checkServerStatusTimer: Timer? = nil
+    @State private var backgroudTaskTimer: Timer? = nil
     
     @State private var serverStatus: ServerStatus = .disconnected
     @State private var models: [ModelInfo] = []
@@ -41,7 +42,10 @@ struct ModelCraftApp: App {
     
     private let speechSynthesizer = AVSpeechSynthesizer()
     
+    private let updaterController: SPUStandardUpdaterController
+    
     init() {
+        updaterController = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: nil, userDriverDelegate: nil)
         startOllamaServer()
         try? Tips.resetDatastore()
         try? Tips.configure([
@@ -58,22 +62,19 @@ struct ModelCraftApp: App {
                 ContentView()
                     .background(.ultraThinMaterial)
                     .applyUserSettings()
+                    
                     .task {
-                        checkServerStatusTimer = Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { timer in
+                        LoopTask()
+                        backgroudTaskTimer = Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { timer in
                             guard timer.isValid else { return }
-                            checkServerStatus()
-                            Task.detached {
-                                models = try await OllamaService.shared.models()
-                                if let model = selectedModel {
-                                    if !models.contains(model) {
-                                        selectedModel = models.first
-                                    }
-                                } else {
-                                    selectedModel = models.first
-                                }
-                            }
+                            LoopTask()
                         }
                     }
+            }
+            .commands {
+                CommandGroup(after: .appInfo) {
+                    CheckForUpdatesView(updater: updaterController.updater)
+                }
             }
 #if os(macOS)
             Settings {
@@ -93,6 +94,24 @@ struct ModelCraftApp: App {
             SidebarCommands()
             ToolbarCommands()
             InspectorCommands()
+        }
+    }
+    
+    func LoopTask() {
+        checkServerStatus()
+        fetchLocalModels()
+    }
+    
+    func fetchLocalModels() {
+        Task.detached {
+            models = try await OllamaService.shared.models()
+            if let model = selectedModel {
+                if !models.contains(model) {
+                    selectedModel = models.first
+                }
+            } else {
+                selectedModel = models.first
+            }
         }
     }
     
