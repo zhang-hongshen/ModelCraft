@@ -1,0 +1,14 @@
+<?xml version="1.0" standalone="yes"?>
+<rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
+    <channel>
+        <title>ModelCraft</title>
+        <item>
+            <title>0.2</title>
+            <pubDate>Thu, 11 Apr 2024 14:12:22 +0800</pubDate>
+            <sparkle:version>2</sparkle:version>
+            <sparkle:shortVersionString>0.2</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <enclosure url="https://github.com/zhang-hongshen/ModelCraft/ModelCraft.zip" length="22398072" type="application/octet-stream"/>
+        </item>
+    </channel>
+</rss>

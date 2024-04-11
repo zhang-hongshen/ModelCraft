@@ -24,7 +24,7 @@ actor KnowledgaBaseModelActor {
         modelContext.delete(model)
         try? modelContext.save()
         Task.detached {
-            model.clearEmbedding()
+            model.clear()
         }
     }
 }

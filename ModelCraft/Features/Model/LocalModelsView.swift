@@ -24,7 +24,7 @@ struct LocalModelsView: View {
            sort: \ModelTask.createdAt,
            order: .reverse)
     private var deleteTasks: [ModelTask] = []
-    @Query(filter: ModelTask.predicateByType(.download),
+    @Query(filter: ModelTask.predicateUnCompletedDownloadTask(),
            sort: \ModelTask.createdAt,
            order: .reverse)
     private var downloadTasks: [ModelTask] = []

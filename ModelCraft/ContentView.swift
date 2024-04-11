@@ -143,7 +143,9 @@ extension ContentView {
         NavigationStack {
             switch currentTab {
             case .chat(let chat):
-                ChatView(chat: chat).navigationTitle(chat.title)
+                ChatView(chat: chat)
+                    .navigationTitle(chat.title)
+                    .navigationSubtitle(chat.createdAt.formatted())
             case .modelStore:
                 ModelStore().navigationTitle("Model Store")
             case .knowledgeBase(let knowledgeBase):

@@ -6,7 +6,6 @@
 //
 import Foundation
 import SwiftData
-import NaturalLanguage
 
 import SVDB
 
@@ -33,80 +32,64 @@ class KnowledgeBase {
         self.files = files
         self.indexStatus = indexStatus
     }
+}
+
+extension KnowledgeBase {
     
     var orderedFiles: [URL] {
         files.sorted(using: KeyPathComparator(\.lastPathComponent, order: .forward))
     }
-}
-
-extension KnowledgeBase {
     
     var collectionName: String {
         "knowledgeBase:\(id)"
     }
     
-    func getVectorCollection() -> Collection {
-        do {
-            return try SVDB.shared.collection(collectionName)
-        } catch {
-            debugPrint("error, \(error.localizedDescription)")
-        }
-        return SVDB.shared.getCollection(collectionName)!
-    }
-    
     func search(_ text: String) -> String {
-        let collection = SVDB.shared.getCollection(collectionName)
-        if indexStatus == .unindexed || collection == nil {
+        if indexStatus == .unindexed {
             Task.detached {
                 self.embed()
             }
         }
-        guard let collection = SVDB.shared.getCollection(collectionName) else { return ""}
-        guard let language = NLLanguageRecognizer.dominantLanguage(for: text) else { return ""}
-        guard let embed = NLEmbedding.sentenceEmbedding(for: language) else { return ""}
-        guard let embedding = embed.vector(for: text) else { return ""}
-        let results = collection.search(query: embedding)
-        return results.map{ $0.text }.joined(separator: "\n")
+        let retriever = Retriever(collectionName)
+        let results = retriever.query(text)
+        return results.map{ $0.text }.joined(separator: " ")
     }
     
     func embed() {
         indexStatus = .indexing
         SVDB.shared.releaseCollection(collectionName)
-        embed(orderedFiles)
+        embedFromFiles(orderedFiles)
         indexStatus = .indexed
     }
     
-    func embed(_ urls: [URL]) {
-        let collection = getVectorCollection()
+    func embedFromFiles(_ urls: [URL]) {
+        let retriever = Retriever(collectionName)
         let fileManager = FileManager.default
         do  {
             for url in urls {
-                if !url.startAccessingSecurityScopedResource() {
+                if !url.startAccessingSecurityScopedResource()
+                    || !fileManager.fileExists(at: url) {
                     continue
                 }
                 if url.hasDirectoryPath {
-                    embed(try fileManager
+                    let files = try fileManager
                         .contentsOfDirectory(at: url,
                                              includingPropertiesForKeys: nil,
-                                             options: [.skipsHiddenFiles]))
+                                             options: [.skipsHiddenFiles])
+                    embedFromFiles(files)
                     continue
                 }
-                if !fileManager.fileExists(at: url) { continue }
                 let document = try url.readContent()
-                guard let language = NLLanguageRecognizer.dominantLanguage(for: document) else { continue }
-                guard let embed = NLEmbedding.sentenceEmbedding(for: language) else { continue }
-                document.split(separator: .newlines, chunkSize: 100).forEach { chunk in
-                    guard let embedding = embed.vector(for: chunk) else { return }
-                    collection.addDocument(id: id, text: chunk, embedding: embedding)
-                }
+                url.stopAccessingSecurityScopedResource()
+                retriever.addDocuments(TextSplitter().createDocuments(document))
             }
         } catch {
-            print("index error, \(error.localizedDescription)")
+            print("embedFromFiles error, \(error.localizedDescription)")
         }
     }
     
-    func clearEmbedding() {
-        getVectorCollection().clear()
+    func clear() {
+        try? SVDB.shared.collection(collectionName).clear()
         SVDB.shared.releaseCollection(collectionName)
     }
 }

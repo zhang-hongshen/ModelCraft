@@ -218,14 +218,10 @@ extension ChatView {
                 }
             }
             .padding(Default.padding)
-            .overlay(
-              RoundedRectangle()
-                .stroke(.primary, lineWidth: 1)
-            )
         }
         .imageScale(.large)
         .buttonStyle(.borderless)
-        .safeAreaPadding()
+        .safeAreaPadding(.bottom, Default.padding)
         .background(.ultraThinMaterial)
     }
 }

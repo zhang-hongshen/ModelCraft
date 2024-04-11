@@ -7,10 +7,11 @@
 
 import SwiftUI
 import SwiftData
-import Combine
 import AVFoundation
+import Combine
 import TipKit
 
+import Sparkle
 import OllamaKit
 
 @main
@@ -18,10 +19,10 @@ struct ModelCraftApp: App {
     
     let sharedModelContainer: ModelContainer = {
         let schema = Schema([
-        Message.self,
-        Chat.self,
-        ModelTask.self,
-        KnowledgeBase.self,
+            Message.self,
+            Chat.self,
+            ModelTask.self,
+            KnowledgeBase.self,
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 
@@ -33,24 +34,19 @@ struct ModelCraftApp: App {
     }()
     
     @State private var cancellables: Set<AnyCancellable> = []
-    @State private var checkServerStatusTimer: Timer? = nil
-    
+    @State private var backgroudTaskTimer: Timer? = nil
     @State private var serverStatus: ServerStatus = .disconnected
     @State private var models: [ModelInfo] = []
     @State private var selectedModel: ModelInfo? = nil
     
     private let speechSynthesizer = AVSpeechSynthesizer()
     
-    init() {
-        startOllamaServer()
-        try? Tips.resetDatastore()
-        try? Tips.configure([
-            .displayFrequency(.immediate),
-            .datastoreLocation(.applicationDefault)
-        ])
-    }
+    private let updaterController: SPUStandardUpdaterController
     
-    // write an background task to download model
+    init() {
+        updaterController = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: nil, userDriverDelegate: nil)
+        startOllamaServer()
+    }
     
     var body: some Scene {
         Group {
@@ -59,19 +55,10 @@ struct ModelCraftApp: App {
                     .background(.ultraThinMaterial)
                     .applyUserSettings()
                     .task {
-                        checkServerStatusTimer = Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { timer in
+                        LoopTask()
+                        backgroudTaskTimer = Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { timer in
                             guard timer.isValid else { return }
-                            checkServerStatus()
-                            Task.detached {
-                                models = try await OllamaService.shared.models()
-                                if let model = selectedModel {
-                                    if !models.contains(model) {
-                                        selectedModel = models.first
-                                    }
-                                } else {
-                                    selectedModel = models.first
-                                }
-                            }
+                            LoopTask()
                         }
                     }
             }
@@ -93,6 +80,30 @@ struct ModelCraftApp: App {
             SidebarCommands()
             ToolbarCommands()
             InspectorCommands()
+            CommandGroup(after: .appInfo) {
+                CheckForUpdatesView(updater: updaterController.updater)
+            }
+        }
+    }
+    
+}
+
+extension ModelCraftApp {
+    func LoopTask() {
+        checkServerStatus()
+        fetchLocalModels()
+    }
+    
+    func fetchLocalModels() {
+        Task.detached {
+            models = try await OllamaService.shared.models()
+            if let model = selectedModel {
+                if !models.contains(model) {
+                    selectedModel = models.first
+                }
+            } else {
+                selectedModel = models.first
+            }
         }
     }
     

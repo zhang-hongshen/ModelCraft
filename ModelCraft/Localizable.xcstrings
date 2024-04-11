@@ -100,6 +100,9 @@
         }
       }
     },
+    "Check for Updates…" : {
+
+    },
     "Choose a model to chat" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -132,6 +135,7 @@
       }
     },
     "Copy" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -460,6 +464,7 @@
       }
     },
     "Read" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {

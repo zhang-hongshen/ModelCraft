@@ -43,8 +43,13 @@ struct MessageView: View {
             
             VStack(alignment: .leading) {
                 
-                Text(message.role.localizedName)
-                    .font(.headline)
+                HStack {
+                    Text(message.role.localizedName)
+                        .font(.headline)
+                    Text(message.createdAt.formatted())
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
                 
                 Markdown(message.content)
                     .markdownTheme(.docC)
@@ -105,20 +110,24 @@ extension MessageView {
     
     @ViewBuilder
     func CopyButton() -> some View {
-        Button("Copy", systemImage: copied ? "checkmark" : "clipboard") {
+        Button {
             Pasteboard.general.setString(message.content)
             copied = true
             DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
                 copied = false
             }
-        }.help("Copy")
+        } label: {
+            Image(systemName: copied ? "checkmark" : "clipboard")
+        }
     }
     
     
     @ViewBuilder
     func AssistantButtons() -> some View {
-        Button("Read", systemImage: "mic") {
+        Button {
             speechSynthesizer.speak(message.content)
+        } label: {
+            Image(systemName: "mic")
         }
     }
 }

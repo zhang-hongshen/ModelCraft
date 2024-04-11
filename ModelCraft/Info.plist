@@ -4,5 +4,9 @@
 <dict>
 	<key>NSAppTransportSecurity</key>
 	<dict/>
+	<key>SUFeedURL</key>
+	<string>https://github.com/zhang-hongshen/ModelCraft/Product/appcast.xml</string>
+	<key>SUPublicEDKey</key>
+	<string>kd8PcpzZyUDjtIcES6rUPqz0HKWVl1LY34wvhF0iPw4</string>
 </dict>
 </plist>

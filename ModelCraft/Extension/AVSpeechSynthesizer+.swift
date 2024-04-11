@@ -10,6 +10,7 @@ import NaturalLanguage
 import SwiftUI
 
 extension AVSpeechSynthesizer {
+    
     func speak(_ text: String) {
         guard let language = NLLanguageRecognizer.dominantLanguage(for: text) else { return }
         

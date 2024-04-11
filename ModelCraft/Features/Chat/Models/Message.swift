@@ -36,18 +36,20 @@ class Message {
     @Attribute(.unique) let id = UUID()
     
     let createdAt: Date = Date.now
-
     var role: MessageRole
     var content: String
     var images: [Data]
     var done: Bool
+    var reference: [URL]
     var chat: Chat?
     
-    init(role: MessageRole, content: String = "", images: [Data] = [], done: Bool = true) {
+    init(role: MessageRole, content: String = "", images: [Data] = [], 
+         done: Bool = true, reference: [URL] = []) {
         self.role = role
         self.content = content
         self.images = images
         self.done = done
+        self.reference = reference
     }
     
 }
