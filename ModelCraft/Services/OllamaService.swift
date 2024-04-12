@@ -11,13 +11,13 @@ import OllamaKit
 import Alamofire
 
 extension OllamaClient {
-    static let shared = OllamaClient(baseURL: URL.ollamaBaseURL)
+    static let shared = OllamaClient(baseURL: URL(string: "http://localhost:11434")!)
 }
 
 class OllamaService {
     static let shared = OllamaService()
     
-    private let client = OllamaClient(baseURL: URL.ollamaBaseURL)
+    private let client = OllamaClient.shared
     
     func reachable() -> AnyPublisher<Bool, Never> {
         client.reachable()

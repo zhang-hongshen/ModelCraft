@@ -10,6 +10,8 @@ No pre-operations. Just download the app to use it !
 
 ## :star:  Key Feature
 
+### 🍩 Fine-tune the models to make model's answer precise and unbaised
+
 ###  🍔 Customize chat by selecting model and knowledge base.
 
 ![image-20240404232609329](./assets/image-20240404232609329.png)

@@ -19,7 +19,7 @@ class KnowledgeBase {
     let createdAt: Date = Date.now
     var icon: String = "book"
     var title: String
-    var files: Set<URL> {
+    var files: Set<LocalFileURL> {
         didSet {
             embed()
         }
@@ -36,7 +36,7 @@ class KnowledgeBase {
 
 extension KnowledgeBase {
     
-    var orderedFiles: [URL] {
+    var orderedFiles: [LocalFileURL] {
         files.sorted(using: KeyPathComparator(\.lastPathComponent, order: .forward))
     }
     

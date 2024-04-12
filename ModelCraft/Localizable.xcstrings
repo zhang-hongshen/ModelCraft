@@ -101,7 +101,14 @@
       }
     },
     "Check for Updates…" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "检查更新..."
+          }
+        }
+      }
     },
     "Choose a model to chat" : {
       "extractionState" : "stale",
@@ -225,6 +232,16 @@
         }
       }
     },
+    "Evaluating prompt cost:" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "评估提示词耗时："
+          }
+        }
+      }
+    },
     "Explore and download models to chat." : {
       "extractionState" : "stale",
       "localizations" : {
@@ -252,6 +269,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "通用"
+          }
+        }
+      }
+    },
+    "Generating response cost:" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "生成回答耗时："
           }
         }
       }
@@ -287,7 +314,14 @@
       }
     },
     "Indexing..." : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "索引中..."
+          }
+        }
+      }
     },
     "Knowledge Base" : {
       "localizations" : {
@@ -335,6 +369,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "列表"
+          }
+        }
+      }
+    },
+    "Loading Model Cost:" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "加载模型："
           }
         }
       }
@@ -485,7 +529,14 @@
       }
     },
     "Retry" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重试"
+          }
+        }
+      }
     },
     "Save" : {
       "localizations" : {
@@ -571,7 +622,14 @@
       }
     },
     "Stopped" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "暂停"
+          }
+        }
+      }
     },
     "System" : {
       "localizations" : {
@@ -610,6 +668,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "今天"
+          }
+        }
+      }
+    },
+    "Total Cost:" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "总耗时："
           }
         }
       }

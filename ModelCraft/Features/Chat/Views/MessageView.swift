@@ -18,13 +18,14 @@ struct MessageView: View {
     var message: Message
     
     @State private var copied = false
+    @State private var infoPresented = false
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.speechSynthesizer) private var speechSynthesizer
     
     private let imageHeight: CGFloat = 200
-#if os(macOS)
+
     private let columns = Array.init(repeating: GridItem(.flexible()), count: 4)
-#endif
+
     
     private var splashTheme: Splash.Theme {
       switch self.colorScheme {
@@ -75,7 +76,6 @@ struct MessageView: View {
                     }
                 }
                 
-#if os(macOS)
                 if message.done {
                     HStack {
                         CopyButton()
@@ -84,7 +84,10 @@ struct MessageView: View {
                         }
                     }.buttonStyle(.borderless)
                 }
-#endif
+                
+                if !message.reference.isEmpty {
+                    
+                }
             }
         }
     }
@@ -124,10 +127,38 @@ extension MessageView {
     
     @ViewBuilder
     func AssistantButtons() -> some View {
-        Button {
-            speechSynthesizer.speak(message.content)
-        } label: {
-            Image(systemName: "mic")
+        HStack {
+            Button {
+                speechSynthesizer.speak(message.content)
+            } label: {
+                Image(systemName: "mic")
+            }
+            Button {
+                infoPresented = true
+            } label: {
+                Image(systemName: "info.circle")
+            }.popover(isPresented: $infoPresented, arrowEdge: .top) {
+                Form {
+                    if let totalDuration = message.totalDuration {
+                        LabeledContent("Total cost:",
+                                       value: Duration.nanoseconds(totalDuration).formatted(.units(allowed: [.seconds])))
+                    }
+                    if let loadDuration = message.loadDuration {
+                        LabeledContent("Loading Model cost:",
+                                       value: Duration.nanoseconds(loadDuration).formatted(.units(allowed: [.seconds])))
+                    }
+                    if let promptEvalDuration = message.promptEvalDuration {
+                        LabeledContent("Evaluating prompt cost:",
+                                       value: Duration.nanoseconds(promptEvalDuration).formatted(.units(allowed: [.seconds])))
+                    }
+                    if let evalDuration = message.evalDuration {
+                        LabeledContent("Generating response cost:",
+                                       value: Duration.nanoseconds(evalDuration).formatted(.units(allowed: [.seconds])))
+                    }
+                }
+                .padding()
+            }
         }
+        
     }
 }

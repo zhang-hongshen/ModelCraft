@@ -40,10 +40,17 @@ class Message {
     var content: String
     var images: [Data]
     var done: Bool
-    var reference: [URL]
+    var reference: [LocalFileURL]
     var chat: Chat?
     
-    init(role: MessageRole, content: String = "", images: [Data] = [], 
+    var evalCount: Int? = nil
+    var evalDuration: Int? = nil
+    var loadDuration: Int? = nil
+    var promptEvalCount: Int? = nil
+    var promptEvalDuration: Int? = nil
+    var totalDuration: Int? = nil
+    
+    init(role: MessageRole, content: String = "", images: [Data] = [],
          done: Bool = true, reference: [URL] = []) {
         self.role = role
         self.content = content

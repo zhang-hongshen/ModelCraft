@@ -1,5 +1,5 @@
 //
-//  URL+.swift
+//  LocalFileURL.swift
 //
 //
 //  Created by 张鸿燊 on 25/2/2024.
@@ -11,18 +11,14 @@ import Vision
 
 import UniformTypeIdentifiers
 
-extension URL: Identifiable {
+typealias LocalFileURL = URL
+
+extension LocalFileURL: Identifiable {
     
     public var id: Self { self }
     
-    static let ollamaBaseURL =  URL(string: "http://localhost:11434")!
-    
-    var isLocal: Bool {
-        scheme == "file"
-    }
-
     func readContent() throws -> String {
-        guard let type = UTType(filenameExtension: pathExtension) else { return "" }
+        guard isFileURL, let type = UTType(filenameExtension: pathExtension) else { return "" }
         if type.conforms(to: .pdf) {
             return readPDFContent()
         } else if type.conforms(to: .xml) {
@@ -50,7 +46,7 @@ extension URL: Identifiable {
     
     private func readImageContent() throws -> String {
         let requestHandler = VNImageRequestHandler(url: self)
-        var recognizedStrings = [String]()
+        var recognizedStrings: [String] = []
         let request = VNRecognizeTextRequest { request, error in
             guard let observations =
                     request.results as? [VNRecognizedTextObservation] else {
@@ -60,7 +56,7 @@ extension URL: Identifiable {
                 // Return the string of the top VNRecognizedText instance.
                 return observation.topCandidates(1).first?.string
             }
-            print("recognizedStrings, \(recognizedStrings)")
+            debugPrint("recognizedStrings, \(recognizedStrings)")
         }
         // Perform the text-recognition request.
         try requestHandler.perform([request])

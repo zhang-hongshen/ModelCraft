@@ -12,16 +12,18 @@ import OrderedCollections
 import ActivityIndicatorView
 
 
-enum Tab: Hashable {
-    case chat(Chat)
-    case knowledgeBase(KnowledgeBase)
-    case localModel, modelStore
-}
-
 struct ContentView: View {
     
     @State private var modelTaskTimer: Timer? = nil
     @State private var modelTaskCancellables: Set<AnyCancellable> = []
+    
+    // Possible values of the `currentTab` property.
+    enum Tab: Hashable {
+        case chat(Chat)
+        case knowledgeBase(KnowledgeBase)
+        case localModel, modelStore
+    }
+    
     @State private var currentTab: Tab? = nil
     @State private var selectedKnowledgeBase: KnowledgeBase? = nil
     
@@ -143,8 +145,7 @@ extension ContentView {
         NavigationStack {
             switch currentTab {
             case .chat(let chat):
-                ChatView(chat: chat)
-                    .navigationTitle(chat.title)
+                ChatView(chat: chat).navigationTitle(chat.title)
                     .navigationSubtitle(chat.createdAt.formatted())
             case .modelStore:
                 ModelStore().navigationTitle("Model Store")

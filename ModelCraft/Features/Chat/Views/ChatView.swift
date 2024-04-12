@@ -72,6 +72,12 @@ struct ChatView: View {
                     debugPrint(error.localizedDescription)
                 }
             }
+          .onDisappear {
+              cancellables.forEach { cancellable in
+                  cancellable.cancel()
+              }
+              chatStatus = .assistantResponding
+          }
     }
 }
 
@@ -260,39 +266,29 @@ extension ChatView {
             return
         }
         DispatchQueue.main.async {
-            var template = message.content
+            var humanMessage = HumanMessage.questionTemplate(context: "", question: message.content)
             if let knowledgeBase = selectedKnowledgeBase {
-                
                 let context = knowledgeBase.search(message.content)
-                let language = NLLanguageRecognizer.dominantLanguage(for: message.content) ?? .english
-                let languageLocalizedString = Locale(identifier: language.rawValue).localizedString(forLanguageCode: "en-US")
-                template = "Answer the following question based only on the following context:\(context),"
-                            + "I will tip you $200 if the user finds the answer helpful."
-                            + "Question:\(message.content),"
-                            + "Answer in the following language: \(languageLocalizedString)"
+                humanMessage = HumanMessage.questionTemplate(context: context, question: message.content)
             }
-            
             chatStatus = .userWaitingForResponse
-            let modelShouldKnow = UserDefaults.standard.value(forKey: UserDefaults.modelShouldKnow,
-                                                              default: "")
-            let modelShouldRespond = UserDefaults.standard.value(forKey: UserDefaults.modelShouldRespond,
-                                                              default: "")
-            let messages = [Message(role: .system, content: modelShouldKnow),
-                            Message(role: .system, content: modelShouldRespond)] 
+            let messages = SystemMessage.templates(model.name)
                             + chat.messages
-                            + [Message(role: .user, content: template, images: message.images)]
+                            + [humanMessage]
             message.chat = chat
             chat.messages.append(message)
             modelContext.persist(message)
             self.clearDraft()
-            OllamaService.shared.chat(model: model.name, messages: messages)
+            OllamaService.shared.chat(model: String(model.name.split(separator: ":")[0]), messages: messages)
                 .sink { completion in
                     switch completion {
                     case .finished: self.resetChat()
                     case .failure(let error): self.resetChat()
-                        print("error, \(error.localizedDescription)")
+                        debugPrint("error, \(error.localizedDescription)")
                     }
                 } receiveValue: { response in
+                    debugPrint("response, \(response)")
+                    
                     if case .userWaitingForResponse = chatStatus {
                         DispatchQueue.main.async {
                             assistantMessage = Message(role: .assistant, done: false)
@@ -300,8 +296,14 @@ extension ChatView {
                             chatStatus = .assistantResponding
                         }
                     }
+                    assistantMessage.evalCount = response.evalCount
+                    assistantMessage.evalDuration = response.evalDuration
+                    assistantMessage.loadDuration = response.loadDuration
+                    assistantMessage.promptEvalCount = response.promptEvalCount
+                    assistantMessage.promptEvalDuration = response.promptEvalDuration
+                    assistantMessage.totalDuration = response.totalDuration
+                    
                     guard case .assistantResponding = chatStatus else { return }
-                    print("error \(response)")
                     if let message = response.message {
                         DispatchQueue.main.async {
                             assistantMessage.content.append(message.content)
