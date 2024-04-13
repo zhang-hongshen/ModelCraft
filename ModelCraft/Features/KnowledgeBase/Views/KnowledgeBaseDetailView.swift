@@ -16,6 +16,7 @@ struct KnowledgeBaseDetailView: View {
     @State private var selectedFiles: Set<URL> = []
     @State private var selectedViewType: ViewType = .list
 
+    @Environment(\.errorWrapper) private var errorWrapper
     var body: some View {
         ContentView()
             .contextMenu {
@@ -30,7 +31,8 @@ struct KnowledgeBaseDetailView: View {
                 case .success(let urls):
                     urls.forEach { konwledgeBase.files.insert($0) }
                 case .failure(let error):
-                    print(error.localizedDescription)
+                    errorWrapper.wrappedValue = ErrorWrapper(error: error,
+                                                             guidance: "Please try again!")
                 }
             }
             .dropDestination(for: URL.self) { items, location in

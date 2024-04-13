@@ -38,6 +38,7 @@ struct ModelCraftApp: App {
     @State private var serverStatus: ServerStatus = .disconnected
     @State private var models: [ModelInfo] = []
     @State private var selectedModel: ModelInfo? = nil
+    @State private var errorWrapper: ErrorWrapper? = nil
     
     private let speechSynthesizer = AVSpeechSynthesizer()
     
@@ -54,6 +55,17 @@ struct ModelCraftApp: App {
                 ContentView()
                     .background(.ultraThinMaterial)
                     .applyUserSettings()
+                    .alert(errorWrapper?.error.localizedDescription ?? "",
+                           isPresented: Binding(
+                            get: { errorWrapper != nil },
+                            set: { _ in }),
+                           presenting: errorWrapper){ _ in
+                        Button("Ok") {
+                            errorWrapper = nil
+                        }
+                    } message: { errorWrapper in
+                        Text(errorWrapper.guidance)
+                    }
                     .task {
                         LoopTask()
                         backgroudTaskTimer = Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { timer in
@@ -75,6 +87,7 @@ struct ModelCraftApp: App {
         .environment(\.downaloadedModels, models)
         .environment(\.selectedModel, $selectedModel)
         .environment(\.speechSynthesizer, speechSynthesizer)
+        .environment(\.errorWrapper, $errorWrapper)
         .windowResizability(.contentSize)
         .commands {
             SidebarCommands()

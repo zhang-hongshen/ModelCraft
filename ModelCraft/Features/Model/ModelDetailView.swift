@@ -44,12 +44,14 @@ struct ModelDetailView: View {
     func ListCell(_ model: ModelInfo) -> some View {
         HStack{
             Label(model.name, systemImage: "shippingbox")
+                .lineLimit(1)
+                .truncationMode(.middle)
             
             Spacer()
             if downloadedModels.map({ $0.name }).contains(model.name) {
                 Text("Downloaded")
             } else if let task = downloadTasks.first(where: { $0.modelName == model.name }) {
-                ModelDownloadProgress(task: task)
+                ModelTaskStatus(task: task)
             } else {
                 Button("Download") {
                     createDownloadModelTask(model.name)

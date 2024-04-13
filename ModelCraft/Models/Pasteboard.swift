@@ -12,12 +12,12 @@ class Pasteboard {
     static let general = Pasteboard()
     
     func setString(_ string: String) {
-#if canImport(UIKit)
-        UIPasteboard.general.string = string
-#elseif canImport(AppKit)
+        
+#if canImport(AppKit)
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(string, forType: .string)
+#elseif canImport(UIKit)
+        UIPasteboard.general.string = string
 #endif
     }
-    
 }

@@ -44,6 +44,10 @@ private struct SelectedModelKey: EnvironmentKey {
     static var defaultValue: Binding<ModelInfo?> = .constant(nil)
 }
 
+private struct ErrorKey: EnvironmentKey {
+    static var defaultValue: Binding<ErrorWrapper?> = .constant(nil)
+}
+
 extension EnvironmentValues {
     
     var serverStatus: Binding<ServerStatus> {
@@ -69,5 +73,10 @@ extension EnvironmentValues {
     var speechSynthesizer: AVSpeechSynthesizer {
         get { self[SpeechSynthesizerKey.self] }
         set { self[SpeechSynthesizerKey.self] = newValue }
+    }
+    
+    var errorWrapper : Binding<ErrorWrapper?> {
+        get { self[ErrorKey.self] }
+        set { self[ErrorKey.self] = newValue }
     }
 }

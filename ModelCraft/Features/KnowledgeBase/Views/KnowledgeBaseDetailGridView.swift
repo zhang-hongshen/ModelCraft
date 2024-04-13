@@ -13,32 +13,39 @@ struct KnowledgeBaseDetailGridView: View {
     @Binding var selection: Set<URL>
     @State private var columns: [GridItem] = []
     private let gridCellWidth: CGFloat = 80
-    
+    private let columnPadding: CGFloat = 20
+    // gridCellWidth + columnPadding
+    private let width: CGFloat = 100
     var body: some View {
         GeometryReader { proxy in
             ScrollView {
-                LazyVGrid(columns: columns, spacing: 0){
-                    ForEach(konwledgeBase.orderedFiles, id: \.self) { url in
+                LazyVGrid(columns: columns, spacing: 20){
+                    ForEach(konwledgeBase.orderedFiles) { url in
                         GridCell(url)
                     }
                 }
                 .safeAreaPadding(.top)
             }
+            .contentMargins(0, for: .scrollIndicators)
             .onTapGesture(perform: clearSelection)
             .onChange(of: proxy.size.width, initial: true) {
-                columns = Array(repeating: GridItem(.fixed(gridCellWidth), alignment: .top),
-                                count: Int(proxy.size.width / gridCellWidth))
+                let count = Int(proxy.size.width / width)
+                columns = Array(repeating: GridItem(.fixed(gridCellWidth),
+                                                    spacing: columnPadding,
+                                                    alignment: .top),
+                                count: count)
             }
+            .animation(.smooth, value: columns.count)
         }
-        .frame(minWidth: gridCellWidth * 3)
+        .frame(minWidth: width * 2)
     }
     
     @ViewBuilder
     func GridCell(_ url: URL) -> some View {
         VStack {
-            FileIcon(url: url, layout: .grid,
-                     frameWidth: gridCellWidth)
-                .frame(width: gridCellWidth)
+            FileThumbnail(url: url, frameWidth: gridCellWidth)
+                .padding(Default.padding)
+                .frame(width: gridCellWidth, height: gridCellWidth)
                 .background {
                     if selection.contains(url) {
                         RoundedRectangle().fill(.selection)

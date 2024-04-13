@@ -19,6 +19,7 @@ struct KnowledgeBaseEdition: View {
     
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.errorWrapper) private var errorWrapper
     
     var body: some View {
         VStack {
@@ -33,7 +34,7 @@ struct KnowledgeBaseEdition: View {
             Form {
                 TextField("Title", text: $konwledgeBase.title)
                 
-                ContentView()
+                FilesView()
                     .frame(minWidth: 200, minHeight: 100)
                     .safeAreaInset(edge: .bottom, content: OpearationButton)
             }
@@ -46,9 +47,10 @@ struct KnowledgeBaseEdition: View {
                       allowsMultipleSelection: true) { result in
             switch result {
             case .success(let urls):
-                urls.forEach { konwledgeBase.files.insert($0) }
+                konwledgeBase.files.formUnion(urls)
             case .failure(let error):
-                print(error.localizedDescription)
+                errorWrapper.wrappedValue = ErrorWrapper(error: error,
+                                                         guidance: "Please try again!")
             }
         }
     }
@@ -88,7 +90,7 @@ extension KnowledgeBaseEdition {
     }
     
     @ViewBuilder
-    func ContentView() -> some View {
+    func FilesView() -> some View {
         List(selection: $selectedFiles) {
             ForEach(konwledgeBase.orderedFiles, id: \.self) { url in
                 ListCell(url).tag(url)
@@ -100,9 +102,11 @@ extension KnowledgeBaseEdition {
     @ViewBuilder
     func ListCell(_ url: URL) -> some View {
         Label {
-            Text(url.lastPathComponent).truncationMode(.middle)
+            Text(url.lastPathComponent)
+                .lineLimit(1)
+                .truncationMode(.middle)
         } icon: {
-            FileIcon(url: url, layout: .list)
+            FileThumbnail(url: url)
         }
     }
 }

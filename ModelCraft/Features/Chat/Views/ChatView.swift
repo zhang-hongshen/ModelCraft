@@ -11,7 +11,6 @@ import Combine
 import TipKit
 
 import OllamaKit
-import NaturalLanguage
 
 struct ChatView: View {
     
@@ -19,7 +18,7 @@ struct ChatView: View {
     @Query private var knowledgeBases: [KnowledgeBase] = []
     
     @State private var draft = Message(role: .user)
-    @State private var assistantMessage = Message(role: .assistant)
+    @State private var assistantMessage = Message(role: .assistant, status: .new)
     @State private var selectedImages = Set<Data>()
     @State private var fileImporterPresented = false
     @State private var selectedKnowledgeBase: KnowledgeBase? = nil
@@ -35,49 +34,66 @@ struct ChatView: View {
     @State private var chatStatus: ChatStatus = .assistantWaitingForRequest
     @State private var cancellables = Set<AnyCancellable>()
     @State private var columns: [GridItem] = []
-    private let promptCardIdealWidth: CGFloat = 250
-    
+    @State private var prompts: [Prompt] = Array(Prompt.examples().shuffled().prefix(4))
+    private let promptCardWidth: CGFloat = 250
+    private let promptCardHorizontalSpacing: CGFloat = 20
+    private let width: CGFloat = 270
     @Environment(\.modelContext) private var modelContext
     @Environment(\.serverStatus) private var serverStatus
     @Environment(\.downaloadedModels) private var models
     @Environment(\.selectedModel) private var selectedModel
+    
     @AppStorage(UserDefaults.automaticallyScrollToBottom)
     private var automaticallyScrollToBottom = false
     
     var body: some View {
         MainView()
-            .frame(minWidth: promptCardIdealWidth,
+            .frame(minWidth: width,
                    minHeight: 250)
             .toolbar(content: ToolbarItems)
             .safeAreaInset(edge: .bottom, content: MessageInput)
-            .onDrop(of: [.image], isTargeted: nil) { providers in
-                for provider in providers {
-                    let progress = provider.loadDataRepresentation(for: .image) { dataOrNil, errorOrNil in
-                        guard let data = dataOrNil else { return }
-                        DispatchQueue.main.async {
-                            draft.images.append(data)
-                        }
-                    }
-                    print("progress: \(progress.fractionCompleted)%, total: \(progress.totalUnitCount)")
-                }
-                return true
-            }
+            .onDrop(of: [.image], isTargeted: nil, perform: dropImages)
             .fileImporter(isPresented: $fileImporterPresented,
                           allowedContentTypes: [.image],
                           allowsMultipleSelection: true) { result in
                 switch result {
-                case .success(let urls):
-                    uploadImages(urls)
-                case .failure(let error):
-                    debugPrint(error.localizedDescription)
+                case .success(let urls): uploadImages(urls)
+                case .failure(let error): debugPrint(error.localizedDescription)
+                }
+            }.onDisappear {
+                cancellables.forEach { cancellable in
+                  cancellable.cancel()
+                }
+                chatStatus = .assistantResponding
+            }
+    }
+}
+
+struct InputImage: View {
+    
+    @State var data: Data?
+    let action: () -> Void
+    
+    @State private var isHovering: Bool = false
+    
+    init(data: Data?, action: @escaping () -> Void) {
+        self.data = data
+        self.action = action
+    }
+    
+    var body: some View {
+        ImageLoader(data: data, contentMode: .fit)
+            .overlay(alignment: .bottomTrailing){
+                if isHovering {
+                    Button(action: action) {
+                        Image(systemName: "xmark.circle.fill")
+                    }
                 }
             }
-          .onDisappear {
-              cancellables.forEach { cancellable in
-                  cancellable.cancel()
-              }
-              chatStatus = .assistantResponding
-          }
+            .onHover(perform: { isHovering = $0 })
+            .contextMenu {
+                DeleteButton(action: action)
+            }
     }
 }
 
@@ -103,9 +119,12 @@ extension ChatView {
             }
         }
     }
+    
     @ViewBuilder
     func MainView() -> some View {
-        if !chat.messages.isEmpty {
+        if chat.messages.isEmpty {
+            PromptView()
+        } else {
             ScrollViewReader { proxy in
                 ScrollView(content: MessageList)
                 .onChange(of: chat.messages) {
@@ -119,8 +138,6 @@ extension ChatView {
                 }
             }
             .scrollDismissesKeyboard(.interactively)
-        } else {
-            PromptView()
         }
     }
     
@@ -139,107 +156,113 @@ extension ChatView {
                         .multilineTextAlignment(.leading)
                     
                     LazyVGrid(columns: columns) {
-                        ForEach(Prompt.examples().prefix(4)) { prompt in
-                            PromptCard(prompt: prompt, width: promptCardIdealWidth)
+                        ForEach(prompts) { prompt in
+                            PromptCard(prompt: prompt, width: promptCardWidth)
                                 .onTapGesture {
                                     submitPrompt(prompt)
                                 }
                         }
                     }
                 }
-                .safeAreaPadding(.horizontal)
             }
-            .onChange(of: proxy.size.width, initial: true) { _, newValue in
-                columns = Array(repeating: .init(.fixed(promptCardIdealWidth), alignment: .top),
-                                count: Int(newValue / promptCardIdealWidth))
+            .contentMargins(0, for: .scrollIndicators)
+            .onChange(of: proxy.size.width, initial: true) {
+                let count = Int(proxy.size.width / width)
+                withAnimation {
+                    columns = Array(repeating: .init(.fixed(promptCardWidth),
+                                                     spacing: promptCardHorizontalSpacing,
+                                                     alignment: .top),
+                                    count: count)
+                }
             }
         }
-        .animation(.smooth, value: columns.count)
     }
     
     @ViewBuilder
     func MessageList() -> some View {
-        VStack(alignment: .leading) {
+        VStack(alignment: .leading, spacing: 20) {
             ForEach(chat.orderedMessages) { message in
-                MessageView(message: message).id(message.id)
-            }
-            if chatStatus == .userWaitingForResponse {
-                MessageView.UserWaitingForResponseView()
+                MessageView(message: message).id(message.id).scrollTargetLayout()
             }
         }
         .padding()
     }
     
-    
-    
     @ViewBuilder
     func MessageInput() -> some View {
-        VStack(alignment: .leading) {
-            ScrollView(.horizontal) {
-                HStack(alignment: .center) {
-                    ForEach(draft.images, id: \.self) { data in
-                        if let image = PlatformImage(data: data) {
-                            Image(data: data)?.resizable()
-                                .allowedDynamicRange(.high)
-                                .interpolation(.none)
-                                .aspectRatio(image.aspectRatio, contentMode: .fit)
-                                .frame(height: 50)
-                                .cornerRadius()
-                                .contextMenu {
-                                    Button("Delete") {
-                                        draft.images.removeAll { $0 == data }
-                                    }
-                                }
+        HStack(alignment: .bottom) {
+            Button {
+                fileImporterPresented = true
+            } label: {
+                Image(systemName: "plus.circle")
+            }.padding(.bottom, Default.padding)
+            
+            VStack(alignment: .leading) {
+                if !draft.images.isEmpty {
+                    ScrollView(.horizontal) {
+                        HStack(alignment: .center) {
+                            ForEach(draft.images, id: \.self) { data in
+                                InputImage(data: data) {
+                                    draft.images.removeAll { $0 == data }
+                                }.frame(height: 50)
+                            }
                         }
                     }
-                }
-            }
-            
-            HStack(alignment: .center) {
-                Button {
-                    fileImporterPresented = true
-                } label: {
-                    Image(systemName: "plus.circle")
                 }
                 
-                TextField("Message", text: $draft.content).textFieldStyle(.plain)
-                    .onSubmit {
-#if canImport(AppKit)
-                        if NSApp.currentEvent?.modifierFlags.contains(.shift) == true {
-                            draft.content += "\n"
-                        } else {
-                            submitDraft()
-                        }
-#else
-                        submitDraft()
-#endif
-                    }
+                TextEditor(text: $draft.content)
+                    .frame(maxHeight: 100)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .font(.title3)
+                    .textEditorStyle(.plain)
+            }
+            .padding(Default.padding)
+            .overlay {
+                RoundedRectangle().fill(.clear).stroke(.primary, lineWidth: 1)
+            }
+            
+            Group {
                 if chatStatus != .assistantWaitingForRequest {
-                    Button(action: stopGenerateMessage, label: {Image(systemName: "stop.circle.fill")})
+                    Button(action: stopGenerateMessage) {
+                        Image(systemName: "stop.circle.fill")
+                    }
                 } else {
                     let disabled = selectedModel.wrappedValue == nil || draft.content.isEmpty
-                    Button(action: submitDraft, label: {Image(systemName: "arrow.up.circle.fill")})
+                    Button(action: submitDraft) {
+                        Image(systemName: "arrow.up.circle.fill")
+                    }
                     .tint(disabled ? .secondary : .accentColor)
                     .disabled(disabled)
                 }
             }
-            .padding(Default.padding)
+            .padding(.bottom, Default.padding)
         }
         .imageScale(.large)
         .buttonStyle(.borderless)
-        .safeAreaPadding(.bottom, Default.padding)
+        .safeAreaPadding(Default.padding)
         .background(.ultraThinMaterial)
     }
 }
 
 extension ChatView {
     
+    func dropImages(_ providers: [NSItemProvider]) -> Bool {
+        for provider in providers {
+            let progress = provider.loadDataRepresentation(for: .image) { dataOrNil, errorOrNil in
+                guard let data = dataOrNil else { return }
+                draft.images.append(data)
+            }
+            debugPrint("progress: \(progress.fractionCompleted)%, total: \(progress.totalUnitCount)")
+        }
+        return true
+    }
+    
     func uploadImages(_ urls: [URL]) {
-        for url in urls { do {
-            let data = try Data(contentsOf: url)
-            DispatchQueue.main.async {
+        for url in urls { 
+            do {
+                let data = try Data(contentsOf: url)
                 self.draft.images.append(data)
-            } } catch {
+            } catch {
                 print("uploadImages error, \(error.localizedDescription)")
             }
         }
@@ -279,22 +302,24 @@ extension ChatView {
             chat.messages.append(message)
             modelContext.persist(message)
             self.clearDraft()
+            assistantMessage = Message(role: .assistant, status: .new)
+            chat.messages.append(assistantMessage)
             OllamaService.shared.chat(model: String(model.name.split(separator: ":")[0]), messages: messages)
                 .sink { completion in
                     switch completion {
-                    case .finished: self.resetChat()
-                    case .failure(let error): self.resetChat()
+                    case .finished: 
+                        assistantMessage.status = .generated
+                        self.resetChat()
+                    case .failure(let error):
+                        assistantMessage.status = .failed
+                        self.resetChat()
                         debugPrint("error, \(error.localizedDescription)")
                     }
                 } receiveValue: { response in
                     debugPrint("response, \(response)")
-                    
                     if case .userWaitingForResponse = chatStatus {
-                        DispatchQueue.main.async {
-                            assistantMessage = Message(role: .assistant, done: false)
-                            chat.messages.append(assistantMessage)
-                            chatStatus = .assistantResponding
-                        }
+                        chatStatus = .assistantResponding
+                        assistantMessage.status = .generating
                     }
                     assistantMessage.evalCount = response.evalCount
                     assistantMessage.evalDuration = response.evalDuration
@@ -309,9 +334,9 @@ extension ChatView {
                             assistantMessage.content.append(message.content)
                         }
                     }
-                    assistantMessage.done = response.done
                     if response.done {
                         resetChat()
+                        assistantMessage.status = .generated
                     }
                 }
                 .store(in: &cancellables)
@@ -321,6 +346,7 @@ extension ChatView {
     
     func stopGenerateMessage() {
         resetChat()
+        assistantMessage.status = .generated
         cancellables.forEach { cancellable in
             cancellable.cancel()
         }
@@ -333,6 +359,7 @@ extension ChatView {
     
     func resetChat() {
         chatStatus = .assistantWaitingForRequest
+        assistantMessage = Message(role: .assistant, status: .new)
     }
     
     func scrollToBottom(_ proxy: ScrollViewProxy) {

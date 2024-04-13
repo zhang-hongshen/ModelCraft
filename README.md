@@ -14,19 +14,19 @@ No pre-operations. Just download the app to use it !
 
 ###  🍔 Customize chat by selecting model and knowledge base.
 
-![image-20240404232609329](./assets/image-20240404232609329.png)
+![image-20240413215650116](./assets/image-20240413215650116.png)
 
 ### 🍞Customize your own knowledge base
 
 - Supported file types,  pdf, xml, markdown, text, image. ( More file types will be supported in future )
 
-![image-20240404231834812](./assets/image-20240404231834812.png)
+![image-20240413221104927](./assets/image-20240413221104927.png)
 
 ### 🍰Download models from Model Store
 
 - Download models with one-click
 
-![image-20240409120017524](./assets/image-20240409120017524.png)
+![image-20240413215918922](./assets/image-20240413215918922.png)
 
 ##  License
 

@@ -1,23 +1,21 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Bucket
+   uuid = "A03636D0-68C3-489C-822D-A74DCDA75C0C"
    type = "1"
    version = "2.0">
    <Breakpoints>
       <BreakpointProxy
          BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
          <BreakpointContent
+            uuid = "A539EF69-4376-4D0F-A6CD-7A1B03C4FAA0"
             shouldBeEnabled = "Yes"
             ignoreCount = "0"
             continueAfterRunningActions = "No"
-            endingColumnNumber = "9223372036854775807"
-            endingLineNumber = "22"
             filePath = "ModelCraft/Service/ModelService.swift"
             startingColumnNumber = "9223372036854775807"
-            startingLineNumber = "22">
-            <Actions>
-            </Actions>
-            <Locations>
-            </Locations>
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "22"
+            endingLineNumber = "22">
          </BreakpointContent>
       </BreakpointProxy>
    </Breakpoints>

@@ -19,7 +19,6 @@ struct ModelStore: View {
     @State private var selectedModelName : String? = nil
     @State private var searchText = ""
     @State private var cancellables = Set<AnyCancellable>()
-
     
     private var orderedModels: [ModelInfo] {
         models.sorted(using: KeyPathComparator(\.name))
@@ -81,7 +80,12 @@ extension ModelStore {
     func fetchModels() {
         Task(priority: .userInitiated) {
             isLoading = true
-            models = try await OllamaClient.shared.libraryModels()
+            do {
+                models = try await OllamaClient.shared.libraryModels()
+            } catch {
+                
+            }
+            
             isLoading = false
         }
     }

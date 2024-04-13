@@ -38,7 +38,7 @@ struct LocalModelsView: View {
                 HStack{
                     Label(task.modelName, systemImage: "shippingbox")
                     Spacer()
-                    ModelDownloadProgress(task: task)
+                    ModelTaskStatus(task: task)
                 }.tag(task)
             }.foregroundStyle(.secondary)
         }

@@ -141,8 +141,17 @@
         }
       }
     },
+    "Copied" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已复制"
+          }
+        }
+      }
+    },
     "Copy" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -373,12 +382,12 @@
         }
       }
     },
-    "Loading Model Cost:" : {
+    "Loading model cost:" : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "加载模型："
+            "value" : "加载模型耗时："
           }
         }
       }
@@ -394,6 +403,7 @@
       }
     },
     "Message" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -464,6 +474,9 @@
         }
       }
     },
+    "Ok" : {
+
+    },
     "Open %@" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -495,6 +508,9 @@
           }
         }
       }
+    },
+    "Please try again!" : {
+
     },
     "Quit" : {
       "extractionState" : "stale",
@@ -672,7 +688,7 @@
         }
       }
     },
-    "Total Cost:" : {
+    "Total cost:" : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {

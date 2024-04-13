@@ -8,9 +8,9 @@
 import Foundation
 
 class XMLFile: XMLParser {
-
+    
     private var content = ""
-
+    
     func readContent(url: URL) -> String {
         if let parser = XMLParser(contentsOf: url) {
             parser.delegate = self
@@ -29,7 +29,7 @@ extension XMLFile: XMLParserDelegate {
     func parser(_ parser: XMLParser, foundCharacters string: String) {
         content.append(string)
     }
-        
+    
     func parser(_ parser: XMLParser, didEndElement elementName: String, namespaceURI titlespaceURI: String?, qualifiedName qName: String?) {
     }
 }

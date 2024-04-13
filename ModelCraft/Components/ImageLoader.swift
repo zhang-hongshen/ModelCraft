@@ -39,6 +39,8 @@ struct ImageLoader<Content>: View where Content: View {
                 KFImage(url)
                   .placeholder(placeholder)
                   .resizable()
+                  .interpolation(.none)
+                  .renderingMode(.original)
                   .loadDiskFileSynchronously()
                   .cacheMemoryOnly()
                   .fade(duration: 0.25)
@@ -46,12 +48,13 @@ struct ImageLoader<Content>: View where Content: View {
                   .onSuccess { result in }
                   .onFailure { error in }
                   .aspectRatio(aspectRatio, contentMode: contentMode)
+                  .allowedDynamicRange(.high)
             )
         }
         return AnyView(
             Image(data: data)?.resizable()
                 .allowedDynamicRange(.high)
                 .interpolation(.none)
-                .aspectRatio(image.size.width / image.size.height, contentMode: contentMode))
+                .aspectRatio(image.aspectRatio, contentMode: contentMode))
     }
 }

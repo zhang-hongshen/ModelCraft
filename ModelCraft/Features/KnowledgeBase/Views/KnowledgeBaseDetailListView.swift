@@ -24,9 +24,11 @@ struct KnowledgeBaseDetailListView: View {
     @ViewBuilder
     func ListCell(_ url: URL) -> some View {
         Label {
-            Text(url.lastPathComponent).truncationMode(.middle)
+            Text(url.lastPathComponent)
+                .lineLimit(1)
+                .truncationMode(.middle)
         } icon: {
-            FileIcon(url: url, layout: .list)
+            FileThumbnail(url: url)
         }
     }
 }

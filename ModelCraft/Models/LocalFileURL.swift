@@ -8,7 +8,6 @@
 import Foundation
 import PDFKit
 import Vision
-
 import UniformTypeIdentifiers
 
 typealias LocalFileURL = URL
@@ -34,7 +33,7 @@ extension LocalFileURL: Identifiable {
     private func readPDFContent() -> String {
         guard let pdf = PDFDocument(url: self) else { return "" }
         var content = ""
-
+        
         for i in 0 ..< pdf.pageCount {
             guard let page = pdf.page(at: i) else { continue }
             guard let pageContent = page.string else { continue }

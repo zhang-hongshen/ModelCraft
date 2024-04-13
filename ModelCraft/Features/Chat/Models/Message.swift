@@ -22,13 +22,17 @@ enum MessageRole: Codable {
     var icon: Image {
         switch self {
         case .user:
-            Image(systemName: "person.circle")
+            Image("User")
         case .assistant:
             Image("Assistant")
         case .system:
             Image("Assistant")
         }
     }
+}
+
+enum MessageStatus: Codable {
+    case new, generating, failed, generated
 }
 
 @Model
@@ -39,8 +43,7 @@ class Message {
     var role: MessageRole
     var content: String
     var images: [Data]
-    var done: Bool
-    var reference: [LocalFileURL]
+    var status: MessageStatus
     var chat: Chat?
     
     var evalCount: Int? = nil
@@ -50,13 +53,12 @@ class Message {
     var promptEvalDuration: Int? = nil
     var totalDuration: Int? = nil
     
-    init(role: MessageRole, content: String = "", images: [Data] = [],
-         done: Bool = true, reference: [URL] = []) {
+    init(role: MessageRole = .user, content: String = "", 
+         images: [Data] = [], status: MessageStatus = .generated) {
         self.role = role
         self.content = content
         self.images = images
-        self.done = done
-        self.reference = reference
+        self.status = status
     }
     
 }
