@@ -28,7 +28,14 @@ No pre-operations. Just download the app to use it !
 
 ![image-20240413215918922](./assets/image-20240413215918922.png)
 
-##  License
+### 🥜 Prompt Library
+
+<div>
+  <img src="./assets/image-20240414220443774.png" alt="Image 1" style="max-width: 49.8%;display:inline-block;">
+  <img src="./assets/image-20240414220506126.png" alt="Image 2" style="max-width: 49.8%;display:inline-block;">
+</div>
+
+## License
 
 Distributed under the MIT License. See [`LICENSE`](./LICENSE) for more information.
 

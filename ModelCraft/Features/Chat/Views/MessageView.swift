@@ -19,6 +19,7 @@ struct MessageView: View {
     
     @State private var copied = false
     @State private var infoPresented = false
+    @State private var isHovering = false
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.speechSynthesizer) private var speechSynthesizer
     
@@ -48,9 +49,12 @@ struct MessageView: View {
                     Text(message.role.localizedName)
                         .font(.title3)
                     
-                    Text(message.createdAt.formatted())
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    if isHovering {
+                        Text(message.createdAt.formatted())
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    
                 }
                 
                 switch message.status {
@@ -59,18 +63,22 @@ struct MessageView: View {
                                           type: .opacityDots())
                     .frame(width: 30, height: 10)  
                 default:
-                    Markdown(message.content)
-                        .markdownTheme(.modelCraft)
-                        .markdownCodeSyntaxHighlighter(.splash(theme: self.splashTheme))
-                        .textSelection(.enabled)
-                        .multilineTextAlignment(.leading)
-                        .contextMenu {
-                            Buttons()
-                        }
+                    if message.content.isEmpty {
+                        EmptyView()
+                    } else {
+                        Markdown(message.content)
+                            .markdownTheme(.modelCraft)
+                            .markdownCodeSyntaxHighlighter(.splash(theme: self.splashTheme))
+                            .textSelection(.enabled)
+                            .multilineTextAlignment(.leading)
+                            .contextMenu {
+                                Buttons()
+                            }
+                    }
                 }
                 
                 if !message.images.isEmpty {
-                    LazyVGrid(columns: columns, spacing: 10){
+                    LazyVGrid(columns: columns){
                         ForEach(message.images, id: \.self) { data in
                             ImageLoader(data: data, contentMode: .fit)
                                 .frame(height: imageHeight)
@@ -79,12 +87,16 @@ struct MessageView: View {
                     }
                 }
                 
-                if message.status == .generated {
-                    HStack(content: Buttons).buttonStyle(.borderless)
-                } else {
-                    EmptyView()
-                }
+                Group {
+                    if isHovering {
+                        HStack(content: Buttons).buttonStyle(.borderless)
+                    } else {
+                        Color.clear
+                    }
+                }.frame(height: 20)
+                
             }
+            .onHover(perform: { isHovering = $0 })
         }
     }
     
@@ -105,16 +117,13 @@ extension MessageView {
     @ViewBuilder
     func AssistantButtons() -> some View {
         HStack {
-            Button {
+            
+            Button("", systemImage: "mic") {
                 speechSynthesizer.speak(message.content)
-            } label: {
-                Image(systemName: "mic")
             }
             
-            Button {
+            InfoButton {
                 infoPresented = true
-            } label: {
-                Image(systemName: "info.circle")
             }.popover(isPresented: $infoPresented, arrowEdge: .top) {
                 Form {
                     if let totalDuration = message.totalDuration {
@@ -129,12 +138,15 @@ extension MessageView {
                         LabeledContent("Evaluating prompt cost:",
                                        value: Duration.nanoseconds(promptEvalDuration).formatted(.units(allowed: [.seconds])))
                     }
-                    if let evalDuration = message.evalDuration {
+                    if let evalDurationInSecond = message.evalDurationInSecond {
                         LabeledContent("Generating response cost:",
-                                       value: Duration.nanoseconds(evalDuration).formatted(.units(allowed: [.seconds])))
+                                       value: Duration.seconds(evalDurationInSecond).formatted(.units(allowed: [.seconds])))
                     }
-                }
-                .padding()
+                    if let tokenPerSecond = message.tokenPerSecond {
+                        LabeledContent("Token per second:",
+                                       value: "\(tokenPerSecond.formatted(.number.precision(.fractionLength(2))))/s")
+                    }
+                }.padding()
             }
             
         }

@@ -11,7 +11,6 @@ import AVFoundation
 import Combine
 import TipKit
 
-import Sparkle
 import OllamaKit
 
 @main
@@ -19,10 +18,8 @@ struct ModelCraftApp: App {
     
     let sharedModelContainer: ModelContainer = {
         let schema = Schema([
-            Message.self,
-            Chat.self,
-            ModelTask.self,
-            KnowledgeBase.self,
+            Message.self, Chat.self, ModelTask.self,
+            KnowledgeBase.self, Prompt.self,
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 
@@ -42,10 +39,7 @@ struct ModelCraftApp: App {
     
     private let speechSynthesizer = AVSpeechSynthesizer()
     
-    private let updaterController: SPUStandardUpdaterController
-    
     init() {
-        updaterController = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: nil, userDriverDelegate: nil)
         startOllamaServer()
     }
     
@@ -93,9 +87,6 @@ struct ModelCraftApp: App {
             SidebarCommands()
             ToolbarCommands()
             InspectorCommands()
-            CommandGroup(after: .appInfo) {
-                CheckForUpdatesView(updater: updaterController.updater)
-            }
         }
     }
     

@@ -34,6 +34,7 @@ struct LocalModelsView: View {
             ForEach(models, id: \.name) { model in
                 ListCell(model).tag(model.name)
             }
+            
             ForEach(downloadTasks) { task in
                 HStack{
                     Label(task.modelName, systemImage: "shippingbox")

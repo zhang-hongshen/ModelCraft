@@ -61,4 +61,14 @@ class Message {
         self.status = status
     }
     
+    var evalDurationInSecond: Double? {
+        guard let evalDuration else { return nil }
+        
+        return Double(evalDuration) / 1_000_000_000
+    }
+    
+    var tokenPerSecond: Double? {
+        guard let evalCount, let evalDurationInSecond, evalDurationInSecond > 0 else { return nil }
+        return Double(evalCount) / evalDurationInSecond
+    }
 }

@@ -115,6 +115,7 @@ extension Theme {
                 }
                 .font(.subheadline)
                 .padding(Default.padding)
+                .frame(height: 30)
                 .background(.ultraThinMaterial)
             }
             .background(Color.codeBackground)

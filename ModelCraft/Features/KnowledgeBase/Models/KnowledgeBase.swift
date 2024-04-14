@@ -62,7 +62,7 @@ extension KnowledgeBase {
         indexStatus = .indexed
     }
     
-    func embedFromFiles(_ urls: [URL]) {
+    func embedFromFiles(_ urls: [LocalFileURL]) {
         let retriever = Retriever(collectionName)
         let fileManager = FileManager.default
         do  {

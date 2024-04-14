@@ -10,17 +10,35 @@ import SwiftUI
 struct KnowledgeBaseDetailGridView: View {
     
     @Bindable var konwledgeBase: KnowledgeBase
-    @Binding var selection: Set<URL>
+    @Binding var selections: Set<LocalFileURL>
+    
     @State private var columns: [GridItem] = []
+    
     private let gridCellWidth: CGFloat = 80
     private let columnPadding: CGFloat = 20
     // gridCellWidth + columnPadding
     private let width: CGFloat = 100
+    
+    private var files: [LocalFileURL] { konwledgeBase.orderedFiles }
+    
+    private var defaultSelection: LocalFileURL? { files.first }
+    
+    private var preSelection: LocalFileURL? {
+        guard let selection = selections.first else { return defaultSelection }
+        return files.element(before: selection)
+    }
+    
+    private var nextSelection: LocalFileURL? {
+        guard let selection = selections.first else { return defaultSelection }
+        guard let element = files.element(after: selection) else { return files.first }
+        return element
+    }
+    
     var body: some View {
         GeometryReader { proxy in
             ScrollView {
                 LazyVGrid(columns: columns, spacing: 20){
-                    ForEach(konwledgeBase.orderedFiles) { url in
+                    ForEach(files) { url in
                         GridCell(url)
                     }
                 }
@@ -36,6 +54,11 @@ struct KnowledgeBaseDetailGridView: View {
                                 count: count)
             }
             .animation(.smooth, value: columns.count)
+            .focusable()
+            .focusEffectDisabled()
+            .onKeyPress(keys: [.leftArrow, .rightArrow, .upArrow, .downArrow]) { keyPress in
+                keyAction(keyPress.key)
+            }
         }
         .frame(minWidth: width * 2)
     }
@@ -47,7 +70,7 @@ struct KnowledgeBaseDetailGridView: View {
                 .padding(Default.padding)
                 .frame(width: gridCellWidth, height: gridCellWidth)
                 .background {
-                    if selection.contains(url) {
+                    if selections.contains(url) {
                         RoundedRectangle().fill(.selection)
                     }
                 }
@@ -60,24 +83,42 @@ struct KnowledgeBaseDetailGridView: View {
         .frame(width: gridCellWidth)
         .onTapGesture {
             if NSApp.currentEvent?.modifierFlags.contains(.command) == true {
-                if selection.contains(url) {
-                    selection.remove(url)
+                if selections.contains(url) {
+                    selections.remove(url)
                 } else {
-                    selection.insert(url)
+                    selections.insert(url)
                 }
             } else {
-                selection = [url]
+                selections = [url]
             }
         }
     }
+    
+}
 
+extension KnowledgeBaseDetailGridView {
+    
     func clearSelection() {
-        selection = []
+        selections = []
+    }
+    
+    func keyAction(_ key: KeyEquivalent) -> KeyPress.Result {
+        var selection: LocalFileURL? = nil
+        switch key {
+        case .leftArrow: selection = preSelection
+        case .rightArrow: selection = nextSelection
+        case .upArrow: break
+        case .downArrow: break
+        default: return .ignored
+        }
+        if let selection {
+            selections = [selection]
+        }
+        return .handled
     }
 }
 
-
 #Preview {
     KnowledgeBaseDetailGridView(konwledgeBase: KnowledgeBase(),
-                                selection: .constant([]))
+                                selections: .constant([]))
 }

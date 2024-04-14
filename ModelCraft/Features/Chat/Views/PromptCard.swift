@@ -9,7 +9,7 @@ import SwiftUI
 
 struct PromptCard: View {
     
-    var prompt: Prompt
+    var prompt: PromptSuggestion
     var width: CGFloat
 
     @State private var isHovering = false
@@ -31,6 +31,6 @@ struct PromptCard: View {
 }
 
 #Preview {
-    PromptCard(prompt: Prompt(title: "title", description: "description", prompt: "prompt"),
+    PromptCard(prompt: PromptSuggestion(title: "title", description: "description", prompt: "prompt"),
                width: 200)
 }

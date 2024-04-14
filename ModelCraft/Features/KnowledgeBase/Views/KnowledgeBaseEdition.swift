@@ -91,10 +91,8 @@ extension KnowledgeBaseEdition {
     
     @ViewBuilder
     func FilesView() -> some View {
-        List(selection: $selectedFiles) {
-            ForEach(konwledgeBase.orderedFiles, id: \.self) { url in
-                ListCell(url).tag(url)
-            }
+        List(konwledgeBase.orderedFiles, selection: $selectedFiles) { url in
+            ListCell(url).tag(url)
         }
         .listStyle(.inset)
     }

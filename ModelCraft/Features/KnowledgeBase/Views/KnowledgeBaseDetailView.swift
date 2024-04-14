@@ -13,7 +13,7 @@ struct KnowledgeBaseDetailView: View {
     @Bindable var konwledgeBase: KnowledgeBase
     
     @State private var fileImporterPresented: Bool = false
-    @State private var selectedFiles: Set<URL> = []
+    @State private var selectedFiles: Set<LocalFileURL> = []
     @State private var selectedViewType: ViewType = .list
 
     @Environment(\.errorWrapper) private var errorWrapper
@@ -65,9 +65,9 @@ extension KnowledgeBaseDetailView {
     func ContentView() -> some View {
         switch selectedViewType {
         case .list: KnowledgeBaseDetailListView(konwledgeBase: konwledgeBase,
-                                                selection: $selectedFiles)
+                                                selections: $selectedFiles)
         case .grid: KnowledgeBaseDetailGridView(konwledgeBase: konwledgeBase,
-                                                selection: $selectedFiles)
+                                                selections: $selectedFiles)
         }
             
     }

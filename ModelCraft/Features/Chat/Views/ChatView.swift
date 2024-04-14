@@ -15,6 +15,7 @@ import OllamaKit
 struct ChatView: View {
     
     @Bindable var chat: Chat
+    
     @Query private var knowledgeBases: [KnowledgeBase] = []
     
     @State private var draft = Message(role: .user)
@@ -34,10 +35,12 @@ struct ChatView: View {
     @State private var chatStatus: ChatStatus = .assistantWaitingForRequest
     @State private var cancellables = Set<AnyCancellable>()
     @State private var columns: [GridItem] = []
-    @State private var prompts: [Prompt] = Array(Prompt.examples().shuffled().prefix(4))
+    @State private var promptSuggestions: [PromptSuggestion] = Array(PromptSuggestion.examples().shuffled().prefix(4))
+    
     private let promptCardWidth: CGFloat = 250
     private let promptCardHorizontalSpacing: CGFloat = 20
     private let width: CGFloat = 270
+    
     @Environment(\.modelContext) private var modelContext
     @Environment(\.serverStatus) private var serverStatus
     @Environment(\.downaloadedModels) private var models
@@ -51,7 +54,7 @@ struct ChatView: View {
             .frame(minWidth: width,
                    minHeight: 250)
             .toolbar(content: ToolbarItems)
-            .safeAreaInset(edge: .bottom, content: MessageInput)
+            .safeAreaInset(edge: .bottom, content: MessageEditionView)
             .onDrop(of: [.image], isTargeted: nil, perform: dropImages)
             .fileImporter(isPresented: $fileImporterPresented,
                           allowedContentTypes: [.image],
@@ -123,10 +126,20 @@ extension ChatView {
     @ViewBuilder
     func MainView() -> some View {
         if chat.messages.isEmpty {
-            PromptView()
+            PromptSuggestionsView()
         } else {
             ScrollViewReader { proxy in
-                ScrollView(content: MessageList)
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 10) {
+                        ForEach(chat.orderedMessages) { message in
+                            MessageView(message: message).id(message.id)
+                                .scrollTargetLayout()
+                        }
+                    }
+                    .safeAreaPadding(.top, Default.padding)
+                }
+                .contentMargins(.leading, Default.padding, for: .scrollContent)
+                .contentMargins(0, for: .scrollIndicators)
                 .onChange(of: chat.messages) {
                     // don't scroll when user are scrolling
                     scrollToBottom(proxy)
@@ -142,7 +155,7 @@ extension ChatView {
     }
     
     @ViewBuilder
-    func PromptView() -> some View {
+    func PromptSuggestionsView() -> some View {
         GeometryReader { proxy in
             ScrollView {
                 VStack(alignment: .center) {
@@ -156,7 +169,7 @@ extension ChatView {
                         .multilineTextAlignment(.leading)
                     
                     LazyVGrid(columns: columns) {
-                        ForEach(prompts) { prompt in
+                        ForEach(promptSuggestions) { prompt in
                             PromptCard(prompt: prompt, width: promptCardWidth)
                                 .onTapGesture {
                                     submitPrompt(prompt)
@@ -178,69 +191,94 @@ extension ChatView {
         }
     }
     
+}
+
+// MARK: - Message Edition
+
+extension ChatView {
+    
     @ViewBuilder
-    func MessageList() -> some View {
-        VStack(alignment: .leading, spacing: 20) {
-            ForEach(chat.orderedMessages) { message in
-                MessageView(message: message).id(message.id).scrollTargetLayout()
+    func MessageEditionView() -> some View {
+        VStack {
+            PromptSearchView(searchText: $draft.content) {
+                draft.content = $0
             }
+            .frame(maxHeight: 100)
+            .fixedSize(horizontal: false, vertical: true)
+            .cornerRadius()
+            
+            HStack(alignment: .bottom) {
+                UploadImageButton()
+                
+                MessageEditor().gridCellColumns(3)
+                
+                Group {
+                    if chatStatus != .assistantWaitingForRequest {
+                        StopGenerateMessageButton()
+                    } else {
+                        SubmitMessageButton()
+                    }
+                }
+                .padding(.bottom, Default.padding)
+            }
+            .imageScale(.large)
+            .background(.ultraThinMaterial)
         }
-        .padding()
+        .buttonStyle(.borderless)
+        .safeAreaPadding(Default.padding)
     }
     
     @ViewBuilder
-    func MessageInput() -> some View {
-        HStack(alignment: .bottom) {
-            Button {
-                fileImporterPresented = true
-            } label: {
-                Image(systemName: "plus.circle")
-            }.padding(.bottom, Default.padding)
-            
-            VStack(alignment: .leading) {
-                if !draft.images.isEmpty {
-                    ScrollView(.horizontal) {
-                        HStack(alignment: .center) {
-                            ForEach(draft.images, id: \.self) { data in
-                                InputImage(data: data) {
-                                    draft.images.removeAll { $0 == data }
-                                }.frame(height: 50)
-                            }
+    func MessageEditor() -> some View {
+        VStack(alignment: .leading) {
+            if !draft.images.isEmpty {
+                ScrollView(.horizontal) {
+                    HStack(alignment: .center) {
+                        ForEach(draft.images, id: \.self) { data in
+                            InputImage(data: data) {
+                                draft.images.removeAll { $0 == data }
+                            }.frame(height: 50)
                         }
                     }
                 }
-                
-                TextEditor(text: $draft.content)
-                    .frame(maxHeight: 100)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .font(.title3)
-                    .textEditorStyle(.plain)
-            }
-            .padding(Default.padding)
-            .overlay {
-                RoundedRectangle().fill(.clear).stroke(.primary, lineWidth: 1)
             }
             
-            Group {
-                if chatStatus != .assistantWaitingForRequest {
-                    Button(action: stopGenerateMessage) {
-                        Image(systemName: "stop.circle.fill")
-                    }
-                } else {
-                    let disabled = selectedModel.wrappedValue == nil || draft.content.isEmpty
-                    Button(action: submitDraft) {
-                        Image(systemName: "arrow.up.circle.fill")
-                    }
-                    .tint(disabled ? .secondary : .accentColor)
-                    .disabled(disabled)
-                }
-            }
-            .padding(.bottom, Default.padding)
+            TextEditor(text: $draft.content)
+                .frame(maxHeight: 100)
+                .fixedSize(horizontal: false, vertical: true)
+                .font(.title3)
+                .textEditorStyle(.plain)
         }
-        .imageScale(.large)
-        .buttonStyle(.borderless)
-        .safeAreaPadding(Default.padding)
-        .background(.ultraThinMaterial)
+        .padding(Default.padding)
+        .overlay {
+            RoundedRectangle().fill(.clear).stroke(.primary, lineWidth: 1)
+        }
+    }
+    
+    @ViewBuilder
+    func UploadImageButton() -> some View {
+        Button {
+            fileImporterPresented = true
+        } label: {
+            Image(systemName: "plus.circle")
+        }.padding(.bottom, Default.padding)
+    }
+    
+    @ViewBuilder
+    func StopGenerateMessageButton() -> some View {
+        Button(action: stopGenerateMessage) {
+            Image(systemName: "stop.circle.fill")
+        }
+    }
+    
+    @ViewBuilder
+    func SubmitMessageButton() -> some View {
+        let disabled = selectedModel.wrappedValue == nil || draft.content.isEmpty
+        Button(action: submitDraft) {
+            Image(systemName: "arrow.up.circle.fill")
+        }
+        .tint(disabled ? .secondary : .accentColor)
+        .disabled(disabled)
     }
 }
 
@@ -268,7 +306,7 @@ extension ChatView {
         }
     }
     
-    func submitPrompt(_ prompt: Prompt) {
+    func submitPrompt(_ prompt: PromptSuggestion) {
         let message = Message(role: .user,
                               content: prompt.prompt,
                               images: [])

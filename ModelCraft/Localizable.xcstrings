@@ -4,6 +4,9 @@
     "" : {
 
     },
+    "/%@" : {
+
+    },
     "%@ / %@" : {
       "localizations" : {
         "en" : {
@@ -30,6 +33,9 @@
         }
       }
     },
+    "💡" : {
+
+    },
     "Add Files" : {
       "localizations" : {
         "zh-Hans" : {
@@ -39,6 +45,9 @@
           }
         }
       }
+    },
+    "Add Prompt" : {
+
     },
     "Appearance" : {
       "localizations" : {
@@ -101,6 +110,7 @@
       }
     },
     "Check for Updates…" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -121,6 +131,9 @@
         }
       }
     },
+    "Command" : {
+
+    },
     "Completed" : {
       "localizations" : {
         "zh-Hans" : {
@@ -140,6 +153,9 @@
           }
         }
       }
+    },
+    "Content" : {
+
     },
     "Copied" : {
       "localizations" : {
@@ -332,6 +348,9 @@
         }
       }
     },
+    "Info" : {
+
+    },
     "Knowledge Base" : {
       "localizations" : {
         "zh-Hans" : {
@@ -512,6 +531,12 @@
     "Please try again!" : {
 
     },
+    "Prompt" : {
+
+    },
+    "Prompts" : {
+
+    },
     "Quit" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -596,6 +621,9 @@
         }
       }
     },
+    "Shortcut" : {
+
+    },
     "Show menu bar icon" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -657,6 +685,9 @@
         }
       }
     },
+    "This is an Placeholder" : {
+
+    },
     "Thread" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -687,6 +718,9 @@
           }
         }
       }
+    },
+    "Token per second:" : {
+
     },
     "Total cost:" : {
       "localizations" : {

@@ -58,11 +58,20 @@ extension ModelStore {
     
     @ViewBuilder
     func ContentView() -> some View {
-        List(selection: $selectedModelName) {
-            ForEach(filteredModels, id: \.name) { model in
-                ListCell(model)
+        if isLoading {
+            List {
+                ForEach(0..<5) { _ in
+                    Text("This is an Placeholder").redacted(reason: .placeholder)
+                }
+            }
+        } else {
+            List(selection: $selectedModelName) {
+                ForEach(filteredModels, id: \.name) { model in
+                    ListCell(model)
+                }
             }
         }
+        
     }
     
     @ViewBuilder

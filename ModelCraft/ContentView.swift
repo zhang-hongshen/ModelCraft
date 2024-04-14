@@ -21,7 +21,7 @@ struct ContentView: View {
     enum Tab: Hashable {
         case chat(Chat)
         case knowledgeBase(KnowledgeBase)
-        case localModel, modelStore
+        case localModels, modelStore, prompts
     }
     
     @State private var currentTab: Tab? = nil
@@ -66,6 +66,7 @@ extension ContentView {
             ChatSection()
             KnowledgeBaseSection()
             ModelSection()
+            PromptSection()
         }
         .listStyle(.sidebar)
         .navigationSplitViewColumnWidth(min: 160, ideal: 180)
@@ -134,9 +135,18 @@ extension ContentView {
     func ModelSection() -> some View {
         Section {
             Label("Model Store", systemImage: "storefront").tag(Tab.modelStore)
-            Label("Local Models", systemImage: "shippingbox").tag(Tab.localModel)
+            Label("Local Models", systemImage: "shippingbox").tag(Tab.localModels)
         } header: {
             Text("Model")
+        }
+    }
+    
+    @ViewBuilder
+    func PromptSection() -> some View {
+        Section {
+            Label("Prompts", systemImage: "lightbulb.max").tag(Tab.prompts)
+        } header: {
+            Text("Prompt")
         }
     }
     
@@ -152,8 +162,10 @@ extension ContentView {
             case .knowledgeBase(let knowledgeBase):
                 KnowledgeBaseDetailView(konwledgeBase: knowledgeBase)
                     .navigationTitle(knowledgeBase.title)
-            case .localModel:
+            case .localModels:
                 LocalModelsView().navigationTitle("Local Models")
+            case .prompts:
+                PromptsView()
             case .none:
                 EmptyView()
             }
