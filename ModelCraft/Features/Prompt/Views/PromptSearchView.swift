@@ -45,7 +45,7 @@ struct PromptSearchView: View {
         if filteredPrompts.isEmpty {
             EmptyView()
         } else {
-            ScrollView(.vertical) {
+            ScrollView {
                 VStack(alignment: .leading) {
                     ForEach(filteredPrompts) { prompt in
                         Button {
@@ -53,39 +53,18 @@ struct PromptSearchView: View {
                         } label: {
                             HStack {
                                 Text("/\(prompt.command)").font(.headline)
-                                Text(prompt.title).font(.subheadline)
+                                Text(prompt.title).lineLimit(1).font(.subheadline)
                                 Spacer()
-                            }
-                            .padding(Default.padding)
-                            .cornerRadius()
+                            }.padding(Default.padding).hoverEffect()
                         }
-                        .background {
-                            if selection == prompt {
-                                RoundedRectangle().fill(.thinMaterial)
-                            }
-                        }
-                        .onHover { isHovering in
-                            if isHovering {
-                                selection = prompt
-                            }
-                        }
-                        .id(prompt.id)
+                        .buttonStyle(.borderless)
+                        .keyboardShortcut(.tab, modifiers: [])
                     }
                 }
-                .buttonStyle(.borderless)
-                .padding(.vertical, Default.padding)
-                .padding(.trailing, Default.padding)
+                .safeAreaPadding(Default.padding)
             }
-            .scrollIndicators(.never, axes: .vertical)
-            .focusable()
-            .focusEffectDisabled()
-            .onKeyPress(keys: [.upArrow, .downArrow, .return]) { keyPress in
-                keyAction(keyPress.key)
-            }
-            .safeAreaInset(edge: .leading) {
-                Text("💡").padding(.leading, Default.padding)
-            }
-            .background(.ultraThinMaterial)
+            .scrollIndicators(.never)
+            .contentMargins(0, for: .scrollIndicators)
         }
     }
 }

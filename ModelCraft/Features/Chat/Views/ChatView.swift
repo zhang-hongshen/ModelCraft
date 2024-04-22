@@ -51,6 +51,15 @@ struct ChatView: View {
     
     var body: some View {
         MainView()
+            .overlay(alignment: .bottom) {
+                PromptSearchView(searchText: $draft.content) {
+                    draft.content = $0
+                }
+                .frame(maxHeight: 90)
+                .background(.ultraThinMaterial)
+                .cornerRadius()
+                .padding(.horizontal)
+            }
             .frame(minWidth: width,
                    minHeight: 250)
             .toolbar(content: ToolbarItems)
@@ -68,34 +77,6 @@ struct ChatView: View {
                   cancellable.cancel()
                 }
                 chatStatus = .assistantResponding
-            }
-    }
-}
-
-struct InputImage: View {
-    
-    @State var data: Data?
-    let action: () -> Void
-    
-    @State private var isHovering: Bool = false
-    
-    init(data: Data?, action: @escaping () -> Void) {
-        self.data = data
-        self.action = action
-    }
-    
-    var body: some View {
-        ImageLoader(data: data, contentMode: .fit)
-            .overlay(alignment: .bottomTrailing){
-                if isHovering {
-                    Button(action: action) {
-                        Image(systemName: "xmark.circle.fill")
-                    }
-                }
-            }
-            .onHover(perform: { isHovering = $0 })
-            .contextMenu {
-                DeleteButton(action: action)
             }
     }
 }
@@ -199,19 +180,10 @@ extension ChatView {
     
     @ViewBuilder
     func MessageEditionView() -> some View {
-        VStack {
-            PromptSearchView(searchText: $draft.content) {
-                draft.content = $0
-            }
-            .frame(maxHeight: 100)
-            .fixedSize(horizontal: false, vertical: true)
-            .cornerRadius()
-            
-            HStack(alignment: .bottom) {
+        MessageEditor()
+            .safeAreaInset(edge: .leading) {
                 UploadImageButton()
-                
-                MessageEditor().gridCellColumns(3)
-                
+            }.safeAreaInset(edge: .trailing) {
                 Group {
                     if chatStatus != .assistantWaitingForRequest {
                         StopGenerateMessageButton()
@@ -219,13 +191,11 @@ extension ChatView {
                         SubmitMessageButton()
                     }
                 }
-                .padding(.bottom, Default.padding)
             }
             .imageScale(.large)
             .background(.ultraThinMaterial)
-        }
-        .buttonStyle(.borderless)
-        .safeAreaPadding(Default.padding)
+            .buttonStyle(.borderless)
+            .safeAreaPadding()
     }
     
     @ViewBuilder
@@ -235,7 +205,7 @@ extension ChatView {
                 ScrollView(.horizontal) {
                     HStack(alignment: .center) {
                         ForEach(draft.images, id: \.self) { data in
-                            InputImage(data: data) {
+                            ImageView(data: data) {
                                 draft.images.removeAll { $0 == data }
                             }.frame(height: 50)
                         }
@@ -261,7 +231,7 @@ extension ChatView {
             fileImporterPresented = true
         } label: {
             Image(systemName: "plus.circle")
-        }.padding(.bottom, Default.padding)
+        }
     }
     
     @ViewBuilder

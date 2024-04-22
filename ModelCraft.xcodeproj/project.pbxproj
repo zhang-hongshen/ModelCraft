@@ -7,8 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		7019541A2BC7891C00CD2ED3 /* ollama in Resources */ = {isa = PBXBuildFile; fileRef = 701954192BC7891C00CD2ED3 /* ollama */; };
-		7019541B2BC7892900CD2ED3 /* ollama in CopyFiles */ = {isa = PBXBuildFile; fileRef = 701954192BC7891C00CD2ED3 /* ollama */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		701954232BC8244E00CD2ED3 /* Retriever.swift in Sources */ = {isa = PBXBuildFile; fileRef = 701954222BC8244E00CD2ED3 /* Retriever.swift */; };
 		701954252BC8286E00CD2ED3 /* TextSplitter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 701954242BC8286E00CD2ED3 /* TextSplitter.swift */; };
 		701954272BC8D9ED00CD2ED3 /* MessageTemplate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 701954262BC8D9ED00CD2ED3 /* MessageTemplate.swift */; };
@@ -31,6 +29,7 @@
 		7067E81E2BCBBE7200FF2797 /* PromptEditionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7067E81D2BCBBE7200FF2797 /* PromptEditionView.swift */; };
 		7067E8202BCBC05C00FF2797 /* InfoButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7067E81F2BCBC05C00FF2797 /* InfoButton.swift */; };
 		7067E8222BCBC8DD00FF2797 /* PromptSearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7067E8212BCBC8DD00FF2797 /* PromptSearchView.swift */; };
+		7067E8242BCD1AE600FF2797 /* ImageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7067E8232BCD1AE600FF2797 /* ImageView.swift */; };
 		7078AB342BB514A9004B3819 /* ModelTaskStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7078AB332BB514A9004B3819 /* ModelTaskStatus.swift */; };
 		70896C632BB727AB006FEF6A /* ModelContext+.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70896C622BB727AB006FEF6A /* ModelContext+.swift */; };
 		70955E8E2BB2E29B00015B79 /* Comparable+.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70955E8D2BB2E29B00015B79 /* Comparable+.swift */; };
@@ -79,6 +78,8 @@
 		70CE60C32BAD616600A2D0B0 /* GeneralView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70CE60C22BAD616600A2D0B0 /* GeneralView.swift */; };
 		70CE60C62BAD61F600A2D0B0 /* UserDefaults+.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70CE60C52BAD61F600A2D0B0 /* UserDefaults+.swift */; };
 		70CE60C82BAD705E00A2D0B0 /* Chat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70CE60C72BAD705E00A2D0B0 /* Chat.swift */; };
+		70D238982BD616C900C55AF7 /* ollama in Resources */ = {isa = PBXBuildFile; fileRef = 70D238972BD616C800C55AF7 /* ollama */; };
+		70D238992BD617A800C55AF7 /* ollama in CopyFiles */ = {isa = PBXBuildFile; fileRef = 70D238972BD616C800C55AF7 /* ollama */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		70E201722BADE31700CFE1D7 /* Alamofire in Frameworks */ = {isa = PBXBuildFile; productRef = 70E201712BADE31700CFE1D7 /* Alamofire */; };
 		70E2017B2BAE825A00CFE1D7 /* ChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70E2017A2BAE825A00CFE1D7 /* ChatView.swift */; };
 		70E2017D2BAEA9DE00CFE1D7 /* OllamaService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70E2017C2BAEA9DE00CFE1D7 /* OllamaService.swift */; };
@@ -121,14 +122,13 @@
 			dstPath = "";
 			dstSubfolderSpec = 6;
 			files = (
-				7019541B2BC7892900CD2ED3 /* ollama in CopyFiles */,
+				70D238992BD617A800C55AF7 /* ollama in CopyFiles */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		701954192BC7891C00CD2ED3 /* ollama */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.executable"; path = ollama; sourceTree = "<group>"; };
 		701954222BC8244E00CD2ED3 /* Retriever.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Retriever.swift; sourceTree = "<group>"; };
 		701954242BC8286E00CD2ED3 /* TextSplitter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextSplitter.swift; sourceTree = "<group>"; };
 		701954262BC8D9ED00CD2ED3 /* MessageTemplate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageTemplate.swift; sourceTree = "<group>"; };
@@ -152,6 +152,7 @@
 		7067E81D2BCBBE7200FF2797 /* PromptEditionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptEditionView.swift; sourceTree = "<group>"; };
 		7067E81F2BCBC05C00FF2797 /* InfoButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InfoButton.swift; sourceTree = "<group>"; };
 		7067E8212BCBC8DD00FF2797 /* PromptSearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptSearchView.swift; sourceTree = "<group>"; };
+		7067E8232BCD1AE600FF2797 /* ImageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageView.swift; sourceTree = "<group>"; };
 		7078AB332BB514A9004B3819 /* ModelTaskStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelTaskStatus.swift; sourceTree = "<group>"; };
 		70896C622BB727AB006FEF6A /* ModelContext+.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ModelContext+.swift"; sourceTree = "<group>"; };
 		70955E8D2BB2E29B00015B79 /* Comparable+.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "Comparable+.swift"; sourceTree = "<group>"; };
@@ -199,6 +200,7 @@
 		70CE60C22BAD616600A2D0B0 /* GeneralView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeneralView.swift; sourceTree = "<group>"; };
 		70CE60C52BAD61F600A2D0B0 /* UserDefaults+.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "UserDefaults+.swift"; sourceTree = "<group>"; };
 		70CE60C72BAD705E00A2D0B0 /* Chat.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Chat.swift; sourceTree = "<group>"; };
+		70D238972BD616C800C55AF7 /* ollama */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.executable"; path = ollama; sourceTree = "<group>"; };
 		70E2017A2BAE825A00CFE1D7 /* ChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatView.swift; sourceTree = "<group>"; };
 		70E2017C2BAEA9DE00CFE1D7 /* OllamaService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OllamaService.swift; sourceTree = "<group>"; };
 		70E201842BAEC08900CFE1D7 /* SplashCodeSyntaxHighlighter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplashCodeSyntaxHighlighter.swift; sourceTree = "<group>"; };
@@ -241,7 +243,7 @@
 		701954182BC788D200CD2ED3 /* Executables */ = {
 			isa = PBXGroup;
 			children = (
-				701954192BC7891C00CD2ED3 /* ollama */,
+				70D238972BD616C800C55AF7 /* ollama */,
 			);
 			path = Executables;
 			sourceTree = "<group>";
@@ -324,6 +326,7 @@
 				70E2017A2BAE825A00CFE1D7 /* ChatView.swift */,
 				70C22FEA2BAFDB1E002754C7 /* MessageView.swift */,
 				70A574B92BB14D38008E3750 /* PromptCard.swift */,
+				7067E8232BCD1AE600FF2797 /* ImageView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -661,7 +664,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				7019541A2BC7891C00CD2ED3 /* ollama in Resources */,
+				70D238982BD616C900C55AF7 /* ollama in Resources */,
 				70CE60722BAD2D4600A2D0B0 /* Preview Assets.xcassets in Resources */,
 				70CE606E2BAD2D4600A2D0B0 /* Assets.xcassets in Resources */,
 				70A574AA2BB07264008E3750 /* Localizable.xcstrings in Resources */,
@@ -722,6 +725,7 @@
 				70CE60BE2BAD60AE00A2D0B0 /* SettingsView.swift in Sources */,
 				70C22FD12BAF2C35002754C7 /* RoundedRectangle+.swift in Sources */,
 				7097F96B2BB02DD2001A91E3 /* ModelTask.swift in Sources */,
+				7067E8242BCD1AE600FF2797 /* ImageView.swift in Sources */,
 				70C22FC82BAECD55002754C7 /* Default.swift in Sources */,
 				70896C632BB727AB006FEF6A /* ModelContext+.swift in Sources */,
 				7067E81C2BCBBC7D00FF2797 /* PromptsView.swift in Sources */,
@@ -914,7 +918,7 @@
 				CODE_SIGN_ENTITLEMENTS = ModelCraft/ModelCraft.entitlements;
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"ModelCraft/Preview Content\"";
 				DEVELOPMENT_TEAM = DTZV6LDYD5;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -939,7 +943,7 @@
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 0.2;
+				MARKETING_VERSION = 0.3;
 				PRODUCT_BUNDLE_IDENTIFIER = com.zhanghongshen.ModelCraft;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
@@ -960,7 +964,7 @@
 				CODE_SIGN_ENTITLEMENTS = ModelCraft/ModelCraft.entitlements;
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"ModelCraft/Preview Content\"";
 				DEVELOPMENT_TEAM = DTZV6LDYD5;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -985,7 +989,7 @@
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 0.2;
+				MARKETING_VERSION = 0.3;
 				PRODUCT_BUNDLE_IDENTIFIER = com.zhanghongshen.ModelCraft;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;

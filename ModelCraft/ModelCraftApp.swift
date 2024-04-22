@@ -148,6 +148,7 @@ extension ModelCraftApp {
             }
             .store(in: &cancellables)
     }
+    
     func shell(_ command: String) throws {
         let process = Process()
         
@@ -162,8 +163,12 @@ extension ModelCraftApp {
         }
         
         if let path = ProcessInfo.processInfo.environment["PATH"] {
-            var paths = "/usr/local/bin:/opt/homebrew/bin:/opt/homebrew/bin:/opt/homebrew/sbin:"+path
-            process.environment = ["PATH": paths]
+            process.environment = ["PATH": """
+                                   /usr/local/bin:
+                                   /opt/homebrew/bin:
+                                   /opt/homebrew/bin:
+                                   /opt/homebrew/sbin:
+                                   """+path]
         }
         try process.run()
         process.waitUntilExit()

@@ -34,7 +34,6 @@ struct HoverEffectModifier: ViewModifier {
     
     func body(content: Content) -> some View {
         content.onHover { isHovering = $0 }
-            .padding(Default.padding)
             .background {
                 if isHovering {
                     RoundedRectangle().fill(.selection)
