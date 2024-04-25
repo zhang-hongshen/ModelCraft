@@ -69,7 +69,7 @@ extension ContentView {
             PromptSection()
         }
         .listStyle(.sidebar)
-        .navigationSplitViewColumnWidth(min: 160, ideal: 180)
+        .navigationSplitViewColumnWidth(min: 160, ideal: 170, max: 180)
         .safeAreaInset(edge: .bottom) {
             ServerStatusView().padding()
         }
