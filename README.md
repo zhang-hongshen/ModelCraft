@@ -1,5 +1,7 @@
 <div align="center"><img alt="ModelCraft" height="200px" src="./logo.png" /></div>
 
+[![zh-CN](https://img.shields.io/badge/lang-简体中文-red.svg)](./README_zh-CN.md)
+
 ## 💡 What is ModelCraft ?
 
 ModelCraft is a native RAG(Retrieval-Augmented Generation) app for macOS.  It offers the full chain path of chatting with models locally, from downloading models to building your knowledge base .
