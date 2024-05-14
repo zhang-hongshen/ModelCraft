@@ -1,0 +1,10 @@
+name: codesign
+run-name: ${{ github.actor }} is codesigning
+on: [push]
+jobs:
+  codesign:
+    runs-on: macos-14
+    steps:
+      - run: /usr/libexec/PlistBuddy -c "Add :com.apple.security.app-sandbox bool true" "ollama.entitlements"
+      - run: /usr/libexec/PlistBuddy -c "Add :com.apple.security.inherit bool true" ollama.entitlements
+      - run: codesign -s - -i com.zhanghongshen.ModelCraft.ollama -o runtime --entitlements ollama.entitlements -f ollama

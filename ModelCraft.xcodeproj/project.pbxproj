@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		7001F55C2BF2F43500E66BDC /* ollama in Resources */ = {isa = PBXBuildFile; fileRef = 7001F55B2BF2F43500E66BDC /* ollama */; };
+		7001F55D2BF2F44B00E66BDC /* ollama in CopyFiles */ = {isa = PBXBuildFile; fileRef = 7001F55B2BF2F43500E66BDC /* ollama */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		701954232BC8244E00CD2ED3 /* Retriever.swift in Sources */ = {isa = PBXBuildFile; fileRef = 701954222BC8244E00CD2ED3 /* Retriever.swift */; };
 		701954252BC8286E00CD2ED3 /* TextSplitter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 701954242BC8286E00CD2ED3 /* TextSplitter.swift */; };
 		701954272BC8D9ED00CD2ED3 /* MessageTemplate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 701954262BC8D9ED00CD2ED3 /* MessageTemplate.swift */; };
@@ -78,8 +80,6 @@
 		70CE60C32BAD616600A2D0B0 /* GeneralView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70CE60C22BAD616600A2D0B0 /* GeneralView.swift */; };
 		70CE60C62BAD61F600A2D0B0 /* UserDefaults+.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70CE60C52BAD61F600A2D0B0 /* UserDefaults+.swift */; };
 		70CE60C82BAD705E00A2D0B0 /* Chat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70CE60C72BAD705E00A2D0B0 /* Chat.swift */; };
-		70D238982BD616C900C55AF7 /* ollama in Resources */ = {isa = PBXBuildFile; fileRef = 70D238972BD616C800C55AF7 /* ollama */; };
-		70D238992BD617A800C55AF7 /* ollama in CopyFiles */ = {isa = PBXBuildFile; fileRef = 70D238972BD616C800C55AF7 /* ollama */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		70E201722BADE31700CFE1D7 /* Alamofire in Frameworks */ = {isa = PBXBuildFile; productRef = 70E201712BADE31700CFE1D7 /* Alamofire */; };
 		70E2017B2BAE825A00CFE1D7 /* ChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70E2017A2BAE825A00CFE1D7 /* ChatView.swift */; };
 		70E2017D2BAEA9DE00CFE1D7 /* OllamaService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70E2017C2BAEA9DE00CFE1D7 /* OllamaService.swift */; };
@@ -122,13 +122,14 @@
 			dstPath = "";
 			dstSubfolderSpec = 6;
 			files = (
-				70D238992BD617A800C55AF7 /* ollama in CopyFiles */,
+				7001F55D2BF2F44B00E66BDC /* ollama in CopyFiles */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		7001F55B2BF2F43500E66BDC /* ollama */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.executable"; path = ollama; sourceTree = "<group>"; };
 		701954222BC8244E00CD2ED3 /* Retriever.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Retriever.swift; sourceTree = "<group>"; };
 		701954242BC8286E00CD2ED3 /* TextSplitter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextSplitter.swift; sourceTree = "<group>"; };
 		701954262BC8D9ED00CD2ED3 /* MessageTemplate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageTemplate.swift; sourceTree = "<group>"; };
@@ -200,7 +201,6 @@
 		70CE60C22BAD616600A2D0B0 /* GeneralView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeneralView.swift; sourceTree = "<group>"; };
 		70CE60C52BAD61F600A2D0B0 /* UserDefaults+.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "UserDefaults+.swift"; sourceTree = "<group>"; };
 		70CE60C72BAD705E00A2D0B0 /* Chat.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Chat.swift; sourceTree = "<group>"; };
-		70D238972BD616C800C55AF7 /* ollama */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.executable"; path = ollama; sourceTree = "<group>"; };
 		70E2017A2BAE825A00CFE1D7 /* ChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatView.swift; sourceTree = "<group>"; };
 		70E2017C2BAEA9DE00CFE1D7 /* OllamaService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OllamaService.swift; sourceTree = "<group>"; };
 		70E201842BAEC08900CFE1D7 /* SplashCodeSyntaxHighlighter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplashCodeSyntaxHighlighter.swift; sourceTree = "<group>"; };
@@ -243,7 +243,7 @@
 		701954182BC788D200CD2ED3 /* Executables */ = {
 			isa = PBXGroup;
 			children = (
-				70D238972BD616C800C55AF7 /* ollama */,
+				7001F55B2BF2F43500E66BDC /* ollama */,
 			);
 			path = Executables;
 			sourceTree = "<group>";
@@ -664,7 +664,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				70D238982BD616C900C55AF7 /* ollama in Resources */,
+				7001F55C2BF2F43500E66BDC /* ollama in Resources */,
 				70CE60722BAD2D4600A2D0B0 /* Preview Assets.xcassets in Resources */,
 				70CE606E2BAD2D4600A2D0B0 /* Assets.xcassets in Resources */,
 				70A574AA2BB07264008E3750 /* Localizable.xcstrings in Resources */,
