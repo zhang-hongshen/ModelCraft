@@ -38,7 +38,7 @@
 		</data>
 		<key>Resources/ollama</key>
 		<data>
-		C10pRtwm8A0XpwpBMCeceMUby1M=
+		nv85sSJlYvXs5RJrquC7LeDp92Y=
 		</data>
 		<key>Resources/zh-Hans.lproj/Localizable.strings</key>
 		<dict>
@@ -56,7 +56,7 @@
 		<dict>
 			<key>cdhash</key>
 			<data>
-			7ZOqCbdOlZrBre1cBmReP3DOCyU=
+			EP5ZFa7kUmuG/tQ24F7I74QoflE=
 			</data>
 			<key>requirement</key>
 			<string>identifier "com.zhanghongshen.ModelCraft.ollama" and anchor apple generic and certificate leaf[subject.CN] = "Apple Development: zhanghongshen716@gmail.com (K2P7SXUTM6)" and certificate 1[field.1.2.840.113635.100.6.2.1] /* exists */</string>
@@ -121,7 +121,7 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			lIAf4p1QGFefMHsLMGyeQ26YED3odJQxkZ7YvKa8F6I=
+			HNC32WqAOKdGEyNMu1pccU/yIRB6PBTYa3ofgejJs9w=
 			</data>
 		</dict>
 		<key>Resources/zh-Hans.lproj/Localizable.strings</key>
