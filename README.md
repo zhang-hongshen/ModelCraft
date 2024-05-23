@@ -12,35 +12,54 @@ No pre-operations. Just download the app to use it !
 
 ## :star:  Key Feature
 
-### 🍩 Fine-tune the models to make model's answer precise and unbaised
+🍩 Fine-tune the models to make model's answer precise and unbaised
 
-###  🍔 Customize chat by selecting model and knowledge base.
+🍔 Customize chat by selecting model and knowledge base.
 
-<div>
-  <img src="./assets/Screenshot 2024-04-25 at 21.31.54.png" alt="Image 2" style="max-width: 70%;display:inline-block;">
-</div>
+🍞Customize your own knowledge base. Supported file types,  pdf, xml, markdown, text, image. ( More file types will be supported in future )
 
-### 🍞Customize your own knowledge base
+🍰Download models from Model Store
 
-- Supported file types,  pdf, xml, markdown, text, image. ( More file types will be supported in future )
+🥜 Prompt Library
 
-<div>
-  <img src="./assets/Screenshot 2024-04-25 at 21.32.47.png" alt="Image 2" style="max-width: 70%;display:inline-block;">
-</div>
+## :camera: Screenshot
 
-### 🍰Download models from Model Store
+<table>
+  <tr>
+    <td>
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="./assets/chat_dark.png">
+        <source media="(prefers-color-scheme: light)" srcset="./assets/chat_light.png">
+        <img src="./assets/chat_dark.png" alt="chat">
+      </picture>
+    </td>
+    <td>
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="./assets/knowledge_base_dark.png">
+        <source media="(prefers-color-scheme: light)" srcset="./assets/knowledge_base_light.png">
+        <img src="./assets/knowledge_base_dark.png" alt="knowledge_base">
+      </picture>
+    </td>
+  </tr>
+  <tr>
+    <td>
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="./assets/model_store_dark.png">
+        <source media="(prefers-color-scheme: light)" srcset="./assets/model_store_light.png">
+        <img src="./assets/model_store_dark.png" alt="model_store">
+      </picture>
+    </td>
+    <td>
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="./assets/prompt_library_dark.png">
+        <source media="(prefers-color-scheme: light)" srcset="./assets/prompt_library_light.png">
+        <img src="./assets/prompt_library_dark.png" alt="prompt_library">
+      </picture>
+    </td>
+  </tr>
+</table>
 
-- Download models with one-click
 
-<div>
-  <img src="./assets/Screenshot 2024-04-25 at 21.33.36.png" alt="Image 2" style="max-width: 70%;display:inline-block;">
-</div>
-
-### 🥜 Prompt Library
-
-<div>
-  <img src="./assets/Screenshot 2024-04-25 at 21.34.17.png" alt="Image 2" style="max-width: 70%;display:inline-block;">
-</div>
 
 ## License
 
