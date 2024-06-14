@@ -312,7 +312,7 @@ extension ChatView {
             self.clearDraft()
             assistantMessage = Message(role: .assistant, status: .new)
             chat.messages.append(assistantMessage)
-            OllamaService.shared.chat(model: String(model.name.split(separator: ":")[0]), messages: messages)
+            OllamaService.shared.chat(model: model.name, messages: messages)
                 .sink { completion in
                     switch completion {
                     case .finished: 
