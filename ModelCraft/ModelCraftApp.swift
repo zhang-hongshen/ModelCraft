@@ -101,7 +101,7 @@ extension ModelCraftApp {
     func fetchLocalModels() {
         Task.detached {
             models = try await OllamaService.shared.models()
-            if let model = selectedModel {
+            if let model = await selectedModel {
                 if !models.contains(model) {
                     selectedModel = models.first
                 }
