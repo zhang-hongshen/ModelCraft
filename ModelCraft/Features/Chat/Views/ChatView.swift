@@ -243,6 +243,7 @@ extension ChatView {
     
     @ViewBuilder
     func SubmitMessageButton() -> some View {
+//        let disabled = draft.content.isEmpty
         let disabled = selectedModel.wrappedValue == nil || draft.content.isEmpty
         Button(action: submitDraft) {
             Image(systemName: "arrow.up.circle.fill")
@@ -258,7 +259,9 @@ extension ChatView {
         for provider in providers {
             let progress = provider.loadDataRepresentation(for: .image) { dataOrNil, errorOrNil in
                 guard let data = dataOrNil else { return }
-                draft.images.append(data)
+                Task { @MainActor in
+                    draft.images.append(data)
+                }
             }
             debugPrint("progress: \(progress.fractionCompleted)%, total: \(progress.totalUnitCount)")
         }

@@ -1,6 +1,6 @@
 //
 //  Comparable+.swift
-//  Arthub
+//  ModelCraft
 //
 //  Created by 张鸿燊 on 6/2/2024.
 //

@@ -1,6 +1,6 @@
 //
 //  RandomAccessCollection+.swift
-//  Arthub
+//  ModelCraft
 //
 //  Created by 张鸿燊 on 1/3/2024.
 //

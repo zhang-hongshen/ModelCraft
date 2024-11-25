@@ -61,10 +61,12 @@ struct ModelCraftApp: App {
                         Text(errorWrapper.guidance)
                     }
                     .task {
-                        LoopTask()
+                        await LoopTask()
                         backgroudTaskTimer = Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { timer in
                             guard timer.isValid else { return }
-                            LoopTask()
+                            Task {
+                                await LoopTask()
+                            }
                         }
                     }
             }
@@ -93,46 +95,40 @@ struct ModelCraftApp: App {
 }
 
 extension ModelCraftApp {
-    func LoopTask() {
+    func LoopTask() async {
         checkServerStatus()
-        fetchLocalModels()
+        await fetchLocalModels()
     }
     
-    func fetchLocalModels() {
-        Task.detached {
+    func fetchLocalModels() async{
+        do {
             models = try await OllamaService.shared.models()
-            if let model = await selectedModel {
-                if !models.contains(model) {
-                    selectedModel = models.first
-                }
-            } else {
-                selectedModel = models.first
-            }
+            selectedModel = (selectedModel == nil || !models.contains(selectedModel!)) ? models.first : selectedModel
+        } catch {
+            print("Failed to fetch models: \(error)")
         }
     }
     
     func startOllamaServer() {
-        Task {
-            serverStatus = .launching
-            do {
-                let process = Process()
-                
-                let pipe = Pipe()
-                process.standardOutput = pipe
-                process.standardError = pipe
-                process.standardInput = nil
-                
-                process.executableURL = Bundle.main.url(forAuxiliaryExecutable: "ollama")
-                process.arguments = ["serve"]
-                try process.run()
-                process.waitUntilExit()
-                let data = pipe.fileHandleForReading.readDataToEndOfFile()
-                if let output = String(data: data, encoding: .utf8) {
-                    print(output)
-                }
-            } catch {
-                print("Failed to start Ollama server: \(error)")
+        serverStatus = .launching
+        do {
+            let process = Process()
+            
+            let pipe = Pipe()
+            process.standardOutput = pipe
+            process.standardError = pipe
+            process.standardInput = nil
+            
+            process.executableURL = Bundle.main.url(forAuxiliaryExecutable: "ollama")
+            process.arguments = ["serve"]
+            try process.run()
+            process.waitUntilExit()
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            if let output = String(data: data, encoding: .utf8) {
+                print(output)
             }
+        } catch {
+            print("Failed to start Ollama server: \(error)")
         }
     }
     

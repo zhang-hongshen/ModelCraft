@@ -43,7 +43,7 @@ struct ContentView: View {
         .task {
             modelTaskTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { timer in
                 guard timer.isValid else { return }
-                Task.detached { try self.handleModelTask() }
+                Task.detached { try await self.handleModelTask() }
             }
         }
         .onChange(of: scenePhase, initial: true) {
