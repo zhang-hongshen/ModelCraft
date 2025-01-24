@@ -220,7 +220,7 @@ extension ContentView {
             .sink { completion in
                 switch completion {
                 case .finished: task.status = .completed
-                case .failure(let error): task.status = .failed
+                case .failure(_): task.status = .failed
                 }
             } receiveValue: { response in
                 debugPrint("status: \(response.status), "
@@ -244,7 +244,7 @@ extension ContentView {
             .sink { completion in
                 switch completion {
                 case .finished: task.status = .completed
-                case .failure(let error): task.status = .failed
+                case .failure(_): task.status = .failed
                 }
             } receiveValue: { _ in
                 task.status = .completed
