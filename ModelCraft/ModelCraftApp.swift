@@ -111,24 +111,29 @@ extension ModelCraftApp {
     
     func startOllamaServer() {
         serverStatus = .launching
-        do {
-            let process = Process()
-            
-            let pipe = Pipe()
-            process.standardOutput = pipe
-            process.standardError = pipe
-            process.standardInput = nil
-            
-            process.executableURL = Bundle.main.url(forAuxiliaryExecutable: "ollama")
-            process.arguments = ["serve"]
-            try process.run()
-            process.waitUntilExit()
-            let data = pipe.fileHandleForReading.readDataToEndOfFile()
-            if let output = String(data: data, encoding: .utf8) {
-                print(output)
+        DispatchQueue.global(qos: .background).async {
+            do {
+                let process = Process()
+                
+                let pipe = Pipe()
+                process.standardOutput = pipe
+                process.standardError = pipe
+                process.standardInput = nil
+                
+                process.executableURL = Bundle.main.url(forAuxiliaryExecutable: "ollama")
+                process.arguments = ["serve"]
+                try process.run()
+                pipe.fileHandleForReading.readabilityHandler = { handle in
+                    let data = handle.availableData
+                    if let output = String(data: data, encoding: .utf8) {
+                        print(output)
+                    }
+                    
+                }
+                process.waitUntilExit()
+            } catch {
+                print("Failed to start Ollama server: \(error)")
             }
-        } catch {
-            print("Failed to start Ollama server: \(error)")
         }
     }
     
