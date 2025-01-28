@@ -18,7 +18,7 @@ ModelCraft是一个原生的macOS RAG应用，提供了在本地使用大模型�
 
 🍞自定义您的知识库， 支持的文件类型,  pdf, xml, markdown, text, 图片. ( 将来会支持更多的文件类型 )
 
-🍰从模型商店中下载模型，支持Deepseek、Llama、Mistral、Qwen等模型。
+🍰从模型商店中下载模型，支持Deepseek, Llama, Mistral, Qwen等模型。
 
 🥜 提示词库
 

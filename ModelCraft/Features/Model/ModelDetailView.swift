@@ -16,16 +16,26 @@ struct ModelDetailView: View {
     @State var modelName: String
     @State private var models: [ModelInfo] = []
     @State private var isLoading = false
+    @State private var searchText = ""
     @State private var selectedModelNames = Set<String>()
     @State private var cancellables = Set<AnyCancellable>()
     
     @Query(filter: ModelTask.predicateByType(.download))
     private var downloadTasks: [ModelTask] = []
+    
     @Environment(\.downaloadedModels) private var downloadedModels
     @Environment(\.modelContext) private var modelContext
     
+    private var filteredModels: [ModelInfo] {
+        if searchText.isEmpty {
+            return models
+        }
+        return models.filter { $0.name.hasPrefix(searchText) }
+    }
+    
     var body: some View {
         ContentView()
+            .searchable(text: $searchText)
             .toolbar(content: ToolbarItems)
             .task { fetchModels() }
     }
@@ -33,7 +43,7 @@ struct ModelDetailView: View {
     @ViewBuilder
     func ContentView() -> some View {
         List(selection: $selectedModelNames) {
-            ForEach(models, id: \.name) { model in
+            ForEach(filteredModels, id: \.name) { model in
                 ListCell(model).tag(model.name)
             }
         }
@@ -46,7 +56,6 @@ struct ModelDetailView: View {
             Label(model.name, systemImage: "shippingbox")
                 .lineLimit(1)
                 .truncationMode(.middle)
-            
             Spacer()
             if downloadedModels.map({ $0.name }).contains(model.name) {
                 Text("Downloaded")

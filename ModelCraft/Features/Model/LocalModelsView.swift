@@ -24,24 +24,13 @@ struct LocalModelsView: View {
            sort: \ModelTask.createdAt,
            order: .reverse)
     private var deleteTasks: [ModelTask] = []
-    @Query(filter: ModelTask.predicateUnCompletedDownloadTask(),
-           sort: \ModelTask.createdAt,
-           order: .reverse)
-    private var downloadTasks: [ModelTask] = []
     
     var body: some View {
         List(selection: $selectedModelNames) {
             ForEach(models, id: \.name) { model in
-                ListCell(model).tag(model.name)
+                DownloadedModelListCell(model).tag(model.name)
             }
-            
-            ForEach(downloadTasks) { task in
-                HStack{
-                    Label(task.modelName, systemImage: "shippingbox")
-                    Spacer()
-                    ModelTaskStatus(task: task)
-                }.tag(task)
-            }.foregroundStyle(.secondary)
+            UncompletedDownloadTaskView().foregroundStyle(.secondary)
         }
         .contextMenu {
             DeleteButton(action: { confirmationDialogPresented = true })
@@ -66,7 +55,7 @@ extension LocalModelsView {
     }
     
     @ViewBuilder
-    func ListCell(_ model: ModelInfo) -> some View {
+    func DownloadedModelListCell(_ model: ModelInfo) -> some View {
         HStack {
             Label(model.name, systemImage: "shippingbox")
             Spacer()
@@ -77,6 +66,7 @@ extension LocalModelsView {
             }
         }
     }
+    
 }
 
 extension LocalModelsView {

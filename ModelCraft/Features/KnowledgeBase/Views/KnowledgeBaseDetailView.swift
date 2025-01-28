@@ -46,15 +46,12 @@ extension KnowledgeBaseDetailView {
     
     @ToolbarContentBuilder
     func ToolbarItems() -> some ToolbarContent {
-        ToolbarItemGroup(placement: .principal) {
+        ToolbarItemGroup {
             Picker("View", selection: $selectedViewType) {
                 ForEach(ViewType.allCases) {
                     Label($0.localizedDescription, systemImage: $0.systemImage)
                 }
             }.pickerStyle(.segmented)
-            
-        }
-        ToolbarItemGroup {
             Button("Add Files", systemImage: "doc.badge.plus") {
                 fileImporterPresented = true
             }

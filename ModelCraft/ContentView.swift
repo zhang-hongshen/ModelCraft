@@ -223,11 +223,8 @@ extension ContentView {
                 case .failure(_): task.status = .failed
                 }
             } receiveValue: { response in
-                debugPrint("status: \(response.status), "
-                           + "completed: \(String(describing: response.completed)), "
-                           + "total: \(String(describing: response.total))")
                 if response.status == "success" {
-                    print("download completed")
+                    print("Task completed")
                     task.status = .completed
                     return
                 }

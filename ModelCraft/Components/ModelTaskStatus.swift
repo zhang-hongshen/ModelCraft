@@ -17,7 +17,7 @@ struct ModelTaskStatus: View {
             if task.value > 0 &&  task.total > 0 {
                 Text("\(ByteCountFormatter.string(fromByteCount: Int64(task.value), countStyle: .file)) / \(ByteCountFormatter.string(fromByteCount: Int64(task.total), countStyle: .file))")
                 
-                Text(task.progress, format: .percent.precision(.fractionLength(0)).rounded(rule: .down))
+                Text(task.progress, format: .percent.precision(.fractionLength(1)).rounded(rule: .down))
             }
             switch task.status {
             case .new:

@@ -15,10 +15,30 @@ struct ModelStore: View {
     
     @State private var models: [ModelInfo] = []
     @State private var filtedModels: [ModelInfo] = []
+    @State private var showSubDownloadingTask = false
+    
     @State private var isLoading = false
     @State private var selectedModelName : String? = nil
     @State private var searchText = ""
     @State private var cancellables = Set<AnyCancellable>()
+    
+    @Query(filter: ModelTask.predicateUnCompletedDownloadTask(),
+           sort: \ModelTask.createdAt,
+           order: .reverse)
+    private var uncompletedDownloadTasks: [ModelTask] = []
+    
+    private var currentDownloadingTaskProgress: Double {
+        let total = uncompletedDownloadTasks.map { $0.total }.reduce(0) { partialResult, currentTotal in
+            return partialResult + currentTotal
+        }
+        if total == 0 {
+            return 0
+        }
+        let current = uncompletedDownloadTasks.map { $0.value }.reduce(0) { partialResult, currentTotal in
+            return partialResult + currentTotal
+        }
+        return current / total
+    }
     
     private var orderedModels: [ModelInfo] {
         models.sorted(using: KeyPathComparator(\.name))
@@ -46,6 +66,18 @@ extension ModelStore {
     @ToolbarContentBuilder
     func ToolbarItems() -> some ToolbarContent {
         ToolbarItemGroup {
+            Button {
+                showSubDownloadingTask.toggle()
+            } label: {
+                ProgressView(value: currentDownloadingTaskProgress, total: 1).controlSize(.small)
+                    .progressViewStyle(.circular)
+            }
+            .popover(isPresented: $showSubDownloadingTask, arrowEdge: .bottom) {
+                List {
+                    UncompletedDownloadTaskView()
+                }
+            }
+            
             if isLoading {
                 ProgressView().controlSize(.small)
             } else {

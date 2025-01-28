@@ -85,7 +85,7 @@ extension ChatView {
     
     @ToolbarContentBuilder
     func ToolbarItems() -> some ToolbarContent {
-        ToolbarItemGroup(placement: .principal) {
+        ToolbarItemGroup {
             if models.isEmpty {
                 Text("No Available Model")
             } else {
