@@ -19,7 +19,7 @@ struct KnowledgeBaseDetailGridView: View {
     // gridCellWidth + columnPadding
     private let width: CGFloat = 100
     
-    private var files: [LocalFileURL] { konwledgeBase.orderedFiles }
+    private var files: [LocalFileURL] { konwledgeBase.files }
     
     private var defaultSelection: LocalFileURL? { files.first }
     

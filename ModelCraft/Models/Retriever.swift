@@ -24,24 +24,51 @@ class Retriever {
     }
     
     func addDocument(_ doc: String) {
-        guard let embedding = embed(doc) else { return }
+        guard let embedding = createEmbedding(doc) else { return }
         collection.addDocument(text: doc, embedding: embedding)
     }
     
     func addDocuments(_ docs: [String]) {
-        docs.forEach { doc in
-            addDocument(doc)
+        Task {
+            await withTaskGroup(of: Void.self) { group in
+                for doc in docs {
+                    group.addTask {
+                        self.addDocument(doc)
+                    }
+                }
+            }
         }
     }
     
-    func query( _ text: String) -> [SearchResult] {
-        guard let embedding = embed(text) else { return [] }
-        return collection.search(query: embedding)
+    func query( _ text: String) async -> [SearchResult] {
+        
+        let documents = TextSplitter.default.createDocuments(text)
+        let embeddings = documents.compactMap { createEmbedding($0) }
+        
+        let results = await withTaskGroup(of: [SearchResult].self) { group in
+            for embedding in embeddings {
+                group.addTask {
+                    self.collection.search(query: embedding)
+                }
+            }
+            var allResults: [SearchResult] = []
+            for await result in group {
+                allResults.append(contentsOf: result)
+            }
+            return allResults
+        }
+
+        // remove duplicate documents and sorted by score
+        return Array(
+            Dictionary(grouping: results, by: \.id)
+                .mapValues { $0.max(by: { $0.score < $1.score })! }
+                .values
+        ).sorted { $0.score > $1.score }
     }
     
-    private func embed(_ text: String) -> [Double]? {
+    private func createEmbedding(_ text: String) -> [Double]? {
         guard let language = NLLanguageRecognizer.dominantLanguage(for: text) else { return nil }
-        guard let embed = NLEmbedding.sentenceEmbedding(for: language) else { return nil }
-        return embed.vector(for: text)
+        guard let embedding = NLEmbedding.sentenceEmbedding(for: language) else { return nil }
+        return embedding.vector(for: text)
     }
 }

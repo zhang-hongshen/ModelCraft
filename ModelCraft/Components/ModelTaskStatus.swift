@@ -23,17 +23,14 @@ struct ModelTaskStatus: View {
             case .new:
                 ProgressView().controlSize(.small)
             case .running:
-                Button {
-                    deleteTask(task)
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                }.buttonStyle(.borderless)
+                DeleteTaskButton()
             case .stopped:
                 Button {
                     restartTask(task)
                 } label: {
                     Image(systemName: "play.fill")
                 }.buttonStyle(.borderless)
+                DeleteTaskButton()
             case .failed:
                 Button("Retry") {
                     restartTask(task)
@@ -43,6 +40,18 @@ struct ModelTaskStatus: View {
         }
     }
     
+    @ViewBuilder
+    func DeleteTaskButton() -> some View {
+        Button {
+            deleteTask(task)
+        } label: {
+            Image(systemName: "xmark.circle.fill")
+        }.buttonStyle(.borderless)
+    }
+    
+}
+
+extension ModelTaskStatus {
     func deleteTask(_ task: ModelTask) {
         modelContext.delete(task)
         try? modelContext.save()

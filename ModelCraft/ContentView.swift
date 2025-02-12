@@ -223,6 +223,7 @@ extension ContentView {
                 case .failure(_): task.status = .failed
                 }
             } receiveValue: { response in
+                print(response)
                 if response.status == "success" {
                     print("Task completed")
                     task.status = .completed

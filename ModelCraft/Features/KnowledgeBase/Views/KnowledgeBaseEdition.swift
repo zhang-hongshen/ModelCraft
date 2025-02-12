@@ -47,7 +47,7 @@ struct KnowledgeBaseEdition: View {
                       allowsMultipleSelection: true) { result in
             switch result {
             case .success(let urls):
-                konwledgeBase.files.formUnion(urls)
+                konwledgeBase.files.append(contentsOf: urls)
             case .failure(let error):
                 errorWrapper.wrappedValue = ErrorWrapper(error: error,
                                                          guidance: "Please try again!")
@@ -78,7 +78,7 @@ extension KnowledgeBaseEdition {
             
             
             Button(action: {
-                konwledgeBase.files.subtract(selectedFiles)
+                konwledgeBase.removeFiles(selectedFiles)
             }, label: { Image(systemName: "minus") })
                 .disabled(selectedFiles.isEmpty)
             
@@ -91,7 +91,7 @@ extension KnowledgeBaseEdition {
     
     @ViewBuilder
     func FilesView() -> some View {
-        List(konwledgeBase.orderedFiles, selection: $selectedFiles) { url in
+        List(konwledgeBase.files, selection: $selectedFiles) { url in
             ListCell(url).tag(url)
         }
         .listStyle(.inset)

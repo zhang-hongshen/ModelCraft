@@ -272,28 +272,10 @@
 		7067E8162BCBBBE800FF2797 /* Prompt */ = {
 			isa = PBXGroup;
 			children = (
-				7067E81A2BCBBC6800FF2797 /* Views */,
-				7067E8172BCBBBEF00FF2797 /* Models */,
+				707AC54C2D58E019007D379F /* Models */,
+				707AC54B2D58E00B007D379F /* Views */,
 			);
 			path = Prompt;
-			sourceTree = "<group>";
-		};
-		7067E8172BCBBBEF00FF2797 /* Models */ = {
-			isa = PBXGroup;
-			children = (
-				7067E8182BCBBBF800FF2797 /* Prompt.swift */,
-			);
-			path = Models;
-			sourceTree = "<group>";
-		};
-		7067E81A2BCBBC6800FF2797 /* Views */ = {
-			isa = PBXGroup;
-			children = (
-				7067E81B2BCBBC7D00FF2797 /* PromptsView.swift */,
-				7067E81D2BCBBE7200FF2797 /* PromptEditionView.swift */,
-				7067E8212BCBC8DD00FF2797 /* PromptSearchView.swift */,
-			);
-			path = Views;
 			sourceTree = "<group>";
 		};
 		706D729D2BB6B076004ACF35 /* Services */ = {
@@ -313,6 +295,24 @@
 				705483F52BBE96AF00256094 /* LocalModelsView.swift */,
 			);
 			path = Model;
+			sourceTree = "<group>";
+		};
+		707AC54B2D58E00B007D379F /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				7067E81B2BCBBC7D00FF2797 /* PromptsView.swift */,
+				7067E81D2BCBBE7200FF2797 /* PromptEditionView.swift */,
+				7067E8212BCBC8DD00FF2797 /* PromptSearchView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		707AC54C2D58E019007D379F /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				7067E8182BCBBBF800FF2797 /* Prompt.swift */,
+			);
+			path = Models;
 			sourceTree = "<group>";
 		};
 		70896C642BB727B7006FEF6A /* SwiftData */ = {
@@ -463,7 +463,7 @@
 				70A574A92BB07264008E3750 /* Localizable.xcstrings */,
 				70C22FD52BAFD1AA002754C7 /* Components */,
 				701954182BC788D200CD2ED3 /* Executables */,
-				70CE609A2BAD302000A2D0B0 /* Extension */,
+				70CE609A2BAD302000A2D0B0 /* Extensions */,
 				70CE60C92BAD7A4700A2D0B0 /* Features */,
 				70271B792BC4E2CC00E21A6E /* Models */,
 				70CE60702BAD2D4600A2D0B0 /* Preview Content */,
@@ -497,7 +497,7 @@
 			path = ModelCraftUITests;
 			sourceTree = "<group>";
 		};
-		70CE609A2BAD302000A2D0B0 /* Extension */ = {
+		70CE609A2BAD302000A2D0B0 /* Extensions */ = {
 			isa = PBXGroup;
 			children = (
 				70B13D072BBBE04A00A42F3C /* Foundation */,
@@ -508,7 +508,7 @@
 				70CE4D2B2BB93DDA00E1DEE2 /* AVSpeechSynthesizer+.swift */,
 				701954282BCA309300CD2ED3 /* Theme+ModelCraft.swift */,
 			);
-			path = Extension;
+			path = Extensions;
 			sourceTree = "<group>";
 		};
 		70CE60C92BAD7A4700A2D0B0 /* Features */ = {
@@ -617,7 +617,7 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 1530;
-				LastUpgradeCheck = 1530;
+				LastUpgradeCheck = 1620;
 				TargetAttributes = {
 					70CE60632BAD2D4500A2D0B0 = {
 						CreatedOnToolsVersion = 15.3;
@@ -800,6 +800,7 @@
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
@@ -829,6 +830,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
+				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
@@ -863,6 +865,7 @@
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
@@ -892,6 +895,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
+				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -923,6 +927,7 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_ASSET_PATHS = "\"ModelCraft/Preview Content\"";
 				DEVELOPMENT_TEAM = DTZV6LDYD5;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -941,13 +946,12 @@
 				INFOPLIST_KEY_UILaunchStoryboardName = "";
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphoneos*]" = UIStatusBarStyleDefault;
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 0.3.7;
+				MARKETING_VERSION = 0.3.8;
 				PRODUCT_BUNDLE_IDENTIFIER = com.zhanghongshen.ModelCraft;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
@@ -969,6 +973,7 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_ASSET_PATHS = "\"ModelCraft/Preview Content\"";
 				DEVELOPMENT_TEAM = DTZV6LDYD5;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -987,13 +992,12 @@
 				INFOPLIST_KEY_UILaunchStoryboardName = "";
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphoneos*]" = UIStatusBarStyleDefault;
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 0.3.7;
+				MARKETING_VERSION = 0.3.8;
 				PRODUCT_BUNDLE_IDENTIFIER = com.zhanghongshen.ModelCraft;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
@@ -1008,10 +1012,10 @@
 		70CE608F2BAD2D4700A2D0B0 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = DTZV6LDYD5;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.4;
@@ -1031,10 +1035,10 @@
 		70CE60902BAD2D4700A2D0B0 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = DTZV6LDYD5;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.4;
@@ -1054,9 +1058,9 @@
 		70CE60922BAD2D4700A2D0B0 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = DTZV6LDYD5;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.4;
@@ -1076,9 +1080,9 @@
 		70CE60932BAD2D4700A2D0B0 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = DTZV6LDYD5;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.4;

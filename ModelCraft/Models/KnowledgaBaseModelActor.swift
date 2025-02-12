@@ -15,7 +15,7 @@ actor KnowledgaBaseModelActor {
         modelContext.insert(model)
         try? modelContext.save()
         Task.detached {
-            model.embed()
+            model.createEmedding()
         }
     }
     

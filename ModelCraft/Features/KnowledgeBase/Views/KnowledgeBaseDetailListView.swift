@@ -13,7 +13,7 @@ struct KnowledgeBaseDetailListView: View {
     @Binding var selections: Set<LocalFileURL>
     
     var body: some View {
-        List(konwledgeBase.orderedFiles, selection: $selections) { url in
+        List(konwledgeBase.files, selection: $selections) { url in
             ListCell(url).tag(url)
         }
         .listStyle(.inset)

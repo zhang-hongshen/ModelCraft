@@ -20,23 +20,27 @@ struct KnowledgeBaseDetailView: View {
     var body: some View {
         ContentView()
             .contextMenu {
-                DeleteButton(action: deleteFiles)
+                DeleteButton {
+                    konwledgeBase.removeFiles(selectedFiles)
+                }
             }
-            .onDeleteCommand(perform: deleteFiles)
+            .onDeleteCommand {
+                konwledgeBase.removeFiles(selectedFiles)
+            }
             .toolbar(content: ToolbarItems)
             .fileImporter(isPresented: $fileImporterPresented,
                           allowedContentTypes: [.data, .folder],
                           allowsMultipleSelection: true) { result in
                 switch result {
                 case .success(let urls):
-                    urls.forEach { konwledgeBase.files.insert($0) }
+                    urls.forEach { konwledgeBase.files.append($0) }
                 case .failure(let error):
                     errorWrapper.wrappedValue = ErrorWrapper(error: error,
                                                              guidance: "Please try again!")
                 }
             }
             .dropDestination(for: URL.self) { items, location in
-                konwledgeBase.files.formUnion(items)
+                konwledgeBase.files.append(contentsOf: items)
                 return true
             }
     }
@@ -68,10 +72,5 @@ extension KnowledgeBaseDetailView {
         }
             
     }
-    
-    func deleteFiles() {
-        konwledgeBase.files.subtract(selectedFiles)
-    }
-    
 }
 

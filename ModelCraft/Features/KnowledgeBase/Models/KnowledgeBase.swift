@@ -19,14 +19,20 @@ class KnowledgeBase {
     let createdAt: Date = Date.now
     var icon: String = "book"
     var title: String
-    var files: Set<LocalFileURL> {
+    var files: [LocalFileURL] {
         didSet {
-            embed()
+            let addedFiles = files.filter { !oldValue.contains($0) }
+            if addedFiles.isEmpty {
+                return
+            }
+            indexStatus = .indexing
+            doCreateEmedding(addedFiles)
+            indexStatus = .indexed
         }
     }
     var indexStatus: IndexStatus
     
-    init(title: String = "", files: Set<URL> = [],
+    init(title: String = "", files: [URL] = [],
          indexStatus: IndexStatus = .unindexed) {
         self.title = title
         self.files = files
@@ -36,33 +42,27 @@ class KnowledgeBase {
 
 extension KnowledgeBase {
     
-    var orderedFiles: [LocalFileURL] {
-        files.sorted(using: KeyPathComparator(\.lastPathComponent, order: .forward))
-    }
-    
     var collectionName: String {
         "knowledgeBase:\(id)"
     }
     
-    func search(_ text: String) -> String {
+    func search(_ text: String) async -> [String] {
         if indexStatus == .unindexed {
             Task.detached {
-                self.embed()
+                self.createEmedding()
             }
         }
-        let retriever = Retriever(collectionName)
-        let results = retriever.query(text)
-        return results.map{ $0.text }.joined(separator: " ")
+        return await Retriever(collectionName).query(text).map{ $0.text }
     }
     
-    func embed() {
+    func createEmedding() {
         indexStatus = .indexing
         SVDB.shared.releaseCollection(collectionName)
-        embedFromFiles(orderedFiles)
+        doCreateEmedding(files)
         indexStatus = .indexed
     }
     
-    func embedFromFiles(_ urls: [LocalFileURL]) {
+    func doCreateEmedding(_ urls: [LocalFileURL]) {
         let retriever = Retriever(collectionName)
         let fileManager = FileManager.default
         do  {
@@ -76,12 +76,12 @@ extension KnowledgeBase {
                         .contentsOfDirectory(at: url,
                                              includingPropertiesForKeys: nil,
                                              options: [.skipsHiddenFiles])
-                    embedFromFiles(files)
+                    doCreateEmedding(files)
                     continue
                 }
                 let document = try url.readContent()
                 url.stopAccessingSecurityScopedResource()
-                retriever.addDocuments(TextSplitter().createDocuments(document))
+                retriever.addDocuments(TextSplitter.default.createDocuments(document))
             }
         } catch {
             print("embedFromFiles error, \(error.localizedDescription)")
@@ -91,5 +91,10 @@ extension KnowledgeBase {
     func clear() {
         try? SVDB.shared.collection(collectionName).clear()
         SVDB.shared.releaseCollection(collectionName)
+    }
+    
+    
+    func removeFiles<T>(_ urls: T) where T: Swift.Collection, T.Element == LocalFileURL {
+        self.files.removeAll { urls.contains($0) }
     }
 }

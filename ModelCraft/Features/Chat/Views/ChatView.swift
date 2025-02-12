@@ -115,9 +115,10 @@ extension ChatView {
                         ForEach(chat.orderedMessages) { message in
                             MessageView(message: message).id(message.id)
                                 .scrollTargetLayout()
+                                
                         }
                     }
-                    .safeAreaPadding(.top, Default.padding)
+                    .safeAreaPadding()
                 }
                 .contentMargins(.leading, Default.padding, for: .scrollContent)
                 .contentMargins(0, for: .scrollIndicators)
@@ -243,7 +244,6 @@ extension ChatView {
     
     @ViewBuilder
     func SubmitMessageButton() -> some View {
-//        let disabled = draft.content.isEmpty
         let disabled = selectedModel.wrappedValue == nil || draft.content.isEmpty
         Button(action: submitDraft) {
             Image(systemName: "arrow.up.circle.fill")
@@ -299,56 +299,59 @@ extension ChatView {
         guard let model = selectedModel.wrappedValue else {
             return
         }
-        DispatchQueue.main.async {
-            var humanMessage = HumanMessage.questionTemplate(context: "", question: message.content)
+        Task {
+            let humanMessage = HumanMessage.question(message.content)
+            var systemMessages = [SystemMessage.characterSetting(model.name),
+                                  SystemMessage.respondRule,
+                                  SystemMessage.modelShouldRespond]
             if let knowledgeBase = selectedKnowledgeBase {
-                let context = knowledgeBase.search(message.content)
-                humanMessage = HumanMessage.questionTemplate(context: context, question: message.content)
+                let context = await knowledgeBase.search(message.content).joined(separator: " ")
+                systemMessages.append(SystemMessage.retrivedContent(context))
             }
-            chatStatus = .userWaitingForResponse
-            let messages = SystemMessage.templates(model.name)
-                            + chat.messages
-                            + [humanMessage]
+            let messages = systemMessages + chat.messages + [humanMessage]
             message.chat = chat
-            chat.messages.append(message)
             modelContext.persist(message)
-            self.clearDraft()
             assistantMessage = Message(role: .assistant, status: .new)
-            chat.messages.append(assistantMessage)
+            DispatchQueue.main.async {
+                chat.messages.append(message)
+                self.clearDraft()
+                chat.messages.append(assistantMessage)
+                chatStatus = .userWaitingForResponse
+            }
             OllamaService.shared.chat(model: model.name, messages: messages)
                 .sink { completion in
-                    switch completion {
-                    case .finished: 
-                        assistantMessage.status = .generated
+                    DispatchQueue.main.async {
+                        switch completion {
+                        case .finished:
+                            assistantMessage.status = .generated
+                        case .failure(let error):
+                            assistantMessage.status = .failed
+                        }
                         self.resetChat()
-                    case .failure(let error):
-                        assistantMessage.status = .failed
-                        self.resetChat()
-                        debugPrint("error, \(error.localizedDescription)")
                     }
                 } receiveValue: { response in
-                    debugPrint("response, \(response)")
-                    if case .userWaitingForResponse = chatStatus {
-                        chatStatus = .assistantResponding
-                        assistantMessage.status = .generating
-                    }
-                    assistantMessage.evalCount = response.evalCount
-                    assistantMessage.evalDuration = response.evalDuration
-                    assistantMessage.loadDuration = response.loadDuration
-                    assistantMessage.promptEvalCount = response.promptEvalCount
-                    assistantMessage.promptEvalDuration = response.promptEvalDuration
-                    assistantMessage.totalDuration = response.totalDuration
-                    
-                    guard case .assistantResponding = chatStatus else { return }
-                    if let message = response.message {
-                        DispatchQueue.main.async {
+                    DispatchQueue.main.async {
+                        if case .userWaitingForResponse = chatStatus {
+                            chatStatus = .assistantResponding
+                            assistantMessage.status = .generating
+                        }
+                        assistantMessage.evalCount = response.evalCount
+                        assistantMessage.evalDuration = response.evalDuration
+                        assistantMessage.loadDuration = response.loadDuration
+                        assistantMessage.promptEvalCount = response.promptEvalCount
+                        assistantMessage.promptEvalDuration = response.promptEvalDuration
+                        assistantMessage.totalDuration = response.totalDuration
+                        
+                        guard case .assistantResponding = chatStatus else { return }
+                        if let message = response.message {
                             assistantMessage.content.append(message.content)
                         }
+                        if response.done {
+                            resetChat()
+                            assistantMessage.status = .generated
+                        }
                     }
-                    if response.done {
-                        resetChat()
-                        assistantMessage.status = .generated
-                    }
+                    
                 }
                 .store(in: &cancellables)
         }

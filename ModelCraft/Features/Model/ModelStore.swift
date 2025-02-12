@@ -66,15 +66,17 @@ extension ModelStore {
     @ToolbarContentBuilder
     func ToolbarItems() -> some ToolbarContent {
         ToolbarItemGroup {
-            Button {
-                showSubDownloadingTask.toggle()
-            } label: {
-                ProgressView(value: currentDownloadingTaskProgress, total: 1).controlSize(.small)
-                    .progressViewStyle(.circular)
-            }
-            .popover(isPresented: $showSubDownloadingTask, arrowEdge: .bottom) {
-                List {
-                    UncompletedDownloadTaskView()
+            if !uncompletedDownloadTasks.isEmpty {
+                Button {
+                    showSubDownloadingTask.toggle()
+                } label: {
+                    ProgressView(value: currentDownloadingTaskProgress, total: 1).controlSize(.small)
+                        .progressViewStyle(.circular)
+                }
+                .popover(isPresented: $showSubDownloadingTask, arrowEdge: .bottom) {
+                    List {
+                        UncompletedDownloadTaskView()
+                    }
                 }
             }
             

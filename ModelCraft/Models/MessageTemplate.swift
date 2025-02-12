@@ -10,12 +10,7 @@ import SwiftUI
 
 class SystemMessage {
     
-    static func templates(_ name: String) ->  [Message] {
-        return [characterTemplate(name), modelShouldKnow,
-                respondTemplate, modelShouldRespond]
-    }
-    
-    static func characterTemplate(_ name: String) -> Message {
+    static func characterSetting(_ name: String) -> Message {
         return Message(role: .system,
                        content: """
         You are \(name), a helpful AI assistant created by ModelCraft. Current date: \(Date.now.formatted())
@@ -39,7 +34,7 @@ class SystemMessage {
         """)
     }
     
-    static let respondTemplate = Message(role: .system,
+    static let respondRule = Message(role: .system,
                                          content:
         """
         You MUST ADHERE to the following instructions:
@@ -56,27 +51,38 @@ class SystemMessage {
         """
     )
     
+    static var modelShouldRespond: Message {
+        let modelShouldRespond = UserDefaults.standard.value(forKey: UserDefaults.modelShouldRespond, default: "")
+        return Message(role: .system,
+                       content: modelShouldRespond)
+    }
+    
+    static func retrivedContent(_ content: String) -> Message {
+        return Message(role: .system,
+                       content: """
+            You have retrieved the following content:
+            \(content)
+            Please respond with the following:
+            1. Provide a brief **summary** of the retrieved content.
+            2. Offer a **detailed explanation** for each key point mentioned, formatted in **Markdown** with bullet points.
+            3. If there is a source available, please cite it.
+            4. Keep your response clear and to the point.
+            """)
+    }
+    
+}
+
+class HumanMessage {
+    
+    static func question(_ question: String) -> Message {
+        return Message(role: .user,
+                       content: question)
+    }
+    
     static var modelShouldKnow: Message {
         let modelShouldKnow = UserDefaults.standard.value(forKey: UserDefaults.modelShouldKnow, default: "")
         return Message(role: .user,
                        content: modelShouldKnow)
     }
     
-    static var modelShouldRespond: Message {
-        let modelShouldRespond = UserDefaults.standard.value(forKey: UserDefaults.modelShouldRespond, default: "")
-        return Message(role: .user,
-                       content: modelShouldRespond)
-    }
-}
-
-class HumanMessage {
-    
-    static func questionTemplate(context: String, question: String) -> Message {
-        return Message(role: .user,
-                       content:
-        """
-        KNOWLEDGE BASE: \(context),
-        QUESTION:\(question)
-        """)
-    }
 }
