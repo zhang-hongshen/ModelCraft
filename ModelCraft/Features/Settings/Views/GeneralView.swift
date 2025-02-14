@@ -24,7 +24,7 @@ struct GeneralView: View {
     
     @State private var isCheckingServerStatus = false
     @State private var cancellables: Set<AnyCancellable> = []
-    @Environment(\.serverStatus) private var serverStatus
+    @EnvironmentObject private var globalStore: GlobalStore
     
     var body: some View {
         Form {
@@ -88,7 +88,7 @@ extension GeneralView {
         OllamaService.shared.reachable()
             .sink { reachable in
                 // modify environment server status
-                self.serverStatus.wrappedValue = reachable ? ServerStatus.connected : .disconnected
+                globalStore.serverStatus = reachable ? .connected : .disconnected
                 isCheckingServerStatus = false
             }
             .store(in: &cancellables)

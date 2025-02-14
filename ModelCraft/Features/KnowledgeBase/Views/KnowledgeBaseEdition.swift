@@ -19,7 +19,7 @@ struct KnowledgeBaseEdition: View {
     
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
-    @Environment(\.errorWrapper) private var errorWrapper
+    @EnvironmentObject private var globalStore: GlobalStore
     
     var body: some View {
         VStack {
@@ -49,7 +49,7 @@ struct KnowledgeBaseEdition: View {
             case .success(let urls):
                 konwledgeBase.files.append(contentsOf: urls)
             case .failure(let error):
-                errorWrapper.wrappedValue = ErrorWrapper(error: error,
+                globalStore.errorWrapper = ErrorWrapper(error: error,
                                                          guidance: "Please try again!")
             }
         }

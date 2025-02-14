@@ -79,9 +79,11 @@ extension KnowledgeBase {
                     doCreateEmedding(files)
                     continue
                 }
-                let document = try url.readContent()
-                url.stopAccessingSecurityScopedResource()
-                retriever.addDocuments(TextSplitter.default.createDocuments(document))
+                Task {
+                    let document = try await url.readContent()
+                    url.stopAccessingSecurityScopedResource()
+                    retriever.addDocuments(TextSplitter.default.createDocuments(document))
+                }
             }
         } catch {
             print("embedFromFiles error, \(error.localizedDescription)")

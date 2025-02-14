@@ -16,7 +16,8 @@ struct KnowledgeBaseDetailView: View {
     @State private var selectedFiles: Set<LocalFileURL> = []
     @State private var selectedViewType: ViewType = .list
 
-    @Environment(\.errorWrapper) private var errorWrapper
+    @EnvironmentObject private var globalStore: GlobalStore
+    
     var body: some View {
         ContentView()
             .contextMenu {
@@ -35,7 +36,7 @@ struct KnowledgeBaseDetailView: View {
                 case .success(let urls):
                     urls.forEach { konwledgeBase.files.append($0) }
                 case .failure(let error):
-                    errorWrapper.wrappedValue = ErrorWrapper(error: error,
+                    globalStore.errorWrapper = ErrorWrapper(error: error,
                                                              guidance: "Please try again!")
                 }
             }

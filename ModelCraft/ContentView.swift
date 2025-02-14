@@ -14,9 +14,6 @@ import ActivityIndicatorView
 
 struct ContentView: View {
     
-    @State private var modelTaskTimer: Timer? = nil
-    @State private var modelTaskCancellables: Set<AnyCancellable> = []
-    
     // Possible values of the `currentTab` property.
     enum Tab: Hashable {
         case chat(Chat)
@@ -24,6 +21,8 @@ struct ContentView: View {
         case localModels, modelStore, prompts
     }
     
+    @State private var modelTaskTimer: Timer? = nil
+    @State private var modelTaskCancellables: Set<AnyCancellable> = []
     @State private var currentTab: Tab? = nil
     @State private var selectedKnowledgeBase: KnowledgeBase? = nil
     

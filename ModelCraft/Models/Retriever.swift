@@ -18,7 +18,7 @@ class Retriever {
         do {
             self.collection = try SVDB.shared.collection(collectionName)
         } catch {
-            debugPrint("error, \(error.localizedDescription)")
+            print("error, \(error.localizedDescription)")
             self.collection = SVDB.shared.getCollection(collectionName)!
         }
     }

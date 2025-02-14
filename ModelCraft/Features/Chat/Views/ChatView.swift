@@ -42,9 +42,8 @@ struct ChatView: View {
     private let width: CGFloat = 270
     
     @Environment(\.modelContext) private var modelContext
-    @Environment(\.serverStatus) private var serverStatus
+    @EnvironmentObject private var globalStore: GlobalStore
     @Environment(\.downaloadedModels) private var models
-    @Environment(\.selectedModel) private var selectedModel
     
     @AppStorage(UserDefaults.automaticallyScrollToBottom)
     private var automaticallyScrollToBottom = false
@@ -89,9 +88,9 @@ extension ChatView {
             if models.isEmpty {
                 Text("No Available Model")
             } else {
-                Picker("Models", selection: selectedModel) {
+                Picker("Models", selection: $globalStore.selectedModel) {
                     ForEach(models, id: \.name) { model in
-                        Text(verbatim: model.name).tag(model as ModelInfo?)
+                        Text(verbatim: model.name).tag(model.name)
                     }
                 }
             }
@@ -244,7 +243,7 @@ extension ChatView {
     
     @ViewBuilder
     func SubmitMessageButton() -> some View {
-        let disabled = selectedModel.wrappedValue == nil || draft.content.isEmpty
+        let disabled = globalStore.selectedModel == nil || draft.content.isEmpty
         Button(action: submitDraft) {
             Image(systemName: "arrow.up.circle.fill")
         }
@@ -296,12 +295,12 @@ extension ChatView {
     func submitMessage(_ message: Message) {
         
         guard case .assistantWaitingForRequest = chatStatus else { return }
-        guard let model = selectedModel.wrappedValue else {
+        guard let model = globalStore.selectedModel else {
             return
         }
         Task {
             let humanMessage = HumanMessage.question(message.content)
-            var systemMessages = [SystemMessage.characterSetting(model.name),
+            var systemMessages = [SystemMessage.characterSetting(model),
                                   SystemMessage.respondRule,
                                   SystemMessage.modelShouldRespond]
             if let knowledgeBase = selectedKnowledgeBase {
@@ -318,7 +317,7 @@ extension ChatView {
                 chat.messages.append(assistantMessage)
                 chatStatus = .userWaitingForResponse
             }
-            OllamaService.shared.chat(model: model.name, messages: messages)
+            OllamaService.shared.chat(model: model, messages: messages)
                 .sink { completion in
                     DispatchQueue.main.async {
                         switch completion {

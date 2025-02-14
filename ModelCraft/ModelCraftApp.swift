@@ -32,13 +32,13 @@ struct ModelCraftApp: App {
     
     @State private var cancellables: Set<AnyCancellable> = []
     @State private var backgroudTaskTimer: Timer? = nil
-    @State private var serverStatus: ServerStatus = .disconnected
     @State private var models: [ModelInfo] = []
-    @State private var selectedModel: ModelInfo? = nil
-    @State private var errorWrapper: ErrorWrapper? = nil
+    @StateObject private var globalStore = GlobalStore()
     
     private let speechSynthesizer = AVSpeechSynthesizer()
     
+    @State private var modelTaskTimer: Timer? = nil
+    @State private var modelTaskCancellables: Set<AnyCancellable> = []
     init() {
         startOllamaServer()
     }
@@ -49,13 +49,13 @@ struct ModelCraftApp: App {
                 ContentView()
                     .background(.ultraThinMaterial)
                     .applyUserSettings()
-                    .alert(errorWrapper?.error.localizedDescription ?? "",
+                    .alert(globalStore.errorWrapper?.error.localizedDescription ?? "",
                            isPresented: Binding(
-                            get: { errorWrapper != nil },
+                            get: { globalStore.errorWrapper != nil },
                             set: { _ in }),
-                           presenting: errorWrapper){ _ in
+                           presenting: globalStore.errorWrapper){ _ in
                         Button("Ok") {
-                            errorWrapper = nil
+                            globalStore.errorWrapper = nil
                         }
                     } message: { errorWrapper in
                         Text(errorWrapper.guidance)
@@ -79,11 +79,9 @@ struct ModelCraftApp: App {
 #endif
         }
         .modelContainer(sharedModelContainer)
-        .environment(\.serverStatus, $serverStatus)
         .environment(\.downaloadedModels, models)
-        .environment(\.selectedModel, $selectedModel)
         .environment(\.speechSynthesizer, speechSynthesizer)
-        .environment(\.errorWrapper, $errorWrapper)
+        .environmentObject(globalStore)
         .windowResizability(.contentSize)
         .commands {
             SidebarCommands()
@@ -103,14 +101,16 @@ extension ModelCraftApp {
     func fetchLocalModels() async{
         do {
             models = try await OllamaService.shared.models()
-            selectedModel = (selectedModel == nil || !models.contains(selectedModel!)) ? models.first : selectedModel
+            if globalStore.selectedModel == nil || !models.map({ $0.name }).contains(globalStore.selectedModel!) {
+                globalStore.selectedModel = models.first?.name
+            }
         } catch {
             print("Failed to fetch models: \(error)")
         }
     }
     
     func startOllamaServer() {
-        serverStatus = .launching
+        globalStore.serverStatus = .launching
         DispatchQueue.global(qos: .background).async {
             do {
                 let process = Process()
@@ -141,9 +141,8 @@ extension ModelCraftApp {
         OllamaService.shared.reachable()
             .sink { reachable in
                 // modify environment server status
-                self.serverStatus = reachable ? ServerStatus.connected : .disconnected
-                print("Ollama server status, \(serverStatus.localizedDescription)")
-                if serverStatus == .disconnected {
+                globalStore.serverStatus = reachable ? .connected : .disconnected
+                if globalStore.serverStatus == .disconnected {
                     startOllamaServer()
                 }
             }

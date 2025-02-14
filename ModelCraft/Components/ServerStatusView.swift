@@ -9,11 +9,11 @@ import SwiftUI
 
 struct ServerStatusView: View {
     
-    @Environment(\.serverStatus) private var serverStatus
+    @EnvironmentObject private var globalStore: GlobalStore
     
     var body: some View {
-        Label(serverStatus.wrappedValue.localizedDescription, systemImage: "circle.fill")
-            .foregroundStyle({switch serverStatus.wrappedValue {
+        Label(globalStore.serverStatus.localizedDescription, systemImage: "circle.fill")
+            .foregroundStyle({switch globalStore.serverStatus {
             case .disconnected: Color.red
             case .launching: Color.orange
             case .connected: Color.green
@@ -23,5 +23,4 @@ struct ServerStatusView: View {
 
 #Preview {
     ServerStatusView()
-        .environment(\.serverStatus, .constant(ServerStatus.connected))
 }
