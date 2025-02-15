@@ -253,6 +253,12 @@
 		70271B792BC4E2CC00E21A6E /* Models */ = {
 			isa = PBXGroup;
 			children = (
+				7067E8182BCBBBF800FF2797 /* Prompt.swift */,
+				70CE4D2E2BB94C7800E1DEE2 /* KnowledgeBase.swift */,
+				7097F96A2BB02DD2001A91E3 /* ModelTask.swift */,
+				70CE60A12BAD386E00A2D0B0 /* Message.swift */,
+				70CE60C72BAD705E00A2D0B0 /* Chat.swift */,
+				70A574B72BB13965008E3750 /* PromptSuggestion.swift */,
 				7019542E2BCAA04A00CD2ED3 /* ErrorWrapper.swift */,
 				70CE60982BAD302000A2D0B0 /* LocalFileURL.swift */,
 				70C22FC72BAECD55002754C7 /* Default.swift */,
@@ -272,8 +278,9 @@
 		7067E8162BCBBBE800FF2797 /* Prompt */ = {
 			isa = PBXGroup;
 			children = (
-				707AC54C2D58E019007D379F /* Models */,
-				707AC54B2D58E00B007D379F /* Views */,
+				7067E81B2BCBBC7D00FF2797 /* PromptsView.swift */,
+				7067E81D2BCBBE7200FF2797 /* PromptEditionView.swift */,
+				7067E8212BCBC8DD00FF2797 /* PromptSearchView.swift */,
 			);
 			path = Prompt;
 			sourceTree = "<group>";
@@ -297,69 +304,12 @@
 			path = Model;
 			sourceTree = "<group>";
 		};
-		707AC54B2D58E00B007D379F /* Views */ = {
-			isa = PBXGroup;
-			children = (
-				7067E81B2BCBBC7D00FF2797 /* PromptsView.swift */,
-				7067E81D2BCBBE7200FF2797 /* PromptEditionView.swift */,
-				7067E8212BCBC8DD00FF2797 /* PromptSearchView.swift */,
-			);
-			path = Views;
-			sourceTree = "<group>";
-		};
-		707AC54C2D58E019007D379F /* Models */ = {
-			isa = PBXGroup;
-			children = (
-				7067E8182BCBBBF800FF2797 /* Prompt.swift */,
-			);
-			path = Models;
-			sourceTree = "<group>";
-		};
 		70896C642BB727B7006FEF6A /* SwiftData */ = {
 			isa = PBXGroup;
 			children = (
 				70896C622BB727AB006FEF6A /* ModelContext+.swift */,
 			);
 			path = SwiftData;
-			sourceTree = "<group>";
-		};
-		70A574AE2BB0997A008E3750 /* Views */ = {
-			isa = PBXGroup;
-			children = (
-				70E2017A2BAE825A00CFE1D7 /* ChatView.swift */,
-				70C22FEA2BAFDB1E002754C7 /* MessageView.swift */,
-				70A574B92BB14D38008E3750 /* PromptCard.swift */,
-				7067E8232BCD1AE600FF2797 /* ImageView.swift */,
-			);
-			path = Views;
-			sourceTree = "<group>";
-		};
-		70A574AF2BB09981008E3750 /* Models */ = {
-			isa = PBXGroup;
-			children = (
-				70CE60A12BAD386E00A2D0B0 /* Message.swift */,
-				70CE60C72BAD705E00A2D0B0 /* Chat.swift */,
-				70A574B72BB13965008E3750 /* PromptSuggestion.swift */,
-			);
-			path = Models;
-			sourceTree = "<group>";
-		};
-		70A574B02BB099A1008E3750 /* Models */ = {
-			isa = PBXGroup;
-			children = (
-				7097F96A2BB02DD2001A91E3 /* ModelTask.swift */,
-			);
-			path = Models;
-			sourceTree = "<group>";
-		};
-		70A574B12BB099AD008E3750 /* Views */ = {
-			isa = PBXGroup;
-			children = (
-				70CE60BD2BAD60AE00A2D0B0 /* SettingsView.swift */,
-				70CE60C22BAD616600A2D0B0 /* GeneralView.swift */,
-				70A574B52BB12CCB008E3750 /* PersonalizationView.swift */,
-			);
-			path = Views;
 			sourceTree = "<group>";
 		};
 		70B13D072BBBE04A00A42F3C /* Foundation */ = {
@@ -406,29 +356,12 @@
 		70CE4D2D2BB94C4300E1DEE2 /* KnowledgeBase */ = {
 			isa = PBXGroup;
 			children = (
-				70CE4D352BB9618E00E1DEE2 /* Models */,
-				70CE4D342BB9618600E1DEE2 /* Views */,
-			);
-			path = KnowledgeBase;
-			sourceTree = "<group>";
-		};
-		70CE4D342BB9618600E1DEE2 /* Views */ = {
-			isa = PBXGroup;
-			children = (
 				70CE4D302BB9500000E1DEE2 /* KnowledgeBaseDetailView.swift */,
 				70CE4D322BB9522F00E1DEE2 /* KnowledgeBaseEdition.swift */,
 				70B13D122BBC66FC00A42F3C /* KnowledgeBaseDetailListView.swift */,
 				70B13D142BBC678400A42F3C /* KnowledgeBaseDetailGridView.swift */,
 			);
-			path = Views;
-			sourceTree = "<group>";
-		};
-		70CE4D352BB9618E00E1DEE2 /* Models */ = {
-			isa = PBXGroup;
-			children = (
-				70CE4D2E2BB94C7800E1DEE2 /* KnowledgeBase.swift */,
-			);
-			path = Models;
+			path = KnowledgeBase;
 			sourceTree = "<group>";
 		};
 		70CE605B2BAD2D4500A2D0B0 = {
@@ -526,8 +459,9 @@
 		70CE60CA2BAD7A4F00A2D0B0 /* Settings */ = {
 			isa = PBXGroup;
 			children = (
-				70A574B12BB099AD008E3750 /* Views */,
-				70A574B02BB099A1008E3750 /* Models */,
+				70CE60BD2BAD60AE00A2D0B0 /* SettingsView.swift */,
+				70CE60C22BAD616600A2D0B0 /* GeneralView.swift */,
+				70A574B52BB12CCB008E3750 /* PersonalizationView.swift */,
 			);
 			path = Settings;
 			sourceTree = "<group>";
@@ -535,8 +469,10 @@
 		70E201792BAE825100CFE1D7 /* Chat */ = {
 			isa = PBXGroup;
 			children = (
-				70A574AF2BB09981008E3750 /* Models */,
-				70A574AE2BB0997A008E3750 /* Views */,
+				70E2017A2BAE825A00CFE1D7 /* ChatView.swift */,
+				70C22FEA2BAFDB1E002754C7 /* MessageView.swift */,
+				70A574B92BB14D38008E3750 /* PromptCard.swift */,
+				7067E8232BCD1AE600FF2797 /* ImageView.swift */,
 			);
 			path = Chat;
 			sourceTree = "<group>";

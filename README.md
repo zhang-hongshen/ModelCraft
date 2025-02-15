@@ -1,6 +1,16 @@
 <div align="center"><img alt="ModelCraft" height="200px" src="./logo.png" /></div>
 
-[![zh-CN](https://img.shields.io/badge/lang-简体中文-red.svg)](./README_zh-CN.md)
+<div align="center" style="line-height: 1;">
+  <a href="README_zh-CN.md" style="margin: 2px;">
+    <img alt="License" src="https://img.shields.io/badge/lang-简体中文-red.svg" style="display: inline-block; vertical-align: middle;"/>
+  </a>  
+</div>
+
+<div align="center" style="line-height: 1;">
+  <a href="https://github.com/zhang-hongshen/ModelCraft/LICENSE" style="margin: 2px;">
+    <img alt="License" src="https://img.shields.io/badge/License-MIT-f5de53?&color=f5de53" style="display: inline-block; vertical-align: middle;"/>
+  </a>  
+</div>
 
 ## 💡 What is ModelCraft ?
 
@@ -9,6 +19,14 @@ ModelCraft is a native RAG(Retrieval-Augmented Generation) app for macOS.  It of
 ##  🚀  Get Started
 
 No pre-operations. Just download the app to use it !
+
+1. Download  latest Image from the [Release](https://github.com/zhang-hongshen/ModelCraft/releases) Page
+
+2. Homebrew install（Not implemented yet QAQ ）
+
+   ```shell
+   brew install --cask modelcraft
+   ```
 
 ## :star:  Key Feature
 

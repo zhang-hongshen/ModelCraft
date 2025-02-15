@@ -10,10 +10,6 @@ import Combine
 import OllamaKit
 import Alamofire
 
-extension OllamaClient {
-    static let shared = OllamaClient(baseURL: URL(string: "http://localhost:11434")!)
-}
-
 class OllamaService {
     static let shared = OllamaService()
     
@@ -43,27 +39,9 @@ class OllamaService {
         client.deleteModel(DeleteModelRequest(name: model))
     }
     
-    func chat(model: String, messages: [Message]) -> AnyPublisher<ChatResponse, AFError> {
-        let msgs = messages.compactMap{ toChatRequestMessage($0) }
+    func chat(model: String, messages: [OllamaKit.Message]) -> AnyPublisher<ChatResponse, AFError> {
         return client.chat(ChatRequest(model: model,
-                                messages: msgs))
-        
-    }
-    
-    func toChatRequestMessage(_ message: Message) -> OllamaKit.Message {
-        let images = message.images.compactMap { data in
-            data.base64EncodedString()
-        }
-        var role: OllamaKit.Message.Role {
-            switch message.role {
-            case .user: .user
-            case .assistant: .assistant
-            case .system: .system
-            }
-        }
-        return OllamaKit.Message(role: role,
-                                 content: message.content,
-                                 images: images)
+                                messages: messages))
     }
     
 }

@@ -62,8 +62,8 @@ struct ChatView: View {
             .frame(minWidth: width,
                    minHeight: 250)
             .toolbar(content: ToolbarItems)
-            .safeAreaInset(edge: .bottom, content: MessageEditionView)
-            .onDrop(of: [.image], isTargeted: nil, perform: dropImages)
+            .safeAreaInset(edge: .bottom, content: MessageEditor)
+            .onDrop(of: [.image], isTargeted: nil, perform: uploadImagesByDropping)
             .fileImporter(isPresented: $fileImporterPresented,
                           allowedContentTypes: [.image],
                           allowsMultipleSelection: true) { result in
@@ -113,8 +113,7 @@ extension ChatView {
                     VStack(alignment: .leading, spacing: 10) {
                         ForEach(chat.orderedMessages) { message in
                             MessageView(message: message).id(message.id)
-                                .scrollTargetLayout()
-                                
+                                    .scrollTargetLayout()
                         }
                     }
                     .safeAreaPadding()
@@ -179,26 +178,6 @@ extension ChatView {
 extension ChatView {
     
     @ViewBuilder
-    func MessageEditionView() -> some View {
-        MessageEditor()
-            .safeAreaInset(edge: .leading) {
-                UploadImageButton()
-            }.safeAreaInset(edge: .trailing) {
-                Group {
-                    if chatStatus != .assistantWaitingForRequest {
-                        StopGenerateMessageButton()
-                    } else {
-                        SubmitMessageButton()
-                    }
-                }
-            }
-            .imageScale(.large)
-            .background(.ultraThinMaterial)
-            .buttonStyle(.borderless)
-            .safeAreaPadding()
-    }
-    
-    @ViewBuilder
     func MessageEditor() -> some View {
         VStack(alignment: .leading) {
             if !draft.images.isEmpty {
@@ -207,7 +186,7 @@ extension ChatView {
                         ForEach(draft.images, id: \.self) { data in
                             ImageView(data: data) {
                                 draft.images.removeAll { $0 == data }
-                            }.frame(height: 50)
+                            }.frame(height: 80)
                         }
                     }
                 }
@@ -218,11 +197,27 @@ extension ChatView {
                 .fixedSize(horizontal: false, vertical: true)
                 .font(.title3)
                 .textEditorStyle(.plain)
+            HStack {
+                UploadImageButton()
+                Spacer()
+                Group {
+                    if chatStatus != .assistantWaitingForRequest {
+                        StopGenerateMessageButton()
+                    } else {
+                        SubmitMessageButton()
+                    }
+                }
+            }
         }
-        .padding(Default.padding)
+        .buttonStyle(.borderless)
+        .imageScale(.large)
+        .padding()
         .overlay {
             RoundedRectangle().fill(.clear).stroke(.primary, lineWidth: 1)
         }
+        .background(.ultraThinMaterial)
+        .safeAreaPadding()
+        .background(.regularMaterial)
     }
     
     @ViewBuilder
@@ -230,7 +225,7 @@ extension ChatView {
         Button {
             fileImporterPresented = true
         } label: {
-            Image(systemName: "plus.circle")
+            Image(systemName: "plus")
         }
     }
     
@@ -254,7 +249,7 @@ extension ChatView {
 
 extension ChatView {
     
-    func dropImages(_ providers: [NSItemProvider]) -> Bool {
+    func uploadImagesByDropping(_ providers: [NSItemProvider]) -> Bool {
         for provider in providers {
             let progress = provider.loadDataRepresentation(for: .image) { dataOrNil, errorOrNil in
                 guard let data = dataOrNil else { return }
@@ -317,7 +312,7 @@ extension ChatView {
                 chat.messages.append(assistantMessage)
                 chatStatus = .userWaitingForResponse
             }
-            OllamaService.shared.chat(model: model, messages: messages)
+            OllamaService.shared.chat(model: model, messages: messages.compactMap{ toChatRequestMessage($0) })
                 .sink { completion in
                     DispatchQueue.main.async {
                         switch completion {
@@ -355,6 +350,22 @@ extension ChatView {
                 .store(in: &cancellables)
         }
         
+    }
+    
+    func toChatRequestMessage(_ message: Message) -> OllamaKit.Message {
+        let images = message.images.compactMap { data in
+            data.base64EncodedString()
+        }
+        var role: OllamaKit.Message.Role {
+            switch message.role {
+            case .user: .user
+            case .assistant: .assistant
+            case .system: .system
+            }
+        }
+        return OllamaKit.Message(role: role,
+                                 content: message.content,
+                                 images: images)
     }
     
     func stopGenerateMessage() {

@@ -9,9 +9,9 @@ import SwiftUI
 
 struct ImageView: View {
     
-    @State var data: Data?
     let action: () -> Void
     
+    @State var data: Data?
     @State private var isHovering: Bool = false
     
     init(data: Data?, action: @escaping () -> Void) {
@@ -21,7 +21,7 @@ struct ImageView: View {
     
     var body: some View {
         ImageLoader(data: data, contentMode: .fit)
-            .overlay(alignment: .bottomTrailing){
+            .overlay(alignment: .topLeading){
                 if isHovering {
                     Button(action: action) {
                         Image(systemName: "xmark.circle.fill")

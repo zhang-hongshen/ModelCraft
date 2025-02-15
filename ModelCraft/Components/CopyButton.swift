@@ -15,7 +15,7 @@ struct CopyButton: View {
     
     var body: some View {
         Button(copied ? "Copied" : "Copy",
-               systemImage: copied ? "checkmark" : "clipboard") {
+               systemImage: copied ? "checkmark" : "square.on.square") {
             action()
             copied = true
             DispatchQueue.main.asyncAfter(deadline: .now() + 3) {

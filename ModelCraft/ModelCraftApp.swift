@@ -33,8 +33,7 @@ struct ModelCraftApp: App {
     @State private var cancellables: Set<AnyCancellable> = []
     @State private var backgroudTaskTimer: Timer? = nil
     @State private var models: [ModelInfo] = []
-    @StateObject private var globalStore = GlobalStore()
-    
+    private let globalStore = GlobalStore()
     private let speechSynthesizer = AVSpeechSynthesizer()
     
     @State private var modelTaskTimer: Timer? = nil
@@ -128,7 +127,6 @@ extension ModelCraftApp {
                     if let output = String(data: data, encoding: .utf8) {
                         print(output)
                     }
-                    
                 }
                 process.waitUntilExit()
             } catch {
@@ -149,32 +147,4 @@ extension ModelCraftApp {
             .store(in: &cancellables)
     }
     
-    func shell(_ command: String) throws {
-        let process = Process()
-        
-        let pipe = Pipe()
-        process.standardOutput = pipe
-        process.standardError = pipe
-        process.standardInput = nil
-        // get user current shell, eg: bash , zsh
-        process.arguments = ["-c", command]
-        if let shellPath = ProcessInfo.processInfo.environment["SHELL"] {
-            process.executableURL = URL(filePath: shellPath)
-        }
-        
-        if let path = ProcessInfo.processInfo.environment["PATH"] {
-            process.environment = ["PATH": """
-                                   /usr/local/bin:
-                                   /opt/homebrew/bin:
-                                   /opt/homebrew/bin:
-                                   /opt/homebrew/sbin:
-                                   """+path]
-        }
-        try process.run()
-        process.waitUntilExit()
-        let data = pipe.fileHandleForReading.readDataToEndOfFile()
-        if let output = String(data: data, encoding: .utf8) {
-            print(output)
-        }
-    }
 }

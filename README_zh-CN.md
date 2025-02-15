@@ -1,8 +1,17 @@
 <div align="center"><img alt="ModelCraft" height="200px" src="./logo.png" /></div>
 
-[![en](https://img.shields.io/badge/lang-English-blue.svg)](./README.md)
+<div align="center" style="line-height: 1;">
+  <a href="README.md" style="margin: 2px;">
+    <img alt="License" src="https://img.shields.io/badge/lang-English-blue.svg" style="display: inline-block; vertical-align: middle;"/>
+  </a>  
+</div>
+<div align="center" style="line-height: 1;">
+  <a href="https://github.com/zhang-hongshen/ModelCraft/LICENSE" style="margin: 2px;">
+    <img alt="License" src="https://img.shields.io/badge/License-MIT-f5de53?&color=f5de53" style="display: inline-block; vertical-align: middle;"/>
+  </a>  
+</div>
 
-## 💡 ModelCraft是什么 ?
+## 💡 ModelCraft 是什么 ?
 
 ModelCraft是一个原生的macOS RAG应用，提供了在本地使用大模型的全链路流程，从下载模型到构建知识库。
 
@@ -10,13 +19,21 @@ ModelCraft是一个原生的macOS RAG应用，提供了在本地使用大模型�
 
 没有任何前置操作，你只需要下载即可使用！
 
+1. 从[发行](https://github.com/zhang-hongshen/ModelCraft/releases)页面下载
+
+2. 通过Homebrew下载（还没实现 QAQ ）
+
+   ```shell
+   brew install --cask modelcraft
+   ```
+
 ## :star:  关键功能
 
 🍩 微调了相关模型使得回答更加准确和无偏见
 
 🍔 通过选择模型和知识库定制您的对话
 
-🍞自定义您的知识库， 支持的文件类型,  pdf, xml, markdown, text, 图片. ( 将来会支持更多的文件类型 )
+🍞自定义您的知识库，支持的文件类型： pdf, xml, markdown, text, 图片. ( 将来会支持更多的文件类型 )
 
 🍰从模型商店中下载模型，支持Deepseek, Llama, Mistral, Qwen等模型。
 
