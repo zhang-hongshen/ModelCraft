@@ -10,7 +10,7 @@ import SwiftUI
 struct KnowledgeBaseDetailGridView: View {
     
     @Bindable var konwledgeBase: KnowledgeBase
-    @Binding var selections: Set<LocalFileURL>
+    @Binding var selectedFiles: Set<LocalFileURL>
     
     @State private var columns: [GridItem] = []
     
@@ -24,12 +24,12 @@ struct KnowledgeBaseDetailGridView: View {
     private var defaultSelection: LocalFileURL? { files.first }
     
     private var preSelection: LocalFileURL? {
-        guard let selection = selections.first else { return defaultSelection }
+        guard let selection = selectedFiles.first else { return defaultSelection }
         return files.element(before: selection)
     }
     
     private var nextSelection: LocalFileURL? {
-        guard let selection = selections.first else { return defaultSelection }
+        guard let selection = selectedFiles.first else { return defaultSelection }
         guard let element = files.element(after: selection) else { return files.first }
         return element
     }
@@ -40,6 +40,9 @@ struct KnowledgeBaseDetailGridView: View {
                 LazyVGrid(columns: columns, spacing: 20){
                     ForEach(files) { url in
                         GridCell(url)
+                    }
+                    .onDelete {
+                        konwledgeBase.files.remove(atOffsets: $0)
                     }
                 }
                 .safeAreaPadding(.top)
@@ -70,7 +73,7 @@ struct KnowledgeBaseDetailGridView: View {
                 .padding(Default.padding)
                 .frame(width: gridCellWidth, height: gridCellWidth)
                 .background {
-                    if selections.contains(url) {
+                    if selectedFiles.contains(url) {
                         RoundedRectangle().fill(.selection)
                     }
                 }
@@ -82,15 +85,17 @@ struct KnowledgeBaseDetailGridView: View {
         }
         .frame(width: gridCellWidth)
         .onTapGesture {
+#if canImport(AppKit)
             if NSApp.currentEvent?.modifierFlags.contains(.command) == true {
-                if selections.contains(url) {
-                    selections.remove(url)
+                if selectedFiles.contains(url) {
+                    selectedFiles.remove(url)
                 } else {
-                    selections.insert(url)
+                    selectedFiles.insert(url)
                 }
             } else {
-                selections = [url]
+                selectedFiles = [url]
             }
+#endif
         }
     }
     
@@ -99,7 +104,7 @@ struct KnowledgeBaseDetailGridView: View {
 extension KnowledgeBaseDetailGridView {
     
     func clearSelection() {
-        selections = []
+        selectedFiles = []
     }
     
     func keyAction(_ key: KeyEquivalent) -> KeyPress.Result {
@@ -112,7 +117,7 @@ extension KnowledgeBaseDetailGridView {
         default: return .ignored
         }
         if let selection {
-            selections = [selection]
+            selectedFiles = [selection]
         }
         return .handled
     }
@@ -120,5 +125,5 @@ extension KnowledgeBaseDetailGridView {
 
 #Preview {
     KnowledgeBaseDetailGridView(konwledgeBase: KnowledgeBase(),
-                                selections: .constant([]))
+                                selectedFiles: .constant([]))
 }

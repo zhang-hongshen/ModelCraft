@@ -15,7 +15,7 @@ struct PromptCard: View {
     @State private var isHovering = false
     
     var body: some View {
-        ZStack {
+        ZStack(alignment: .leading) {
             RoundedRectangle().fill(.selection).opacity(isHovering ? 1 : 0)
             VStack(alignment: .leading) {
                 Text(prompt.title).font(.headline).lineLimit(1)

@@ -10,11 +10,16 @@ import SwiftUI
 struct KnowledgeBaseDetailListView: View {
     
     @Bindable var konwledgeBase: KnowledgeBase
-    @Binding var selections: Set<LocalFileURL>
+    @Binding var selectedFiles: Set<LocalFileURL>
     
     var body: some View {
-        List(konwledgeBase.files, selection: $selections) { url in
-            ListCell(url).tag(url)
+        List(selection: $selectedFiles) {
+            ForEach(konwledgeBase.files) { url in
+                ListCell(url).tag(url)
+            }
+            .onDelete {
+                konwledgeBase.files.remove(atOffsets: $0)
+            }
         }
         .listStyle(.inset)
     }
@@ -33,5 +38,5 @@ struct KnowledgeBaseDetailListView: View {
 
 #Preview {
     KnowledgeBaseDetailListView(konwledgeBase: KnowledgeBase(),
-                                selections: .constant([]))
+                                selectedFiles: .constant([]))
 }

@@ -38,8 +38,11 @@ struct ModelCraftApp: App {
     
     @State private var modelTaskTimer: Timer? = nil
     @State private var modelTaskCancellables: Set<AnyCancellable> = []
+    
     init() {
+#if os(macOS)
         startOllamaServer()
+#endif
     }
     
     var body: some Scene {
@@ -92,22 +95,7 @@ struct ModelCraftApp: App {
 }
 
 extension ModelCraftApp {
-    func LoopTask() async {
-        checkServerStatus()
-        await fetchLocalModels()
-    }
-    
-    func fetchLocalModels() async{
-        do {
-            models = try await OllamaService.shared.models()
-            if globalStore.selectedModel == nil || !models.map({ $0.name }).contains(globalStore.selectedModel!) {
-                globalStore.selectedModel = models.first?.name
-            }
-        } catch {
-            print("Failed to fetch models: \(error)")
-        }
-    }
-    
+#if os(macOS)
     func startOllamaServer() {
         globalStore.serverStatus = .launching
         DispatchQueue.global(qos: .background).async {
@@ -134,15 +122,34 @@ extension ModelCraftApp {
             }
         }
     }
+#endif
+    
+    func LoopTask() async {
+        checkServerStatus()
+        await fetchLocalModels()
+    }
+    
+    func fetchLocalModels() async{
+        do {
+            models = try await OllamaService.shared.models()
+            if globalStore.selectedModel == nil || !models.map({ $0.name }).contains(globalStore.selectedModel!) {
+                globalStore.selectedModel = models.first?.name
+            }
+        } catch {
+            print("Failed to fetch models: \(error)")
+        }
+    }
     
     private func checkServerStatus() {
         OllamaService.shared.reachable()
             .sink { reachable in
                 // modify environment server status
                 globalStore.serverStatus = reachable ? .connected : .disconnected
+#if os(macOS)
                 if globalStore.serverStatus == .disconnected {
                     startOllamaServer()
                 }
+#endif
             }
             .store(in: &cancellables)
     }

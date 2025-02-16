@@ -9,13 +9,11 @@ import SwiftUI
 import SwiftData
 import QuickLook
 
-
 struct KnowledgeBaseEdition: View {
     
     @Bindable var konwledgeBase: KnowledgeBase
     @State private var fileImporterPresented: Bool = false
     @State private var selectedFiles: Set<URL> = []
-    @State private var emojiPickerPresented = false
     
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
@@ -23,21 +21,12 @@ struct KnowledgeBaseEdition: View {
     
     var body: some View {
         VStack {
-            Text("Knowledge Base").font(.headline)
             
-            Button(action: {
-                emojiPickerPresented = true
-            }, label: {
-                Image(systemName: konwledgeBase.icon)
-            }).buttonStyle(.borderless).imageScale(.large)
-            
-            Form {
-                TextField("Title", text: $konwledgeBase.title)
-                
-                FilesView()
-                    .frame(minWidth: 200, minHeight: 100)
-                    .safeAreaInset(edge: .bottom, content: OpearationButton)
-            }
+            TextField("Title", text: $konwledgeBase.title)
+
+            FilesView()
+                .frame(minWidth: 200, minHeight: 100)
+                .safeAreaInset(edge: .bottom, content: OpearationButton)
         }
         .padding()
         .background(.ultraThinMaterial)
@@ -50,7 +39,7 @@ struct KnowledgeBaseEdition: View {
                 konwledgeBase.files.append(contentsOf: urls)
             case .failure(let error):
                 globalStore.errorWrapper = ErrorWrapper(error: error,
-                                                         guidance: "Please try again!")
+                                                        guidance: "Please try again!")
             }
         }
     }
