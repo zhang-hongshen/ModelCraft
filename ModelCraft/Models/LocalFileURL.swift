@@ -9,6 +9,7 @@ import Foundation
 import PDFKit
 import Vision
 import UniformTypeIdentifiers
+import WhisperKit
 
 typealias LocalFileURL = URL
 
@@ -26,6 +27,8 @@ extension LocalFileURL: Identifiable {
             return try await readImageContent()
         } else if type.conforms(to: .text) {
             return try String(contentsOf: self, encoding: .utf8)
+        } else if type.conforms(to: .audio) {
+            return try await readAudioContent()
         } else if type.conforms(to: .video) {
             
         }
@@ -60,8 +63,8 @@ extension LocalFileURL: Identifiable {
             recognizeTexts = try await withCheckedThrowingContinuation { continuation in
                 do {
                     try requestHandler.perform([request])
-                    
-                    let recognizedText = request.results?.compactMap { observation in
+                     
+                    let recognizedTexts = request.results?.compactMap { observation in
                         observation.topCandidates(1).map { $0.string }
                     }.flatMap { $0 }
                     continuation.resume(returning: recognizeTexts)
@@ -72,5 +75,11 @@ extension LocalFileURL: Identifiable {
 
         }
         return recognizeTexts.joined(separator: " ")
+    }
+    
+    private func readAudioContent() async throws -> String {
+        let whisperKit = try await WhisperKit(WhisperKitConfig(model: "openai_whisper-small"))
+        let result = try await whisperKit.transcribe(audioPath: self.path())
+        return result.map { $0.text }.joined(separator: "")
     }
 }

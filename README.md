@@ -34,7 +34,7 @@ No pre-operations. Just download the app to use it !
 
 🍔 Customize chat by selecting model and knowledge base.
 
-🍞Customize your own knowledge base. Supported file types,  pdf, xml, markdown, text, image. ( More file types will be supported in future )
+🍞Customize your own knowledge base. Supported file types include pdf, xml, markdown, text, image, audio. ( More file types will be supported in future )
 
 🍰Download models from Model Store, including Deepseek, Llama, Mistral, Qwen and other powerful models.
 

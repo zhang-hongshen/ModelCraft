@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		7001F55D2BF2F44B00E66BDC /* ollama in CopyFiles */ = {isa = PBXBuildFile; fileRef = 7001F55B2BF2F43500E66BDC /* ollama */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		7001F55D2BF2F44B00E66BDC /* ollama in Copy Files */ = {isa = PBXBuildFile; fileRef = 7001F55B2BF2F43500E66BDC /* ollama */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		701954232BC8244E00CD2ED3 /* Retriever.swift in Sources */ = {isa = PBXBuildFile; fileRef = 701954222BC8244E00CD2ED3 /* Retriever.swift */; };
 		701954252BC8286E00CD2ED3 /* TextSplitter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 701954242BC8286E00CD2ED3 /* TextSplitter.swift */; };
 		701954272BC8D9ED00CD2ED3 /* MessageTemplate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 701954262BC8D9ED00CD2ED3 /* MessageTemplate.swift */; };
@@ -19,6 +19,10 @@
 		70271B3C2BC046F300E21A6E /* KnowledgaBaseModelActor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70271B3B2BC046F300E21A6E /* KnowledgaBaseModelActor.swift */; };
 		70271B5E2BC1A97900E21A6E /* ModelStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70271B5D2BC1A97900E21A6E /* ModelStore.swift */; };
 		70271B782BC4412E00E21A6E /* SpeechRecognizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70271B772BC4412E00E21A6E /* SpeechRecognizer.swift */; };
+		7027C41A2D63385F00D37D14 /* jfk.wav in Resources */ = {isa = PBXBuildFile; fileRef = 7027C4192D63385F00D37D14 /* jfk.wav */; };
+		7027C41B2D63385F00D37D14 /* jfk.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 7027C4182D63385F00D37D14 /* jfk.mp3 */; };
+		7027C41F2D63396B00D37D14 /* WhisperKit in Frameworks */ = {isa = PBXBuildFile; productRef = 7027C41E2D63396B00D37D14 /* WhisperKit */; };
+		7027C4212D63396B00D37D14 /* whisperkit-cli in Frameworks */ = {isa = PBXBuildFile; productRef = 7027C4202D63396B00D37D14 /* whisperkit-cli */; };
 		703422112BB6A38C00332E04 /* OllamaKit in Frameworks */ = {isa = PBXBuildFile; productRef = 703422102BB6A38C00332E04 /* OllamaKit */; };
 		703845832BB6674600E3128B /* Locale+.swift in Sources */ = {isa = PBXBuildFile; fileRef = 703845822BB6674600E3128B /* Locale+.swift */; };
 		7041EA702BB2AACB00286AE3 /* EnvironmentValues+.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7041EA6F2BB2AACB00286AE3 /* EnvironmentValues+.swift */; };
@@ -116,14 +120,15 @@
 			name = "Embed XPC Services";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		70271B392BC0454600E21A6E /* CopyFiles */ = {
+		70271B392BC0454600E21A6E /* Copy Files */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
 			dstPath = "";
 			dstSubfolderSpec = 6;
 			files = (
-				7001F55D2BF2F44B00E66BDC /* ollama in CopyFiles */,
+				7001F55D2BF2F44B00E66BDC /* ollama in Copy Files */,
 			);
+			name = "Copy Files";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXCopyFilesBuildPhase section */
@@ -142,6 +147,8 @@
 		70271B3B2BC046F300E21A6E /* KnowledgaBaseModelActor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KnowledgaBaseModelActor.swift; sourceTree = "<group>"; };
 		70271B5D2BC1A97900E21A6E /* ModelStore.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ModelStore.swift; sourceTree = "<group>"; };
 		70271B772BC4412E00E21A6E /* SpeechRecognizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechRecognizer.swift; sourceTree = "<group>"; };
+		7027C4182D63385F00D37D14 /* jfk.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = jfk.mp3; sourceTree = "<group>"; };
+		7027C4192D63385F00D37D14 /* jfk.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = jfk.wav; sourceTree = "<group>"; };
 		703845822BB6674600E3128B /* Locale+.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Locale+.swift"; sourceTree = "<group>"; };
 		7041EA6F2BB2AACB00286AE3 /* EnvironmentValues+.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "EnvironmentValues+.swift"; sourceTree = "<group>"; };
 		7041EA712BB2AC8D00286AE3 /* ServerStatusView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerStatusView.swift; sourceTree = "<group>"; };
@@ -216,9 +223,11 @@
 				70A574A82BB0716A008E3750 /* OrderedCollections in Frameworks */,
 				70C22FDF2BAFD463002754C7 /* Kingfisher in Frameworks */,
 				70E201722BADE31700CFE1D7 /* Alamofire in Frameworks */,
+				7027C41F2D63396B00D37D14 /* WhisperKit in Frameworks */,
 				70B13D022BBAF27700A42F3C /* SVDB in Frameworks */,
 				70E201802BAEB86A00CFE1D7 /* MarkdownUI in Frameworks */,
 				70A574AD2BB0894A008E3750 /* ActivityIndicatorView in Frameworks */,
+				7027C4212D63396B00D37D14 /* whisperkit-cli in Frameworks */,
 				70C22FC22BAEC581002754C7 /* Splash in Frameworks */,
 				703422112BB6A38C00332E04 /* OllamaKit in Frameworks */,
 			);
@@ -272,6 +281,15 @@
 				701954262BC8D9ED00CD2ED3 /* MessageTemplate.swift */,
 			);
 			path = Models;
+			sourceTree = "<group>";
+		};
+		7027C4172D63384100D37D14 /* TestResources */ = {
+			isa = PBXGroup;
+			children = (
+				7027C4182D63385F00D37D14 /* jfk.mp3 */,
+				7027C4192D63385F00D37D14 /* jfk.wav */,
+			);
+			path = TestResources;
 			sourceTree = "<group>";
 		};
 		7067E8162BCBBBE800FF2797 /* Prompt */ = {
@@ -415,6 +433,7 @@
 		70CE607A2BAD2D4700A2D0B0 /* ModelCraftTests */ = {
 			isa = PBXGroup;
 			children = (
+				7027C4172D63384100D37D14 /* TestResources */,
 				70CE607B2BAD2D4700A2D0B0 /* ModelCraftTests.swift */,
 			);
 			path = ModelCraftTests;
@@ -486,7 +505,7 @@
 				70CE60602BAD2D4500A2D0B0 /* Sources */,
 				70CE60612BAD2D4500A2D0B0 /* Frameworks */,
 				70CE60622BAD2D4500A2D0B0 /* Resources */,
-				70271B392BC0454600E21A6E /* CopyFiles */,
+				70271B392BC0454600E21A6E /* Copy Files */,
 				701954442BCB943A00CD2ED3 /* Embed XPC Services */,
 			);
 			buildRules = (
@@ -503,6 +522,8 @@
 				70A574AC2BB0894A008E3750 /* ActivityIndicatorView */,
 				703422102BB6A38C00332E04 /* OllamaKit */,
 				70B13D012BBAF27700A42F3C /* SVDB */,
+				7027C41E2D63396B00D37D14 /* WhisperKit */,
+				7027C4202D63396B00D37D14 /* whisperkit-cli */,
 			);
 			productName = ModelCraft;
 			productReference = 70CE60642BAD2D4500A2D0B0 /* ModelCraft.app */;
@@ -585,6 +606,7 @@
 				70A574A62BB0716A008E3750 /* XCRemoteSwiftPackageReference "swift-collections" */,
 				70A574AB2BB0894A008E3750 /* XCRemoteSwiftPackageReference "ActivityIndicatorView" */,
 				70B13D002BBAF27700A42F3C /* XCRemoteSwiftPackageReference "SVDB" */,
+				7027C41D2D63396B00D37D14 /* XCRemoteSwiftPackageReference "WhisperKit" */,
 			);
 			productRefGroup = 70CE60652BAD2D4500A2D0B0 /* Products */;
 			projectDirPath = "";
@@ -612,6 +634,8 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				7027C41A2D63385F00D37D14 /* jfk.wav in Resources */,
+				7027C41B2D63385F00D37D14 /* jfk.mp3 in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -885,7 +909,7 @@
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 0.3.9;
+				MARKETING_VERSION = 0.4.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.zhanghongshen.ModelCraft;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
@@ -931,7 +955,7 @@
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 0.3.9;
+				MARKETING_VERSION = 0.4.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.zhanghongshen.ModelCraft;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
@@ -1075,6 +1099,14 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		7027C41D2D63396B00D37D14 /* XCRemoteSwiftPackageReference "WhisperKit" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/argmaxinc/WhisperKit";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.9.0;
+			};
+		};
 		70A574A62BB0716A008E3750 /* XCRemoteSwiftPackageReference "swift-collections" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/apple/swift-collections.git";
@@ -1134,6 +1166,16 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		7027C41E2D63396B00D37D14 /* WhisperKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 7027C41D2D63396B00D37D14 /* XCRemoteSwiftPackageReference "WhisperKit" */;
+			productName = WhisperKit;
+		};
+		7027C4202D63396B00D37D14 /* whisperkit-cli */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 7027C41D2D63396B00D37D14 /* XCRemoteSwiftPackageReference "WhisperKit" */;
+			productName = "whisperkit-cli";
+		};
 		703422102BB6A38C00332E04 /* OllamaKit */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = OllamaKit;

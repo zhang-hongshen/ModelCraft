@@ -101,15 +101,14 @@ final class ModelCraftTests: XCTestCase {
         print(Bundle.main.bundlePath)
     }
     
-    func testReadFileToString() throws {
-        let pdf = URL(filePath: "/Users/zhanghongshen/Documents/Interview/20230410.pdf")
-        let text = URL(filePath: "/Users/zhanghongshen/Documents/Interview/test.txt")
-        let xml = URL(filePath: "/Users/zhanghongshen/Documents/Interview/xml.xml")
-        let image = URL(filePath: "/Users/zhanghongshen/Pictures/学生证.jpg")
-        print("pdf, \(try pdf.readContent())")
-        print("text, \(try text.readContent())")
-        print("xml, \(try xml.readContent())")
-        print("image, \(try image.readContent())")
+    func testReadFileToString() async throws {
+       let bundle = Bundle(for: type(of: self))        
+        guard let url = bundle.url(forResource: "jfk", withExtension: "mp3") else {
+           XCTFail("File not found")
+           return
+       }
+        print("123", url.path())
+        print("audio content: ", try await url.readContent())
     }
     
     func testPerformanceExample() throws {
@@ -118,5 +117,7 @@ final class ModelCraftTests: XCTestCase {
             // Put the code you want to measure the time of here.
         }
     }
+    
+    
 
 }
