@@ -38,6 +38,7 @@ struct ModelCraftApp: App {
     
     @State private var modelTaskTimer: Timer? = nil
     @State private var modelTaskCancellables: Set<AnyCancellable> = []
+    @Environment(\.openWindow) private var openWindow
     
     init() {
 #if os(macOS)
@@ -71,7 +72,18 @@ struct ModelCraftApp: App {
                             }
                         }
                     }
+            }.commands {
+                CommandGroup(after: .help) {
+                    Button("Acknowledgments") {
+                        openWindow(id: "acknowledgment")
+                    }
+                }
             }
+            
+            WindowGroup(id: "acknowledgment") {
+                AcknowledgmentView()
+            }
+            
 #if os(macOS)
             Settings {
                 SettingsView().background(.ultraThinMaterial)
@@ -153,5 +165,7 @@ extension ModelCraftApp {
             }
             .store(in: &cancellables)
     }
+    
+    
     
 }

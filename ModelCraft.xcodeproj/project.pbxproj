@@ -90,6 +90,7 @@
 		70E201802BAEB86A00CFE1D7 /* MarkdownUI in Frameworks */ = {isa = PBXBuildFile; productRef = 70E2017F2BAEB86A00CFE1D7 /* MarkdownUI */; };
 		70E201852BAEC08900CFE1D7 /* SplashCodeSyntaxHighlighter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70E201842BAEC08900CFE1D7 /* SplashCodeSyntaxHighlighter.swift */; };
 		70E201872BAEC0C700CFE1D7 /* TextOutputFormat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70E201862BAEC0C700CFE1D7 /* TextOutputFormat.swift */; };
+		70E907632D646D94006D8FDA /* AcknowledgmentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70E907622D646D94006D8FDA /* AcknowledgmentView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -213,6 +214,7 @@
 		70E2017C2BAEA9DE00CFE1D7 /* OllamaService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OllamaService.swift; sourceTree = "<group>"; };
 		70E201842BAEC08900CFE1D7 /* SplashCodeSyntaxHighlighter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplashCodeSyntaxHighlighter.swift; sourceTree = "<group>"; };
 		70E201862BAEC0C700CFE1D7 /* TextOutputFormat.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextOutputFormat.swift; sourceTree = "<group>"; };
+		70E907622D646D94006D8FDA /* AcknowledgmentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AcknowledgmentView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -470,6 +472,7 @@
 				7078AB302BB510A1004B3819 /* Model */,
 				70E201792BAE825100CFE1D7 /* Chat */,
 				70CE60CA2BAD7A4F00A2D0B0 /* Settings */,
+				70E907622D646D94006D8FDA /* AcknowledgmentView.swift */,
 			);
 			path = Features;
 			sourceTree = "<group>";
@@ -654,6 +657,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				7078AB342BB514A9004B3819 /* ModelTaskStatus.swift in Sources */,
+				70E907632D646D94006D8FDA /* AcknowledgmentView.swift in Sources */,
 				70B13D062BBBDC2100A42F3C /* FileThumbnail.swift in Sources */,
 				70CE4D2C2BB93DDA00E1DEE2 /* AVSpeechSynthesizer+.swift in Sources */,
 				70A574B82BB13965008E3750 /* PromptSuggestion.swift in Sources */,
