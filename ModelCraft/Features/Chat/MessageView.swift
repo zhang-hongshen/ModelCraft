@@ -70,7 +70,7 @@ extension MessageView {
     
     @ViewBuilder
     func MessageContentView() -> some View {
-        Markdown(message.content)
+        Markdown(message.status != .failed ? message.content : "Failed.Please try again later.")
             .markdownTheme(.modelCraft)
             .markdownCodeSyntaxHighlighter(.splash(theme: self.splashTheme))
             .textSelection(.enabled)
