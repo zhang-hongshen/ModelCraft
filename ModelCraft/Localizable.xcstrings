@@ -112,28 +112,6 @@
         }
       }
     },
-    "Check for Updates…" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "检查更新..."
-          }
-        }
-      }
-    },
-    "Choose a model to chat" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "选择一个模型进行对话"
-          }
-        }
-      }
-    },
     "Command" : {
 
     },
@@ -159,26 +137,6 @@
     },
     "Content" : {
 
-    },
-    "Copied" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "已复制"
-          }
-        }
-      }
-    },
-    "Copy" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "复制"
-          }
-        }
-      }
     },
     "Dark" : {
       "localizations" : {
@@ -270,17 +228,6 @@
         }
       }
     },
-    "Explore and download models to chat." : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "浏览并下载模型进行对话"
-          }
-        }
-      }
-    },
     "Failed" : {
       "localizations" : {
         "zh-Hans" : {
@@ -350,9 +297,6 @@
           }
         }
       }
-    },
-    "Info" : {
-
     },
     "Knowledge Base" : {
       "localizations" : {
@@ -424,17 +368,6 @@
         }
       }
     },
-    "Message" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "信息"
-          }
-        }
-      }
-    },
     "Model" : {
       "localizations" : {
         "zh-Hans" : {
@@ -465,17 +398,6 @@
         }
       }
     },
-    "New Chat" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "新的对话"
-          }
-        }
-      }
-    },
     "No Available Model" : {
       "localizations" : {
         "zh-Hans" : {
@@ -499,28 +421,6 @@
     "Ok" : {
 
     },
-    "Open %@" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "打开 %@"
-          }
-        }
-      }
-    },
-    "Open ModelStore" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "打开"
-          }
-        }
-      }
-    },
     "Personalization" : {
       "localizations" : {
         "zh-Hans" : {
@@ -534,35 +434,7 @@
     "Please try again!" : {
 
     },
-    "Prompt" : {
-
-    },
     "Prompts" : {
-
-    },
-    "Quit" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "退出"
-          }
-        }
-      }
-    },
-    "Read" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "朗读"
-          }
-        }
-      }
-    },
-    "Read Aloud" : {
 
     },
     "Refresh" : {
@@ -605,41 +477,8 @@
         }
       }
     },
-    "Select models to download" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "选择模型下载"
-          }
-        }
-      }
-    },
-    "Select or" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "选择或者"
-          }
-        }
-      }
-    },
     "Shortcut" : {
 
-    },
-    "Show menu bar icon" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "显示菜单栏图标"
-          }
-        }
-      }
     },
     "Speaking Rate" : {
       "localizations" : {
@@ -694,17 +533,6 @@
     "This is an Placeholder" : {
 
     },
-    "Thread" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "线程"
-          }
-        }
-      }
-    },
     "Title" : {
       "localizations" : {
         "zh-Hans" : {
@@ -726,7 +554,14 @@
       }
     },
     "Token per second:" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "每秒Token："
+          }
+        }
+      }
     },
     "Total cost:" : {
       "localizations" : {

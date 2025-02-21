@@ -12,8 +12,13 @@ struct DeleteButton: View {
     var action: () -> Void = {}
     
     var body: some View {
-        Button("Delete", systemImage: "trash", role: .destructive) {
+        Button(role: .destructive) {
             action()
+        } label: {
+            HStack {
+                Image(systemName: "trash")
+                Text("Delete")
+            }
         }
     }
 }

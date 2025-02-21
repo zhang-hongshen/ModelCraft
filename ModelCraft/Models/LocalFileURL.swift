@@ -10,6 +10,7 @@ import PDFKit
 import Vision
 import UniformTypeIdentifiers
 import WhisperKit
+import AVFoundation
 
 typealias LocalFileURL = URL
 
@@ -81,5 +82,89 @@ extension LocalFileURL: Identifiable {
         let whisperKit = try await WhisperKit(WhisperKitConfig(model: "openai_whisper-small"))
         let result = try await whisperKit.transcribe(audioPath: self.path())
         return result.map { $0.text }.joined(separator: "")
+    }
+    
+    private func readVideoContent() -> String {
+        return ""
+    }
+    
+    private func extractIFrame() async throws {
+        let asset = AVAsset(url: self)
+        guard let track = try await asset.loadTracks(withMediaType: .video).first else {
+            print("No video track found")
+            return
+        }
+
+        let reader = try! AVAssetReader(asset: asset)
+        let output = AVAssetReaderTrackOutput(track: track, outputSettings: [
+            kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA
+        ])
+        reader.add(output)
+        reader.startReading()
+
+        var iFrameTimes: [CMTime] = []
+        
+        while let sampleBuffer = output.copyNextSampleBuffer() {
+        
+            // 判断是否是 I-Frame (关键帧)
+            if let attachments = CMSampleBufferGetSampleAttachmentsArray(sampleBuffer,
+                                                                         createIfNecessary: false) as? [[CFString: Any]],
+                let attachment = attachments.first,
+                let isKeyFrame = attachment[kCMSampleAttachmentKey_DependsOnOthers] as? Bool,
+                !isKeyFrame {
+                let pts = CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
+                iFrameTimes.append(pts)
+            }
+        }
+        reader.cancelReading()
+
+        // 用 AVAssetImageGenerator 抽取 I-Frame 图片
+        let imageGenerator = AVAssetImageGenerator(asset: asset)
+        imageGenerator.requestedTimeToleranceBefore = .zero
+        imageGenerator.requestedTimeToleranceAfter = .zero
+        
+        
+        for time in iFrameTimes {
+            imageGenerator.generateCGImageAsynchronously(for: time) { cgImageOrNil, time, errorOrNil in
+                if let error = errorOrNil {
+                    print("Failed to extract image at \(time.seconds)s: \(error)")
+                    return
+                }
+                guard let cgImage = cgImageOrNil else {
+                    return
+                }
+                let image = PlatformImage(cgImage: cgImage, size: .zero)
+                print("Extracted I-frame at \(time.seconds)s")
+                let picturesURL = FileManager.default.urls(for: .picturesDirectory, in: .userDomainMask).first!
+                let fileName = "frame_\(CMTimeGetSeconds(time)).png"
+                saveImage(image, to: picturesURL.appending(path: fileName))
+            }
+        }
+    }
+    
+    
+    func saveImage(_ image: Any, to url: URL) {
+        #if canImport(UIKit)
+        guard let uiImage = image as? UIImage,
+              let pngData = uiImage.pngData() else {
+            print("Failed to convert UIImage to PNG data")
+            return
+        }
+        #elseif canImport(AppKit)
+        guard let nsImage = image as? NSImage,
+              let tiffData = nsImage.tiffRepresentation,
+              let bitmap = NSBitmapImageRep(data: tiffData),
+              let pngData = bitmap.representation(using: .png, properties: [:]) else {
+            print("Failed to convert NSImage to PNG data")
+            return
+        }
+        #endif
+
+        do {
+            try pngData.write(to: url)
+            print("Saved image to \(url.path)")
+        } catch {
+            print("Failed to save image: \(error)")
+        }
     }
 }

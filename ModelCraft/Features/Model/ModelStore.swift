@@ -75,7 +75,13 @@ extension ModelStore {
                 }
                 .popover(isPresented: $showSubDownloadingTask, arrowEdge: .bottom) {
                     List {
-                        UncompletedDownloadTaskView()
+                        ForEach(uncompletedDownloadTasks) { task in
+                            HStack{
+                                Label(task.modelName, systemImage: "shippingbox")
+                                Spacer()
+                                ModelTaskStatus(task: task)
+                            }.tag(task.modelName)
+                        }
                     }
                 }
             }

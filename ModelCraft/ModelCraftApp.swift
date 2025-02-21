@@ -141,7 +141,7 @@ extension ModelCraftApp {
         await fetchLocalModels()
     }
     
-    func fetchLocalModels() async{
+    func fetchLocalModels() async {
         do {
             models = try await OllamaService.shared.models()
             if globalStore.selectedModel == nil || !models.map({ $0.name }).contains(globalStore.selectedModel!) {

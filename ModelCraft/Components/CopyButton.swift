@@ -14,13 +14,14 @@ struct CopyButton: View {
     @State private var copied = false
     
     var body: some View {
-        Button(copied ? "Copied" : "Copy",
-               systemImage: copied ? "checkmark" : "square.on.square") {
+        Button {
             action()
             copied = true
             DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
                 copied = false
             }
+        } label: {
+            Image(systemName: copied ? "checkmark" : "square.on.square")
         }
     }
 }

@@ -20,8 +20,6 @@ struct PromptEditionView: View {
     
     var body: some View {
         VStack {
-            Text("Prompt").font(.title2.bold())
-            
             Form {
                 TextField("Title", text: $prompt.title)
                     .focused($focusedField, equals: .title)
@@ -34,7 +32,7 @@ struct PromptEditionView: View {
                 LabeledContent("Content") {
                     TextEditor(text: $prompt.content)
                         .focused($focusedField, equals: .content)
-                        .frame(height: 100)
+                        .frame(minHeight: 100)
                 }
             }
         }

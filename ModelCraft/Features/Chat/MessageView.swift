@@ -174,12 +174,25 @@ extension MessageView {
         HStack(alignment: .center) {
             CommonButtons()
             
-            Button("Read Aloud", systemImage: "speaker.wave.2") {
-                speechSynthesizer.speak(message.content)
+            if speechSynthesizer.isSpeaking {
+                Button {
+                    speechSynthesizer.stop()
+                } label: {
+                    Image(systemName: "stop.circle")
+                }
+            } else {
+                Button {
+                    speechSynthesizer.speak(message.content)
+                } label: {
+                    Image(systemName: "speaker.wave.2")
+                }.disabled(speechSynthesizer.isSpeaking)
             }
             
-            InfoButton {
+            
+            Button {
                 infoPresented = true
+            } label: {
+                Image(systemName: "info.circle")
             }.popover(isPresented: Binding(
                 get: { infoPresented && isHovering },
                 set: { infoPresented = $0 }

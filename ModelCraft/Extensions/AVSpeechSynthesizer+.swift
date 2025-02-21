@@ -15,7 +15,7 @@ extension AVSpeechSynthesizer {
         guard let language = NLLanguageRecognizer.dominantLanguage(for: text) else { return }
         
         if isSpeaking {
-            pauseSpeaking(at: .immediate)
+            stopSpeaking(at: .immediate)
         }
         @AppStorage(UserDefaults.speakingRate) var speakingRate = 0.5
         @AppStorage(UserDefaults.speakingVolume) var speakingVolume = 0.8
@@ -24,5 +24,9 @@ extension AVSpeechSynthesizer {
         utterance.rate = Float(speakingRate)
         utterance.volume = Float(speakingVolume)
         speak(utterance)
+    }
+    
+    func stop() {
+        stopSpeaking(at: .immediate)
     }
 }

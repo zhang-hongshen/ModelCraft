@@ -28,6 +28,7 @@ struct ContentView: View {
     
     @Environment(\.modelContext) private var modelContext
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.downaloadedModels) private var models
     
     @Query(sort: \Chat.createdAt, order: .reverse) private var chats: [Chat]
     @Query(sort: \ModelTask.createdAt, order: .reverse) var modelTasks: [ModelTask] = []
@@ -43,12 +44,6 @@ struct ContentView: View {
             modelTaskTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { timer in
                 guard timer.isValid else { return }
                 Task.detached { try await self.handleModelTask() }
-            }
-        }
-        .onChange(of: scenePhase, initial: true) {
-            switch scenePhase {
-            case.background: stopModelTask()
-            default: break
             }
         }
         .sheet(item: $selectedKnowledgeBase) { knowledgeBase in
@@ -145,7 +140,7 @@ extension ContentView {
         Section {
             Label("Prompts", systemImage: "lightbulb.max").tag(Tab.prompts)
         } header: {
-            Text("Prompt")
+            Text("Prompts")
         }
     }
     
@@ -201,8 +196,15 @@ extension ContentView {
     }
     
     private func handleModelTask() throws {
+        
         modelContext.delete(modelTasks.filter({ $0.status == .completed }))
+        // delete duplicate model download task
+        let taskModelNames = Set(modelTasks.map { $0.modelName })
+        for task in modelTasks.filter({ $0.type == .download && taskModelNames.contains($0.modelName) }) {
+            modelContext.delete(task)
+        }
         try modelContext.save()
+        
         for task in modelTasks.filter({ $0.status == .new}) {
             switch task.type {
             case .download: handleDownloadTask(task)
