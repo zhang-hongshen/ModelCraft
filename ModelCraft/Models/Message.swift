@@ -45,6 +45,7 @@ class Message {
     var images: [Data]
     var status: MessageStatus
     var chat: Chat?
+    var conversation: Conversation?
     
     var evalCount: Int? = nil
     var evalDuration: Int? = nil

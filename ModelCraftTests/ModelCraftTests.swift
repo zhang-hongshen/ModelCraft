@@ -51,8 +51,6 @@ final class ModelCraftTests: XCTestCase {
         let thankYouString = try AttributedString(
             markdown:"**Thank you!** Please visit our [website](https://example.com)")
         print("string: \(thankYouString)")
-//        print("string: \(thankYouString.)")
-        
     }
     
     func testFileCopy() throws {
@@ -93,23 +91,26 @@ final class ModelCraftTests: XCTestCase {
                 print("xcode path = \(path)")
             }
         }
-        let paths = "/opt/homebrew/anaconda3/bin:/opt/homebrew/anaconda3/condabin:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/Library/Apple/usr/bin:/Users/zhanghongshen/Library/Application Support/JetBrains/Toolbox/scripts"
-            .split(separator: ":")
-        for path in paths {
-            print("path = \(path)")
-        }
-        print(Bundle.main.bundlePath)
     }
     
-    func testReadFileToString() async throws {
-       let bundle = Bundle(for: type(of: self))        
+    func testReadAudioFile() async throws {
+       let bundle = Bundle(for: type(of: self))
         guard let url = bundle.url(forResource: "jfk", withExtension: "mp3") else {
            XCTFail("File not found")
            return
        }
-        print("123", url.path())
         print("audio content: ", try await url.readContent())
     }
+    
+    func testReadVideoFile() async throws {
+       let bundle = Bundle(for: type(of: self))
+        guard let url = bundle.url(forResource: "mov", withExtension: "mov") else {
+           XCTFail("File not found")
+           return
+       }
+        print("video content: ", try await url.readContent())
+    }
+    
     
     func testPerformanceExample() throws {
         // This is an example of a performance test case.

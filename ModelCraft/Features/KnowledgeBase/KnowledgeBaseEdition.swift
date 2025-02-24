@@ -73,8 +73,8 @@ extension KnowledgeBaseEdition {
             
             Spacer()
         }
-        .safeAreaPadding(Default.padding)
         .buttonStyle(.borderless)
+        .safeAreaPadding(Default.padding)
         .background(.ultraThinMaterial)
     }
     
@@ -102,9 +102,7 @@ extension KnowledgeBaseEdition {
     
     func save() {
         dismiss()
-        Task {
-            await KnowledgaBaseModelActor(modelContainer: modelContext.container).insert(konwledgeBase)
-        }
+        modelContext.persist(konwledgeBase)
     }
     
 }

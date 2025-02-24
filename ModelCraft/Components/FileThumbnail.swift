@@ -28,9 +28,9 @@ enum ViewType: Identifiable, CaseIterable {
 struct FileThumbnail: View {
     
     @State var url: URL
-    var frameWidth: CGFloat = 80
-    
     @State private var previewImage: PlatformImage? = nil
+    
+    var frameWidth: CGFloat = 80
     
     var image: Image {
         if let previewImage {
@@ -54,9 +54,7 @@ extension FileThumbnail {
                                                    size: CGSize(width: frameWidth, height: frameWidth),
                                                    scale: 1,
                                                    representationTypes: .all)
-        // Retrieve the singleton instance of the thumbnail generator and generate the thumbnails.
-        let generator = QLThumbnailGenerator.shared
-        generator.generateRepresentations(for: request) { thumbnailOrNil, _, errorOrNil in
+        QLThumbnailGenerator.shared.generateRepresentations(for: request) { thumbnailOrNil, _, errorOrNil in
             guard let thumbnail = thumbnailOrNil else { return }
             DispatchQueue.main.async {
 #if canImport(AppKit)

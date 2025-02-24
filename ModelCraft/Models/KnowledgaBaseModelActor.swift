@@ -12,8 +12,7 @@ import SwiftData
 actor KnowledgaBaseModelActor {
     
     func insert(_ model: KnowledgeBase) {
-        modelContext.insert(model)
-        try? modelContext.save()
+        modelContext.persist(model)
         Task.detached {
             model.createEmedding()
         }

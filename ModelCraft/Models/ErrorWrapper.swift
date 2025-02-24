@@ -1,6 +1,9 @@
-/*
- See LICENSE folder for this sample’s licensing information.
- */
+//
+//  ErrorWrapper.swift
+//  ModelCraft
+//
+//  Created by 张鸿燊 on 23/2/2025.
+//
 
 import Foundation
 import SwiftUI

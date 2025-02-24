@@ -20,6 +20,7 @@ extension LocalFileURL: Identifiable {
     
     func readContent() async throws -> String {
         guard isFileURL, let type = UTType(filenameExtension: pathExtension) else { return "" }
+        print("type = ", type)
         if type.conforms(to: .pdf) {
             return readPDFContent()
         } else if type.conforms(to: .xml) {
@@ -30,8 +31,8 @@ extension LocalFileURL: Identifiable {
             return try String(contentsOf: self, encoding: .utf8)
         } else if type.conforms(to: .audio) {
             return try await readAudioContent()
-        } else if type.conforms(to: .video) {
-            
+        } else if type.conforms(to: .video) || type.conforms(to: .quickTimeMovie) {
+            return try await readVideoContent()
         }
         return ""
     }
@@ -49,7 +50,6 @@ extension LocalFileURL: Identifiable {
         return content
     }
     
-    @available(macOS 10.15, *)
     private func readImageContent() async throws -> String {
         var recognizeTexts = [String]()
         if #available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, *) {
@@ -65,10 +65,10 @@ extension LocalFileURL: Identifiable {
                 do {
                     try requestHandler.perform([request])
                      
-                    let recognizedTexts = request.results?.compactMap { observation in
+                    let result = request.results?.compactMap { observation in
                         observation.topCandidates(1).map { $0.string }
                     }.flatMap { $0 }
-                    continuation.resume(returning: recognizeTexts)
+                    continuation.resume(returning: result ?? [])
                 } catch {
                     continuation.resume(throwing: error)
                 }
@@ -84,7 +84,8 @@ extension LocalFileURL: Identifiable {
         return result.map { $0.text }.joined(separator: "")
     }
     
-    private func readVideoContent() -> String {
+    private func readVideoContent() async throws -> String {
+        try await extractIFrame()
         return ""
     }
     
@@ -96,36 +97,33 @@ extension LocalFileURL: Identifiable {
         }
 
         let reader = try! AVAssetReader(asset: asset)
-        let output = AVAssetReaderTrackOutput(track: track, outputSettings: [
-            kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA
-        ])
+        let output = AVAssetReaderTrackOutput(track: track, outputSettings: nil)
         reader.add(output)
+        
         reader.startReading()
 
         var iFrameTimes: [CMTime] = []
         
         while let sampleBuffer = output.copyNextSampleBuffer() {
         
-            // 判断是否是 I-Frame (关键帧)
+            // identify whether it is i-frame
             if let attachments = CMSampleBufferGetSampleAttachmentsArray(sampleBuffer,
                                                                          createIfNecessary: false) as? [[CFString: Any]],
                 let attachment = attachments.first,
-                let isKeyFrame = attachment[kCMSampleAttachmentKey_DependsOnOthers] as? Bool,
-                !isKeyFrame {
-                let pts = CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
-                iFrameTimes.append(pts)
-            }
+                let dependsOnOthers = attachment[kCMSampleAttachmentKey_DependsOnOthers] as? Bool, !dependsOnOthers {
+                    let pts = CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
+                    iFrameTimes.append(pts)
+                }
         }
         reader.cancelReading()
 
-        // 用 AVAssetImageGenerator 抽取 I-Frame 图片
         let imageGenerator = AVAssetImageGenerator(asset: asset)
-        imageGenerator.requestedTimeToleranceBefore = .zero
-        imageGenerator.requestedTimeToleranceAfter = .zero
         
-        
+        let picturesURL = FileManager.default.urls(for: .picturesDirectory, in: .userDomainMask).first!
+        print("pictures:", picturesURL.path())
         for time in iFrameTimes {
             imageGenerator.generateCGImageAsynchronously(for: time) { cgImageOrNil, time, errorOrNil in
+                print("generateCGImageAsynchronously completed")
                 if let error = errorOrNil {
                     print("Failed to extract image at \(time.seconds)s: \(error)")
                     return
@@ -135,36 +133,15 @@ extension LocalFileURL: Identifiable {
                 }
                 let image = PlatformImage(cgImage: cgImage, size: .zero)
                 print("Extracted I-frame at \(time.seconds)s")
-                let picturesURL = FileManager.default.urls(for: .picturesDirectory, in: .userDomainMask).first!
+               
                 let fileName = "frame_\(CMTimeGetSeconds(time)).png"
-                saveImage(image, to: picturesURL.appending(path: fileName))
+                do {
+                    try image.save(to: picturesURL.appending(path: fileName))
+                } catch {
+                    print("Failed to save image: \(error)")
+                }
             }
         }
     }
     
-    
-    func saveImage(_ image: Any, to url: URL) {
-        #if canImport(UIKit)
-        guard let uiImage = image as? UIImage,
-              let pngData = uiImage.pngData() else {
-            print("Failed to convert UIImage to PNG data")
-            return
-        }
-        #elseif canImport(AppKit)
-        guard let nsImage = image as? NSImage,
-              let tiffData = nsImage.tiffRepresentation,
-              let bitmap = NSBitmapImageRep(data: tiffData),
-              let pngData = bitmap.representation(using: .png, properties: [:]) else {
-            print("Failed to convert NSImage to PNG data")
-            return
-        }
-        #endif
-
-        do {
-            try pngData.write(to: url)
-            print("Saved image to \(url.path)")
-        } catch {
-            print("Failed to save image: \(error)")
-        }
-    }
 }

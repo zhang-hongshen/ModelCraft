@@ -1,9 +1,11 @@
 //
-//  MessageView.swift
+//  ConversationView.swift
 //  ModelCraft
 //
-//  Created by 张鸿燊 on 24/3/2024.
+//  Created by 张鸿燊 on 2/24/25.
 //
+
+import SwiftUI
 
 import SwiftUI
 import AVFoundation
@@ -13,21 +15,28 @@ import MarkdownUI
 import Splash
 import ActivityIndicatorView
 
-struct MessageView: View {
+struct ConversationView: View {
     
-    @Bindable var message: Message
+    @Bindable var conversation: Conversation
     
     @State private var copied = false
     @State private var infoPresented = false
     @State private var isHovering = false
     @State private var isEditing = false
-    
+    @State private var index = 0
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.speechSynthesizer) private var speechSynthesizer
     
     private let imageHeight: CGFloat = 200
-    
     private let columns = Array.init(repeating: GridItem(.flexible()), count: 4)
+    
+    private var userMessage: Message {
+        conversation.userMessages[index]
+    }
+    
+    private var assistantMessage: Message {
+        conversation.assistantMessages[index]
+    }
     
     private var splashTheme: Splash.Theme {
         switch self.colorScheme {
@@ -39,10 +48,9 @@ struct MessageView: View {
     }
     
     var body: some View {
-        if message.role == .assistant {
-            AssistantMessageView()
-        } else {
+        VStack {
             UserMessageView()
+            AssistantMessageView()
         }
     }
 
@@ -50,17 +58,17 @@ struct MessageView: View {
 
 // MARK: Common Message
 
-extension MessageView {
+extension ConversationView {
     
     @ViewBuilder
-    func CommonButtons() -> some View {
+    func CommonButtons(_ message: Message) -> some View {
         CopyButton {
             Pasteboard.general.setString(message.content)
         }
     }
     
     @ViewBuilder
-    func MessageImageView() -> some View {
+    func MessageImageView(_ message: Message) -> some View {
         LazyVGrid(columns: columns){
             ForEach(message.images, id: \.self) { data in
                 ImageLoader(data: data, contentMode: .fit)
@@ -71,7 +79,7 @@ extension MessageView {
     }
     
     @ViewBuilder
-    func MessageContentView() -> some View {
+    func MessageContentView(_ message: Message) -> some View {
         Markdown(message.status != .failed ? message.content : "Failed.Please try again later.")
             .markdownTheme(.modelCraft)
             .markdownCodeSyntaxHighlighter(.splash(theme: self.splashTheme))
@@ -83,25 +91,25 @@ extension MessageView {
 
 // MARK: User Message
 
-extension MessageView {
+extension ConversationView {
     
     @ViewBuilder
     func UserMessageView() -> some View {
         HStack(alignment: .top) {
             Spacer()
             VStack(alignment: .trailing) {
-                Text(message.createdAt.formatted())
+                Text(userMessage.createdAt.formatted())
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .opacity(isHovering ? 1 : 0)
                 
-                if !message.images.isEmpty {
-                    MessageImageView()
+                if !userMessage.images.isEmpty {
+                    MessageImageView(userMessage)
                 }
                 
                 if isEditing {
                     VStack(alignment: .trailing) {
-                        TextEditor(text: $message.content)
+                        TextEditor(text: $conversation.userMessages[index].content)
                             .textEditorStyle(.plain)
                             .font(.body)
                         HStack {
@@ -124,8 +132,8 @@ extension MessageView {
                         RoundedRectangle().fill(.quaternary).stroke(.primary, lineWidth: 1)
                     }
                 } else {
-                    if !message.content.isEmpty {
-                        MessageContentView()
+                    if !userMessage.content.isEmpty {
+                        MessageContentView(userMessage)
                             .padding()
                             .background {
                                 RoundedRectangle().fill(.quaternary)
@@ -135,7 +143,8 @@ extension MessageView {
                             }
                                 
                     }
-                    UserButtons().buttonStyle(.borderless)
+                    UserButtons()
+                        .buttonStyle(.borderless)
                         .opacity(isHovering ? 1 : 0)
                 }
                 
@@ -147,7 +156,7 @@ extension MessageView {
     @ViewBuilder
     func UserButtons() -> some View {
         HStack {
-            CommonButtons()
+            CommonButtons(userMessage)
             Button {
                 isEditing = true
             } label: {
@@ -161,32 +170,32 @@ extension MessageView {
 
 // MARK: Assistant Message
 
-extension MessageView {
+extension ConversationView {
     @ViewBuilder
     func AssistantMessageView() -> some View {
         HStack(alignment: .top) {
             VStack(alignment: .leading) {
-                Text(message.createdAt.formatted())
+                Text(assistantMessage.createdAt.formatted())
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .opacity(isHovering ? 1 : 0)
                 
-                switch message.status {
+                switch assistantMessage.status {
                 case .new:
                     ActivityIndicatorView(isVisible: .constant(true),
                                           type: .opacityDots())
                     .frame(width: 30, height: 10)
                 default:
-                    if !message.content.isEmpty {
-                        MessageContentView()
+                    if !assistantMessage.content.isEmpty {
+                        MessageContentView(assistantMessage)
                             .contextMenu {
                                 AssistantButtons()
                             }
                     }
                 }
                 
-                if !message.images.isEmpty {
-                    MessageImageView()
+                if !assistantMessage.images.isEmpty {
+                    MessageImageView(assistantMessage)
                 }
                 
                 AssistantButtons()
@@ -201,7 +210,7 @@ extension MessageView {
     @ViewBuilder
     func AssistantButtons() -> some View {
         HStack(alignment: .center) {
-            CommonButtons()
+            CommonButtons(assistantMessage)
             
             if speechSynthesizer.isSpeaking {
                 Button {
@@ -211,7 +220,7 @@ extension MessageView {
                 }
             } else {
                 Button {
-                    speechSynthesizer.speak(message.content)
+                    speechSynthesizer.speak(assistantMessage.content)
                 } label: {
                     Image(systemName: "speaker.wave.2")
                 }.disabled(speechSynthesizer.isSpeaking)
@@ -232,23 +241,23 @@ extension MessageView {
                 set: { infoPresented = $0 }
             ), arrowEdge: .top) {
                 Form {
-                    if let totalDuration = message.totalDuration {
+                    if let totalDuration = assistantMessage.totalDuration {
                         LabeledContent("Total cost:",
                                        value: Duration.nanoseconds(totalDuration).formatted(.units(allowed: [.seconds])))
                     }
-                    if let loadDuration = message.loadDuration {
+                    if let loadDuration = assistantMessage.loadDuration {
                         LabeledContent("Loading model cost:",
                                        value: Duration.nanoseconds(loadDuration).formatted(.units(allowed: [.seconds])))
                     }
-                    if let promptEvalDuration = message.promptEvalDuration {
+                    if let promptEvalDuration = assistantMessage.promptEvalDuration {
                         LabeledContent("Evaluating prompt cost:",
                                        value: Duration.nanoseconds(promptEvalDuration).formatted(.units(allowed: [.seconds])))
                     }
-                    if let evalDurationInSecond = message.evalDurationInSecond {
+                    if let evalDurationInSecond = assistantMessage.evalDurationInSecond {
                         LabeledContent("Generating response cost:",
                                        value: Duration.seconds(evalDurationInSecond).formatted(.units(allowed: [.seconds])))
                     }
-                    if let tokenPerSecond = message.tokenPerSecond {
+                    if let tokenPerSecond = assistantMessage.tokenPerSecond {
                         LabeledContent("Token per second:",
                                        value: "\(tokenPerSecond.formatted(.number.precision(.fractionLength(2))))/s")
                     }
@@ -258,4 +267,9 @@ extension MessageView {
         }
         
     }
+}
+
+
+#Preview {
+    ConversationView(conversation: Conversation())
 }

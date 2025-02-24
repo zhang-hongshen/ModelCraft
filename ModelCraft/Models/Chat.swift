@@ -9,27 +9,27 @@ import SwiftData
  
 @Model
 class Chat {
-    @Attribute(.unique) let id = UUID()
+    @Attribute(.unique) var id = UUID()
     var createdAt: Date =  Date.now
-    
-    @Relationship(deleteRule: .cascade, inverse: \Message.chat)
-    var messages: [Message]
-    
-    init(messages: [Message] = []) {
-        self.messages = messages
+
+    @Relationship(deleteRule: .cascade, inverse: \Conversation.chat)
+    var conversations: [Conversation]
+
+    init(conversations: [Conversation] = []) {
+        self.conversations = conversations
     }
     
 }
 
 extension Chat {
     @Transient var title: String {
-        guard let message = orderedMessages.first else {
+        guard let message = orderedConversations.first?.userMessages.first else {
             return "New Chat"
         }
         return String(message.content.prefix(20))
     }
     
-    @Transient var orderedMessages: [Message] {
-        messages.sorted(using: KeyPathComparator(\.createdAt, order: .forward))
+    @Transient var orderedConversations: [Conversation] {
+        conversations.sorted(using: KeyPathComparator(\.createdAt, order: .forward))
     }
 }

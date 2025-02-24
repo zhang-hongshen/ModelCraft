@@ -34,12 +34,6 @@ struct ChatView: View {
     
     @State private var chatStatus: ChatStatus = .assistantWaitingForRequest
     @State private var cancellables = Set<AnyCancellable>()
-    @State private var columns: [GridItem] = []
-    @State private var promptSuggestions: [PromptSuggestion] = Array(PromptSuggestion.examples().shuffled().prefix(4))
-    
-    private let promptCardWidth: CGFloat = 250
-    private let promptCardHorizontalSpacing: CGFloat = 20
-    private let width: CGFloat = 270
     
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var globalStore: GlobalStore
@@ -47,6 +41,8 @@ struct ChatView: View {
     
     @AppStorage(UserDefaults.automaticallyScrollToBottom)
     private var automaticallyScrollToBottom = false
+    
+    private let minWidth: CGFloat = 270
     
     var body: some View {
         MainView()
@@ -59,7 +55,7 @@ struct ChatView: View {
                 .cornerRadius()
                 .padding(.horizontal)
             }
-            .frame(minWidth: width,
+            .frame(minWidth: minWidth,
                    minHeight: 250)
             .toolbar(content: ToolbarItems)
             .safeAreaInset(edge: .bottom, content: MessageEditor)
@@ -105,69 +101,34 @@ extension ChatView {
     
     @ViewBuilder
     func MainView() -> some View {
-        if chat.messages.isEmpty {
-            PromptSuggestionsView()
+        if chat.conversations.isEmpty {
+            PromptSuggestionsView(minWidth: minWidth,
+                                  onTapPromptCard: submitPrompt)
         } else {
             ScrollViewReader { proxy in
                 ScrollView {
                     VStack(alignment: .leading, spacing: 10) {
-                        ForEach(chat.orderedMessages) { message in
-                            MessageView(message: message).id(message.id)
-                                    .scrollTargetLayout()
+                        ForEach(chat.orderedConversations) { conversation in
+                            ConversationView(conversation: conversation)
+                                .scrollTargetLayout()
                         }
                     }
                     .safeAreaPadding()
                 }
                 .contentMargins(.leading, Default.padding, for: .scrollContent)
                 .contentMargins(0, for: .scrollIndicators)
-                .onChange(of: chat.messages) {
+                .onChange(of: chat.conversations) {
                     // don't scroll when user are scrolling
                     scrollToBottom(proxy)
                 }
-                .onChange(of: chat.orderedMessages.last?.content) {
+                .onChange(of: chat.conversations.last) {
                     if automaticallyScrollToBottom {
                         scrollToBottom(proxy)
                     }
                 }
             }
             .scrollDismissesKeyboard(.interactively)
-        }
-    }
-    
-    @ViewBuilder
-    func PromptSuggestionsView() -> some View {
-        GeometryReader { proxy in
-            ScrollView {
-                VStack(alignment: .center) {
-                    MessageRole.assistant.icon
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .frame(height: 200)
-                    
-                    Text("How can I help you today ?").font(.title.bold())
-                        .fixedSize(horizontal: false, vertical: true)
-                        .multilineTextAlignment(.leading)
-                    
-                    LazyVGrid(columns: columns) {
-                        ForEach(promptSuggestions) { prompt in
-                            PromptCard(prompt: prompt, width: promptCardWidth)
-                                .onTapGesture {
-                                    submitPrompt(prompt)
-                                }
-                        }
-                    }
-                }
-            }
-            .contentMargins(0, for: .scrollIndicators)
-            .onChange(of: proxy.size.width, initial: true) {
-                let count = Int(proxy.size.width / width)
-                withAnimation {
-                    columns = Array(repeating: .init(.fixed(promptCardWidth),
-                                                     spacing: promptCardHorizontalSpacing,
-                                                     alignment: .top),
-                                    count: count)
-                }
-            }
+            .scrollTargetBehavior(.paging)
         }
     }
     
@@ -215,7 +176,6 @@ extension ChatView {
         .overlay {
             RoundedRectangle().fill(.clear).stroke(.primary, lineWidth: 1)
         }
-        .background(.ultraThinMaterial)
         .safeAreaPadding()
         .background(.regularMaterial)
     }
@@ -302,14 +262,24 @@ extension ChatView {
                 let context = await knowledgeBase.search(message.content).joined(separator: " ")
                 systemMessages.append(SystemMessage.retrivedContent(context))
             }
-            let messages = systemMessages + chat.messages + [humanMessage]
-            message.chat = chat
-            modelContext.persist(message)
+            
+            let messages = systemMessages +
+            chat.conversations.flatMap { conversation in
+                Array(zip(conversation.userMessages, conversation.assistantMessages)
+                    .flatMap { [$0, $1] })
+            } + [humanMessage]
             assistantMessage = Message(role: .assistant, status: .new)
+            let conversation = Conversation(chat: chat,
+                                            userMessages: [message],
+                                            assistantMessages: [assistantMessage])
+            message.conversation = conversation
+            assistantMessage.conversation = conversation
+            modelContext.persist([message, assistantMessage])
+            modelContext.persist(conversation)
+            
             DispatchQueue.main.async {
-                chat.messages.append(message)
+                chat.conversations.append(conversation)
                 self.clearDraft()
-                chat.messages.append(assistantMessage)
                 chatStatus = .userWaitingForResponse
             }
             OllamaService.shared.chat(model: model, messages: messages.compactMap{ toChatRequestMessage($0) })
@@ -345,7 +315,6 @@ extension ChatView {
                             assistantMessage.status = .generated
                         }
                     }
-                    
                 }
                 .store(in: &cancellables)
         }
@@ -387,7 +356,7 @@ extension ChatView {
     }
     
     func scrollToBottom(_ proxy: ScrollViewProxy) {
-        guard let lastID = chat.orderedMessages.last?.id else { return }
+        guard let lastID = chat.orderedConversations.last?.id else { return }
         withAnimation {
             proxy.scrollTo(lastID, anchor: .bottom)
         }

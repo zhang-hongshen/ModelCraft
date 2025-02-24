@@ -87,7 +87,7 @@ extension ContentView {
                 Button(action: addChat, label: {
                     Image(systemName: "plus")
                 }).buttonStyle(.borderless)
-                .disabled(chats.last?.messages.isEmpty ?? false)
+                    .disabled(chats.last?.conversations.isEmpty ?? false)
             }
         }
     }
@@ -169,7 +169,7 @@ extension ContentView {
 extension ContentView {
     private func addChat() {
         withAnimation {
-            if let chat = chats.last, chat.messages.isEmpty {
+            if let isEmptyChat = chats.last?.conversations.isEmpty, isEmptyChat {
                 return
             }
             let newChat = Chat()

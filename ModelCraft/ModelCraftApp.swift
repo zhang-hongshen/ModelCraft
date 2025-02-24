@@ -19,7 +19,7 @@ struct ModelCraftApp: App {
     let sharedModelContainer: ModelContainer = {
         let schema = Schema([
             Message.self, Chat.self, ModelTask.self,
-            KnowledgeBase.self, Prompt.self,
+            KnowledgeBase.self, Prompt.self, Conversation.self
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 
@@ -31,13 +31,12 @@ struct ModelCraftApp: App {
     }()
     
     @State private var cancellables: Set<AnyCancellable> = []
-    @State private var backgroudTaskTimer: Timer? = nil
+    @State private var checkServerStatusTaskTimer: Timer? = nil
+    @State private var fetchLocalModelsTaskTimer: Timer? = nil
     @State private var models: [ModelInfo] = []
     private let globalStore = GlobalStore()
     private let speechSynthesizer = AVSpeechSynthesizer()
     
-    @State private var modelTaskTimer: Timer? = nil
-    @State private var modelTaskCancellables: Set<AnyCancellable> = []
     @Environment(\.openWindow) private var openWindow
     
     init() {
@@ -57,31 +56,34 @@ struct ModelCraftApp: App {
                             get: { globalStore.errorWrapper != nil },
                             set: { _ in }),
                            presenting: globalStore.errorWrapper){ _ in
-                        Button("Ok") {
+                        Button("OK") {
                             globalStore.errorWrapper = nil
                         }
                     } message: { errorWrapper in
                         Text(errorWrapper.guidance)
                     }
                     .task {
-                        await LoopTask()
-                        backgroudTaskTimer = Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { timer in
+                        checkServerStatusTaskTimer = Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { timer in
+                            guard timer.isValid else { return }
+                            checkServerStatus()
+                        }
+                        fetchLocalModelsTaskTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { timer in
                             guard timer.isValid else { return }
                             Task {
-                                await LoopTask()
+                                await fetchLocalModels()
                             }
                         }
                     }
             }.commands {
                 CommandGroup(after: .help) {
                     Button("Acknowledgments") {
-                        openWindow(id: "acknowledgment")
+                        openWindow(id: "acknowledgments")
                     }
                 }
             }
             
-            WindowGroup(id: "acknowledgment") {
-                AcknowledgmentView()
+            WindowGroup(id: "acknowledgments") {
+                AcknowledgmentView().applyUserSettings()
             }
             
 #if os(macOS)
@@ -107,6 +109,7 @@ struct ModelCraftApp: App {
 }
 
 extension ModelCraftApp {
+    
 #if os(macOS)
     func startOllamaServer() {
         globalStore.serverStatus = .launching
@@ -135,11 +138,6 @@ extension ModelCraftApp {
         }
     }
 #endif
-    
-    func LoopTask() async {
-        checkServerStatus()
-        await fetchLocalModels()
-    }
     
     func fetchLocalModels() async {
         do {
