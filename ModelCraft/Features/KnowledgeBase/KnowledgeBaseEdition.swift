@@ -39,7 +39,7 @@ struct KnowledgeBaseEdition: View {
                 konwledgeBase.files.append(contentsOf: urls)
             case .failure(let error):
                 globalStore.errorWrapper = ErrorWrapper(error: error,
-                                                        guidance: "Please try again!")
+                                                        recoverySuggestion: "Please try again later!")
             }
         }
     }

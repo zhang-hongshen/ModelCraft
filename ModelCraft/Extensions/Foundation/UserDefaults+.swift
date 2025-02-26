@@ -16,9 +16,6 @@ extension UserDefaults {
     static let speakingRate = "speakingRate"
     static let speakingVolume = "speakingVolume"
     
-    static let modelShouldKnow = "modelShouldKnow"
-    static let modelShouldRespond = "modelShouldRespond"
-    
     func value<T>(forKey key: String, default defaultValue: T) -> T {
         return self.value(forKey: key) as? T ?? defaultValue
     }

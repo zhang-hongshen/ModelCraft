@@ -39,7 +39,7 @@ struct KnowledgeBaseDetailView: View {
                     urls.forEach { konwledgeBase.files.append($0) }
                 case .failure(let error):
                     globalStore.errorWrapper = ErrorWrapper(error: error,
-                                                             guidance: "Please try again!")
+                                                            recoverySuggestion: "Please try again later!")
                 }
             }
             .dropDestination(for: URL.self) { items, location in

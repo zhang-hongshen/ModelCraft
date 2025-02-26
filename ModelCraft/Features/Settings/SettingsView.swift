@@ -10,7 +10,7 @@ import SwiftUI
 struct SettingsView: View {
     
     enum Tab: String, CaseIterable, Identifiable {
-        case general, personalization
+        case general
         var id: Self { self }
     }
     
@@ -23,11 +23,6 @@ struct SettingsView: View {
                 .tabItem {
                     Image(systemName: "gearshape")
                     Text("General")
-                }
-            PersonalizationView().tag(Tab.personalization as Tab?)
-                .tabItem {
-                    Image(systemName: "person.bubble")
-                    Text("Personalization")
                 }
         }
         .tabViewStyle(.automatic)

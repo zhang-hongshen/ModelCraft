@@ -44,4 +44,28 @@ class OllamaService {
                                 messages: messages))
     }
     
+    func chat(model: String, messages: [OllamaKit.Message]) async throws -> ChatResponse {
+        return try await client.chat(ChatRequest(model: model,
+                                messages: messages))
+    }
+}
+
+
+extension OllamaService {
+    
+    static func toChatRequestMessage(_ message: Message) -> OllamaKit.Message {
+        let images = message.images.compactMap { data in
+            data.base64EncodedString()
+        }
+        var role: OllamaKit.Message.Role {
+            switch message.role {
+            case .user: .user
+            case .assistant: .assistant
+            case .system: .system
+            }
+        }
+        return OllamaKit.Message(role: role,
+                                 content: message.content,
+                                 images: images)
+    }
 }

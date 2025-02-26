@@ -279,6 +279,7 @@
       }
     },
     "How would you like model to respond ?" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -422,6 +423,7 @@
 
     },
     "Personalization" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -430,9 +432,6 @@
           }
         }
       }
-    },
-    "Please try again!" : {
-
     },
     "Prompts" : {
 
@@ -604,6 +603,7 @@
       }
     },
     "What would you like model to know about you to provide better responses ?" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {

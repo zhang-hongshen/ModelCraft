@@ -11,18 +11,16 @@ import SwiftUI
 
 extension AVSpeechSynthesizer {
     
-    func speak(_ text: String) {
+    func speak(_ text: String, rate: Float, volume: Float) {
         guard let language = NLLanguageRecognizer.dominantLanguage(for: text) else { return }
         
         if isSpeaking {
             stopSpeaking(at: .immediate)
         }
-        @AppStorage(UserDefaults.speakingRate) var speakingRate = 0.5
-        @AppStorage(UserDefaults.speakingVolume) var speakingVolume = 0.8
         let utterance = AVSpeechUtterance(string: text)
         utterance.voice = AVSpeechSynthesisVoice(language: language.rawValue)
-        utterance.rate = Float(speakingRate)
-        utterance.volume = Float(speakingVolume)
+        utterance.rate = rate
+        utterance.volume = volume
         speak(utterance)
     }
     

@@ -21,7 +21,7 @@ struct ModelCraftApp: App {
             Message.self, Chat.self, ModelTask.self,
             KnowledgeBase.self, Prompt.self, Conversation.self
         ])
-        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
+        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
 
         do {
             return try ModelContainer(for: schema, configurations: [modelConfiguration])
@@ -35,6 +35,7 @@ struct ModelCraftApp: App {
     @State private var fetchLocalModelsTaskTimer: Timer? = nil
     @State private var models: [ModelInfo] = []
     private let globalStore = GlobalStore()
+    private let userSettings = UserSettings()
     private let speechSynthesizer = AVSpeechSynthesizer()
     
     @Environment(\.openWindow) private var openWindow
@@ -60,14 +61,14 @@ struct ModelCraftApp: App {
                             globalStore.errorWrapper = nil
                         }
                     } message: { errorWrapper in
-                        Text(errorWrapper.guidance)
+                        Text(errorWrapper.recoverySuggestion)
                     }
                     .task {
                         checkServerStatusTaskTimer = Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { timer in
                             guard timer.isValid else { return }
                             checkServerStatus()
                         }
-                        fetchLocalModelsTaskTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { timer in
+                        fetchLocalModelsTaskTimer = Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { timer in
                             guard timer.isValid else { return }
                             Task {
                                 await fetchLocalModels()
@@ -98,6 +99,7 @@ struct ModelCraftApp: App {
         .environment(\.downaloadedModels, models)
         .environment(\.speechSynthesizer, speechSynthesizer)
         .environmentObject(globalStore)
+        .environmentObject(userSettings)
         .windowResizability(.contentSize)
         .commands {
             SidebarCommands()

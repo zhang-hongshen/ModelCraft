@@ -37,14 +37,13 @@ enum MessageStatus: Codable {
 
 @Model
 class Message {
-    @Attribute(.unique) let id = UUID()
+    @Attribute(.unique) var id = UUID()
     
-    let createdAt: Date = Date.now
+    var createdAt: Date = Date.now
     var role: MessageRole
     var content: String
     var images: [Data]
     var status: MessageStatus
-    var chat: Chat?
     var conversation: Conversation?
     
     var evalCount: Int? = nil

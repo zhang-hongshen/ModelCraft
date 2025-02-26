@@ -22,15 +22,6 @@ struct ChatView: View {
     @State private var assistantMessage = Message(role: .assistant, status: .new)
     @State private var selectedImages = Set<Data>()
     @State private var fileImporterPresented = false
-    @State private var selectedKnowledgeBase: KnowledgeBase? = nil
-    
-    // Possible values of the `chatStatus` property.
-    
-    enum ChatStatus {
-        case assistantWaitingForRequest
-        case userWaitingForResponse
-        case assistantResponding
-    }
     
     @State private var chatStatus: ChatStatus = .assistantWaitingForRequest
     @State private var cancellables = Set<AnyCancellable>()
@@ -71,6 +62,7 @@ struct ChatView: View {
                 cancellables.forEach { cancellable in
                   cancellable.cancel()
                 }
+                cancellables.removeAll()
                 chatStatus = .assistantResponding
             }
     }
@@ -90,7 +82,7 @@ extension ChatView {
                     }
                 }
             }
-            Picker("Knowledge Base", selection: $selectedKnowledgeBase) {
+            Picker("Knowledge Base", selection: $globalStore.selectedKnowledgeBase) {
                 ForEach(knowledgeBases) { knowledgeBase in
                     Text(verbatim: knowledgeBase.title).tag(knowledgeBase as KnowledgeBase?)
                 }
@@ -108,8 +100,9 @@ extension ChatView {
             ScrollViewReader { proxy in
                 ScrollView {
                     VStack(alignment: .leading, spacing: 10) {
-                        ForEach(chat.orderedConversations) { conversation in
-                            ConversationView(conversation: conversation)
+                        ForEach(chat.conversations) { conversation in
+                            ConversationView(conversation: conversation,
+                                             chatStatus: $chatStatus)
                                 .scrollTargetLayout()
                         }
                     }
@@ -251,38 +244,35 @@ extension ChatView {
         
         guard case .assistantWaitingForRequest = chatStatus else { return }
         guard let model = globalStore.selectedModel else {
+            globalStore.errorWrapper = ErrorWrapper(error: AppError.noSelectedModel)
             return
         }
         Task {
-            let humanMessage = HumanMessage.question(message.content)
-            var systemMessages = [SystemMessage.characterSetting(model),
-                                  SystemMessage.respondRule,
-                                  SystemMessage.modelShouldRespond]
-            if let knowledgeBase = selectedKnowledgeBase {
-                let context = await knowledgeBase.search(message.content).joined(separator: " ")
-                systemMessages.append(SystemMessage.retrivedContent(context))
-            }
-            
-            let messages = systemMessages +
-            chat.conversations.flatMap { conversation in
-                Array(zip(conversation.userMessages, conversation.assistantMessages)
-                    .flatMap { [$0, $1] })
-            } + [humanMessage]
             assistantMessage = Message(role: .assistant, status: .new)
             let conversation = Conversation(chat: chat,
-                                            userMessages: [message],
-                                            assistantMessages: [assistantMessage])
+                                            userMessage: message,
+                                            assistantMessage: assistantMessage)
             message.conversation = conversation
             assistantMessage.conversation = conversation
-            modelContext.persist([message, assistantMessage])
-            modelContext.persist(conversation)
-            
+            modelContext.insert([message, assistantMessage])
+            modelContext.insert(conversation)
+            try modelContext.save()
             DispatchQueue.main.async {
                 chat.conversations.append(conversation)
                 self.clearDraft()
                 chatStatus = .userWaitingForResponse
             }
-            OllamaService.shared.chat(model: model, messages: messages.compactMap{ toChatRequestMessage($0) })
+            
+            let userMessage = UserMessage.question(message.content)
+            var systemMessages = [SystemMessage.characterSetting(model),
+                                  SystemMessage.respondRule]
+            if let knowledgeBase = globalStore.selectedKnowledgeBase {
+                let context = await knowledgeBase.search(message.content).joined(separator: " ")
+                systemMessages.append(SystemMessage.retrivedContent(context))
+            }
+            let messages = systemMessages + chat.allMessages + [userMessage]
+            OllamaService.shared.chat(model: model,
+                                      messages: messages.compactMap{ OllamaService.toChatRequestMessage($0) })
                 .sink { completion in
                     DispatchQueue.main.async {
                         switch completion {
@@ -299,12 +289,6 @@ extension ChatView {
                             chatStatus = .assistantResponding
                             assistantMessage.status = .generating
                         }
-                        assistantMessage.evalCount = response.evalCount
-                        assistantMessage.evalDuration = response.evalDuration
-                        assistantMessage.loadDuration = response.loadDuration
-                        assistantMessage.promptEvalCount = response.promptEvalCount
-                        assistantMessage.promptEvalDuration = response.promptEvalDuration
-                        assistantMessage.totalDuration = response.totalDuration
                         
                         guard case .assistantResponding = chatStatus else { return }
                         if let message = response.message {
@@ -312,6 +296,12 @@ extension ChatView {
                         }
                         if response.done {
                             resetChat()
+                            assistantMessage.evalCount = response.evalCount
+                            assistantMessage.evalDuration = response.evalDuration
+                            assistantMessage.loadDuration = response.loadDuration
+                            assistantMessage.promptEvalCount = response.promptEvalCount
+                            assistantMessage.promptEvalDuration = response.promptEvalDuration
+                            assistantMessage.totalDuration = response.totalDuration
                             assistantMessage.status = .generated
                         }
                     }
@@ -321,21 +311,6 @@ extension ChatView {
         
     }
     
-    func toChatRequestMessage(_ message: Message) -> OllamaKit.Message {
-        let images = message.images.compactMap { data in
-            data.base64EncodedString()
-        }
-        var role: OllamaKit.Message.Role {
-            switch message.role {
-            case .user: .user
-            case .assistant: .assistant
-            case .system: .system
-            }
-        }
-        return OllamaKit.Message(role: role,
-                                 content: message.content,
-                                 images: images)
-    }
     
     func stopGenerateMessage() {
         resetChat()
@@ -343,6 +318,7 @@ extension ChatView {
         cancellables.forEach { cancellable in
             cancellable.cancel()
         }
+        cancellables.removeAll()
     }
     
     func clearDraft() {
@@ -356,7 +332,7 @@ extension ChatView {
     }
     
     func scrollToBottom(_ proxy: ScrollViewProxy) {
-        guard let lastID = chat.orderedConversations.last?.id else { return }
+        guard let lastID = chat.conversations.last?.id else { return }
         withAnimation {
             proxy.scrollTo(lastID, anchor: .bottom)
         }

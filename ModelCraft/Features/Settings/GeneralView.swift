@@ -10,30 +10,19 @@ import Combine
 
 struct GeneralView: View {
     
-    @AppStorage(UserDefaults.appearance)
-    private var appearance: Appearance = .system
-    @AppStorage(UserDefaults.automaticallyScrollToBottom)
-    private var automaticallyScrollToBottom = false
-    @AppStorage(UserDefaults.language)
-    private var language = Locale.defaultLanguage
-    
-    @AppStorage(UserDefaults.speakingRate)
-    private var speakingRate = 0.5
-    @AppStorage(UserDefaults.speakingVolume)
-    private var speakingVolume = 0.8
-    
     @State private var isCheckingServerStatus = false
     @State private var cancellables: Set<AnyCancellable> = []
     @EnvironmentObject private var globalStore: GlobalStore
+    @EnvironmentObject private var userSettings: UserSettings
     
     var body: some View {
         Form {
-            Picker("Appearance", selection: $appearance) {
+            Picker("Appearance", selection: $userSettings.appearance) {
                 Text("System").tag(Appearance.system)
                 Text("Light").tag(Appearance.light)
                 Text("Dark").tag(Appearance.dark)
             }
-            Picker("Language", selection: $language) {
+            Picker("Language", selection: $userSettings.language) {
                 ForEach(Bundle.main.localizations, id:\.self) { languageCode in
                     if let language = Locale(identifier: languageCode)
                         .localizedString(forLanguageCode: languageCode) {
@@ -41,12 +30,12 @@ struct GeneralView: View {
                     }
                 }
             }
-            Toggle("Scroll to bottom automatically when chatting", isOn: $automaticallyScrollToBottom)
+            Toggle("Scroll to bottom automatically when chatting", isOn: $userSettings.automaticallyScrollToBottom)
             
             
             Section {
                 
-                Slider(value: $speakingRate, in: 0...1) {
+                Slider(value: $userSettings.speakingRate, in: 0...1) {
                     Text("Speaking Rate")
                 } minimumValueLabel: {
                     Image(systemName: "tortoise.fill")
@@ -54,7 +43,7 @@ struct GeneralView: View {
                     Image(systemName: "hare.fill")
                 }
                 
-                Slider(value: $speakingVolume, in: 0...1) {
+                Slider(value: $userSettings.speakingVolume, in: 0...1) {
                     Text("Speaking Volume")
                 } minimumValueLabel: {
                     Image(systemName: "speaker.fill")

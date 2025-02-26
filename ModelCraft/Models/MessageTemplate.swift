@@ -40,15 +40,12 @@ class SystemMessage {
         """
     )
     
-    static var modelShouldRespond: Message {
-        let modelShouldRespond = UserDefaults.standard.value(forKey: UserDefaults.modelShouldRespond, default: "")
-        return Message(role: .system,
-                       content: modelShouldRespond)
-    }
     
+    // Task Instruction
     static func retrivedContent(_ content: String) -> Message {
         return Message(role: .system,
-                       content: """
+                       content:
+            """
             You have retrieved the following content:
             \(content)
             Please respond with the following:
@@ -59,19 +56,17 @@ class SystemMessage {
             """)
     }
     
+    static var querySummarizer  = Message(role: .system,
+                                          content:
+        """
+        Analyze the following user query and generate a concise summary that captures its core intent. The summary should be optimized for retrieving relevant documents from a knowledge base. Avoid unnecessary details while retaining essential keywords and context.
+        """)
 }
 
-class HumanMessage {
+class UserMessage {
     
     static func question(_ question: String) -> Message {
         return Message(role: .user,
                        content: question)
     }
-    
-    static var modelShouldKnow: Message {
-        let modelShouldKnow = UserDefaults.standard.value(forKey: UserDefaults.modelShouldKnow, default: "")
-        return Message(role: .user,
-                       content: modelShouldKnow)
-    }
-    
 }

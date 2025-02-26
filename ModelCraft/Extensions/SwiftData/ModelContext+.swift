@@ -9,14 +9,18 @@ import SwiftData
 
 extension ModelContext {
     
+    func insert<T>(_ models: [T]) where T : PersistentModel {
+        for model in models {
+            insert(model)
+        }
+    }
+    
     func persist<T>(_ model: T) where T : PersistentModel  {
         persist([model])
     }
     
     func persist<T>(_ models: [T])  where T : PersistentModel  {
-        for model in models {
-            insert(model)
-        }
+        insert(models)
         try? save()
     }
     

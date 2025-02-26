@@ -13,23 +13,49 @@ class Chat {
     var createdAt: Date =  Date.now
 
     @Relationship(deleteRule: .cascade, inverse: \Conversation.chat)
-    var conversations: [Conversation]
+    private var conversationsPersistent: [Conversation]
 
+    @Transient var conversations: [Conversation] {
+        get {
+            conversationsPersistent.sorted(using: KeyPathComparator(\.createdAt, order: .forward))
+        }
+        set {
+            conversationsPersistent = newValue
+        }
+    }
+    
     init(conversations: [Conversation] = []) {
-        self.conversations = conversations
+        self.conversationsPersistent = conversations
     }
     
 }
 
 extension Chat {
+    
     @Transient var title: String {
-        guard let message = orderedConversations.first?.userMessages.first else {
+        guard let message = conversations.first?.userMessage else {
             return "New Chat"
         }
         return String(message.content.prefix(20))
     }
     
-    @Transient var orderedConversations: [Conversation] {
-        conversations.sorted(using: KeyPathComparator(\.createdAt, order: .forward))
+    @Transient var allMessages: [Message] {
+        self.conversations.flatMap { [$0.userMessage, $0.assistantMessage] }
     }
+    
+    func allMessages(before: Conversation) -> [Message] {
+        guard let index = self.conversations.firstIndex(of: before) else {
+            return []
+        }
+        return self.conversations.prefix(index)
+            .flatMap { [$0.userMessage, $0.assistantMessage] }
+    }
+}
+
+// Possible values of the `chatStatus` property.
+
+enum ChatStatus {
+    case assistantWaitingForRequest
+    case userWaitingForResponse
+    case assistantResponding
 }
