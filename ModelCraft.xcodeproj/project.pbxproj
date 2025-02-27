@@ -8,7 +8,6 @@
 
 /* Begin PBXBuildFile section */
 		7001F55D2BF2F44B00E66BDC /* ollama in Copy Files */ = {isa = PBXBuildFile; fileRef = 7001F55B2BF2F43500E66BDC /* ollama */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
-		70097F7B2D69BBAA00DDDEDF /* mov.mov in Resources */ = {isa = PBXBuildFile; fileRef = 70097F7A2D69BBAA00DDDEDF /* mov.mov */; };
 		70097F7D2D6B58E100DDDEDF /* PromptSuggestionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70097F7C2D6B58E100DDDEDF /* PromptSuggestionsView.swift */; };
 		70097F7F2D6C04BB00DDDEDF /* ConversationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70097F7E2D6C04BB00DDDEDF /* ConversationView.swift */; };
 		70097F812D6C09BF00DDDEDF /* Conversation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70097F802D6C09BF00DDDEDF /* Conversation.swift */; };
@@ -17,6 +16,8 @@
 		70097F892D6EB0DC00DDDEDF /* GlobalStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70097F882D6EB0DA00DDDEDF /* GlobalStore.swift */; };
 		70097F8B2D6EB11800DDDEDF /* UserSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70097F8A2D6EB11800DDDEDF /* UserSettings.swift */; };
 		70097F8D2D6EB2C400DDDEDF /* Date+.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70097F8C2D6EB2C400DDDEDF /* Date+.swift */; };
+		70097F8F2D6EB63000DDDEDF /* UserMessageTemplate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70097F8E2D6EB63000DDDEDF /* UserMessageTemplate.swift */; };
+		70097F922D6EE16300DDDEDF /* OllamaKit in Frameworks */ = {isa = PBXBuildFile; productRef = 70097F912D6EE16300DDDEDF /* OllamaKit */; };
 		701954232BC8244E00CD2ED3 /* Retriever.swift in Sources */ = {isa = PBXBuildFile; fileRef = 701954222BC8244E00CD2ED3 /* Retriever.swift */; };
 		701954252BC8286E00CD2ED3 /* TextSplitter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 701954242BC8286E00CD2ED3 /* TextSplitter.swift */; };
 		701954272BC8D9ED00CD2ED3 /* MessageTemplate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 701954262BC8D9ED00CD2ED3 /* MessageTemplate.swift */; };
@@ -82,7 +83,7 @@
 		70CE60862BAD2D4700A2D0B0 /* ModelCraftUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70CE60852BAD2D4700A2D0B0 /* ModelCraftUITests.swift */; };
 		70CE60882BAD2D4700A2D0B0 /* ModelCraftUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70CE60872BAD2D4700A2D0B0 /* ModelCraftUITestsLaunchTests.swift */; };
 		70CE609C2BAD302000A2D0B0 /* LocalFileURL.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70CE60982BAD302000A2D0B0 /* LocalFileURL.swift */; };
-		70CE60A22BAD386E00A2D0B0 /* Message.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70CE60A12BAD386E00A2D0B0 /* Message.swift */; };
+		70CE60A22BAD386E00A2D0B0 /* SystemMessageTemplate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70CE60A12BAD386E00A2D0B0 /* SystemMessageTemplate.swift */; };
 		70CE60BE2BAD60AE00A2D0B0 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70CE60BD2BAD60AE00A2D0B0 /* SettingsView.swift */; };
 		70CE60C32BAD616600A2D0B0 /* GeneralView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70CE60C22BAD616600A2D0B0 /* GeneralView.swift */; };
 		70CE60C62BAD61F600A2D0B0 /* UserDefaults+.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70CE60C52BAD61F600A2D0B0 /* UserDefaults+.swift */; };
@@ -139,7 +140,6 @@
 
 /* Begin PBXFileReference section */
 		7001F55B2BF2F43500E66BDC /* ollama */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.executable"; path = ollama; sourceTree = "<group>"; };
-		70097F7A2D69BBAA00DDDEDF /* mov.mov */ = {isa = PBXFileReference; lastKnownFileType = video.quicktime; path = mov.mov; sourceTree = "<group>"; };
 		70097F7C2D6B58E100DDDEDF /* PromptSuggestionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptSuggestionsView.swift; sourceTree = "<group>"; };
 		70097F7E2D6C04BB00DDDEDF /* ConversationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationView.swift; sourceTree = "<group>"; };
 		70097F802D6C09BF00DDDEDF /* Conversation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Conversation.swift; sourceTree = "<group>"; };
@@ -148,6 +148,7 @@
 		70097F882D6EB0DA00DDDEDF /* GlobalStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlobalStore.swift; sourceTree = "<group>"; };
 		70097F8A2D6EB11800DDDEDF /* UserSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserSettings.swift; sourceTree = "<group>"; };
 		70097F8C2D6EB2C400DDDEDF /* Date+.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Date+.swift"; sourceTree = "<group>"; };
+		70097F8E2D6EB63000DDDEDF /* UserMessageTemplate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserMessageTemplate.swift; sourceTree = "<group>"; };
 		701954222BC8244E00CD2ED3 /* Retriever.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Retriever.swift; sourceTree = "<group>"; };
 		701954242BC8286E00CD2ED3 /* TextSplitter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextSplitter.swift; sourceTree = "<group>"; };
 		701954262BC8D9ED00CD2ED3 /* MessageTemplate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageTemplate.swift; sourceTree = "<group>"; };
@@ -155,7 +156,6 @@
 		7019542A2BCA3CE900CD2ED3 /* CopyButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CopyButton.swift; sourceTree = "<group>"; };
 		7019542E2BCAA04A00CD2ED3 /* ErrorWrapper.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ErrorWrapper.swift; sourceTree = "<group>"; };
 		701954592BCB9A1400CD2ED3 /* RandomAccessCollection+.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "RandomAccessCollection+.swift"; sourceTree = "<group>"; };
-		70271B362BBEFAA500E21A6E /* OllamaKit */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = OllamaKit; path = ../OllamaKit; sourceTree = "<group>"; };
 		70271B3B2BC046F300E21A6E /* KnowledgaBaseModelActor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KnowledgaBaseModelActor.swift; sourceTree = "<group>"; };
 		70271B5D2BC1A97900E21A6E /* ModelStore.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ModelStore.swift; sourceTree = "<group>"; };
 		7027C4182D63385F00D37D14 /* jfk.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = jfk.mp3; sourceTree = "<group>"; };
@@ -211,7 +211,7 @@
 		70CE60852BAD2D4700A2D0B0 /* ModelCraftUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelCraftUITests.swift; sourceTree = "<group>"; };
 		70CE60872BAD2D4700A2D0B0 /* ModelCraftUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelCraftUITestsLaunchTests.swift; sourceTree = "<group>"; };
 		70CE60982BAD302000A2D0B0 /* LocalFileURL.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LocalFileURL.swift; sourceTree = "<group>"; };
-		70CE60A12BAD386E00A2D0B0 /* Message.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Message.swift; sourceTree = "<group>"; };
+		70CE60A12BAD386E00A2D0B0 /* SystemMessageTemplate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemMessageTemplate.swift; sourceTree = "<group>"; };
 		70CE60BD2BAD60AE00A2D0B0 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		70CE60C22BAD616600A2D0B0 /* GeneralView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeneralView.swift; sourceTree = "<group>"; };
 		70CE60C52BAD61F600A2D0B0 /* UserDefaults+.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "UserDefaults+.swift"; sourceTree = "<group>"; };
@@ -236,6 +236,7 @@
 				70E201802BAEB86A00CFE1D7 /* MarkdownUI in Frameworks */,
 				70A574AD2BB0894A008E3750 /* ActivityIndicatorView in Frameworks */,
 				7027C4212D63396B00D37D14 /* whisperkit-cli in Frameworks */,
+				70097F922D6EE16300DDDEDF /* OllamaKit in Frameworks */,
 				70C22FC22BAEC581002754C7 /* Splash in Frameworks */,
 				703422112BB6A38C00332E04 /* OllamaKit in Frameworks */,
 			);
@@ -269,27 +270,28 @@
 		70271B792BC4E2CC00E21A6E /* Models */ = {
 			isa = PBXGroup;
 			children = (
-				70097F882D6EB0DA00DDDEDF /* GlobalStore.swift */,
-				70097F862D6EB0B100DDDEDF /* ServerStatus.swift */,
 				70097F822D6DA73C00DDDEDF /* AppError.swift */,
 				70CE60C72BAD705E00A2D0B0 /* Chat.swift */,
 				70097F802D6C09BF00DDDEDF /* Conversation.swift */,
 				70C22FC72BAECD55002754C7 /* Default.swift */,
 				7019542E2BCAA04A00CD2ED3 /* ErrorWrapper.swift */,
+				70097F882D6EB0DA00DDDEDF /* GlobalStore.swift */,
 				70271B3B2BC046F300E21A6E /* KnowledgaBaseModelActor.swift */,
 				70CE4D2E2BB94C7800E1DEE2 /* KnowledgeBase.swift */,
 				70CE60982BAD302000A2D0B0 /* LocalFileURL.swift */,
-				70CE60A12BAD386E00A2D0B0 /* Message.swift */,
+				70CE60A12BAD386E00A2D0B0 /* SystemMessageTemplate.swift */,
 				701954262BC8D9ED00CD2ED3 /* MessageTemplate.swift */,
 				7097F96A2BB02DD2001A91E3 /* ModelTask.swift */,
 				70CE4D282BB83BF500E1DEE2 /* Pasteboard.swift */,
 				7067E8182BCBBBF800FF2797 /* Prompt.swift */,
 				70A574B72BB13965008E3750 /* PromptSuggestion.swift */,
+				70097F862D6EB0B100DDDEDF /* ServerStatus.swift */,
 				70E201842BAEC08900CFE1D7 /* SplashCodeSyntaxHighlighter.swift */,
 				70E201862BAEC0C700CFE1D7 /* TextOutputFormat.swift */,
 				701954242BC8286E00CD2ED3 /* TextSplitter.swift */,
-				70B13D032BBB1F3300A42F3C /* XMLFile.swift */,
 				70097F8A2D6EB11800DDDEDF /* UserSettings.swift */,
+				70B13D032BBB1F3300A42F3C /* XMLFile.swift */,
+				70097F8E2D6EB63000DDDEDF /* UserMessageTemplate.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -297,7 +299,6 @@
 		7027C4172D63384100D37D14 /* TestResources */ = {
 			isa = PBXGroup;
 			children = (
-				70097F7A2D69BBAA00DDDEDF /* mov.mov */,
 				7027C4182D63385F00D37D14 /* jfk.mp3 */,
 				7027C4192D63385F00D37D14 /* jfk.wav */,
 			);
@@ -398,7 +399,6 @@
 				70CE60662BAD2D4500A2D0B0 /* ModelCraft */,
 				70CE607A2BAD2D4700A2D0B0 /* ModelCraftTests */,
 				70CE60842BAD2D4700A2D0B0 /* ModelCraftUITests */,
-				70271B362BBEFAA500E21A6E /* OllamaKit */,
 				70CE60652BAD2D4500A2D0B0 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -536,6 +536,7 @@
 				70B13D012BBAF27700A42F3C /* SVDB */,
 				7027C41E2D63396B00D37D14 /* WhisperKit */,
 				7027C4202D63396B00D37D14 /* whisperkit-cli */,
+				70097F912D6EE16300DDDEDF /* OllamaKit */,
 			);
 			productName = ModelCraft;
 			productReference = 70CE60642BAD2D4500A2D0B0 /* ModelCraft.app */;
@@ -619,6 +620,7 @@
 				70A574AB2BB0894A008E3750 /* XCRemoteSwiftPackageReference "ActivityIndicatorView" */,
 				70B13D002BBAF27700A42F3C /* XCRemoteSwiftPackageReference "SVDB" */,
 				7027C41D2D63396B00D37D14 /* XCRemoteSwiftPackageReference "WhisperKit" */,
+				70097F902D6EE16300DDDEDF /* XCRemoteSwiftPackageReference "OllamaKit" */,
 			);
 			productRefGroup = 70CE60652BAD2D4500A2D0B0 /* Products */;
 			projectDirPath = "";
@@ -648,7 +650,6 @@
 			files = (
 				7027C41A2D63385F00D37D14 /* jfk.wav in Resources */,
 				7027C41B2D63385F00D37D14 /* jfk.mp3 in Resources */,
-				70097F7B2D69BBAA00DDDEDF /* mov.mov in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -711,7 +712,7 @@
 				70CE4D2F2BB94C7800E1DEE2 /* KnowledgeBase.swift in Sources */,
 				7041EA702BB2AACB00286AE3 /* EnvironmentValues+.swift in Sources */,
 				7019545A2BCB9A1400CD2ED3 /* RandomAccessCollection+.swift in Sources */,
-				70CE60A22BAD386E00A2D0B0 /* Message.swift in Sources */,
+				70CE60A22BAD386E00A2D0B0 /* SystemMessageTemplate.swift in Sources */,
 				701954272BC8D9ED00CD2ED3 /* MessageTemplate.swift in Sources */,
 				7067E8222BCBC8DD00FF2797 /* PromptSearchView.swift in Sources */,
 				70B13D192BBD58DD00A42F3C /* ModelDetailView.swift in Sources */,
@@ -726,6 +727,7 @@
 				70C22FE52BAFD53E002754C7 /* ImageLoader.swift in Sources */,
 				70097F8B2D6EB11800DDDEDF /* UserSettings.swift in Sources */,
 				70955E8E2BB2E29B00015B79 /* Comparable+.swift in Sources */,
+				70097F8F2D6EB63000DDDEDF /* UserMessageTemplate.swift in Sources */,
 				70097F892D6EB0DC00DDDEDF /* GlobalStore.swift in Sources */,
 				7045BF452BB314E700CE61D1 /* Bundle+.swift in Sources */,
 				70097F8D2D6EB2C400DDDEDF /* Date+.swift in Sources */,
@@ -1115,6 +1117,14 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		70097F902D6EE16300DDDEDF /* XCRemoteSwiftPackageReference "OllamaKit" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/zhang-hongshen/OllamaKit";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.0.1;
+			};
+		};
 		7027C41D2D63396B00D37D14 /* XCRemoteSwiftPackageReference "WhisperKit" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/argmaxinc/WhisperKit";
@@ -1182,6 +1192,11 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		70097F912D6EE16300DDDEDF /* OllamaKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 70097F902D6EE16300DDDEDF /* XCRemoteSwiftPackageReference "OllamaKit" */;
+			productName = OllamaKit;
+		};
 		7027C41E2D63396B00D37D14 /* WhisperKit */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 7027C41D2D63396B00D37D14 /* XCRemoteSwiftPackageReference "WhisperKit" */;

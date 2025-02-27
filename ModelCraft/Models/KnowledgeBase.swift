@@ -15,8 +15,8 @@ enum IndexStatus: Int, Codable {
 
 @Model
 class KnowledgeBase {
-    @Attribute(.unique) let id = UUID()
-    let createdAt: Date = Date.now
+    @Attribute(.unique) var id = UUID()
+    var createdAt: Date = Date.now
     var icon: String = "book"
     var title: String
     var files: [LocalFileURL] {

@@ -10,8 +10,8 @@ import SwiftData
 
 @Model
 class Prompt {
-    @Attribute(.unique) let id = UUID()
-    let createdAt: Date = Date.now
+    @Attribute(.unique) var id = UUID()
+    var createdAt: Date = Date.now
     var title: String
     var command: String
     var content: String

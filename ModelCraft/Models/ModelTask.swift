@@ -25,8 +25,8 @@ enum TaskStatus: Int, Codable {
 @Model
 class ModelTask {
     
-    @Attribute(.unique) let id = UUID()
-    let createdAt: Date = Date.now
+    @Attribute(.unique) var id = UUID()
+    var createdAt: Date = Date.now
     var modelName: String
     var value: Double
     var total: Double

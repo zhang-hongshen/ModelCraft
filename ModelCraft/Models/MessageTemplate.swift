@@ -62,11 +62,3 @@ class SystemMessage {
         Analyze the following user query and generate a concise summary that captures its core intent. The summary should be optimized for retrieving relevant documents from a knowledge base. Avoid unnecessary details while retaining essential keywords and context.
         """)
 }
-
-class UserMessage {
-    
-    static func question(_ question: String) -> Message {
-        return Message(role: .user,
-                       content: question)
-    }
-}

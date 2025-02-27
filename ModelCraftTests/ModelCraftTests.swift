@@ -30,7 +30,8 @@ final class ModelCraftTests: XCTestCase {
     
     // 测试获取环境变量PATH
     func testGetPath() {
-        let path = (ProcessInfo.processInfo.environment["PATH"] ?? "").split(separator: ":")
+        setenv("OLLAMA_HOST", "http://localhost:11435", 1)
+        let path = (ProcessInfo.processInfo.environment["OLLAMA_HOST"] ?? "").split(separator: ":")
         print("path: \(path)")
     }
     

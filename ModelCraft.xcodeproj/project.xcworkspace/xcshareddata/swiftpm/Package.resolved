@@ -1,5 +1,5 @@
 {
-  "originHash" : "9f362766d193f830889295c14423cf129710f2e0897178e488b082a3bb1116ce",
+  "originHash" : "7265437c77cdc375e22a38e9be5fd5ad8b222e673fa1c2d8303cc4d2091723b4",
   "pins" : [
     {
       "identity" : "activityindicatorview",
@@ -35,6 +35,15 @@
       "state" : {
         "revision" : "2849f5323265386e200484b0d0f896e73c3411b9",
         "version" : "6.0.1"
+      }
+    },
+    {
+      "identity" : "ollamakit",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/zhang-hongshen/OllamaKit",
+      "state" : {
+        "revision" : "d9050fa22b90732269e992d772f5e976bcd29fab",
+        "version" : "1.0.1"
       }
     },
     {
@@ -105,8 +114,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/scinfu/SwiftSoup.git",
       "state" : {
-        "revision" : "6b4930da67b462d3f200472c902dd016d37a554d",
-        "version" : "2.7.7"
+        "revision" : "18ad8b8ff0f03f3c0a5544ffccfa2ea1c051ae6e",
+        "version" : "2.8.0"
       }
     },
     {

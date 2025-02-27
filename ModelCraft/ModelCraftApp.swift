@@ -21,7 +21,7 @@ struct ModelCraftApp: App {
             Message.self, Chat.self, ModelTask.self,
             KnowledgeBase.self, Prompt.self, Conversation.self
         ])
-        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
+        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 
         do {
             return try ModelContainer(for: schema, configurations: [modelConfiguration])
@@ -30,10 +30,11 @@ struct ModelCraftApp: App {
         }
     }()
     
+    @State private var models: [ModelInfo] = []
     @State private var cancellables: Set<AnyCancellable> = []
     @State private var checkServerStatusTaskTimer: Timer? = nil
-    @State private var fetchLocalModelsTaskTimer: Timer? = nil
-    @State private var models: [ModelInfo] = []
+    @State private var fetchDownloadedModelsTaskTimer: Timer? = nil
+    
     private let globalStore = GlobalStore()
     private let userSettings = UserSettings()
     private let speechSynthesizer = AVSpeechSynthesizer()
@@ -68,10 +69,10 @@ struct ModelCraftApp: App {
                             guard timer.isValid else { return }
                             checkServerStatus()
                         }
-                        fetchLocalModelsTaskTimer = Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { timer in
+                        fetchDownloadedModelsTaskTimer = Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { timer in
                             guard timer.isValid else { return }
                             Task {
-                                await fetchLocalModels()
+                                await fetchDownloadedModels()
                             }
                         }
                     }
@@ -118,14 +119,16 @@ extension ModelCraftApp {
         DispatchQueue.global(qos: .background).async {
             do {
                 let process = Process()
-                
                 let pipe = Pipe()
+                
+                setenv("OLLAMA_HOST", "http://localhost:11435", 1)
+                
                 process.standardOutput = pipe
                 process.standardError = pipe
                 process.standardInput = nil
-                
                 process.executableURL = Bundle.main.url(forAuxiliaryExecutable: "ollama")
                 process.arguments = ["serve"]
+                
                 try process.run()
                 pipe.fileHandleForReading.readabilityHandler = { handle in
                     let data = handle.availableData
@@ -141,7 +144,7 @@ extension ModelCraftApp {
     }
 #endif
     
-    func fetchLocalModels() async {
+    func fetchDownloadedModels() async {
         do {
             models = try await OllamaService.shared.models()
             if globalStore.selectedModel == nil || !models.map({ $0.name }).contains(globalStore.selectedModel!) {
