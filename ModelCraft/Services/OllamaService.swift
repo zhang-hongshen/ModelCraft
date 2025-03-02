@@ -13,7 +13,7 @@ import Alamofire
 class OllamaService {
     static let shared = OllamaService()
     
-    private let client = OllamaClient.shared
+    private let client = OllamaClient(baseURL: URL(string: ProcessInfo.processInfo.environment["OLLAMA_HOST"] ?? "http://localhost:11434")!)
     
     func reachable() -> AnyPublisher<Bool, Never> {
         client.reachable()
@@ -48,6 +48,15 @@ class OllamaService {
         return try await client.chat(ChatRequest(model: model,
                                 messages: messages))
     }
+    
+    func modelTags(_ model: String) async throws -> [ModelInfo] {
+        return try await client.modelTags(model)
+    }
+    
+    func libraryModels() async throws -> [ModelInfo] {
+        return try await client.libraryModels()
+    }
+    
 }
 
 

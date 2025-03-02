@@ -89,7 +89,7 @@ extension ModelDetailView {
     func fetchModels() {
         Task(priority: .userInitiated){
             isLoading = true
-            models = try await OllamaClient.shared.modelTags(modelName)
+            models = try await OllamaService.shared.modelTags(modelName)
             isLoading = false
         }
     }

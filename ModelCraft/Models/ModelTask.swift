@@ -91,9 +91,14 @@ extension ModelTask {
         return #Predicate<ModelTask> { $0.typeID == typeID }
     }
     
-    static func predicateUnCompletedDownloadTask() -> Predicate<ModelTask> {
+    static var predicateUnCompletedDownloadTask: Predicate<ModelTask> {
         let typeID = TaskType.download.rawValue
         let statusID = TaskStatus.completed.rawValue
         return #Predicate<ModelTask> { $0.typeID == typeID && $0.statusID != statusID }
+    }
+    
+    static var predicateUnCompletedTask: Predicate<ModelTask> {
+        let statusID = TaskStatus.completed.rawValue
+        return #Predicate<ModelTask> { $0.statusID != statusID }
     }
 }

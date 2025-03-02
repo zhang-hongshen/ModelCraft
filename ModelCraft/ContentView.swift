@@ -31,7 +31,10 @@ struct ContentView: View {
     @Environment(\.downaloadedModels) private var models
     
     @Query(sort: \Chat.createdAt, order: .reverse) private var chats: [Chat]
-    @Query(sort: \ModelTask.createdAt, order: .reverse) var modelTasks: [ModelTask] = []
+    @Query(filter: ModelTask.predicateUnCompletedTask,
+           sort: \ModelTask.createdAt,
+           order: .reverse)
+    var modelTasks: [ModelTask] = []
     @Query private var knowledgeBases: [KnowledgeBase] = []
     
     var body: some View {
@@ -75,7 +78,7 @@ extension ContentView {
             ForEach(chats) { chat in
                 Text(chat.title).tag(Tab.chat(chat))
                     .contextMenu{
-                        DeleteButton {
+                        DeleteButton(style: .textOnly) {
                             modelContext.delete(chat)
                         }
                     }
@@ -108,7 +111,7 @@ extension ContentView {
                     Button("Edit") {
                         selectedKnowledgeBase = knowledgeBase
                     }
-                    DeleteButton {
+                    DeleteButton(style: .textOnly) {
                         modelContext.delete(knowledgeBase)
                     }
                 }
@@ -196,21 +199,22 @@ extension ContentView {
     }
     
     private func handleModelTask() throws {
-        
-        modelContext.delete(modelTasks.filter({ $0.status == .completed }))
-        // delete duplicate model download task
-        let taskModelNames = Set(modelTasks.map { $0.modelName })
-        for task in modelTasks.filter({ $0.type == .download && taskModelNames.contains($0.modelName) }) {
-            modelContext.delete(task)
-        }
-        try modelContext.save()
-        
+        try deleteDupliateDownloadTask()
         for task in modelTasks.filter({ $0.status == .new}) {
             switch task.type {
             case .download: handleDownloadTask(task)
             case .delete: handleDeleteTask(task)
             }
         }
+    }
+    
+    private func deleteDupliateDownloadTask() throws {
+        // delete duplicate model download task
+        let downloadedModelNames = Set(models.map { $0.name })
+        for task in modelTasks.filter({ $0.type == .download && downloadedModelNames.contains($0.modelName) }) {
+            modelContext.delete(task)
+        }
+        try modelContext.save()
     }
     
     func handleDownloadTask(_ task: ModelTask) {

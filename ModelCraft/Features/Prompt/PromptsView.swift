@@ -23,7 +23,7 @@ struct PromptsView: View {
             Button("Edit", systemImage: "pencil") {
                 selection = selections.first
             }
-            DeleteButton { modelContext.delete(selections) }
+            DeleteButton(style: .textOnly) { modelContext.delete(selections) }
         }
         .sheet(item: $selection) {
             selection = nil

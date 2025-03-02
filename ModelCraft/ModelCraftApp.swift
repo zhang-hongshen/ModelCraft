@@ -21,7 +21,7 @@ struct ModelCraftApp: App {
             Message.self, Chat.self, ModelTask.self,
             KnowledgeBase.self, Prompt.self, Conversation.self
         ])
-        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
+        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
 
         do {
             return try ModelContainer(for: schema, configurations: [modelConfiguration])
@@ -121,8 +121,6 @@ extension ModelCraftApp {
                 let process = Process()
                 let pipe = Pipe()
                 
-                setenv("OLLAMA_HOST", "http://localhost:11435", 1)
-                
                 process.standardOutput = pipe
                 process.standardError = pipe
                 process.standardInput = nil
@@ -139,6 +137,31 @@ extension ModelCraftApp {
                 process.waitUntilExit()
             } catch {
                 print("Failed to start Ollama server: \(error)")
+            }
+        }
+    }
+    func stopOllamaServer() {
+        DispatchQueue.global(qos: .background).async {
+            do {
+                let process = Process()
+                let pipe = Pipe()
+                
+                process.standardOutput = pipe
+                process.standardError = pipe
+                process.standardInput = nil
+                process.executableURL = Bundle.main.url(forAuxiliaryExecutable: "ollama")
+                process.arguments = ["stop"]
+                
+                try process.run()
+                pipe.fileHandleForReading.readabilityHandler = { handle in
+                    let data = handle.availableData
+                    if let output = String(data: data, encoding: .utf8) {
+                        print(output)
+                    }
+                }
+                process.waitUntilExit()
+            } catch {
+                print("Failed to stop Ollama server: \(error)")
             }
         }
     }
@@ -168,7 +191,6 @@ extension ModelCraftApp {
             }
             .store(in: &cancellables)
     }
-    
     
     
 }

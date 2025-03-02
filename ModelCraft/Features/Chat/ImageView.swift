@@ -30,7 +30,7 @@ struct ImageView: View {
             }
             .onHover(perform: { isHovering = $0 })
             .contextMenu {
-                DeleteButton(action: action)
+                DeleteButton(style: .textOnly, action: action)
             }
     }
 }

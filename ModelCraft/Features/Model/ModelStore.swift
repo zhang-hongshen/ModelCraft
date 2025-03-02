@@ -22,7 +22,7 @@ struct ModelStore: View {
     @State private var searchText = ""
     @State private var cancellables = Set<AnyCancellable>()
     
-    @Query(filter: ModelTask.predicateUnCompletedDownloadTask(),
+    @Query(filter: ModelTask.predicateUnCompletedDownloadTask,
            sort: \ModelTask.createdAt,
            order: .reverse)
     private var uncompletedDownloadTasks: [ModelTask] = []
@@ -130,11 +130,10 @@ extension ModelStore {
         Task(priority: .userInitiated) {
             isLoading = true
             do {
-                models = try await OllamaClient.shared.libraryModels()
+                models = try await OllamaService.shared.libraryModels()
             } catch {
                 
             }
-            
             isLoading = false
         }
     }

@@ -21,7 +21,7 @@ struct KnowledgeBaseDetailView: View {
     var body: some View {
         ContentView()
             .contextMenu {
-                DeleteButton {
+                DeleteButton(style: .textOnly) {
                     konwledgeBase.removeFiles(selectedFiles)
                 }
             }

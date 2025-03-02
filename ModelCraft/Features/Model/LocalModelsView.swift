@@ -25,7 +25,7 @@ struct LocalModelsView: View {
            order: .reverse)
     private var deleteTasks: [ModelTask] = []
     
-    @Query(filter: ModelTask.predicateUnCompletedDownloadTask(),
+    @Query(filter: ModelTask.predicateUnCompletedDownloadTask,
            sort: \ModelTask.createdAt,
            order: .reverse)
     private var uncompletedDownloadTasks: [ModelTask] = []
@@ -44,13 +44,15 @@ struct LocalModelsView: View {
             }.foregroundStyle(.secondary)
         }
         .contextMenu {
-            DeleteButton(action: { confirmationDialogPresented = true })
+            DeleteButton(style: .textOnly,
+                         action: { confirmationDialogPresented = true })
         }
         .listStyle(.inset)
         .toolbar(content: ToolbarItems)
         .confirmationDialog("Are you sure to delete these models",
                             isPresented: $confirmationDialogPresented) {
-            DeleteButton(action: createDeleteModelTask)
+            DeleteButton(style: .textOnly,
+                         action: createDeleteModelTask)
         }
     }
     
@@ -61,7 +63,9 @@ extension LocalModelsView {
     @ToolbarContentBuilder
     func ToolbarItems() -> some ToolbarContent {
         ToolbarItem {
-            DeleteButton(action: { confirmationDialogPresented = true })
+            DeleteButton(style: .iconOnly) {
+                confirmationDialogPresented = true
+            }
         }
     }
     

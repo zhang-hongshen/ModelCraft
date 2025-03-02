@@ -7,8 +7,15 @@
 
 import SwiftUI
 
+enum ButtonStyle {
+    case iconOnly
+    case textOnly
+    case iconAndText
+}
+
 struct DeleteButton: View {
     
+    var style: ButtonStyle = .iconAndText
     var action: () -> Void = {}
     
     var body: some View {
@@ -16,8 +23,15 @@ struct DeleteButton: View {
             action()
         } label: {
             HStack {
-                Image(systemName: "trash")
-                Text("Delete")
+                switch style {
+                case .iconOnly:
+                    Image(systemName: "trash")
+                case .textOnly:
+                    Text("Delete")
+                case .iconAndText:
+                    Image(systemName: "trash")
+                    Text("Delete")
+                }
             }
         }
     }
