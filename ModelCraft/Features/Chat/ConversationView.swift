@@ -111,11 +111,6 @@ extension ConversationView {
         HStack(alignment: .top) {
             Spacer()
             VStack(alignment: .trailing) {
-                Text(userMessage.createdAt.formatted())
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .opacity(isHovering ? 1 : 0)
-                
                 if !userMessage.images.isEmpty {
                     MessageImageView(userMessage)
                 }
@@ -190,11 +185,6 @@ extension ConversationView {
     func AssistantMessageView() -> some View {
         HStack(alignment: .top) {
             VStack(alignment: .leading) {
-                Text(assistantMessage.createdAt.formatted())
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .opacity(isHovering ? 1 : 0)
-                
                 switch assistantMessage.status {
                 case .new:
                     ActivityIndicatorView(isVisible: .constant(true),
@@ -212,10 +202,11 @@ extension ConversationView {
                 if !assistantMessage.images.isEmpty {
                     MessageImageView(assistantMessage)
                 }
-                
-                AssistantButtons()
-                    .buttonStyle(.borderless)
-                    .opacity(isHovering ? 1 : 0)
+                if assistantMessage.status != .new {
+                    AssistantButtons()
+                        .buttonStyle(.borderless)
+                        .opacity(isHovering ? 1 : 0)
+                }
             }
             .onHover(perform: { isHovering = $0 })
             Spacer()
