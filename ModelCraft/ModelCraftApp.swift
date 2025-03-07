@@ -21,7 +21,11 @@ struct ModelCraftApp: App {
             Message.self, Chat.self, ModelTask.self,
             KnowledgeBase.self, Prompt.self, Conversation.self
         ])
+#if DEBUG
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
+#else
+        let modelConfiguration = ModelConfiguration(schema: schema)
+#endif
 
         do {
             return try ModelContainer(for: schema, configurations: [modelConfiguration])
@@ -53,7 +57,7 @@ struct ModelCraftApp: App {
                 ContentView()
                     .background(.ultraThinMaterial)
                     .applyUserSettings()
-                    .alert(globalStore.errorWrapper?.error.localizedDescription ?? "",
+                    .alert(globalStore.errorWrapper?.localizedDescription ?? "",
                            isPresented: Binding(
                             get: { globalStore.errorWrapper != nil },
                             set: { _ in }),

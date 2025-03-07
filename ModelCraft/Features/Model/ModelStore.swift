@@ -142,4 +142,5 @@ extension ModelStore {
 
 #Preview {
     ModelStore()
+        .modelContainer(for: [ModelTask.self], inMemory: true)
 }

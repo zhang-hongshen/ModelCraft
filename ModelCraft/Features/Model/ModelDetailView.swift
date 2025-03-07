@@ -101,5 +101,5 @@ extension ModelDetailView {
 }
 
 #Preview {
-    ModelDetailView(modelName: "gemma")
+    ModelDetailView(modelName: "deepseek-r1")
 }

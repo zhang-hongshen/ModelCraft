@@ -261,5 +261,7 @@ extension ContentView {
 
 #Preview {
     ContentView()
-        .modelContainer(for: Chat.self, inMemory: true)
+        .modelContainer(for: [Chat.self, ModelTask.self],
+                        inMemory: true)
+        .environmentObject(GlobalStore())
 }

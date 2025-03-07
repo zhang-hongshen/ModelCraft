@@ -9,6 +9,7 @@ import SwiftUI
 
 struct CopyButton: View {
     
+    var style: ButtonStyle = .iconAndText
     var action: () -> Void = {}
     
     @State private var copied = false
@@ -21,7 +22,15 @@ struct CopyButton: View {
                 copied = false
             }
         } label: {
-            Image(systemName: copied ? "checkmark" : "square.on.square")
+            switch style {
+            case .iconOnly:
+                Image(systemName: copied ? "checkmark" : "square.on.square")
+            case .textOnly:
+                Text(copied ? "Copied" : "Copy")
+            case .iconAndText:
+                Label(copied ? "Copied" : "Copy",
+                      systemImage: copied ? "checkmark" : "square.on.square")
+            }
         }
     }
 }

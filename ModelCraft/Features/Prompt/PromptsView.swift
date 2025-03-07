@@ -57,4 +57,5 @@ extension PromptsView {
 
 #Preview {
     PromptsView()
+        .modelContainer(for: [Prompt.self], inMemory: true)
 }

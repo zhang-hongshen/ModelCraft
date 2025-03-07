@@ -109,7 +109,7 @@ extension Theme {
                 HStack {
                     Text(configuration.language ?? "").foregroundStyle(.secondary)
                     Spacer()
-                    CopyButton {
+                    CopyButton(style: .iconOnly) {
                         Pasteboard.general.setString(configuration.content)
                     }.buttonStyle(.borderless)
                 }

@@ -75,7 +75,7 @@ extension ConversationView {
     
     @ViewBuilder
     func CommonButtons(_ message: Message) -> some View {
-        CopyButton {
+        CopyButton(style: .iconOnly) {
             Pasteboard.general.setString(message.content)
         }
     }
@@ -185,23 +185,24 @@ extension ConversationView {
     func AssistantMessageView() -> some View {
         HStack(alignment: .top) {
             VStack(alignment: .leading) {
-                switch assistantMessage.status {
-                case .new:
-                    ActivityIndicatorView(isVisible: .constant(true),
-                                          type: .opacityDots())
-                    .frame(width: 30, height: 10)
-                default:
-                    if !assistantMessage.content.isEmpty {
-                        MessageContentView(assistantMessage)
-                            .contextMenu {
-                                AssistantButtons()
-                            }
-                    }
+                
+                ActivityIndicatorView(isVisible: Binding(
+                    get: {assistantMessage.status == .new},
+                    set: { _ in }),
+                                      type: .opacityDots())
+                .frame(width: 30, height: 10)
+                
+                if !assistantMessage.content.isEmpty {
+                    MessageContentView(assistantMessage)
+                        .contextMenu {
+                            AssistantButtons()
+                        }
                 }
                 
                 if !assistantMessage.images.isEmpty {
                     MessageImageView(assistantMessage)
                 }
+                
                 if assistantMessage.status != .new {
                     AssistantButtons()
                         .buttonStyle(.borderless)

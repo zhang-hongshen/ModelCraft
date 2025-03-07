@@ -97,4 +97,5 @@ extension LocalModelsView {
 
 #Preview {
     LocalModelsView()
+        .modelContainer(for: [ModelTask.self], inMemory: true)
 }

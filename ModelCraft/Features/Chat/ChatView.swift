@@ -341,4 +341,5 @@ extension ChatView {
 
 #Preview {
     ChatView(chat: Chat())
+        .environmentObject(GlobalStore())
 }

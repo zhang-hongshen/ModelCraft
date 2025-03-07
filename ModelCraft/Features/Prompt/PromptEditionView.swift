@@ -19,21 +19,19 @@ struct PromptEditionView: View {
     @FocusState private var focusedField: Field?
     
     var body: some View {
-        VStack {
-            Form {
-                TextField("Title", text: $prompt.title)
-                    .focused($focusedField, equals: .title)
-                
-                LabeledContent("Command") {
-                    TextField(text: $prompt.command, prompt: Text("Shortcut")) {
-                    }.focused($focusedField, equals: .command)
-                }
-                
-                LabeledContent("Content") {
-                    TextEditor(text: $prompt.content)
-                        .focused($focusedField, equals: .content)
-                        .frame(minHeight: 100)
-                }
+        Form {
+            TextField("Title", text: $prompt.title)
+                .focused($focusedField, equals: .title)
+            
+            LabeledContent("Command") {
+                TextField(text: $prompt.command, prompt: Text("Shortcut")) {
+                }.focused($focusedField, equals: .command)
+            }
+            
+            LabeledContent("Content") {
+                TextEditor(text: $prompt.content)
+                    .focused($focusedField, equals: .content)
+                    .frame(minHeight: 100)
             }
         }
         .safeAreaPadding()

@@ -20,6 +20,7 @@ extension ModelContext {
     }
     
     func persist<T>(_ models: [T])  where T : PersistentModel  {
+        
         insert(models)
         try? save()
     }

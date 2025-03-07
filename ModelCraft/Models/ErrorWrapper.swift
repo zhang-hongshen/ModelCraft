@@ -10,16 +10,21 @@ import SwiftUI
 
 struct ErrorWrapper: Identifiable {
     let id = UUID()
-    let error: Error
+    let localizedDescription: String
     let recoverySuggestion: String
 
-    init(error: Error, recoverySuggestion: String) {
-        self.error = error
+    init(localizedDescription: String = "", recoverySuggestion: String = "") {
+        self.localizedDescription = localizedDescription
+        self.recoverySuggestion = recoverySuggestion
+    }
+    
+    init(error: Error, recoverySuggestion: String = "") {
+        self.localizedDescription = error.localizedDescription
         self.recoverySuggestion = recoverySuggestion
     }
     
     init(error: LocalizedError) {
-        self.error = error
+        self.localizedDescription = error.localizedDescription
         self.recoverySuggestion = error.recoverySuggestion ?? ""
     }
 }

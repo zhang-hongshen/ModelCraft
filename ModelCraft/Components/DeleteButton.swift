@@ -22,16 +22,13 @@ struct DeleteButton: View {
         Button(role: .destructive) {
             action()
         } label: {
-            HStack {
-                switch style {
-                case .iconOnly:
-                    Image(systemName: "trash")
-                case .textOnly:
-                    Text("Delete")
-                case .iconAndText:
-                    Image(systemName: "trash")
-                    Text("Delete")
-                }
+            switch style {
+            case .iconOnly:
+                Image(systemName: "trash")
+            case .textOnly:
+                Text("Delete")
+            case .iconAndText:
+                Label("Delete", systemImage: "trash")
             }
         }
     }
