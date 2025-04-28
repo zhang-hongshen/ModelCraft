@@ -37,4 +37,6 @@ struct CopyButton: View {
 
 #Preview {
     CopyButton()
+    CopyButton(style: .iconOnly)
+    CopyButton(style: .textOnly)
 }

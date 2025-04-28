@@ -58,13 +58,13 @@ struct PromptSearchView: View {
                             }.padding(Default.padding).hoverEffect()
                         }
                         .buttonStyle(.borderless)
-                        .keyboardShortcut(.tab, modifiers: [])
                     }
                 }
                 .safeAreaPadding(Default.padding)
             }
             .scrollIndicators(.never)
             .contentMargins(0, for: .scrollIndicators)
+            .onKeyPress { keyAction($0.key) }
         }
     }
 }

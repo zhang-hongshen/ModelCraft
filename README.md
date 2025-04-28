@@ -5,16 +5,19 @@
     <img alt="License" src="https://img.shields.io/badge/lang-简体中文-red.svg" style="display: inline-block; vertical-align: middle;"/>
   </a>  
 </div>
-
 <div align="center" style="line-height: 1;">
   <a href="https://github.com/zhang-hongshen/ModelCraft/LICENSE" style="margin: 2px;">
     <img alt="License" src="https://img.shields.io/badge/License-MIT-f5de53?&color=f5de53" style="display: inline-block; vertical-align: middle;"/>
-  </a>  
+    <a href="https://deepwiki.com/zhang-hongshen/ModelCraft" style="margin: 2px;">
 </div>
 
 ## 💡 What is ModelCraft ?
 
 ModelCraft is a native RAG(Retrieval-Augmented Generation) app for macOS.  It offers the full chain path of chatting with models locally, from downloading models to building your knowledge base .
+
+## 📄 **Documentation**
+
+The AI-driven documentation is available [here](https://deepwiki.com/zhang-hongshen/ModelCraft).
 
 ##  🚀  Get Started
 
@@ -76,7 +79,6 @@ No pre-operations. Just download the app to use it !
     </td>
   </tr>
 </table>
-
 
 
 ## License

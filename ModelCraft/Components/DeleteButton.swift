@@ -36,4 +36,6 @@ struct DeleteButton: View {
 
 #Preview {
     DeleteButton()
+    DeleteButton(style: .iconOnly)
+    DeleteButton(style: .textOnly)
 }

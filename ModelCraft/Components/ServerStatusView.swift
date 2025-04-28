@@ -23,4 +23,5 @@ struct ServerStatusView: View {
 
 #Preview {
     ServerStatusView()
+        .environmentObject(GlobalStore())
 }

@@ -348,8 +348,11 @@ extension ConversationView {
 }
 
 #Preview {
-    ConversationView(conversation: Conversation(chat: Chat(),
-                                                userMessage: Message(role: .user),
-                                                assistantMessage: Message(role: .assistant)),
+    let userMessage = Message(role: .user, content: "Hello")
+    let assistantMessage = Message(role: .assistant, content: "Hello, I'm ModelCraft.")
+    let conversation = Conversation(chat: Chat(),
+                                    userMessage: userMessage,
+                                    assistantMessage: assistantMessage)
+    ConversationView(conversation: conversation,
                      chatStatus: .constant(.assistantResponding))
 }

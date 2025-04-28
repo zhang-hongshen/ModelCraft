@@ -15,6 +15,10 @@
 
 ModelCraft是一个原生的macOS RAG应用，提供了在本地使用大模型的全链路流程，从下载模型到构建知识库。
 
+## 📄 **文档**
+
+由AI驱动的项目文档可以在[这里](https://deepwiki.com/zhang-hongshen/ModelCraft)查看！
+
 ##  🚀  开始
 
 没有任何前置操作，你只需要下载即可使用！

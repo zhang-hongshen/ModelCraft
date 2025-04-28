@@ -77,3 +77,7 @@ extension KnowledgeBaseDetailView {
     }
 }
 
+#Preview {
+    KnowledgeBaseDetailView(konwledgeBase: KnowledgeBase())
+        .environmentObject(GlobalStore())
+}

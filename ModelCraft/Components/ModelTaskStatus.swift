@@ -65,5 +65,22 @@ extension ModelTaskStatus {
 }
 
 #Preview {
-    ModelTaskStatus(task: ModelTask(modelName: "", type: .download))
+    let runningTask = ModelTask(modelName: "",
+                         value: 200,
+                         total: 1024,
+                         status: .running,
+                         type: .download)
+    let stoppedTask = ModelTask(modelName: "",
+                                value: 300*1024,
+                                total: 1024*1024,
+                                status: .stopped,
+                                type: .download)
+    let failedTask = ModelTask(modelName: "",
+                                value: 400*1024*1024,
+                                total: 1024*1024*1024,
+                                status: .failed,
+                                type: .download)
+    ModelTaskStatus(task: runningTask)
+    ModelTaskStatus(task: stoppedTask)
+    ModelTaskStatus(task: failedTask)
 }
