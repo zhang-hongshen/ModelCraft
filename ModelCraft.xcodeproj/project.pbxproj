@@ -16,11 +16,12 @@
 		70097F892D6EB0DC00DDDEDF /* GlobalStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70097F882D6EB0DA00DDDEDF /* GlobalStore.swift */; };
 		70097F8B2D6EB11800DDDEDF /* UserSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70097F8A2D6EB11800DDDEDF /* UserSettings.swift */; };
 		70097F8D2D6EB2C400DDDEDF /* Date+.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70097F8C2D6EB2C400DDDEDF /* Date+.swift */; };
-		70097F8F2D6EB63000DDDEDF /* UserMessageTemplate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70097F8E2D6EB63000DDDEDF /* UserMessageTemplate.swift */; };
 		70097F922D6EE16300DDDEDF /* OllamaKit in Frameworks */ = {isa = PBXBuildFile; productRef = 70097F912D6EE16300DDDEDF /* OllamaKit */; };
+		700C702A2E52FE830008EF5B /* TagStreamParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 700C70292E52FE820008EF5B /* TagStreamParser.swift */; };
+		700C702C2E52FF730008EF5B /* TagStreamParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 700C702B2E52FF710008EF5B /* TagStreamParserTests.swift */; };
 		701954232BC8244E00CD2ED3 /* Retriever.swift in Sources */ = {isa = PBXBuildFile; fileRef = 701954222BC8244E00CD2ED3 /* Retriever.swift */; };
 		701954252BC8286E00CD2ED3 /* TextSplitter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 701954242BC8286E00CD2ED3 /* TextSplitter.swift */; };
-		701954272BC8D9ED00CD2ED3 /* MessageTemplate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 701954262BC8D9ED00CD2ED3 /* MessageTemplate.swift */; };
+		701954272BC8D9ED00CD2ED3 /* AgentPrompt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 701954262BC8D9ED00CD2ED3 /* AgentPrompt.swift */; };
 		701954292BCA309300CD2ED3 /* Theme+ModelCraft.swift in Sources */ = {isa = PBXBuildFile; fileRef = 701954282BCA309300CD2ED3 /* Theme+ModelCraft.swift */; };
 		7019542B2BCA3CE900CD2ED3 /* CopyButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7019542A2BCA3CE900CD2ED3 /* CopyButton.swift */; };
 		7019542F2BCAA04A00CD2ED3 /* ErrorWrapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7019542E2BCAA04A00CD2ED3 /* ErrorWrapper.swift */; };
@@ -32,6 +33,7 @@
 		7027C41F2D63396B00D37D14 /* WhisperKit in Frameworks */ = {isa = PBXBuildFile; productRef = 7027C41E2D63396B00D37D14 /* WhisperKit */; };
 		7027C4212D63396B00D37D14 /* whisperkit-cli in Frameworks */ = {isa = PBXBuildFile; productRef = 7027C4202D63396B00D37D14 /* whisperkit-cli */; };
 		703422112BB6A38C00332E04 /* OllamaKit in Frameworks */ = {isa = PBXBuildFile; productRef = 703422102BB6A38C00332E04 /* OllamaKit */; };
+		703482742E532EA5005BDFF9 /* RollingSummary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 703482732E532EA5005BDFF9 /* RollingSummary.swift */; };
 		703845832BB6674600E3128B /* Locale+.swift in Sources */ = {isa = PBXBuildFile; fileRef = 703845822BB6674600E3128B /* Locale+.swift */; };
 		7041EA702BB2AACB00286AE3 /* EnvironmentValues+.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7041EA6F2BB2AACB00286AE3 /* EnvironmentValues+.swift */; };
 		7041EA722BB2AC8D00286AE3 /* ServerStatusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7041EA712BB2AC8D00286AE3 /* ServerStatusView.swift */; };
@@ -83,7 +85,7 @@
 		70CE60862BAD2D4700A2D0B0 /* ModelCraftUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70CE60852BAD2D4700A2D0B0 /* ModelCraftUITests.swift */; };
 		70CE60882BAD2D4700A2D0B0 /* ModelCraftUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70CE60872BAD2D4700A2D0B0 /* ModelCraftUITestsLaunchTests.swift */; };
 		70CE609C2BAD302000A2D0B0 /* LocalFileURL.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70CE60982BAD302000A2D0B0 /* LocalFileURL.swift */; };
-		70CE60A22BAD386E00A2D0B0 /* SystemMessageTemplate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70CE60A12BAD386E00A2D0B0 /* SystemMessageTemplate.swift */; };
+		70CE60A22BAD386E00A2D0B0 /* Message.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70CE60A12BAD386E00A2D0B0 /* Message.swift */; };
 		70CE60BE2BAD60AE00A2D0B0 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70CE60BD2BAD60AE00A2D0B0 /* SettingsView.swift */; };
 		70CE60C32BAD616600A2D0B0 /* GeneralView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70CE60C22BAD616600A2D0B0 /* GeneralView.swift */; };
 		70CE60C62BAD61F600A2D0B0 /* UserDefaults+.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70CE60C52BAD61F600A2D0B0 /* UserDefaults+.swift */; };
@@ -148,10 +150,11 @@
 		70097F882D6EB0DA00DDDEDF /* GlobalStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlobalStore.swift; sourceTree = "<group>"; };
 		70097F8A2D6EB11800DDDEDF /* UserSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserSettings.swift; sourceTree = "<group>"; };
 		70097F8C2D6EB2C400DDDEDF /* Date+.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Date+.swift"; sourceTree = "<group>"; };
-		70097F8E2D6EB63000DDDEDF /* UserMessageTemplate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserMessageTemplate.swift; sourceTree = "<group>"; };
+		700C70292E52FE820008EF5B /* TagStreamParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagStreamParser.swift; sourceTree = "<group>"; };
+		700C702B2E52FF710008EF5B /* TagStreamParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagStreamParserTests.swift; sourceTree = "<group>"; };
 		701954222BC8244E00CD2ED3 /* Retriever.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Retriever.swift; sourceTree = "<group>"; };
 		701954242BC8286E00CD2ED3 /* TextSplitter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextSplitter.swift; sourceTree = "<group>"; };
-		701954262BC8D9ED00CD2ED3 /* MessageTemplate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageTemplate.swift; sourceTree = "<group>"; };
+		701954262BC8D9ED00CD2ED3 /* AgentPrompt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentPrompt.swift; sourceTree = "<group>"; };
 		701954282BCA309300CD2ED3 /* Theme+ModelCraft.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Theme+ModelCraft.swift"; sourceTree = "<group>"; };
 		7019542A2BCA3CE900CD2ED3 /* CopyButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CopyButton.swift; sourceTree = "<group>"; };
 		7019542E2BCAA04A00CD2ED3 /* ErrorWrapper.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ErrorWrapper.swift; sourceTree = "<group>"; };
@@ -160,6 +163,7 @@
 		70271B5D2BC1A97900E21A6E /* ModelStore.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ModelStore.swift; sourceTree = "<group>"; };
 		7027C4182D63385F00D37D14 /* jfk.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = jfk.mp3; sourceTree = "<group>"; };
 		7027C4192D63385F00D37D14 /* jfk.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = jfk.wav; sourceTree = "<group>"; };
+		703482732E532EA5005BDFF9 /* RollingSummary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RollingSummary.swift; sourceTree = "<group>"; };
 		703845822BB6674600E3128B /* Locale+.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Locale+.swift"; sourceTree = "<group>"; };
 		7041EA6F2BB2AACB00286AE3 /* EnvironmentValues+.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "EnvironmentValues+.swift"; sourceTree = "<group>"; };
 		7041EA712BB2AC8D00286AE3 /* ServerStatusView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerStatusView.swift; sourceTree = "<group>"; };
@@ -211,7 +215,7 @@
 		70CE60852BAD2D4700A2D0B0 /* ModelCraftUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelCraftUITests.swift; sourceTree = "<group>"; };
 		70CE60872BAD2D4700A2D0B0 /* ModelCraftUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelCraftUITestsLaunchTests.swift; sourceTree = "<group>"; };
 		70CE60982BAD302000A2D0B0 /* LocalFileURL.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LocalFileURL.swift; sourceTree = "<group>"; };
-		70CE60A12BAD386E00A2D0B0 /* SystemMessageTemplate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemMessageTemplate.swift; sourceTree = "<group>"; };
+		70CE60A12BAD386E00A2D0B0 /* Message.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Message.swift; sourceTree = "<group>"; };
 		70CE60BD2BAD60AE00A2D0B0 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		70CE60C22BAD616600A2D0B0 /* GeneralView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeneralView.swift; sourceTree = "<group>"; };
 		70CE60C52BAD61F600A2D0B0 /* UserDefaults+.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "UserDefaults+.swift"; sourceTree = "<group>"; };
@@ -267,9 +271,10 @@
 			path = Executables;
 			sourceTree = "<group>";
 		};
-		70271B792BC4E2CC00E21A6E /* Models */ = {
+		70271B792BC4E2CC00E21A6E /* DataModels */ = {
 			isa = PBXGroup;
 			children = (
+				701954262BC8D9ED00CD2ED3 /* AgentPrompt.swift */,
 				70097F822D6DA73C00DDDEDF /* AppError.swift */,
 				70CE60C72BAD705E00A2D0B0 /* Chat.swift */,
 				70097F802D6C09BF00DDDEDF /* Conversation.swift */,
@@ -279,8 +284,7 @@
 				70271B3B2BC046F300E21A6E /* KnowledgaBaseModelActor.swift */,
 				70CE4D2E2BB94C7800E1DEE2 /* KnowledgeBase.swift */,
 				70CE60982BAD302000A2D0B0 /* LocalFileURL.swift */,
-				70CE60A12BAD386E00A2D0B0 /* SystemMessageTemplate.swift */,
-				701954262BC8D9ED00CD2ED3 /* MessageTemplate.swift */,
+				70CE60A12BAD386E00A2D0B0 /* Message.swift */,
 				7097F96A2BB02DD2001A91E3 /* ModelTask.swift */,
 				70CE4D282BB83BF500E1DEE2 /* Pasteboard.swift */,
 				7067E8182BCBBBF800FF2797 /* Prompt.swift */,
@@ -291,9 +295,9 @@
 				701954242BC8286E00CD2ED3 /* TextSplitter.swift */,
 				70097F8A2D6EB11800DDDEDF /* UserSettings.swift */,
 				70B13D032BBB1F3300A42F3C /* XMLFile.swift */,
-				70097F8E2D6EB63000DDDEDF /* UserMessageTemplate.swift */,
+				703482732E532EA5005BDFF9 /* RollingSummary.swift */,
 			);
-			path = Models;
+			path = DataModels;
 			sourceTree = "<group>";
 		};
 		7027C4172D63384100D37D14 /* TestResources */ = {
@@ -318,6 +322,7 @@
 		706D729D2BB6B076004ACF35 /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				700C70292E52FE820008EF5B /* TagStreamParser.swift */,
 				701954222BC8244E00CD2ED3 /* Retriever.swift */,
 				70E2017C2BAEA9DE00CFE1D7 /* OllamaService.swift */,
 			);
@@ -426,7 +431,7 @@
 				701954182BC788D200CD2ED3 /* Executables */,
 				70CE609A2BAD302000A2D0B0 /* Extensions */,
 				70CE60C92BAD7A4700A2D0B0 /* Features */,
-				70271B792BC4E2CC00E21A6E /* Models */,
+				70271B792BC4E2CC00E21A6E /* DataModels */,
 				70CE60702BAD2D4600A2D0B0 /* Preview Content */,
 				706D729D2BB6B076004ACF35 /* Services */,
 			);
@@ -444,6 +449,7 @@
 		70CE607A2BAD2D4700A2D0B0 /* ModelCraftTests */ = {
 			isa = PBXGroup;
 			children = (
+				700C702B2E52FF710008EF5B /* TagStreamParserTests.swift */,
 				7027C4172D63384100D37D14 /* TestResources */,
 				70CE607B2BAD2D4700A2D0B0 /* ModelCraftTests.swift */,
 			);
@@ -586,7 +592,7 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 1530;
-				LastUpgradeCheck = 1620;
+				LastUpgradeCheck = 1640;
 				TargetAttributes = {
 					70CE60632BAD2D4500A2D0B0 = {
 						CreatedOnToolsVersion = 15.3;
@@ -680,6 +686,7 @@
 				70097F872D6EB0B500DDDEDF /* ServerStatus.swift in Sources */,
 				70CE606A2BAD2D4500A2D0B0 /* ContentView.swift in Sources */,
 				70CE4D332BB9522F00E1DEE2 /* KnowledgeBaseEdition.swift in Sources */,
+				703482742E532EA5005BDFF9 /* RollingSummary.swift in Sources */,
 				7041EA722BB2AC8D00286AE3 /* ServerStatusView.swift in Sources */,
 				70271B3C2BC046F300E21A6E /* KnowledgaBaseModelActor.swift in Sources */,
 				70C22FE72BAFD5C2002754C7 /* DefaultImageView.swift in Sources */,
@@ -703,6 +710,7 @@
 				70E2017B2BAE825A00CFE1D7 /* ChatView.swift in Sources */,
 				70CE60BE2BAD60AE00A2D0B0 /* SettingsView.swift in Sources */,
 				70C22FD12BAF2C35002754C7 /* RoundedRectangle+.swift in Sources */,
+				700C702A2E52FE830008EF5B /* TagStreamParser.swift in Sources */,
 				7097F96B2BB02DD2001A91E3 /* ModelTask.swift in Sources */,
 				7067E8242BCD1AE600FF2797 /* ImageView.swift in Sources */,
 				70C22FC82BAECD55002754C7 /* Default.swift in Sources */,
@@ -712,8 +720,8 @@
 				70CE4D2F2BB94C7800E1DEE2 /* KnowledgeBase.swift in Sources */,
 				7041EA702BB2AACB00286AE3 /* EnvironmentValues+.swift in Sources */,
 				7019545A2BCB9A1400CD2ED3 /* RandomAccessCollection+.swift in Sources */,
-				70CE60A22BAD386E00A2D0B0 /* SystemMessageTemplate.swift in Sources */,
-				701954272BC8D9ED00CD2ED3 /* MessageTemplate.swift in Sources */,
+				70CE60A22BAD386E00A2D0B0 /* Message.swift in Sources */,
+				701954272BC8D9ED00CD2ED3 /* AgentPrompt.swift in Sources */,
 				7067E8222BCBC8DD00FF2797 /* PromptSearchView.swift in Sources */,
 				70B13D192BBD58DD00A42F3C /* ModelDetailView.swift in Sources */,
 				70B13D132BBC66FC00A42F3C /* KnowledgeBaseDetailListView.swift in Sources */,
@@ -727,7 +735,6 @@
 				70C22FE52BAFD53E002754C7 /* ImageLoader.swift in Sources */,
 				70097F8B2D6EB11800DDDEDF /* UserSettings.swift in Sources */,
 				70955E8E2BB2E29B00015B79 /* Comparable+.swift in Sources */,
-				70097F8F2D6EB63000DDDEDF /* UserMessageTemplate.swift in Sources */,
 				70097F892D6EB0DC00DDDEDF /* GlobalStore.swift in Sources */,
 				7045BF452BB314E700CE61D1 /* Bundle+.swift in Sources */,
 				70097F8D2D6EB2C400DDDEDF /* Date+.swift in Sources */,
@@ -742,6 +749,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				700C702C2E52FF730008EF5B /* TagStreamParserTests.swift in Sources */,
 				70CE607C2BAD2D4700A2D0B0 /* ModelCraftTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -808,6 +816,7 @@
 				COPY_PHASE_STRIP = NO;
 				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = DTZV6LDYD5;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -873,6 +882,7 @@
 				COPY_PHASE_STRIP = NO;
 				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = DTZV6LDYD5;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -905,7 +915,6 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_ASSET_PATHS = "\"ModelCraft/Preview Content\"";
-				DEVELOPMENT_TEAM = DTZV6LDYD5;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -951,7 +960,6 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_ASSET_PATHS = "\"ModelCraft/Preview Content\"";
-				DEVELOPMENT_TEAM = DTZV6LDYD5;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -992,7 +1000,6 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEAD_CODE_STRIPPING = YES;
-				DEVELOPMENT_TEAM = DTZV6LDYD5;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
@@ -1015,7 +1022,6 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEAD_CODE_STRIPPING = YES;
-				DEVELOPMENT_TEAM = DTZV6LDYD5;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
@@ -1037,7 +1043,6 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEAD_CODE_STRIPPING = YES;
-				DEVELOPMENT_TEAM = DTZV6LDYD5;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.4;
 				MACOSX_DEPLOYMENT_TARGET = 14.3;
@@ -1059,7 +1064,6 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEAD_CODE_STRIPPING = YES;
-				DEVELOPMENT_TEAM = DTZV6LDYD5;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.4;
 				MACOSX_DEPLOYMENT_TARGET = 14.3;

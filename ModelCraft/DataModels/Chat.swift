@@ -13,7 +13,10 @@ class Chat {
     var createdAt: Date =  Date.now
 
     @Relationship(deleteRule: .cascade, inverse: \Conversation.chat)
-    private var conversationsPersistent: [Conversation]
+    private var conversationsPersistent = [Conversation]()
+    
+    @Relationship(deleteRule: .cascade, inverse: \RollingSummary.chat)
+    private var rollingSummary: RollingSummary?
 
     @Transient var conversations: [Conversation] {
         get {
@@ -24,8 +27,7 @@ class Chat {
         }
     }
     
-    init(conversations: [Conversation] = []) {
-        self.conversationsPersistent = conversations
+    init() {
     }
     
 }

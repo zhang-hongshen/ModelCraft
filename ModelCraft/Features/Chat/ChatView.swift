@@ -37,19 +37,10 @@ struct ChatView: View {
     
     var body: some View {
         MainView()
-            .overlay(alignment: .bottom) {
-                PromptSearchView(searchText: $draft.content) {
-                    draft.content = $0
-                }
-                .frame(maxHeight: 90)
-                .background(.ultraThinMaterial)
-                .cornerRadius()
-                .padding(.horizontal)
-            }
             .frame(minWidth: minWidth,
                    minHeight: 250)
             .toolbar(content: ToolbarItems)
-            .safeAreaInset(edge: .bottom, content: MessageEditor)
+            .safeAreaInset(edge: .bottom, content: ChatInputView)
             .onDrop(of: [.image], isTargeted: nil, perform: uploadImagesByDropping)
             .fileImporter(isPresented: $fileImporterPresented,
                           allowedContentTypes: [.image],
@@ -132,8 +123,25 @@ extension ChatView {
 extension ChatView {
     
     @ViewBuilder
+    func ChatInputView() -> some View {
+        VStack {
+            PromptSearchView(searchText: $draft.content) {
+                draft.content = $0
+            }
+            .background(.ultraThinMaterial)
+            .cornerRadius()
+            .frame(maxHeight: 70)
+            
+            MessageEditor()
+        }
+        .safeAreaPadding()
+        .background(.regularMaterial)
+    }
+    
+    @ViewBuilder
     func MessageEditor() -> some View {
         VStack(alignment: .leading) {
+            
             if !draft.images.isEmpty {
                 ScrollView(.horizontal) {
                     HStack(alignment: .center) {
@@ -169,8 +177,6 @@ extension ChatView {
         .overlay {
             RoundedRectangle().fill(.clear).stroke(.primary, lineWidth: 1)
         }
-        .safeAreaPadding()
-        .background(.regularMaterial)
     }
     
     @ViewBuilder
@@ -263,14 +269,13 @@ extension ChatView {
                 chatStatus = .userWaitingForResponse
             }
             
-            let userMessage = UserMessage.question(message.content)
-            var systemMessages = [SystemMessage.characterSetting(model),
-                                  SystemMessage.respondRule]
+
+            var context = ""
             if let knowledgeBase = globalStore.selectedKnowledgeBase {
-                let context = await knowledgeBase.search(message.content).joined(separator: " ")
-                systemMessages.append(SystemMessage.retrivedContent(context))
+                context = await knowledgeBase.search(message.content).joined(separator: "\n")
             }
-            let messages = systemMessages + chat.allMessages + [userMessage]
+            let messages = chat.allMessages + [AgentPrompt.answerQuestion(context: context, question: message.content)]
+            
             OllamaService.shared.chat(model: model,
                                       messages: messages.compactMap{ OllamaService.toChatRequestMessage($0) })
                 .sink { completion in
@@ -291,8 +296,8 @@ extension ChatView {
                         }
                         
                         guard case .assistantResponding = chatStatus else { return }
-                        if let message = response.message {
-                            assistantMessage.content.append(message.content)
+                        if let messageContent = response.message?.content {
+                            assistantMessage.content.append(messageContent)
                         }
                         if response.done {
                             resetChat()

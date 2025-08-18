@@ -65,6 +65,7 @@ struct PromptSearchView: View {
             .scrollIndicators(.never)
             .contentMargins(0, for: .scrollIndicators)
             .onKeyPress { keyAction($0.key) }
+            
         }
     }
 }

@@ -24,6 +24,7 @@ struct ConversationView: View {
     @State private var infoPresented = false
     @State private var isHovering = false
     @State private var isEditing = false
+    @State private var thinkingExpanded = false
 
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.speechSynthesizer) private var speechSynthesizer
@@ -90,15 +91,6 @@ extension ConversationView {
             }
         }
     }
-    
-    @ViewBuilder
-    func MessageContentView(_ message: Message) -> some View {
-        Markdown(message.status != .failed ? message.content : "Failed.Please try again later.")
-            .markdownTheme(.modelCraft)
-            .markdownCodeSyntaxHighlighter(.splash(theme: self.splashTheme))
-            .textSelection(.enabled)
-            .multilineTextAlignment(.leading)
-    }
 
 }
 
@@ -143,7 +135,7 @@ extension ConversationView {
                     }
                 } else {
                     if !userMessage.content.isEmpty {
-                        MessageContentView(userMessage)
+                        UserMessageContentView(userMessage)
                             .padding()
                             .background {
                                 RoundedRectangle().fill(.quaternary)
@@ -175,12 +167,23 @@ extension ConversationView {
 
         }
     }
+    
+    @ViewBuilder
+    func UserMessageContentView(_ message: Message) -> some View {
+        Markdown(message.status != .failed ? message.content : "Failed.Please try again later.")
+            .markdownTheme(.modelCraft)
+            .markdownCodeSyntaxHighlighter(.splash(theme: self.splashTheme))
+            .textSelection(.enabled)
+            .multilineTextAlignment(.leading)
+    }
+    
 }
 
 
 // MARK: Assistant Message
 
 extension ConversationView {
+    
     @ViewBuilder
     func AssistantMessageView() -> some View {
         HStack(alignment: .top) {
@@ -193,7 +196,7 @@ extension ConversationView {
                 .frame(width: 30, height: 10)
                 
                 if !assistantMessage.content.isEmpty {
-                    MessageContentView(assistantMessage)
+                    AssistantMessageContentView(assistantMessage)
                         .contextMenu {
                             AssistantButtons()
                         }
@@ -272,7 +275,34 @@ extension ConversationView {
                     }
                 }.padding()
             }
-            
+        }
+    }
+    
+    func AssistantMessageContentView(_ message: Message) -> some View {
+        let parser = TagStreamParser()
+        let events = parser.feed(assistantMessage.content)
+        var answer = ""
+        var think = ""
+        for e in events {
+            switch e {
+            case .think(let t): think += t; break;
+            case .answer(let t): answer += t; break;
+            default: break
+            }
+        }
+        return VStack(alignment: .leading) {
+            if !think.isEmpty {
+                DisclosureGroup("Thinking", isExpanded: $thinkingExpanded) {
+                    Text(think)
+                        .foregroundColor(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+            Markdown(message.status != .failed ? answer : "Please try again later.")
+                .markdownTheme(.modelCraft)
+                .markdownCodeSyntaxHighlighter(.splash(theme: self.splashTheme))
+                .textSelection(.enabled)
+                .multilineTextAlignment(.leading)
         }
         
     }
@@ -293,20 +323,13 @@ extension ConversationView {
                 assistantMessage.content = ""
                 chatStatus = .userWaitingForResponse
             }
-            let userMessage = UserMessage.question(userMessage.content)
-            var systemMessages = [SystemMessage.characterSetting(model),
-                                  SystemMessage.respondRule]
+            var context = ""
             if let knowledgeBase = globalStore.selectedKnowledgeBase {
-                // summarize the user's requestion
-                let summary = try await OllamaService.shared.chat(model: model,
-                                                                  messages: [SystemMessage.querySummarizer, userMessage].compactMap{ OllamaService.toChatRequestMessage($0) }).message?.content
-                let context = await knowledgeBase.search(summary ?? userMessage.content).joined(separator: " ")
-                systemMessages.append(SystemMessage.retrivedContent(context))
+                context = await knowledgeBase.search(userMessage.content).joined(separator: " ")
             }
             
-            let messages = systemMessages
-            + conversation.chat.allMessages(before: conversation)
-            + [userMessage]
+            let messages = conversation.chat.allMessages(before: conversation)
+            + [AgentPrompt.answerQuestion(context: context, question: userMessage.content)]
             
             OllamaService.shared.chat(model: model, messages: messages.compactMap{ OllamaService.toChatRequestMessage($0) })
                 .sink { completion in
