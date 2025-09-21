@@ -129,7 +129,6 @@ extension ChatView {
                 draft.content = $0
             }
             .background(.ultraThinMaterial)
-            .cornerRadius()
             .frame(maxHeight: 70)
             
             MessageEditor()

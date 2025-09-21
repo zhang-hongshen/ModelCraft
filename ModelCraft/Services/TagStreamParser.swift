@@ -41,7 +41,6 @@ public final class TagStreamParser {
     // MARK: Runtime state
     private(set) public var state: ParseState = .outside
     private var buffer: String = ""
-    private var followUpsRaw: String = ""
 
     // MARK: Init
     /// - Parameters:
@@ -57,7 +56,7 @@ public final class TagStreamParser {
 
         // Matches opening/closing tags for think, answer, follow_ups
         self.regex = try! NSRegularExpression(
-            pattern: #"<\s*(/?)\s*(think|answer|follow_ups)\s*>"#,
+            pattern: #"<\s*(/?)\s*(think|answer)\s*>"#,
             options: [.caseInsensitive]
         )
     }

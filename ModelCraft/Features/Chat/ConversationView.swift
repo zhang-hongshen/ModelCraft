@@ -303,6 +303,13 @@ extension ConversationView {
                 .markdownCodeSyntaxHighlighter(.splash(theme: self.splashTheme))
                 .textSelection(.enabled)
                 .multilineTextAlignment(.leading)
+                .contextMenu {
+                    Button {
+                        
+                    } label: {
+                        Text("Ask")
+                    }
+                }
         }
         
     }

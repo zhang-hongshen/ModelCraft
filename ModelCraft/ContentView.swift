@@ -38,19 +38,21 @@ struct ContentView: View {
     @Query private var knowledgeBases: [KnowledgeBase] = []
     
     var body: some View {
-        NavigationSplitView(preferredCompactColumn: .constant(.detail)) {
-            Sidebar()
-        } detail: {
-            Detail()
-        }
-        .task {
-            modelTaskTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { timer in
-                guard timer.isValid else { return }
-                Task.detached { try await self.handleModelTask() }
+        NavigationStack {
+            NavigationSplitView {
+                Sidebar()
+            } detail: {
+                Detail()
             }
-        }
-        .sheet(item: $selectedKnowledgeBase) { knowledgeBase in
-            KnowledgeBaseEdition(konwledgeBase: knowledgeBase)
+            .task {
+                modelTaskTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { timer in
+                    guard timer.isValid else { return }
+                    Task.detached { try await self.handleModelTask() }
+                }
+            }
+            .sheet(item: $selectedKnowledgeBase) { knowledgeBase in
+                KnowledgeBaseEdition(konwledgeBase: knowledgeBase)
+            }
         }
     }
 }
@@ -149,22 +151,20 @@ extension ContentView {
     
     @ViewBuilder
     func Detail() -> some View {
-        NavigationStack {
-            switch currentTab {
-            case .chat(let chat):
-                ChatView(chat: chat).navigationTitle(chat.title)
-            case .modelStore:
-                ModelStore().navigationTitle("Model Store")
-            case .knowledgeBase(let knowledgeBase):
-                KnowledgeBaseDetailView(konwledgeBase: knowledgeBase)
-                    .navigationTitle(knowledgeBase.title)
-            case .localModels:
-                LocalModelsView().navigationTitle("Local Models")
-            case .prompts:
-                PromptsView()
-            case .none:
-                EmptyView()
-            }
+        switch currentTab {
+        case .chat(let chat):
+            ChatView(chat: chat).navigationTitle(chat.title)
+        case .modelStore:
+            ModelStore().navigationTitle("Model Store")
+        case .knowledgeBase(let knowledgeBase):
+            KnowledgeBaseDetailView(konwledgeBase: knowledgeBase)
+                .navigationTitle(knowledgeBase.title)
+        case .localModels:
+            LocalModelsView().navigationTitle("Local Models")
+        case .prompts:
+            PromptsView()
+        case .none:
+            PromptSuggestionsView(minWidth: 270, onTapPromptCard: { _ in } )
         }
     }
 }

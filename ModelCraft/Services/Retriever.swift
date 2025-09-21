@@ -24,7 +24,7 @@ class Retriever {
     }
     
     func addDocument(_ doc: String) {
-        guard let embedding = createEmbedding(doc) else { return }
+        guard let embedding = NLEmbedding.sentenceEmbedding(for: doc) else { return }
         collection.addDocument(text: doc, embedding: embedding)
     }
     
@@ -42,8 +42,8 @@ class Retriever {
     
     func query( _ text: String) async -> [SearchResult] {
         
-        let documents = TextSplitter.default.createDocuments(text)
-        let embeddings = documents.compactMap { createEmbedding($0) }
+        let documents = SemanticTextSplitter.default.createDocuments(text)
+        let embeddings = documents.compactMap { NLEmbedding.sentenceEmbedding(for: $0) }
         
         let results = await withTaskGroup(of: [SearchResult].self) { group in
             for embedding in embeddings {
@@ -66,9 +66,4 @@ class Retriever {
         ).sorted { $0.score > $1.score }
     }
     
-    private func createEmbedding(_ text: String) -> [Double]? {
-        guard let language = NLLanguageRecognizer.dominantLanguage(for: text) else { return nil }
-        guard let embedding = NLEmbedding.sentenceEmbedding(for: language) else { return nil }
-        return embedding.vector(for: text)
-    }
 }

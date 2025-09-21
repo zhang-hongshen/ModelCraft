@@ -9,7 +9,7 @@ import SwiftUI
 
 struct PromptSuggestionsView: View {
     @State var minWidth: CGFloat
-    var onTapPromptCard: (PromptSuggestion) -> Void = {_ in }
+    var onTapPromptCard: (PromptSuggestion) -> Void = { _ in }
     
     @State private var columns: [GridItem] = []
     @State private var promptSuggestions: [PromptSuggestion] = Array(PromptSuggestion.examples().shuffled().prefix(4))

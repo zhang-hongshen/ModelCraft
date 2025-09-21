@@ -72,6 +72,9 @@
         }
       }
     },
+    "Ask" : {
+
+    },
     "Assistant" : {
       "localizations" : {
         "zh-Hans" : {
