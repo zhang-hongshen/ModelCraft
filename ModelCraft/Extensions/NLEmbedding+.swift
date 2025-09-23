@@ -2,7 +2,7 @@
 //  NLEmbedding.swift
 //  ModelCraft
 //
-//  Created by 张鸿燊 on 21/9/25.
+//  Created by Hongshen on 21/9/25.
 //
 
 import NaturalLanguage

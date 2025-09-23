@@ -2,7 +2,7 @@
 //  SemanticTextSplitter.swift
 //  ModelCraft
 //
-//  Created by 张鸿燊 on 13/9/25.
+//  Created by Hongshen on 13/9/25.
 //
 
 
@@ -12,7 +12,7 @@ import NaturalLanguage
 /// Semantic text splitter:
 /// Split text into sentences, embed each, compute similarities,
 /// cut when similarity drops below threshold or drops suddenly.
-public final class SemanticTextSplitter {
+public final class SemanticTextSplitter: TextSplitter {
     public typealias EmbeddingFn = (String) -> [Double]?
 
     private let embed: EmbeddingFn
@@ -33,7 +33,6 @@ public final class SemanticTextSplitter {
         self.simThreshold = simThreshold
         self.dropThreshold = dropThreshold
         self.fallbackChars = max(1, fallbackChars)
-        
     }
 
     public func createDocuments(_ text: String) -> [String] {

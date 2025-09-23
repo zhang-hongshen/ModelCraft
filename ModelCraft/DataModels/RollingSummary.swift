@@ -2,7 +2,7 @@
 //  RollingSummary.swift
 //  ModelCraft
 //
-//  Created by 张鸿燊 on 18/8/25.
+//  Created by Hongshen on 18/8/25.
 //
 
 import Foundation

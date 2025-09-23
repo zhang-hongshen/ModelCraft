@@ -20,8 +20,8 @@
 		70097F922D6EE16300DDDEDF /* OllamaKit in Frameworks */ = {isa = PBXBuildFile; productRef = 70097F912D6EE16300DDDEDF /* OllamaKit */; };
 		700C702A2E52FE830008EF5B /* TagStreamParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 700C70292E52FE820008EF5B /* TagStreamParser.swift */; };
 		700C702C2E52FF730008EF5B /* TagStreamParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 700C702B2E52FF710008EF5B /* TagStreamParserTests.swift */; };
-		701954232BC8244E00CD2ED3 /* Retriever.swift in Sources */ = {isa = PBXBuildFile; fileRef = 701954222BC8244E00CD2ED3 /* Retriever.swift */; };
-		701954252BC8286E00CD2ED3 /* TextSplitter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 701954242BC8286E00CD2ED3 /* TextSplitter.swift */; };
+		701954232BC8244E00CD2ED3 /* CollectionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 701954222BC8244E00CD2ED3 /* CollectionManager.swift */; };
+		701954252BC8286E00CD2ED3 /* FixedLengthTextSplitter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 701954242BC8286E00CD2ED3 /* FixedLengthTextSplitter.swift */; };
 		701954272BC8D9ED00CD2ED3 /* AgentPrompt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 701954262BC8D9ED00CD2ED3 /* AgentPrompt.swift */; };
 		701954292BCA309300CD2ED3 /* Theme+ModelCraft.swift in Sources */ = {isa = PBXBuildFile; fileRef = 701954282BCA309300CD2ED3 /* Theme+ModelCraft.swift */; };
 		7019542B2BCA3CE900CD2ED3 /* CopyButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7019542A2BCA3CE900CD2ED3 /* CopyButton.swift */; };
@@ -38,6 +38,7 @@
 		703845832BB6674600E3128B /* Locale+.swift in Sources */ = {isa = PBXBuildFile; fileRef = 703845822BB6674600E3128B /* Locale+.swift */; };
 		7041EA702BB2AACB00286AE3 /* EnvironmentValues+.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7041EA6F2BB2AACB00286AE3 /* EnvironmentValues+.swift */; };
 		7041EA722BB2AC8D00286AE3 /* ServerStatusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7041EA712BB2AC8D00286AE3 /* ServerStatusView.swift */; };
+		704510282E825E3300C0EEED /* TextSplitter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 704510272E825E2F00C0EEED /* TextSplitter.swift */; };
 		7045BF452BB314E700CE61D1 /* Bundle+.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7045BF442BB314E700CE61D1 /* Bundle+.swift */; };
 		705483F62BBE96AF00256094 /* LocalModelsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 705483F52BBE96AF00256094 /* LocalModelsView.swift */; };
 		705483F82BBE992800256094 /* DeleteButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 705483F72BBE992800256094 /* DeleteButton.swift */; };
@@ -155,8 +156,8 @@
 		70097F8C2D6EB2C400DDDEDF /* Date+.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Date+.swift"; sourceTree = "<group>"; };
 		700C70292E52FE820008EF5B /* TagStreamParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagStreamParser.swift; sourceTree = "<group>"; };
 		700C702B2E52FF710008EF5B /* TagStreamParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagStreamParserTests.swift; sourceTree = "<group>"; };
-		701954222BC8244E00CD2ED3 /* Retriever.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Retriever.swift; sourceTree = "<group>"; };
-		701954242BC8286E00CD2ED3 /* TextSplitter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextSplitter.swift; sourceTree = "<group>"; };
+		701954222BC8244E00CD2ED3 /* CollectionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollectionManager.swift; sourceTree = "<group>"; };
+		701954242BC8286E00CD2ED3 /* FixedLengthTextSplitter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FixedLengthTextSplitter.swift; sourceTree = "<group>"; };
 		701954262BC8D9ED00CD2ED3 /* AgentPrompt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentPrompt.swift; sourceTree = "<group>"; };
 		701954282BCA309300CD2ED3 /* Theme+ModelCraft.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Theme+ModelCraft.swift"; sourceTree = "<group>"; };
 		7019542A2BCA3CE900CD2ED3 /* CopyButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CopyButton.swift; sourceTree = "<group>"; };
@@ -170,6 +171,7 @@
 		703845822BB6674600E3128B /* Locale+.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Locale+.swift"; sourceTree = "<group>"; };
 		7041EA6F2BB2AACB00286AE3 /* EnvironmentValues+.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "EnvironmentValues+.swift"; sourceTree = "<group>"; };
 		7041EA712BB2AC8D00286AE3 /* ServerStatusView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerStatusView.swift; sourceTree = "<group>"; };
+		704510272E825E2F00C0EEED /* TextSplitter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextSplitter.swift; sourceTree = "<group>"; };
 		7045BF442BB314E700CE61D1 /* Bundle+.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Bundle+.swift"; sourceTree = "<group>"; };
 		7045BF462BB3FE0A00CE61D1 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		705483F52BBE96AF00256094 /* LocalModelsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalModelsView.swift; sourceTree = "<group>"; };
@@ -325,9 +327,10 @@
 		706D729D2BB6B076004ACF35 /* Services */ = {
 			isa = PBXGroup;
 			children = (
-				701954242BC8286E00CD2ED3 /* TextSplitter.swift */,
+				704510272E825E2F00C0EEED /* TextSplitter.swift */,
+				701954242BC8286E00CD2ED3 /* FixedLengthTextSplitter.swift */,
 				700C70292E52FE820008EF5B /* TagStreamParser.swift */,
-				701954222BC8244E00CD2ED3 /* Retriever.swift */,
+				701954222BC8244E00CD2ED3 /* CollectionManager.swift */,
 				70E2017C2BAEA9DE00CFE1D7 /* OllamaService.swift */,
 				70C534102E7535A8006E6731 /* SemanticTextSplitter.swift */,
 			);
@@ -686,7 +689,7 @@
 				70A574B82BB13965008E3750 /* PromptSuggestion.swift in Sources */,
 				7008FD8F2E80414200D62EF6 /* NLEmbedding+.swift in Sources */,
 				70CE60C82BAD705E00A2D0B0 /* Chat.swift in Sources */,
-				701954252BC8286E00CD2ED3 /* TextSplitter.swift in Sources */,
+				701954252BC8286E00CD2ED3 /* FixedLengthTextSplitter.swift in Sources */,
 				70097F7F2D6C04BB00DDDEDF /* ConversationView.swift in Sources */,
 				70097F832D6DA73C00DDDEDF /* AppError.swift in Sources */,
 				70CE609C2BAD302000A2D0B0 /* LocalFileURL.swift in Sources */,
@@ -712,7 +715,7 @@
 				70CE60C62BAD61F600A2D0B0 /* UserDefaults+.swift in Sources */,
 				70C22FD72BAFD1B6002754C7 /* PlatformImage.swift in Sources */,
 				70C22FCC2BAEE24C002754C7 /* Image+.swift in Sources */,
-				701954232BC8244E00CD2ED3 /* Retriever.swift in Sources */,
+				701954232BC8244E00CD2ED3 /* CollectionManager.swift in Sources */,
 				705483F82BBE992800256094 /* DeleteButton.swift in Sources */,
 				70E2017B2BAE825A00CFE1D7 /* ChatView.swift in Sources */,
 				70CE60BE2BAD60AE00A2D0B0 /* SettingsView.swift in Sources */,
@@ -745,6 +748,7 @@
 				70955E8E2BB2E29B00015B79 /* Comparable+.swift in Sources */,
 				70097F892D6EB0DC00DDDEDF /* GlobalStore.swift in Sources */,
 				7045BF452BB314E700CE61D1 /* Bundle+.swift in Sources */,
+				704510282E825E3300C0EEED /* TextSplitter.swift in Sources */,
 				70097F8D2D6EB2C400DDDEDF /* Date+.swift in Sources */,
 				70B13D152BBC678400A42F3C /* KnowledgeBaseDetailGridView.swift in Sources */,
 				70C22FE92BAFD5CA002754C7 /* ImageButton.swift in Sources */,
@@ -937,7 +941,7 @@
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = ModelCraft/Info.plist;
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.entertainment";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "The app wants to access your microphone.";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "You can chat with models in the app.";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
@@ -954,7 +958,7 @@
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 0.4.4;
+				MARKETING_VERSION = 0.4.5;
 				PRODUCT_BUNDLE_IDENTIFIER = com.zhanghongshen.ModelCraft;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
@@ -990,7 +994,7 @@
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = ModelCraft/Info.plist;
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.entertainment";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "The app wants to access your microphone.";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "You can chat with models in the app.";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
@@ -1007,7 +1011,7 @@
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 0.4.4;
+				MARKETING_VERSION = 0.4.5;
 				PRODUCT_BUNDLE_IDENTIFIER = com.zhanghongshen.ModelCraft;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;

@@ -2,7 +2,7 @@
 //  AcknowledgmentView.swift
 //  ModelCraft
 //
-//  Created by 张鸿燊 on 2/18/25.
+//  Created by Hongshen on 2/18/25.
 //
 
 import SwiftUI

@@ -2,7 +2,7 @@
 //  KnowledgaBaseModelActor.swift
 //  ModelCraft
 //
-//  Created by 张鸿燊 on 5/4/2024.
+//  Created by Hongshen on 5/4/2024.
 //
 
 import Foundation

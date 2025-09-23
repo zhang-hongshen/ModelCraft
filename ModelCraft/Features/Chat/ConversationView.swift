@@ -2,7 +2,7 @@
 //  ConversationView.swift
 //  ModelCraft
 //
-//  Created by 张鸿燊 on 2/24/25.
+//  Created by Hongshen on 2/24/25.
 //
 
 import SwiftUI

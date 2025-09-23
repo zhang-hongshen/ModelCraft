@@ -2,7 +2,7 @@
 //  PromptCard.swift
 //  ModelCraft
 //
-//  Created by 张鸿燊 on 25/3/2024.
+//  Created by Hongshen on 25/3/2024.
 //
 
 import SwiftUI

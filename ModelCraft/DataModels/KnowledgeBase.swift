@@ -2,7 +2,7 @@
 //  KnowledgeBase.swift
 //  ModelCraft
 //
-//  Created by 张鸿燊 on 31/3/2024.
+//  Created by Hongshen on 31/3/2024.
 //
 import Foundation
 import SwiftData
@@ -52,7 +52,7 @@ extension KnowledgeBase {
                 self.createEmedding()
             }
         }
-        return await Retriever(collectionName).query(text).map{ $0.text }
+        return await CollectionManager(collectionName).query(text).map{ $0.text }
     }
     
     func createEmedding() {
@@ -63,7 +63,7 @@ extension KnowledgeBase {
     }
     
     func doCreateEmedding(_ urls: [LocalFileURL]) {
-        let retriever = Retriever(collectionName)
+        let collectionManager = CollectionManager(collectionName)
         let fileManager = FileManager.default
         do  {
             for url in urls {
@@ -80,9 +80,9 @@ extension KnowledgeBase {
                     continue
                 }
                 Task {
-                    let document = try await url.readContent()
+                    let doc = try await url.readContent()
                     url.stopAccessingSecurityScopedResource()
-                    retriever.addDocuments(TextSplitter.default.createDocuments(document))
+                    collectionManager.addDocument(doc)
                 }
             }
         } catch {

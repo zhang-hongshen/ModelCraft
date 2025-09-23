@@ -2,7 +2,7 @@
 //  PlatformImage.swift
 //  ModelCraft
 //
-//  Created by 张鸿燊 on 24/3/2024.
+//  Created by Hongshen on 24/3/2024.
 //
 
 import SwiftUI

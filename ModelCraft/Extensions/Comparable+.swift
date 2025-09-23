@@ -2,7 +2,7 @@
 //  Comparable+.swift
 //  ModelCraft
 //
-//  Created by 张鸿燊 on 6/2/2024.
+//  Created by Hongshen on 6/2/2024.
 //
 
 extension Comparable {
