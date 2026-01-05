@@ -70,7 +70,7 @@ struct KnowledgeBaseDetailGridView: View {
     func GridCell(_ url: URL) -> some View {
         VStack {
             FileThumbnail(url: url, frameWidth: gridCellWidth)
-                .padding(Default.padding)
+                .padding(Layout.padding)
                 .frame(width: gridCellWidth, height: gridCellWidth)
                 .background {
                     if selectedFiles.contains(url) {

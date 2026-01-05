@@ -1,0 +1,13 @@
+//
+//  Layout.swift
+//  ModelCraft
+//
+//  Created by Hongshen on 23/3/2024.
+//
+
+import Foundation
+
+struct Layout {
+    static let cornerRadius: CGFloat = 12
+    static let padding: CGFloat = 8
+}

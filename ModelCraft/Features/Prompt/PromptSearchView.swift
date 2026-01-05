@@ -55,12 +55,12 @@ struct PromptSearchView: View {
                                 Text("/\(prompt.command)").font(.headline)
                                 Text(prompt.title).lineLimit(1).font(.subheadline)
                                 Spacer()
-                            }.padding(Default.padding).hoverEffect()
+                            }.padding(Layout.padding).hoverEffect()
                         }
                         .buttonStyle(.borderless)
                     }
                 }
-                .safeAreaPadding(Default.padding)
+                .safeAreaPadding(Layout.padding)
             }
             .scrollIndicators(.never)
             .contentMargins(0, for: .scrollIndicators)

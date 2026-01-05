@@ -103,8 +103,8 @@ struct ModelCraftApp: App {
         .modelContainer(sharedModelContainer)
         .environment(\.downaloadedModels, models)
         .environment(\.speechSynthesizer, speechSynthesizer)
-        .environmentObject(globalStore)
-        .environmentObject(userSettings)
+        .environment(globalStore)
+        .environment(userSettings)
         .windowResizability(.contentSize)
         .commands {
             SidebarCommands()

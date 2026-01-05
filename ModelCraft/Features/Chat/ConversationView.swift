@@ -28,8 +28,8 @@ struct ConversationView: View {
 
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.speechSynthesizer) private var speechSynthesizer
-    @EnvironmentObject private var globalStore: GlobalStore
-    @EnvironmentObject private var userSettings: UserSettings
+    @Environment(GlobalStore.self) private var globalStore
+    @Environment(UserSettings.self) private var userSettings
     
     private let imageHeight: CGFloat = 200
     private let columns = Array.init(repeating: GridItem(.flexible()), count: 4)
@@ -336,7 +336,7 @@ extension ConversationView {
             }
             
             let messages = conversation.chat.allMessages(before: conversation)
-            + [AgentPrompt.answerQuestion(context: context, question: userMessage.content)]
+            + [AgentPrompt.completeTask(context: context, task: userMessage.content)]
             
             OllamaService.shared.chat(model: model, messages: messages.compactMap{ OllamaService.toChatRequestMessage($0) })
                 .sink { completion in

@@ -22,7 +22,7 @@ struct AcknowledgmentView: View {
                     .font(.title)
                     .fontWeight(.bold)
                 
-                VStack(alignment: .leading, spacing: Default.padding) {
+                VStack(alignment: .leading, spacing: Layout.padding) {
                     ForEach(licenses) { license in
                         Text(license.libraryName)
                             .font(.title2)

@@ -69,7 +69,9 @@ struct ModelDetailView: View {
         }
     }
 }
+
 extension ModelDetailView {
+    
     @ToolbarContentBuilder
     func ToolbarItems() -> some ToolbarContent {
         ToolbarItemGroup {
@@ -79,18 +81,18 @@ extension ModelDetailView {
                 Button("Refresh", systemImage: "arrow.triangle.2.circlepath") {
                     fetchModels()
                 }
-                
             }
         }
     }
 }
+
 extension ModelDetailView {
     
     func fetchModels() {
         Task(priority: .userInitiated){
             isLoading = true
+            defer { isLoading = false }
             models = try await OllamaService.shared.modelTags(modelName)
-            isLoading = false
         }
     }
     

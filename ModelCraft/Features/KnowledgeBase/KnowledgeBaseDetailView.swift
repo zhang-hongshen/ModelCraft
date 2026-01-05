@@ -16,7 +16,7 @@ struct KnowledgeBaseDetailView: View {
     @State private var selectedFiles: Set<LocalFileURL> = []
     @State private var selectedViewType: ViewType = .list
 
-    @EnvironmentObject private var globalStore: GlobalStore
+    @Environment(GlobalStore.self)private var globalStore
     
     var body: some View {
         ContentView()
@@ -79,5 +79,5 @@ extension KnowledgeBaseDetailView {
 
 #Preview {
     KnowledgeBaseDetailView(konwledgeBase: KnowledgeBase())
-        .environmentObject(GlobalStore())
+        .environment(GlobalStore())
 }

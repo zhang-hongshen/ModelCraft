@@ -17,7 +17,7 @@ struct KnowledgeBaseEdition: View {
     
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
-    @EnvironmentObject private var globalStore: GlobalStore
+    @Environment(GlobalStore.self) private var globalStore
     
     var body: some View {
         VStack {
@@ -74,7 +74,7 @@ extension KnowledgeBaseEdition {
             Spacer()
         }
         .buttonStyle(.borderless)
-        .safeAreaPadding(Default.padding)
+        .safeAreaPadding(Layout.padding)
         .background(.ultraThinMaterial)
     }
     

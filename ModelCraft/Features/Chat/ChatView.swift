@@ -21,13 +21,13 @@ struct ChatView: View {
     @State private var draft = Message(role: .user)
     @State private var assistantMessage = Message(role: .assistant, status: .new)
     @State private var selectedImages = Set<Data>()
-    @State private var fileImporterPresented = false
     
     @State private var chatStatus: ChatStatus = .assistantWaitingForRequest
     @State private var cancellables = Set<AnyCancellable>()
     
+    
+    @Environment(GlobalStore.self) private var globalStore
     @Environment(\.modelContext) private var modelContext
-    @EnvironmentObject private var globalStore: GlobalStore
     @Environment(\.downaloadedModels) private var models
     
     @AppStorage(UserDefaults.automaticallyScrollToBottom)
@@ -40,16 +40,17 @@ struct ChatView: View {
             .frame(minWidth: minWidth,
                    minHeight: 250)
             .toolbar(content: ToolbarItems)
-            .safeAreaInset(edge: .bottom, content: ChatInputView)
+            .safeAreaInset(edge: .bottom) {
+                ChatInputView(
+                    draft: $draft,
+                    chatStatus: $chatStatus,
+                    onSubmit: submitDraft,
+                    onStop: stopGenerateMessage,
+                    onUploadImages: uploadImages
+                )
+            }
             .onDrop(of: [.image], isTargeted: nil, perform: uploadImagesByDropping)
-            .fileImporter(isPresented: $fileImporterPresented,
-                          allowedContentTypes: [.image],
-                          allowsMultipleSelection: true) { result in
-                switch result {
-                case .success(let urls): uploadImages(urls)
-                case .failure(let error): debugPrint(error.localizedDescription)
-                }
-            }.onDisappear {
+            .onDisappear {
                 cancellables.forEach { cancellable in
                   cancellable.cancel()
                 }
@@ -63,6 +64,9 @@ extension ChatView {
     
     @ToolbarContentBuilder
     func ToolbarItems() -> some ToolbarContent {
+        
+        @Bindable var globalStore = globalStore
+        
         ToolbarItemGroup {
             if models.isEmpty {
                 Text("No Available Model")
@@ -85,7 +89,7 @@ extension ChatView {
     @ViewBuilder
     func MainView() -> some View {
         if chat.conversations.isEmpty {
-            PromptSuggestionsView(minWidth: minWidth,
+            WelcomeView(minWidth: minWidth,
                                   onTapPromptCard: submitPrompt)
         } else {
             ScrollViewReader { proxy in
@@ -99,7 +103,7 @@ extension ChatView {
                     }
                     .safeAreaPadding()
                 }
-                .contentMargins(.leading, Default.padding, for: .scrollContent)
+                .contentMargins(.leading, Layout.padding, for: .scrollContent)
                 .contentMargins(0, for: .scrollIndicators)
                 .onChange(of: chat.conversations) {
                     // don't scroll when user are scrolling
@@ -116,93 +120,6 @@ extension ChatView {
         }
     }
     
-}
-
-// MARK: - Message Edition
-
-extension ChatView {
-    
-    @ViewBuilder
-    func ChatInputView() -> some View {
-        VStack {
-            PromptSearchView(searchText: $draft.content) {
-                draft.content = $0
-            }
-            .background(.ultraThinMaterial)
-            .frame(maxHeight: 70)
-            
-            MessageEditor()
-        }
-        .safeAreaPadding()
-        .background(.regularMaterial)
-    }
-    
-    @ViewBuilder
-    func MessageEditor() -> some View {
-        VStack(alignment: .leading) {
-            
-            if !draft.images.isEmpty {
-                ScrollView(.horizontal) {
-                    HStack(alignment: .center) {
-                        ForEach(draft.images, id: \.self) { data in
-                            ImageView(data: data) {
-                                draft.images.removeAll { $0 == data }
-                            }.frame(height: 80)
-                        }
-                    }
-                }
-            }
-            
-            TextEditor(text: $draft.content)
-                .frame(maxHeight: 100)
-                .fixedSize(horizontal: false, vertical: true)
-                .font(.title3)
-                .textEditorStyle(.plain)
-            HStack {
-                UploadImageButton()
-                Spacer()
-                Group {
-                    if chatStatus != .assistantWaitingForRequest {
-                        StopGenerateMessageButton()
-                    } else {
-                        SubmitMessageButton()
-                    }
-                }
-            }
-        }
-        .buttonStyle(.borderless)
-        .imageScale(.large)
-        .padding()
-        .overlay {
-            RoundedRectangle().fill(.clear).stroke(.primary, lineWidth: 1)
-        }
-    }
-    
-    @ViewBuilder
-    func UploadImageButton() -> some View {
-        Button {
-            fileImporterPresented = true
-        } label: {
-            Image(systemName: "plus")
-        }
-    }
-    
-    @ViewBuilder
-    func StopGenerateMessageButton() -> some View {
-        Button(action: stopGenerateMessage) {
-            Image(systemName: "stop.circle.fill")
-        }
-    }
-    
-    @ViewBuilder
-    func SubmitMessageButton() -> some View {
-        let disabled = globalStore.selectedModel == nil || draft.content.isEmpty
-        Button(action: submitDraft) {
-            Image(systemName: "arrow.up.circle.fill")
-        }
-        .tint(disabled ? .secondary : .accentColor)
-        .disabled(disabled)
-    }
 }
 
 extension ChatView {
@@ -262,6 +179,7 @@ extension ChatView {
             modelContext.insert([message, assistantMessage])
             modelContext.insert(conversation)
             try modelContext.save()
+            let generateTitle = chat.conversations.isEmpty ? true : false
             DispatchQueue.main.async {
                 chat.conversations.append(conversation)
                 self.clearDraft()
@@ -273,7 +191,7 @@ extension ChatView {
             if let knowledgeBase = globalStore.selectedKnowledgeBase {
                 context = await knowledgeBase.search(message.content).joined(separator: "\n")
             }
-            let messages = chat.allMessages + [AgentPrompt.answerQuestion(context: context, question: message.content)]
+            let messages = chat.allMessages + [AgentPrompt.completeTask(context: context, task: message.content)]
             
             OllamaService.shared.chat(model: model,
                                       messages: messages.compactMap{ OllamaService.toChatRequestMessage($0) })
@@ -307,6 +225,16 @@ extension ChatView {
                             assistantMessage.promptEvalDuration = response.promptEvalDuration
                             assistantMessage.totalDuration = response.totalDuration
                             assistantMessage.status = .generated
+                            if generateTitle {
+                                OllamaService.shared.chat(model: model,
+                                                          messages: messages.compactMap{ OllamaService.toChatRequestMessage($0) })
+                                    .sink { _ in }
+                                receiveValue: { response in
+                                    if let messageContent = response.message?.content {
+                                        chat.title?.append(messageContent)
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -345,5 +273,5 @@ extension ChatView {
 
 #Preview {
     ChatView(chat: Chat())
-        .environmentObject(GlobalStore())
+        .environment(GlobalStore())
 }

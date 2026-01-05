@@ -1,0 +1,126 @@
+//
+//  ChatInputView.swift
+//  ModelCraft
+//
+//  Created by Hongshen on 10/11/25.
+//
+
+import SwiftUI
+
+struct ChatInputView: View {
+    
+    @Binding var draft: Message
+    @Binding var chatStatus: ChatStatus
+    var onSubmit: () -> Void
+    var onStop: () -> Void
+    var onUploadImages: ([URL]) -> Void
+    
+    @State private var fileImporterPresented = false
+    
+    @Environment(GlobalStore.self) private var globalStore
+    
+    var body: some View {
+        VStack {
+            PromptSearchView(searchText: $draft.content) {
+                draft.content = $0
+            }
+            .background(.ultraThinMaterial)
+            .frame(maxHeight: 70)
+            
+            MessageEditor()
+        }
+        .safeAreaPadding()
+        .background(.regularMaterial)
+        .fileImporter(isPresented: $fileImporterPresented,
+                      allowedContentTypes: [.image],
+                      allowsMultipleSelection: true) { result in
+            switch result {
+            case .success(let urls): 
+                onUploadImages(urls)
+            case .failure(let error): 
+                debugPrint(error.localizedDescription)
+            }
+        }
+    }
+}
+
+extension ChatInputView {
+    
+    @ViewBuilder
+    func MessageEditor() -> some View {
+        VStack(alignment: .leading) {
+            
+            if !draft.images.isEmpty {
+                ScrollView(.horizontal) {
+                    HStack(alignment: .center) {
+                        ForEach(draft.images, id: \.self) { data in
+                            ImageView(data: data) {
+                                draft.images.removeAll { $0 == data }
+                            }.frame(height: 80)
+                        }
+                    }
+                }
+            }
+            
+            TextEditor(text: $draft.content)
+                .frame(maxHeight: 100)
+                .fixedSize(horizontal: false, vertical: true)
+                .font(.title3)
+                .textEditorStyle(.plain)
+            
+            
+            HStack {
+                UploadImageButton()
+                Spacer()
+                Group {
+                    if chatStatus != .assistantWaitingForRequest {
+                        StopGenerateMessageButton()
+                    } else {
+                        SubmitMessageButton()
+                    }
+                }
+            }
+        }
+        .buttonStyle(.borderless)
+        .imageScale(.large)
+        .padding()
+        .overlay {
+            RoundedRectangle().fill(.clear).stroke(.primary, lineWidth: 1)
+        }
+    }
+    
+    @ViewBuilder
+    func UploadImageButton() -> some View {
+        Button {
+            fileImporterPresented = true
+        } label: {
+            Image(systemName: "plus")
+        }
+    }
+    
+    @ViewBuilder
+    func StopGenerateMessageButton() -> some View {
+        Button(action: onStop) {
+            Image(systemName: "stop.circle.fill")
+        }
+    }
+    
+    @ViewBuilder
+    func SubmitMessageButton() -> some View {
+        let disabled = globalStore.selectedModel == nil || draft.content.isEmpty
+        Button(action: onSubmit) {
+            Image(systemName: "arrow.up.circle.fill")
+        }
+        .tint(disabled ? .secondary : .accentColor)
+        .disabled(disabled)
+    }
+}
+
+#Preview {
+    ChatInputView(
+        draft: .constant(Message()),
+        chatStatus: .constant(.assistantResponding),
+        onSubmit: {},
+        onStop: {},
+        onUploadImages: {_ in })
+}

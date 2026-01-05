@@ -52,13 +52,15 @@ struct ModelStore: View {
     }
     
     var body: some View {
-        ContentView()
-            .toolbar(content: ToolbarItems)
-            .searchable(text: $searchText)
-            .task { fetchModels() }
-            .navigationDestination(for: String.self) { modelName in
-                ModelDetailView(modelName: modelName)
-            }
+        NavigationStack {
+            ContentView()
+                .toolbar(content: ToolbarItems)
+                .searchable(text: $searchText)
+                .task { fetchModels() }
+                .navigationDestination(for: String.self) { modelName in
+                    ModelDetailView(modelName: modelName)
+                }
+        }
     }
 }
 
@@ -98,7 +100,7 @@ extension ModelStore {
     
     @ViewBuilder
     func ContentView() -> some View {
-        if isLoading {
+        if models.isEmpty {
             List {
                 ForEach(0..<5) { _ in
                     Text("This is an Placeholder").redacted(reason: .placeholder)
@@ -107,19 +109,14 @@ extension ModelStore {
         } else {
             List(selection: $selectedModelName) {
                 ForEach(filteredModels, id: \.name) { model in
-                    ListCell(model)
+                    NavigationLink(value: model.name) {
+                        Label(model.name, systemImage: "shippingbox")
+                    }
+                    .buttonStyle(.borderless)
                 }
             }
         }
         
-    }
-    
-    @ViewBuilder
-    func ListCell(_ model: ModelInfo) -> some View {
-        NavigationLink(value: model.name) {
-            Label(model.name, systemImage: "shippingbox")
-        }
-        .buttonStyle(.borderless)
     }
     
 }
@@ -129,12 +126,8 @@ extension ModelStore {
     func fetchModels() {
         Task(priority: .userInitiated) {
             isLoading = true
-            do {
-                models = try await OllamaService.shared.libraryModels()
-            } catch {
-                
-            }
-            isLoading = false
+            defer { isLoading = false }
+            models = try await OllamaService.shared.libraryModels()
         }
     }
 

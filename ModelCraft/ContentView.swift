@@ -78,7 +78,7 @@ extension ContentView {
     func ChatSection() -> some View {
         Section {
             ForEach(chats) { chat in
-                Text(chat.title).tag(Tab.chat(chat))
+                Text(chat.title ?? "New Chat").tag(Tab.chat(chat))
                     .contextMenu{
                         DeleteButton(style: .textOnly) {
                             modelContext.delete(chat)
@@ -153,7 +153,7 @@ extension ContentView {
     func Detail() -> some View {
         switch currentTab {
         case .chat(let chat):
-            ChatView(chat: chat).navigationTitle(chat.title)
+            ChatView(chat: chat).navigationTitle(chat.title ?? "New Chat")
         case .modelStore:
             ModelStore().navigationTitle("Model Store")
         case .knowledgeBase(let knowledgeBase):
@@ -164,7 +164,12 @@ extension ContentView {
         case .prompts:
             PromptsView()
         case .none:
-            PromptSuggestionsView(minWidth: 270, onTapPromptCard: { _ in } )
+            WelcomeView(minWidth: 270) { prompt in
+                let chat = Chat()
+                
+                modelContext.persist(chat)
+                currentTab = .chat(chat)
+            }
         }
     }
 }
@@ -172,11 +177,7 @@ extension ContentView {
 extension ContentView {
     private func addChat() {
         withAnimation {
-            if let isEmptyChat = chats.last?.conversations.isEmpty, isEmptyChat {
-                return
-            }
-            let newChat = Chat()
-            modelContext.persist(newChat)
+            currentTab = .none
         }
     }
 
@@ -263,5 +264,5 @@ extension ContentView {
     ContentView()
         .modelContainer(for: [Chat.self, ModelTask.self],
                         inMemory: true)
-        .environmentObject(GlobalStore())
+        .environment(GlobalStore())
 }

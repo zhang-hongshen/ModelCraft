@@ -12,10 +12,13 @@ struct GeneralView: View {
     
     @State private var isCheckingServerStatus = false
     @State private var cancellables: Set<AnyCancellable> = []
-    @EnvironmentObject private var globalStore: GlobalStore
-    @EnvironmentObject private var userSettings: UserSettings
+    @Environment(GlobalStore.self) private var globalStore
+    @Environment(UserSettings.self) private var userSettings
     
     var body: some View {
+        
+        @Bindable var userSettings = userSettings
+        
         Form {
             Picker("Appearance", selection: $userSettings.appearance) {
                 Text("System").tag(Appearance.system)
@@ -86,4 +89,6 @@ extension GeneralView {
 
 #Preview {
     GeneralView()
+        .environment(GlobalStore())
+        .environment(UserSettings())
 }
