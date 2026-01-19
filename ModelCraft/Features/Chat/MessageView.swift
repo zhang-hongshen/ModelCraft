@@ -28,27 +28,10 @@ struct MessageView: View {
     @Environment(\.speechSynthesizer) private var speechSynthesizer
     @Environment(GlobalStore.self) private var globalStore
     @Environment(UserSettings.self) private var userSettings
+    @Environment(ChatService.self) private var service
     
     private let imageHeight: CGFloat = 200
     private let columns = Array.init(repeating: GridItem(.flexible()), count: 4)
-    
-    private var userMessage: Message {
-        get {
-            conversation.userMessage
-        }
-        set {
-            conversation.userMessage = newValue
-        }
-    }
-    
-    private var assistantMessage: Message {
-        get {
-            conversation.assistantMessage
-        }
-        set {
-            conversation.assistantMessage = newValue
-        }
-    }
     
     private var splashTheme: Splash.Theme {
         switch self.colorScheme {
@@ -59,14 +42,13 @@ struct MessageView: View {
         }
     }
     
-    private var chatStatus: ChatStatus {
-        conversation.chat.status
-    }
-    
     var body: some View {
         VStack {
-            UserMessageView()
-            AssistantMessageView()
+            if message.role == .user {
+                UserMessageView()
+            } else {
+                AssistantMessageView()
+            }
         }
     }
 
@@ -74,7 +56,7 @@ struct MessageView: View {
 
 // MARK: Common Message
 
-extension ConversationView {
+extension MessageView {
     
     @ViewBuilder
     func CommonButtons(_ message: Message) -> some View {
@@ -98,20 +80,20 @@ extension ConversationView {
 
 // MARK: User Message
 
-extension ConversationView {
+extension MessageView {
     
     @ViewBuilder
     func UserMessageView() -> some View {
         HStack(alignment: .top) {
             Spacer()
             VStack(alignment: .trailing) {
-                if !userMessage.images.isEmpty {
-                    MessageImageView(userMessage)
+                if !message.images.isEmpty {
+                    MessageImageView(message)
                 }
                 
                 if isEditing {
                     VStack(alignment: .trailing) {
-                        TextEditor(text: $conversation.userMessage.content)
+                        TextEditor(text: $message.content)
                             .textEditorStyle(.plain)
                             .font(.body)
                         HStack {
@@ -126,7 +108,7 @@ extension ConversationView {
                             } label: {
                                 Image(systemName: "arrow.up.circle.fill")
                             }.tint(.accentColor)
-                                .disabled(conversation.chat.status == ChatStatus.assistantResponding)
+                                .disabled(message.chat?.status == .assistantResponding)
                         }
                         .buttonStyle(.borderless)
                         .imageScale(.large)
@@ -136,8 +118,8 @@ extension ConversationView {
                         RoundedRectangle().fill(.quaternary).stroke(.primary, lineWidth: 1)
                     }
                 } else {
-                    if !userMessage.content.isEmpty {
-                        UserMessageContentView(userMessage)
+                    if !message.content.isEmpty {
+                        UserMessageContentView(message)
                             .padding()
                             .background {
                                 RoundedRectangle().fill(.quaternary)
@@ -160,7 +142,7 @@ extension ConversationView {
     @ViewBuilder
     func UserButtons() -> some View {
         HStack {
-            CommonButtons(userMessage)
+            CommonButtons(message)
             Button {
                 isEditing = true
             } label: {
@@ -184,7 +166,7 @@ extension ConversationView {
 
 // MARK: Assistant Message
 
-extension ConversationView {
+extension MessageView {
     
     @ViewBuilder
     func AssistantMessageView() -> some View {
@@ -192,23 +174,23 @@ extension ConversationView {
             VStack(alignment: .leading) {
                 
                 ActivityIndicatorView(isVisible: Binding(
-                    get: {assistantMessage.status == .new},
+                    get: {message.status == .new},
                     set: { _ in }),
                                       type: .opacityDots())
                 .frame(width: 30, height: 10)
                 
-                if !assistantMessage.content.isEmpty {
-                    AssistantMessageContentView(assistantMessage)
+                if !message.content.isEmpty {
+                    AssistantMessageContentView(message)
                         .contextMenu {
                             AssistantButtons()
                         }
                 }
                 
-                if !assistantMessage.images.isEmpty {
-                    MessageImageView(assistantMessage)
+                if !message.images.isEmpty {
+                    MessageImageView(message)
                 }
                 
-                if assistantMessage.status != .new {
+                if message.status != .new {
                     AssistantButtons()
                         .buttonStyle(.borderless)
                         .opacity(isHovering ? 1 : 0)
@@ -222,7 +204,7 @@ extension ConversationView {
     @ViewBuilder
     func AssistantButtons() -> some View {
         HStack(alignment: .center) {
-            CommonButtons(assistantMessage)
+            CommonButtons(message)
             
             if speechSynthesizer.isSpeaking {
                 Button {
@@ -232,7 +214,7 @@ extension ConversationView {
                 }
             } else {
                 Button {
-                    speechSynthesizer.speak(assistantMessage.content,
+                    speechSynthesizer.speak(message.content,
                                             rate: Float(userSettings.speakingRate),
                                             volume: Float(userSettings.speakingVolume))
                 } label: {
@@ -255,23 +237,23 @@ extension ConversationView {
                 set: { infoPresented = $0 }
             ), arrowEdge: .top) {
                 Form {
-                    if let totalDuration = assistantMessage.totalDuration {
+                    if let totalDuration = message.totalDuration {
                         LabeledContent("Total cost:",
                                        value: Duration.nanoseconds(totalDuration).formatted(.units(allowed: [.seconds])))
                     }
-                    if let loadDuration = assistantMessage.loadDuration {
+                    if let loadDuration = message.loadDuration {
                         LabeledContent("Loading model cost:",
                                        value: Duration.nanoseconds(loadDuration).formatted(.units(allowed: [.seconds])))
                     }
-                    if let promptEvalDuration = assistantMessage.promptEvalDuration {
+                    if let promptEvalDuration = message.promptEvalDuration {
                         LabeledContent("Evaluating prompt cost:",
                                        value: Duration.nanoseconds(promptEvalDuration).formatted(.units(allowed: [.seconds])))
                     }
-                    if let evalDurationInSecond = assistantMessage.evalDurationInSecond {
+                    if let evalDurationInSecond = message.evalDurationInSecond {
                         LabeledContent("Generating response cost:",
                                        value: Duration.seconds(evalDurationInSecond).formatted(.units(allowed: [.seconds])))
                     }
-                    if let tokenPerSecond = assistantMessage.tokenPerSecond {
+                    if let tokenPerSecond = message.tokenPerSecond {
                         LabeledContent("Token per second:",
                                        value: "\(tokenPerSecond.formatted(.number.precision(.fractionLength(2))))/s")
                     }
@@ -282,7 +264,7 @@ extension ConversationView {
     
     func AssistantMessageContentView(_ message: Message) -> some View {
         let parser = TagStreamParser()
-        let events = parser.feed(assistantMessage.content)
+        let events = parser.feed(message.content)
         var answer = ""
         var think = ""
         for e in events {
@@ -317,48 +299,21 @@ extension ConversationView {
     }
 }
 
-extension ConversationView {
+extension MessageView {
     
     func submitMessage() {
-        
-        guard case .assistantWaitingForRequest = chatStatus else { return }
+        guard let chat = message.chat,
+                case .assistantWaitingForRequest = chat.status else { return }
         guard let model = globalStore.selectedModel else {
             globalStore.errorWrapper = ErrorWrapper(error: AppError.noSelectedModel)
             return
         }
         Task {
-            DispatchQueue.main.async {
-                assistantMessage.status = .new
-                assistantMessage.content = ""
-                conversation.chat.status = .userWaitingForResponse
-            }
-            var relevantDocuments: [String] = []
-            if let knowledgeBase = globalStore.selectedKnowledgeBase {
-                relevantDocuments = await knowledgeBase.search(userMessage.content)
-            }
-            
-            
-            
-            AgentEngine().run(model: model
-                              input: userMessage.content,
-                              history: conversation.userMessage.chat?.messages(before: conversation),
-                              relevantDocuments: relevantDocuments) { event in
-                switch event {
-                case .token(let content):
-                    if case .userWaitingForResponse = chatStatus {
-                        conversation.chat.status = .assistantResponding
-                        assistantMessage.status = .generating
-                    }
-                    
-                    guard case .assistantResponding = chatStatus else { return }
-                    assistantMessage.content.append(content)
-                case .finished(let res):
-                    assistantMessage.status = .generated
-                case .error(let error):
-                    assistantMessage.status = .failed
-                }
-            }
-
+            try await service.resendMessage(
+                model: model,
+                knowledgeBase: globalStore.selectedKnowledgeBase,
+                chat: chat,
+                message: message)
         }
         
     }
@@ -366,10 +321,6 @@ extension ConversationView {
 
 #Preview {
     let chat = Chat()
-    let userMessage = Message(role: .user, chat: chat, content: "Hello")
-    let assistantMessage = Message(role: .assistant, chat: chat, content: "Hello, I'm ModelCraft.")
-    let conversation = Conversation(chat: Chat(),
-                                    userMessage: userMessage,
-                                    assistantMessage: assistantMessage)
-    ConversationView(conversation: conversation)
+    let message = Message(role: .assistant, chat: chat, content: "Hello, I'm ModelCraft.")
+    MessageView(message: message)
 }

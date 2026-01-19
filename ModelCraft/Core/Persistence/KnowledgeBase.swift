@@ -9,10 +9,6 @@ import SwiftData
 
 import SVDB
 
-enum IndexStatus: Int, Codable {
-    case unindexed, indexing, indexed
-}
-
 @Model
 class KnowledgeBase {
     @Attribute(.unique) var id = UUID()
@@ -99,4 +95,8 @@ extension KnowledgeBase {
     func removeFiles<T>(_ urls: T) where T: Swift.Collection, T.Element == LocalFileURL {
         self.files.removeAll { urls.contains($0) }
     }
+}
+
+enum IndexStatus: Int, Codable {
+    case unindexed, indexing, indexed
 }

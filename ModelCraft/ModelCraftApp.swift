@@ -19,7 +19,7 @@ struct ModelCraftApp: App {
     let sharedModelContainer: ModelContainer = {
         let schema = Schema([
             Message.self, Chat.self, ModelTask.self,
-            KnowledgeBase.self, Prompt.self, Conversation.self
+            KnowledgeBase.self
         ])
 #if DEBUG
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
@@ -34,6 +34,7 @@ struct ModelCraftApp: App {
         }
     }()
     
+    @State private var chatService: ChatService
     @State private var models: [ModelInfo] = []
     @State private var cancellables: Set<AnyCancellable> = []
     @State private var checkServerStatusTaskTimer: Timer? = nil
@@ -46,6 +47,7 @@ struct ModelCraftApp: App {
     @Environment(\.openWindow) private var openWindow
     
     init() {
+        self.chatService = ChatService(container: sharedModelContainer)
 #if os(macOS)
         startOllamaServer()
 #endif
@@ -105,6 +107,7 @@ struct ModelCraftApp: App {
         .environment(\.speechSynthesizer, speechSynthesizer)
         .environment(globalStore)
         .environment(userSettings)
+        .environment(chatService)
         .windowResizability(.contentSize)
         .commands {
             SidebarCommands()
@@ -118,52 +121,29 @@ struct ModelCraftApp: App {
 extension ModelCraftApp {
     
 #if os(macOS)
+    
+
+    
     func startOllamaServer() {
         globalStore.serverStatus = .launching
         DispatchQueue.global(qos: .background).async {
             do {
-                let process = Process()
-                let pipe = Pipe()
-                
-                process.standardOutput = pipe
-                process.standardError = pipe
-                process.standardInput = nil
-                process.executableURL = Bundle.main.url(forAuxiliaryExecutable: "ollama")
-                process.arguments = ["serve"]
-                
-                try process.run()
-                pipe.fileHandleForReading.readabilityHandler = { handle in
-                    let data = handle.availableData
-                    if let output = String(data: data, encoding: .utf8) {
-                        print(output)
-                    }
+                try CommandExecutor.run(Bundle.main.url(forAuxiliaryExecutable: "ollama"), arguments: ["serve"]) { (_, _) in
+                    
                 }
-                process.waitUntilExit()
+
             } catch {
                 print("Failed to start Ollama server: \(error)")
             }
         }
     }
+    
     func stopOllamaServer() {
         DispatchQueue.global(qos: .background).async {
             do {
-                let process = Process()
-                let pipe = Pipe()
-                
-                process.standardOutput = pipe
-                process.standardError = pipe
-                process.standardInput = nil
-                process.executableURL = Bundle.main.url(forAuxiliaryExecutable: "ollama")
-                process.arguments = ["stop"]
-                
-                try process.run()
-                pipe.fileHandleForReading.readabilityHandler = { handle in
-                    let data = handle.availableData
-                    if let output = String(data: data, encoding: .utf8) {
-                        print(output)
-                    }
+                try CommandExecutor.run(Bundle.main.url(forAuxiliaryExecutable: "ollama"), arguments: ["stop"]) { (_, _) in
+                    
                 }
-                process.waitUntilExit()
             } catch {
                 print("Failed to stop Ollama server: \(error)")
             }

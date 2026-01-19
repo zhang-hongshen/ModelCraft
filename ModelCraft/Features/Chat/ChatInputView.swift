@@ -10,7 +10,7 @@ import SwiftUI
 struct ChatInputView: View {
     
     @Binding var draft: Message
-    @Binding var chatStatus: ChatStatus
+    var chatStatus: ChatStatus
     var onSubmit: () -> Void
     var onStop: () -> Void
     var onUploadImages: ([URL]) -> Void
@@ -20,27 +20,19 @@ struct ChatInputView: View {
     @Environment(GlobalStore.self) private var globalStore
     
     var body: some View {
-        VStack {
-            PromptSearchView(searchText: $draft.content) {
-                draft.content = $0
+        MessageEditor()
+            .safeAreaPadding()
+            .background(.regularMaterial)
+            .fileImporter(isPresented: $fileImporterPresented,
+                          allowedContentTypes: [.image],
+                          allowsMultipleSelection: true) { result in
+                switch result {
+                case .success(let urls):
+                    onUploadImages(urls)
+                case .failure(let error):
+                    debugPrint(error.localizedDescription)
+                }
             }
-            .background(.ultraThinMaterial)
-            .frame(maxHeight: 70)
-            
-            MessageEditor()
-        }
-        .safeAreaPadding()
-        .background(.regularMaterial)
-        .fileImporter(isPresented: $fileImporterPresented,
-                      allowedContentTypes: [.image],
-                      allowsMultipleSelection: true) { result in
-            switch result {
-            case .success(let urls): 
-                onUploadImages(urls)
-            case .failure(let error): 
-                debugPrint(error.localizedDescription)
-            }
-        }
     }
 }
 
@@ -118,8 +110,8 @@ extension ChatInputView {
 
 #Preview {
     ChatInputView(
-        draft: .constant(Message()),
-        chatStatus: .constant(.assistantResponding),
+        draft: .constant(Message(chat: Chat())),
+        chatStatus: .assistantResponding,
         onSubmit: {},
         onStop: {},
         onUploadImages: {_ in })

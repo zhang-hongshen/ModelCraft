@@ -11,49 +11,48 @@ import SwiftData
 @Model
 class Chat {
     
+    @Attribute(.unique) var id = UUID()
+    
     var title: String?
     
-    @Attribute(.unique) var id = UUID()
     var createdAt: Date =  Date.now
-
-    @Relationship(deleteRule: .cascade, inverse: \Conversation.chat)
-    private var conversationsPersistent = [Conversation]()
     
-    @Relationship(deleteRule: .cascade, inverse: \RollingSummary.chat)
-    private var rollingSummary: RollingSummary?
-
-    @Transient var conversations: [Conversation] {
-        get {
-            conversationsPersistent.sorted(using: KeyPathComparator(\.createdAt, order: .forward))
-        }
-        set {
-            conversationsPersistent = newValue
-        }
-    }
+    var summary: String? = nil
     
-    init() {
-    }
+    var lastSummaryIndex: Int = 0
+    
+    var status: ChatStatus = ChatStatus.assistantWaitingForRequest
+    
+    @Relationship(deleteRule: .cascade, inverse: \Message.chat)
+    var messages: [Message] = []
+    
+    init() {}
     
 }
 
 extension Chat {
     
-    @Transient var allMessages: [Message] {
-        self.conversations.flatMap { [$0.userMessage, $0.assistantMessage] }
+    var sortedMessages: [Message] {
+        messages.sorted{ $0.createdAt < $1.createdAt }
     }
     
-    func allMessages(before: Conversation) -> [Message] {
-        guard let index = self.conversations.firstIndex(of: before) else {
-            return []
-        }
-        return self.conversations.prefix(index)
-            .flatMap { [$0.userMessage, $0.assistantMessage] }
+    var currentGeneratingAssistantMessage: Message? {
+        sortedMessages.last { $0.role == .assistant && $0.status == .generating }
     }
+    
+    func truncateMessages(after message: Message) -> [Message] {
+        guard let index = sortedMessages.firstIndex (where: { $0.id == message.id }) else { return [] }
+        let messagesToDelete = Array(sortedMessages[index...])
+        let idsToDelete = Set(messagesToDelete.map { $0.id })
+        messages.removeAll { idsToDelete.contains($0.id) }
+        return messagesToDelete
+    }
+    
 }
 
 // Possible values of the `chatStatus` property.
 
-enum ChatStatus {
+enum ChatStatus: Codable {
     case assistantWaitingForRequest
     case userWaitingForResponse
     case assistantResponding

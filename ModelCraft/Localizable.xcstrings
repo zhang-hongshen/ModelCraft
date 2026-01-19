@@ -4,9 +4,6 @@
     "" : {
 
     },
-    "/%@" : {
-
-    },
     "%@ / %@" : {
       "localizations" : {
         "en" : {
@@ -48,9 +45,6 @@
           }
         }
       }
-    },
-    "Add Prompt" : {
-
     },
     "Appearance" : {
       "localizations" : {
@@ -115,9 +109,6 @@
         }
       }
     },
-    "Command" : {
-
-    },
     "Completed" : {
       "localizations" : {
         "zh-Hans" : {
@@ -137,9 +128,6 @@
           }
         }
       }
-    },
-    "Content" : {
-
     },
     "Copied" : {
       "localizations" : {
@@ -301,17 +289,6 @@
         }
       }
     },
-    "How would you like model to respond ?" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "你想要模型如何回答？"
-          }
-        }
-      }
-    },
     "Indexing..." : {
       "localizations" : {
         "zh-Hans" : {
@@ -445,20 +422,6 @@
     "OK" : {
 
     },
-    "Personalization" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "定制化"
-          }
-        }
-      }
-    },
-    "Prompts" : {
-
-    },
     "Refresh" : {
       "localizations" : {
         "zh-Hans" : {
@@ -498,9 +461,6 @@
           }
         }
       }
-    },
-    "Shortcut" : {
-
     },
     "Speaking Rate" : {
       "localizations" : {
@@ -631,17 +591,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "等待下载"
-          }
-        }
-      }
-    },
-    "What would you like model to know about you to provide better responses ?" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "为了提供更好的回答，您希望模型了解您的哪些信息？"
           }
         }
       }

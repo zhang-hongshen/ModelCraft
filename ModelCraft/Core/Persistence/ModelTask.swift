@@ -9,18 +9,6 @@ import Foundation
 import SwiftData
 import SwiftUI
 
-enum TaskType: Int, Codable {
-    case download
-    case delete
-}
-
-enum TaskStatus: Int, Codable {
-    case new
-    case running
-    case stopped
-    case completed
-    case failed
-}
 
 @Model
 class ModelTask {
@@ -101,4 +89,17 @@ extension ModelTask {
         let statusID = TaskStatus.completed.rawValue
         return #Predicate<ModelTask> { $0.statusID != statusID }
     }
+}
+
+enum TaskType: Int, Codable {
+    case download
+    case delete
+}
+
+enum TaskStatus: Int, Codable {
+    case new
+    case running
+    case stopped
+    case completed
+    case failed
 }

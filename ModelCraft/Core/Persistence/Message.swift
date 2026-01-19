@@ -8,6 +8,46 @@ import Foundation
 import SwiftData
 import SwiftUI
 
+@Model
+class Message {
+    @Attribute(.unique) var id = UUID()
+    
+    var createdAt: Date = Date.now
+    var chat: Chat?
+    var role: MessageRole
+    var content: String
+    var images: [Data]
+    var status: MessageStatus
+    
+    var evalCount: Int? = nil
+    var evalDuration: Int? = nil
+    var loadDuration: Int? = nil
+    var promptEvalCount: Int? = nil
+    var promptEvalDuration: Int? = nil
+    var totalDuration: Int? = nil
+    
+    init(role: MessageRole = .user, chat: Chat? = nil, content: String = "",
+         images: [Data] = [], status: MessageStatus = .generated) {
+        self.chat = chat
+        self.role = role
+        self.content = content
+        self.images = images
+        self.status = status
+    }
+    
+    var evalDurationInSecond: Double? {
+        guard let evalDuration else { return nil }
+        
+        return Double(evalDuration) / 1_000_000_000
+    }
+    
+    var tokenPerSecond: Double? {
+        guard let evalCount, let evalDurationInSecond, evalDurationInSecond > 0 else { return nil }
+        return Double(evalCount) / evalDurationInSecond
+    }
+}
+
+
 enum MessageRole: Codable {
     case user, assistant, system
     
@@ -33,42 +73,4 @@ enum MessageRole: Codable {
 
 enum MessageStatus: Codable {
     case new, generating, failed, generated
-}
-
-@Model
-class Message {
-    @Attribute(.unique) var id = UUID()
-    
-    var createdAt: Date = Date.now
-    var role: MessageRole
-    var content: String
-    var images: [Data]
-    var status: MessageStatus
-    var conversation: Conversation?
-    
-    var evalCount: Int? = nil
-    var evalDuration: Int? = nil
-    var loadDuration: Int? = nil
-    var promptEvalCount: Int? = nil
-    var promptEvalDuration: Int? = nil
-    var totalDuration: Int? = nil
-    
-    init(role: MessageRole = .user, content: String = "", 
-         images: [Data] = [], status: MessageStatus = .generated) {
-        self.role = role
-        self.content = content
-        self.images = images
-        self.status = status
-    }
-    
-    var evalDurationInSecond: Double? {
-        guard let evalDuration else { return nil }
-        
-        return Double(evalDuration) / 1_000_000_000
-    }
-    
-    var tokenPerSecond: Double? {
-        guard let evalCount, let evalDurationInSecond, evalDurationInSecond > 0 else { return nil }
-        return Double(evalCount) / evalDurationInSecond
-    }
 }

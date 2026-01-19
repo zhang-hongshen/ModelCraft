@@ -12,6 +12,7 @@ public enum ParseState: Equatable {
     case outside
     case inThink
     case inAnswer
+    case inAction
 }
 
 // MARK: - Events
@@ -19,16 +20,18 @@ public enum ParseEvent: Equatable {
     case state(ParseState)          // State transition (optional)
     case think(String)          // Text inside <think>...</think> (may not exist)
     case answer(String)         // Text inside <answer>...</answer>
+    case action(String)         // Text inside <action>...</action>
 }
 
 // MARK: - Streaming tag parser
-/// A streaming parser for three tags: <think>, <answer>.
+/// A streaming parser for three tags: <think>, <answer>, <action>.
 /// - <think>...</think> is optional
 /// - <answer>...</answer> is required
+/// - <action>...</action> is optional
 ///
 /// Key rules:
 /// - Text outside tags is ignored.
-/// - Text inside <think> or <answer> is emitted immediately as events.
+/// - Text inside <think>, <answer> or <action> is emitted immediately as events.
 /// - Tags may appear in any order.
 /// - `safeTail` ensures incomplete tags split across chunks are not lost.
 public final class TagStreamParser {
@@ -56,7 +59,7 @@ public final class TagStreamParser {
 
         // Matches opening/closing tags for think, answer, follow_ups
         self.regex = try! NSRegularExpression(
-            pattern: #"<\s*(/?)\s*(think|answer)\s*>"#,
+            pattern: #"<\s*(/?)\s*(think|answer|action)\s*>"#,
             options: [.caseInsensitive]
         )
     }
@@ -123,6 +126,7 @@ public final class TagStreamParser {
                 switch tagName {
                 case "think": setState(.inThink)
                 case "answer": setState(.inAnswer)
+                case "action": setState(.inAction)
                 default: break
                 }
             } else {
@@ -131,6 +135,8 @@ public final class TagStreamParser {
                 case ("think", .inThink):
                     setState(.outside)
                 case ("answer", .inAnswer):
+                    setState(.outside)
+                case ("action", .inAction):
                     setState(.outside)
                 default:
                     // Mismatched closing tag: ignored for robustness
@@ -150,11 +156,13 @@ public final class TagStreamParser {
         guard !text.isEmpty else { return [] }
         switch state {
         case .outside:
-            return [] // Ignore text outside tags
+            return []
         case .inThink:
             return [.think(text)]
         case .inAnswer:
             return [.answer(text)]
+        case .inAction:
+            return [.action(text)]
         }
     }
 

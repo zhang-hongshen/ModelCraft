@@ -18,7 +18,7 @@ struct ContentView: View {
     enum Tab: Hashable {
         case chat(Chat)
         case knowledgeBase(KnowledgeBase)
-        case localModels, modelStore, prompts
+        case localModels, modelStore
     }
     
     @State private var modelTaskTimer: Timer? = nil
@@ -65,7 +65,6 @@ extension ContentView {
             ChatSection()
             KnowledgeBaseSection()
             ModelSection()
-            PromptSection()
         }
         .listStyle(.sidebar)
         .navigationSplitViewColumnWidth(min: 160, ideal: 170, max: 180)
@@ -92,7 +91,7 @@ extension ContentView {
                 Button(action: addChat, label: {
                     Image(systemName: "plus")
                 }).buttonStyle(.borderless)
-                    .disabled(chats.last?.conversations.isEmpty ?? false)
+                    .disabled(chats.last?.messages.isEmpty ?? false)
             }
         }
     }
@@ -141,15 +140,6 @@ extension ContentView {
     }
     
     @ViewBuilder
-    func PromptSection() -> some View {
-        Section {
-            Label("Prompts", systemImage: "lightbulb.max").tag(Tab.prompts)
-        } header: {
-            Text("Prompts")
-        }
-    }
-    
-    @ViewBuilder
     func Detail() -> some View {
         switch currentTab {
         case .chat(let chat):
@@ -161,15 +151,8 @@ extension ContentView {
                 .navigationTitle(knowledgeBase.title)
         case .localModels:
             LocalModelsView().navigationTitle("Local Models")
-        case .prompts:
-            PromptsView()
         case .none:
-            WelcomeView(minWidth: 270) { prompt in
-                let chat = Chat()
-                
-                modelContext.persist(chat)
-                currentTab = .chat(chat)
-            }
+            ChatView(chat: nil)
         }
     }
 }

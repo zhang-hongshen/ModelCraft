@@ -6,18 +6,13 @@
 //
 
 import Foundation
-import SwiftData
 
-@Model
-class Conversation {
-    @Attribute(.unique) var id = UUID()
+class Conversation: Identifiable {
+    let id = UUID()
     var createdAt: Date =  Date.now
     
     var chat: Chat
-    @Relationship(deleteRule: .cascade)
     var userMessage: Message
-    
-    @Relationship(deleteRule: .cascade)
     var assistantMessage: Message
     
     init(chat: Chat, userMessage: Message,
