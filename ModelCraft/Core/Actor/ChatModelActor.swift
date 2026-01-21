@@ -59,4 +59,13 @@ actor ChatModelActor {
             try modelContext.save()
         }
     
+    
+    func generateTitle(chatID: PersistentIdentifier, model: String, summaryLogic: ([Message]) async throws -> String?) async throws {
+            guard let chat = modelContext.model(for: chatID) as? Chat else { return }
+            
+            guard let newTitle = try await summaryLogic(chat.sortedMessages) else { return }
+            chat.title = newTitle
+            try modelContext.save()
+        }
+    
 }

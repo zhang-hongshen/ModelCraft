@@ -70,10 +70,14 @@ class ChatService {
                 assistantMessage.status = .generated
                 resetChatStatus(chat: chat)
                 
-            case .error:
+            case .error(let error):
+                assistantMessage.content.append(error.localizedDescription)
                 assistantMessage.status = .failed
-                resetChatStatus(chat: chat)
             }
+        }
+        
+        Task(priority: .background) {
+            try await generateTitleIfNeeded(model: model, chat: chat)
         }
         
         Task(priority: .background) {
@@ -99,7 +103,7 @@ class ChatService {
             images: message.images)
     }
     
-    private func summarizeChatIfNeeded (model: String, chat: Chat) async throws{
+    private func summarizeChatIfNeeded (model: String, chat: Chat) async throws {
         try await chatModelActor.updateSummary(chatID: chat.id, model: model) { previousSummary, messages in
                 let prompt = AgentPrompt.summarize(previousSummary: previousSummary, messages: messages)
             let response = try await OllamaService.shared.chat(
@@ -109,6 +113,19 @@ class ChatService {
         }
     }
 
+    private func generateTitleIfNeeded (model: String, chat: Chat) async throws {
+        if chat.title != nil {
+            return
+        }
+        try await chatModelActor.generateTitle(chatID: chat.id, model: model) { messages in
+            let prompt = AgentPrompt.generateTitle(messages: messages)
+            let response = try await OllamaService.shared.chat(
+                model: model,
+                messages: [prompt].compactMap(OllamaService.toChatRequestMessage))
+                return response.message?.content
+        }
+    }
+    
     func stopGenerating(chat: Chat?) {
         guard let chat = chat else { return }
         if let currentMessage = chat.currentGeneratingAssistantMessage {

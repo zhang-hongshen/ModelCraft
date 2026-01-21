@@ -65,12 +65,14 @@ class AgentExecutor {
                     do {
                         toolCallResult = try ToolExecutor.shared.dispatch(toolCall)
                     } catch {
-                        debugPrint("Tool Call Error \(error.localizedDescription)")
-                        continue
+                        toolCallResult = "Error: \(error.localizedDescription)"
+                        onEvent(.error(error))
                     }
+                    let observation = "<observation>\(toolCallResult)</observation>"
+                    onEvent(.token(observation))
                     let aiMessage = Message(role: .assistant, content: aiResponse)
-                    let observation = Message(role: .tool, content: "<observation>\(toolCallResult)</observation>")
-                    let updatedHistory = messages + [aiMessage, observation]
+                    let toolMessage = Message(role: .tool, content: observation)
+                    let updatedHistory = messages + [aiMessage, toolMessage]
                     currentActionBuffer = ""
                     self.stop()
                     self.executeStep(model: model, messages: updatedHistory, onEvent: onEvent)

@@ -64,12 +64,14 @@ class AgentPrompt {
     
     static func summarize<T: RandomAccessCollection>(previousSummary: String?, messages: T) -> Message
         where T.Element == Message{
-        let messageString = messages.map { msg in
+        let conversation = messages.map { msg in
             switch msg.role {
             case .user:
                 return "<user>\(msg.content)</user>"
             case .assistant:
                 return "<assistant>\(msg.content)</assistant>"
+            case .tool:
+                return "<tool>\(msg.content)</tool>"
             default:
                 return "<other>\(msg.content)</other>"
             }
@@ -99,20 +101,22 @@ class AgentPrompt {
             \(previousSummary ?? "None")
             </previous_summary>
             
-            <messages>
-            \(messageString)
-            </messages>
+            <conversation>
+            \(conversation)
+            </conversation>
             """
         )
     }
     
     static func generateTitle(messages: [Message]) -> Message {
-        let messageString = messages.map { msg in
+        let conversation = messages.map { msg in
             switch msg.role {
             case .user:
                 return "<user>\(msg.content)</user>"
             case .assistant:
                 return "<assistant>\(msg.content)</assistant>"
+            case .tool:
+                return "<tool>\(msg.content)</tool>"
             default:
                 return "<other>\(msg.content)</other>"
             }
@@ -126,15 +130,13 @@ class AgentPrompt {
             </role>
             
             <instructions>
-            1. Keep it under 6 English words or 10 Chinese characters.
-            2. Match the language of the conversation.
-            3. Use Title Case for English titles.
-            4. No punctuation or quotation marks.
+            1. Length: Under 6 words.
+            2. Style: No punctuation, no quotes, no markdown.
+            3. Consistency: Use the same language and tone as the conversation.
+            4. Output: ONLY the title text itself.
             </instructions>
             
-            <messages>
-            \(messageString)
-            </messages>
+            <conversation>\(conversation)</conversation>
             """)
     }
     
