@@ -13,7 +13,7 @@
 
 ## 💡 What is ModelCraft ?
 
-ModelCraft is a native RAG(Retrieval-Augmented Generation) app for macOS.  It offers the full chain path of chatting with models locally, from downloading models to building your knowledge base .
+ModelCraft is an agentic app designed for macOS.  It offers the cability to complete your task locally.
 
 ## 📄 **Documentation**
 
@@ -33,15 +33,11 @@ No pre-operations. Just download the app to use it !
 
 ## :star:  Key Feature
 
-🍩 Fine-tune the models to make model's answer precise and unbaised
-
 🍔 Customize chat by selecting model and knowledge base.
 
 🍞Customize your own knowledge base. Supported file types include pdf, xml, markdown, text, image, audio. ( More file types will be supported in future )
 
-🍰Download models from Model Store, including Deepseek, Llama, Mistral, Qwen and other powerful models.
-
-🥜 Prompt Library
+🍰Download models from Model Store, including Qwen, Deepseek, Mistral, and other powerful models.
 
 ## :camera: Screenshot
 
@@ -71,14 +67,10 @@ No pre-operations. Just download the app to use it !
       </picture>
     </td>
     <td>
-      <picture>
-        <source media="(prefers-color-scheme: dark)" srcset="./assets/prompt_library_dark.png">
-        <source media="(prefers-color-scheme: light)" srcset="./assets/prompt_library_light.png">
-        <img src="./assets/prompt_library_dark.png" alt="prompt_library">
-      </picture>
     </td>
   </tr>
 </table>
+
 
 
 ## License

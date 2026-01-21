@@ -67,7 +67,14 @@
       }
     },
     "Ask" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "询问"
+          }
+        }
+      }
     },
     "Assistant" : {
       "localizations" : {
@@ -205,6 +212,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "已下载"
+          }
+        }
+      }
+    },
+    "Downloaded Models" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已下载的模型"
           }
         }
       }
@@ -355,16 +372,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "加载模型耗时："
-          }
-        }
-      }
-    },
-    "Local Models" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "本地模型"
           }
         }
       }
@@ -554,6 +561,9 @@
           }
         }
       }
+    },
+    "Tool" : {
+
     },
     "Total cost:" : {
       "localizations" : {

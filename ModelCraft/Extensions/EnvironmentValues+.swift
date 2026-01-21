@@ -12,5 +12,4 @@ import AVFoundation
 extension EnvironmentValues {
     
     @Entry var downaloadedModels: [ModelInfo] = []
-    @Entry var speechSynthesizer: AVSpeechSynthesizer  = AVSpeechSynthesizer()
 }

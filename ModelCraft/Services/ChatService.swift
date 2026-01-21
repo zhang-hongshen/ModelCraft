@@ -15,7 +15,7 @@ class ChatService {
     private let container: ModelContainer
     private let chatModelActor: ChatModelActor
     
-    private let engine = AgentEngine()
+    private let executor = AgentExecutor()
     
     init(container: ModelContainer) {
         self.container = container
@@ -35,13 +35,13 @@ class ChatService {
         content: String,
         images: [Data]
     ) async throws {
-        let userMessage = Message(role: .user, content: content, images: images)
-        let assistantMessage = Message(role: .assistant, status: .new)
+        let userMessage = Message(role: .user, chat: chat, content: content, images: images)
+        let assistantMessage = Message(role: .assistant, chat: chat, status: .new)
+        let history = chat.messages.suffix(from: chat.lastSummaryIndex)
         
         try await chatModelActor.addMessages(
             chatID: chat.id,
             messages: [userMessage, assistantMessage])
-        
         chat.status = .userWaitingForResponse
         
         var relevantDocuments: [String] = []
@@ -49,15 +49,14 @@ class ChatService {
             relevantDocuments = await knowledgeBase.search(content)
         }
         
-        engine.run(
+        executor.run(
             model: model,
             input: content,
-            history: chat.messages.suffix(from: chat.lastSummaryIndex),
+            history: history,
             relevantDocuments: relevantDocuments,
             summary: chat.summary
         ) { [weak self] event in
             guard let self = self else { return }
-            
             switch event {
             case .token(let text):
                 if case .userWaitingForResponse = chat.status {
@@ -91,32 +90,22 @@ class ChatService {
     ) async throws {
         chat.status = .userWaitingForResponse
         let messages = chat.truncateMessages(after: message)
-        try await chatModelActor.deleteMessages(chatID: chat.id, messages: messages)
-        try await sendMessage(model: model, knowledgeBase: knowledgeBase, chat: chat, content: message.content, images: message.images)
-    }
-    
-    private func getEndSummaryIndex(chat: Chat) -> Int? {
-        let bufferCount = 4
-        let threshold = 20
-        let unsummarizedCount = chat.messages.count - chat.lastSummaryIndex - bufferCount
-        guard unsummarizedCount >= threshold else { return nil }
-        let endSummaryIndex = chat.messages.count - bufferCount - 1
-        return endSummaryIndex
+        try await chatModelActor.deleteMessages(messages: messages)
+        try await sendMessage(
+            model: model,
+            knowledgeBase: knowledgeBase,
+            chat: chat,
+            content: message.content,
+            images: message.images)
     }
     
     private func summarizeChatIfNeeded (model: String, chat: Chat) async throws{
-        guard let endSummaryIndex = getEndSummaryIndex(chat: chat) else { return }
-        let summarySlice = chat.sortedMessages[chat.lastSummaryIndex...endSummaryIndex]
-        let prompt = AgentPrompt.summarize(
-            previousSummary: chat.summary,
-            messages: summarySlice
-        )
-        let response = try await OllamaService.shared.chat(
-            model: model,
-            messages: [prompt].compactMap(OllamaService.toChatRequestMessage))
-        if let summary = response.message?.content {
-            chat.lastSummaryIndex = endSummaryIndex
-            chat.summary = summary
+        try await chatModelActor.updateSummary(chatID: chat.id, model: model) { previousSummary, messages in
+                let prompt = AgentPrompt.summarize(previousSummary: previousSummary, messages: messages)
+            let response = try await OllamaService.shared.chat(
+                model: model,
+                messages: [prompt].compactMap(OllamaService.toChatRequestMessage))
+                return response.message?.content
         }
     }
 
@@ -129,8 +118,9 @@ class ChatService {
     }
 
     private func resetChatStatus(chat: Chat) {
+        chat.status = .assistantWaitingForRequest
         Task {
-            await chatModelActor.setStatus(chatID: chat.id, status: .assistantWaitingForRequest)
+            try await chatModelActor.updateStatus(chatID: chat.id, status: .assistantWaitingForRequest)
         }
     }
 }

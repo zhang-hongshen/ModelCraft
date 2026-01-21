@@ -22,10 +22,9 @@ struct MessageView: View {
     @State private var infoPresented = false
     @State private var isHovering = false
     @State private var isEditing = false
-    @State private var thinkingExpanded = false
 
     @Environment(\.colorScheme) private var colorScheme
-    @Environment(\.speechSynthesizer) private var speechSynthesizer
+    @Environment(SpeechManager.self) private var speechManager
     @Environment(GlobalStore.self) private var globalStore
     @Environment(UserSettings.self) private var userSettings
     @Environment(ChatService.self) private var service
@@ -92,31 +91,7 @@ extension MessageView {
                 }
                 
                 if isEditing {
-                    VStack(alignment: .trailing) {
-                        TextEditor(text: $message.content)
-                            .textEditorStyle(.plain)
-                            .font(.body)
-                        HStack {
-                            Button(role: .cancel) {
-                                isEditing = false
-                            } label: {
-                                Image(systemName: "xmark.circle")
-                            }
-                            Button {
-                                submitMessage()
-                                isEditing = false
-                            } label: {
-                                Image(systemName: "arrow.up.circle.fill")
-                            }.tint(.accentColor)
-                                .disabled(message.chat?.status == .assistantResponding)
-                        }
-                        .buttonStyle(.borderless)
-                        .imageScale(.large)
-                    }
-                    .padding()
-                    .background {
-                        RoundedRectangle().fill(.quaternary).stroke(.primary, lineWidth: 1)
-                    }
+                    ChatInputView()
                 } else {
                     if !message.content.isEmpty {
                         UserMessageContentView(message)
@@ -136,6 +111,35 @@ extension MessageView {
                 
             }
             .onHover(perform: { isHovering = $0 })
+        }
+    }
+    
+    @ViewBuilder
+    func ChatInputView() -> some View {
+        VStack(alignment: .trailing) {
+            TextEditor(text: $message.content)
+                .textEditorStyle(.plain)
+                .font(.body)
+            HStack {
+                Button(role: .cancel) {
+                    isEditing = false
+                } label: {
+                    Image(systemName: "xmark.circle")
+                }
+                Button {
+                    submitMessage()
+                    isEditing = false
+                } label: {
+                    Image(systemName: "arrow.up.circle.fill")
+                }.tint(.accentColor)
+                    .disabled(message.chat?.status == .assistantResponding)
+            }
+            .buttonStyle(.borderless)
+            .imageScale(.large)
+        }
+        .padding()
+        .background {
+            RoundedRectangle().fill(.quaternary).stroke(.primary, lineWidth: 1)
         }
     }
     
@@ -206,20 +210,20 @@ extension MessageView {
         HStack(alignment: .center) {
             CommonButtons(message)
             
-            if speechSynthesizer.isSpeaking {
+            if speechManager.isSpeaking {
                 Button {
-                    speechSynthesizer.stop()
+                    speechManager.stop()
                 } label: {
                     Image(systemName: "stop.circle")
                 }
             } else {
                 Button {
-                    speechSynthesizer.speak(message.content,
+                    speechManager.speak(message.content,
                                             rate: Float(userSettings.speakingRate),
                                             volume: Float(userSettings.speakingVolume))
                 } label: {
                     Image(systemName: "speaker.wave.2")
-                }.disabled(speechSynthesizer.isSpeaking)
+                }
             }
             
             Button {
@@ -262,24 +266,50 @@ extension MessageView {
         }
     }
     
+    private struct Step: Identifiable {
+        let id = UUID()
+        var thought: String = ""
+        var action: String? = nil
+    }
+    
     func AssistantMessageContentView(_ message: Message) -> some View {
+        
         let parser = TagStreamParser()
-        let events = parser.feed(message.content)
+        var steps: [Step] = []
         var answer = ""
-        var think = ""
-        for e in events {
-            switch e {
-            case .think(let t): think += t; break;
-            case .answer(let t): answer += t; break;
+        for event in parser.feed(message.content) {
+            guard case .tag(let name, let content) = event else { continue }
+            switch name {
+            case "thought":
+                if steps.isEmpty || steps.last?.action != nil {
+                    steps.append(Step(thought: content))
+                } else {
+                    steps[steps.count - 1].thought += content
+                }
+            case "action":
+                if steps.isEmpty {
+                        steps.append(Step(action: content))
+                    } else {
+                        let lastIdx = steps.count - 1
+                        steps[lastIdx].action = (steps[lastIdx].action ?? "") + content
+                    }
+            case "answer":
+                answer += content
             default: break
             }
         }
         return VStack(alignment: .leading) {
-            if !think.isEmpty {
-                DisclosureGroup("Thinking", isExpanded: $thinkingExpanded) {
-                    Text(think)
-                        .foregroundColor(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+            ForEach(steps) { step in
+                VStack(alignment: .leading) {
+                    if !step.thought.isEmpty {
+                        ThoughtView(thought: step.thought)
+                    }
+                    if let action = step.action, let toolCall = ToolCall(json: action) {
+                        Label(toolCall.localizedName, systemImage: toolCall.icon)
+                            .padding(Layout.padding)
+                            .background(.quaternary)
+                            .cornerRadius()
+                    }
                 }
             }
             Markdown(message.status != .failed ? answer : "Please try again later.")
@@ -294,6 +324,7 @@ extension MessageView {
                         Text("Ask")
                     }
                 }
+            
         }
         
     }
@@ -319,8 +350,22 @@ extension MessageView {
     }
 }
 
+import SwiftData
 #Preview {
+    let config = ModelConfiguration(isStoredInMemoryOnly: true)
+    let container = try! ModelContainer(for: Chat.self, Message.self, configurations: config)
     let chat = Chat()
-    let message = Message(role: .assistant, chat: chat, content: "Hello, I'm ModelCraft.")
+    let message = Message(role: .assistant, chat: chat, content:
+        """
+        <thought>First...</thought>
+        <action>{"tool": "write_to_file", "parameters": {"path": "1.txt", "content": "test"}}</action>
+        <thought>Next,...</thought>
+        <action>{"tool": "execute_command", "parameters": {"command": "ls"}}</action>
+        """)
     MessageView(message: message)
+        .modelContainer(container)
+        .environment(SpeechManager())
+        .environment(GlobalStore())
+        .environment(UserSettings())
+        .environment(ChatService(container: container))
 }

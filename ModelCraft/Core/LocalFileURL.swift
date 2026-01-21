@@ -24,7 +24,7 @@ extension LocalFileURL: Identifiable {
         if type.conforms(to: .pdf) {
             return readPDFContent()
         } else if type.conforms(to: .xml) {
-            return XMLFile().readContent(url: self)
+            return XMLFileParser().readContent(url: self)
         } else if type.conforms(to: .image) {
             return try await readImageContent()
         } else if type.conforms(to: .text) {

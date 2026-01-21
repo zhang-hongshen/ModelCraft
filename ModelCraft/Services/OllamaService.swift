@@ -71,6 +71,7 @@ extension OllamaService {
             case .user: .user
             case .assistant: .assistant
             case .system: .system
+            case .tool: .tool
             }
         }
         return OllamaKit.Message(role: role,

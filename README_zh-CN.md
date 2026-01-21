@@ -13,7 +13,7 @@
 
 ## 💡 ModelCraft 是什么 ?
 
-ModelCraft是一个原生的macOS RAG应用，提供了在本地使用大模型的全链路流程，从下载模型到构建知识库。
+ModelCraft 是一个为 MacOS 设计的智能体应用。
 
 ## 📄 **文档**
 
@@ -33,15 +33,11 @@ ModelCraft是一个原生的macOS RAG应用，提供了在本地使用大模型�
 
 ## :star:  关键功能
 
-🍩 微调了相关模型使得回答更加准确和无偏见
-
 🍔 通过选择模型和知识库定制您的对话
 
 🍞自定义您的知识库。支持的文件类型包括 pdf, xml, markdown, text, 图片, 音频. ( 将来会支持更多的文件类型 )
 
-🍰从模型商店中下载模型，支持Deepseek, Llama, Mistral, Qwen等模型。
-
-🥜 提示词库
+🍰从模型商店中下载模型，支持 Qwen, Deepseek, Mistral等模型。
 
 ## :camera: 运行截图
 
@@ -71,11 +67,6 @@ ModelCraft是一个原生的macOS RAG应用，提供了在本地使用大模型�
       </picture>
     </td>
     <td>
-      <picture>
-        <source media="(prefers-color-scheme: dark)" srcset="./assets/prompt_library_dark.png">
-        <source media="(prefers-color-scheme: light)" srcset="./assets/prompt_library_light.png">
-        <img src="./assets/prompt_library_dark.png" alt="prompt_library">
-      </picture>
     </td>
   </tr>
 </table>

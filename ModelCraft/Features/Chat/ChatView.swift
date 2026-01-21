@@ -148,6 +148,7 @@ extension ChatView {
     func submitDraft() {
         guard let model = globalStore.selectedModel,
                 case .assistantWaitingForRequest = chatStatus else { return }
+        let (content, imaegs) = (draft.content, draft.images)
         clearDraft()
         Task {
             let activeChat: Chat
@@ -155,14 +156,17 @@ extension ChatView {
                 activeChat = chat
             } else {
                 activeChat = try await service.createChat()
+                globalStore.currentTab = .chat(activeChat)
             }
+            
             try await service.sendMessage(
                 model: model,
                 knowledgeBase: globalStore.selectedKnowledgeBase,
                 chat: activeChat,
-                content: draft.content,
-                images: draft.images
+                content: content,
+                images: imaegs
             )
+            
         }
     }
     

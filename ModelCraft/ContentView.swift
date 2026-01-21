@@ -11,24 +11,16 @@ import Combine
 import OrderedCollections
 import ActivityIndicatorView
 
-
 struct ContentView: View {
-    
-    // Possible values of the `currentTab` property.
-    enum Tab: Hashable {
-        case chat(Chat)
-        case knowledgeBase(KnowledgeBase)
-        case localModels, modelStore
-    }
     
     @State private var modelTaskTimer: Timer? = nil
     @State private var modelTaskCancellables: Set<AnyCancellable> = []
-    @State private var currentTab: Tab? = nil
     @State private var selectedKnowledgeBase: KnowledgeBase? = nil
     
     @Environment(\.modelContext) private var modelContext
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.downaloadedModels) private var models
+    @Environment(GlobalStore.self) private var globalStore
     
     @Query(sort: \Chat.createdAt, order: .reverse) private var chats: [Chat]
     @Query(filter: ModelTask.predicateUnCompletedTask,
@@ -61,7 +53,9 @@ extension ContentView {
     
     @ViewBuilder
     func Sidebar() -> some View {
-        List(selection: $currentTab) {
+        @Bindable var store = globalStore
+        
+        List(selection: $store.currentTab) {
             ChatSection()
             KnowledgeBaseSection()
             ModelSection()
@@ -133,7 +127,7 @@ extension ContentView {
     func ModelSection() -> some View {
         Section {
             Label("Model Store", systemImage: "storefront").tag(Tab.modelStore)
-            Label("Local Models", systemImage: "shippingbox").tag(Tab.localModels)
+            Label("Downloaded Models", systemImage: "shippingbox").tag(Tab.downloadedModels)
         } header: {
             Text("Model")
         }
@@ -141,7 +135,7 @@ extension ContentView {
     
     @ViewBuilder
     func Detail() -> some View {
-        switch currentTab {
+        switch globalStore.currentTab {
         case .chat(let chat):
             ChatView(chat: chat).navigationTitle(chat.title ?? "New Chat")
         case .modelStore:
@@ -149,8 +143,8 @@ extension ContentView {
         case .knowledgeBase(let knowledgeBase):
             KnowledgeBaseDetailView(konwledgeBase: knowledgeBase)
                 .navigationTitle(knowledgeBase.title)
-        case .localModels:
-            LocalModelsView().navigationTitle("Local Models")
+        case .downloadedModels:
+            DownloadedModelsView().navigationTitle("Downloaded Models")
         case .none:
             ChatView(chat: nil)
         }
@@ -160,7 +154,7 @@ extension ContentView {
 extension ContentView {
     private func addChat() {
         withAnimation {
-            currentTab = .none
+            globalStore.currentTab = .none
         }
     }
 
@@ -193,7 +187,6 @@ extension ContentView {
     }
     
     private func deleteDupliateDownloadTask() throws {
-        // delete duplicate model download task
         let downloadedModelNames = Set(models.map { $0.name })
         for task in modelTasks.filter({ $0.type == .download && downloadedModelNames.contains($0.modelName) }) {
             modelContext.delete(task)

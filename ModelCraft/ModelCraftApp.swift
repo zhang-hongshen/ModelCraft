@@ -42,7 +42,7 @@ struct ModelCraftApp: App {
     
     private let globalStore = GlobalStore()
     private let userSettings = UserSettings()
-    private let speechSynthesizer = AVSpeechSynthesizer()
+    private let speechManager = SpeechManager()
     
     @Environment(\.openWindow) private var openWindow
     
@@ -104,7 +104,7 @@ struct ModelCraftApp: App {
         }
         .modelContainer(sharedModelContainer)
         .environment(\.downaloadedModels, models)
-        .environment(\.speechSynthesizer, speechSynthesizer)
+        .environment(speechManager)
         .environment(globalStore)
         .environment(userSettings)
         .environment(chatService)
