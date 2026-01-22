@@ -29,7 +29,7 @@ class AgentPrompt {
                 <action>the action to take, should be one of [\(toolNames)]</action>
                 <observation>the result of the action</observation>
                 ...(this <thought>/<action>/<observation> can repeat N times)
-                <answer>the final answer to the task or to ask the user for clarification.</answer>
+                <answer>the final answer to the task</answer>
             
                 Here is an example.
                 <example>
@@ -40,10 +40,14 @@ class AgentPrompt {
                     <answer>'config.json' exists</answer>
                 </example>
             </instructions>
+            
             <rules>
-            1. Only one <action> per response.
-            2. No text outside of XML tags.
-            3. Thought should focus on decision-making, not storytelling.
+            1. No text outside of XML tags.
+            2. Thought should focus on decision-making, not storytelling.
+            3. If and only if you need to use a tool, output exactly one <action>...</action> .
+            4. If no tool is needed, respond with <answer>...</answer>.
+            5. You must NEVER output <observation>...</observation>.
+            
             </rules>
             
             <context>
@@ -64,19 +68,8 @@ class AgentPrompt {
     
     static func summarize<T: RandomAccessCollection>(previousSummary: String?, messages: T) -> Message
         where T.Element == Message{
-        let conversation = messages.map { msg in
-            switch msg.role {
-            case .user:
-                return "<user>\(msg.content)</user>"
-            case .assistant:
-                return "<assistant>\(msg.content)</assistant>"
-            case .tool:
-                return "<tool>\(msg.content)</tool>"
-            default:
-                return "<other>\(msg.content)</other>"
-            }
-        }.joined(separator: "\n")
-        
+            
+        let conversation = messages.toString()
         return Message(
             role: .user,
             content: """
@@ -109,18 +102,7 @@ class AgentPrompt {
     }
     
     static func generateTitle(messages: [Message]) -> Message {
-        let conversation = messages.map { msg in
-            switch msg.role {
-            case .user:
-                return "<user>\(msg.content)</user>"
-            case .assistant:
-                return "<assistant>\(msg.content)</assistant>"
-            case .tool:
-                return "<tool>\(msg.content)</tool>"
-            default:
-                return "<other>\(msg.content)</other>"
-            }
-        }.joined(separator: "\n")
+        let conversation = messages.toString()
         
         return Message(
             role: .user,

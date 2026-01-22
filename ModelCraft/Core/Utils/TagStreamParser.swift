@@ -13,13 +13,12 @@ public enum ParseState: Equatable {
 }
 
 public enum ParseEvent: Equatable {
-    case state(ParseState)
-    case tag(name: String, content: String)
+    case outside
+    case inTag(name: String, content: String)
 }
 
 public final class TagStreamParser {
-    
-    private let emitStates: Bool
+
     private let bufferLimit: Int
     private let safeTail: Int
     private let regex: NSRegularExpression
@@ -27,10 +26,8 @@ public final class TagStreamParser {
     private(set) public var state: ParseState = .outside
     private var buffer: String = ""
 
-    public init(emitStates: Bool = true,
-                bufferLimit: Int = 1_000_000,
+    public init(bufferLimit: Int = 1_000_000,
                 safeTail: Int = 32) {
-        self.emitStates = emitStates
         self.bufferLimit = bufferLimit
         self.safeTail = max(0, safeTail)
 
@@ -48,12 +45,6 @@ public final class TagStreamParser {
         var events: [ParseEvent] = []
         var pos = buffer.startIndex
 
-        @inline(__always)
-        func setState(_ s: ParseState) {
-            state = s
-            if emitStates { events.append(.state(s)) }
-        }
-
         while true {
             let searchRange = NSRange(pos..<buffer.endIndex, in: buffer)
             guard let m = regex.firstMatch(in: buffer, options: [], range: searchRange) else {
@@ -66,7 +57,7 @@ public final class TagStreamParser {
                 } else {
                     buffer.removeSubrange(buffer.startIndex..<pos)
                 }
-                
+
                 if buffer.count > bufferLimit {
                     events.append(contentsOf: emitText(buffer))
                     buffer.removeAll(keepingCapacity: true)
@@ -75,25 +66,31 @@ public final class TagStreamParser {
             }
 
             if m.range.location > searchRange.location {
-                let pre = NSRange(location: searchRange.location, length: m.range.location - searchRange.location)
+                let pre = NSRange(
+                    location: searchRange.location,
+                    length: m.range.location - searchRange.location
+                )
                 if let r = Range(pre, in: buffer) {
                     let text = String(buffer[r])
                     events.append(contentsOf: emitText(text))
                 }
             }
 
- 
-            let isClose = (Range(m.range(at: 1), in: buffer).map { !buffer[$0].isEmpty } ?? false)
-            let tagName = Range(m.range(at: 2), in: buffer).map { String(buffer[$0]).lowercased() } ?? ""
+            let isClose = (Range(m.range(at: 1), in: buffer)
+                .map { !buffer[$0].isEmpty } ?? false)
+
+            let tagName = Range(m.range(at: 2), in: buffer)
+                .map { String(buffer[$0]) } ?? ""
 
             if !isClose {
-                setState(.inTag(tagName))
+                state = .inTag(tagName)
             } else {
                 if case .inTag(let current) = state, current == tagName {
-                    setState(.outside)
+                    state = .outside
+                    events.append(.outside)
                 }
             }
-
+            
             pos = Range(m.range, in: buffer)!.upperBound
         }
 
@@ -103,7 +100,7 @@ public final class TagStreamParser {
     private func emitText(_ text: String) -> [ParseEvent] {
         guard !text.isEmpty else { return [] }
         if case .inTag(let name) = state {
-            return [.tag(name: name, content: text)]
+            return [.inTag(name: name, content: text)]
         }
         return []
     }

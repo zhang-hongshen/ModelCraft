@@ -103,7 +103,7 @@ extension ModelStore {
         if models.isEmpty {
             List {
                 ForEach(0..<5) { _ in
-                    Text("This is an Placeholder").redacted(reason: .placeholder)
+                    Text("").redacted(reason: .placeholder)
                 }
             }
         } else {

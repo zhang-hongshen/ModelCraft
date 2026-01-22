@@ -19,13 +19,6 @@ class Message {
     var images: [Data]
     var status: MessageStatus
     
-    var evalCount: Int? = nil
-    var evalDuration: Int? = nil
-    var loadDuration: Int? = nil
-    var promptEvalCount: Int? = nil
-    var promptEvalDuration: Int? = nil
-    var totalDuration: Int? = nil
-    
     init(role: MessageRole = .user, chat: Chat? = nil, content: String = "",
          images: [Data] = [], status: MessageStatus = .generated) {
         self.chat = chat
@@ -35,16 +28,6 @@ class Message {
         self.status = status
     }
     
-    var evalDurationInSecond: Double? {
-        guard let evalDuration else { return nil }
-        
-        return Double(evalDuration) / 1_000_000_000
-    }
-    
-    var tokenPerSecond: Double? {
-        guard let evalCount, let evalDurationInSecond, evalDurationInSecond > 0 else { return nil }
-        return Double(evalCount) / evalDurationInSecond
-    }
 }
 
 

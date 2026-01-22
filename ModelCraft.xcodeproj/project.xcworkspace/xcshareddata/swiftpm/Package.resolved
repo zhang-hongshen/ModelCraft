@@ -51,8 +51,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/zhang-hongshen/OllamaKit",
       "state" : {
-        "revision" : "cd4725360ae6785975976b09ed0b47458f26f372",
-        "version" : "1.0.3"
+        "revision" : "15d4179c490df90d47fb5703d2991caeb6d898c5",
+        "version" : "1.0.4"
       }
     },
     {

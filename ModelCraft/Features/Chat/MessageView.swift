@@ -17,12 +17,13 @@ import ActivityIndicatorView
 struct MessageView: View {
     
     @Bindable var message: Message
+    @Binding var inspectorPresented: Bool
+    @Binding var inspectorContent: String
     
     @State private var copied = false
-    @State private var infoPresented = false
     @State private var isHovering = false
     @State private var isEditing = false
-
+    
     @Environment(\.colorScheme) private var colorScheme
     @Environment(SpeechManager.self) private var speechManager
     @Environment(GlobalStore.self) private var globalStore
@@ -42,13 +43,22 @@ struct MessageView: View {
     }
     
     var body: some View {
-        VStack {
-            if message.role == .user {
-                UserMessageView()
-            } else {
-                AssistantMessageView()
+        ZStack {
+            
+            Color.clear.contentShape(Rectangle())
+            
+            VStack {
+                switch message.role {
+                case .user:
+                    UserMessageView()
+                case .assistant:
+                    AssistantMessageView()
+                case .system, .tool:
+                    EmptyView()
+                }
             }
         }
+        .onHover(perform: { isHovering = $0 })
     }
 
 }
@@ -110,7 +120,7 @@ extension MessageView {
                 }
                 
             }
-            .onHover(perform: { isHovering = $0 })
+            
         }
     }
     
@@ -200,7 +210,6 @@ extension MessageView {
                         .opacity(isHovering ? 1 : 0)
                 }
             }
-            .onHover(perform: { isHovering = $0 })
             Spacer()
         }
     }
@@ -227,42 +236,11 @@ extension MessageView {
             }
             
             Button {
-                submitMessage()
+                regenerateAssistantMessage()
             } label: {
                 Image(systemName: "arrow.trianglehead.2.clockwise.rotate.90")
             }
 
-            Button {
-                infoPresented = true
-            } label: {
-                Image(systemName: "info.circle")
-            }.popover(isPresented: Binding(
-                get: { infoPresented && isHovering },
-                set: { infoPresented = $0 }
-            ), arrowEdge: .top) {
-                Form {
-                    if let totalDuration = message.totalDuration {
-                        LabeledContent("Total cost:",
-                                       value: Duration.nanoseconds(totalDuration).formatted(.units(allowed: [.seconds])))
-                    }
-                    if let loadDuration = message.loadDuration {
-                        LabeledContent("Loading model cost:",
-                                       value: Duration.nanoseconds(loadDuration).formatted(.units(allowed: [.seconds])))
-                    }
-                    if let promptEvalDuration = message.promptEvalDuration {
-                        LabeledContent("Evaluating prompt cost:",
-                                       value: Duration.nanoseconds(promptEvalDuration).formatted(.units(allowed: [.seconds])))
-                    }
-                    if let evalDurationInSecond = message.evalDurationInSecond {
-                        LabeledContent("Generating response cost:",
-                                       value: Duration.seconds(evalDurationInSecond).formatted(.units(allowed: [.seconds])))
-                    }
-                    if let tokenPerSecond = message.tokenPerSecond {
-                        LabeledContent("Token per second:",
-                                       value: "\(tokenPerSecond.formatted(.number.precision(.fractionLength(2))))/s")
-                    }
-                }.padding()
-            }
         }
     }
     
@@ -270,6 +248,7 @@ extension MessageView {
         let id = UUID()
         var thought: String = ""
         var action: String? = nil
+        var observation: String? = nil
     }
     
     func AssistantMessageContentView(_ message: Message) -> some View {
@@ -278,7 +257,7 @@ extension MessageView {
         var steps: [Step] = []
         var answer = ""
         for event in parser.feed(message.content) {
-            guard case .tag(let name, let content) = event else { continue }
+            guard case .inTag(let name, let content) = event else { continue }
             switch name {
             case "thought":
                 if steps.isEmpty || steps.last?.action != nil {
@@ -288,13 +267,19 @@ extension MessageView {
                 }
             case "action":
                 if steps.isEmpty {
-                        steps.append(Step(action: content))
-                    } else {
-                        let lastIdx = steps.count - 1
-                        steps[lastIdx].action = (steps[lastIdx].action ?? "") + content
-                    }
-            case "answer":
-                answer += content
+                    steps.append(Step(action: content))
+                } else {
+                    let lastIdx = steps.count - 1
+                    steps[lastIdx].action = (steps[lastIdx].action ?? "") + content
+                }
+            case "observation":
+                if steps.isEmpty {
+                    steps.append(Step(observation: content))
+                } else {
+                    let lastIdx = steps.count - 1
+                    steps[lastIdx].observation = (steps[lastIdx].observation ?? "") + content
+                }
+            case "answer": answer += content
             default: break
             }
         }
@@ -304,11 +289,17 @@ extension MessageView {
                     if !step.thought.isEmpty {
                         ThoughtView(thought: step.thought)
                     }
-                    if let action = step.action, let toolCall = ToolCall(json: action) {
-                        Label(toolCall.localizedName, systemImage: toolCall.icon)
-                            .padding(Layout.padding)
-                            .background(.quaternary)
-                            .cornerRadius()
+                    if let action = step.action, let toolCall = ToolCall(json: action), let observation = step.observation {
+                        HStack {
+                            Button {
+                                inspectorPresented = true
+                                inspectorContent = step.observation ?? ""
+                            } label: {
+                                Label(toolCall.localizedName, systemImage: toolCall.icon)
+                            }
+                            Text(observation)
+                        }.foregroundStyle(.secondary)
+                        
                     }
                 }
             }
@@ -346,6 +337,28 @@ extension MessageView {
                 chat: chat,
                 message: message)
         }
+    }
+    
+    func regenerateAssistantMessage() {
+        guard let chat = message.chat,
+              case .assistantWaitingForRequest = chat.status else { return }
+        guard let model = globalStore.selectedModel else {
+            globalStore.errorWrapper = ErrorWrapper(error: AppError.noSelectedModel)
+            return
+        }
+        guard let index = chat.sortedMessages.firstIndex(of: message) else {
+            return
+        }
+        guard index >= 1 else { return }
+        let userMessage = chat.sortedMessages[index - 1]
+        Task {
+            try await service.sendMessage(
+                model: model,
+                knowledgeBase: globalStore.selectedKnowledgeBase,
+                chat: chat,
+                content: userMessage.content,
+                images: userMessage.images)
+        }
         
     }
 }
@@ -359,10 +372,15 @@ import SwiftData
         """
         <thought>First...</thought>
         <action>{"tool": "write_to_file", "parameters": {"path": "1.txt", "content": "test"}}</action>
+        <observation>...</observation>
         <thought>Next,...</thought>
         <action>{"tool": "execute_command", "parameters": {"command": "ls"}}</action>
+                <observation>...</observation>
+        <answer>answer</answer>
         """)
-    MessageView(message: message)
+    MessageView(message: message,
+                inspectorPresented: .constant(true),
+                inspectorContent: .constant("content"))
         .modelContainer(container)
         .environment(SpeechManager())
         .environment(GlobalStore())

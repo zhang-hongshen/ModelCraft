@@ -8,7 +8,7 @@
 import Foundation
 
 struct ToolCall: Codable {
-    let tool: String
+    let tool: ToolCallType
     let parameters: [String: String]
     
     init?(json: String) {
@@ -18,7 +18,7 @@ struct ToolCall: Codable {
             self.tool = decoded.tool
             self.parameters = decoded.parameters
         } catch {
-            debugPrint("Invalid Tool Call: \(error.localizedDescription)")
+//            debugPrint("Invalid Tool Call: \(error.localizedDescription)")
             return nil
         }
     }
@@ -29,19 +29,23 @@ extension ToolCall {
     
     var localizedName: String {
         switch tool {
-        case "read_from_file": "Reading from file \(parameters["path"] ?? "")"
-        case "write_to_file": "Writing to file \(parameters["path"] ?? "")"
-        case "execute_command": "Executing command \(parameters["command"] ?? "")"
-        default: ""
+        case .readFromFile: "Reading from file \(parameters["path"] ?? "")"
+        case .writeToFile: "Writing to file \(parameters["path"] ?? "")"
+        case .executeCommand: "Executing command \(parameters["command"] ?? "")"
         }
     }
     
     var icon: String {
         switch tool {
-        case "read_from_file": "square.and.pencil"
-        case "write_to_file": "square.and.pencil"
-        case "execute_command": "apple.terminal"
-        default: ""
+        case .readFromFile: "square.and.pencil"
+        case .writeToFile: "square.and.pencil"
+        case .executeCommand: "apple.terminal"
         }
     }
+}
+
+enum ToolCallType: String, Codable {
+    case readFromFile = "read_from_file"
+    case writeToFile = "write_to_file"
+    case executeCommand = "execute_command"
 }

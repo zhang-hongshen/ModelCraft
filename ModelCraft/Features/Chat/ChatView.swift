@@ -20,6 +20,8 @@ struct ChatView: View {
     
     @State private var draft = Message(role: .user)
     @State private var selectedImages = Set<Data>()
+    @State private var inspectorPresented = false
+    @State private var inspectorContent = ""
     
     @Environment(ChatService.self) private var service
     @Environment(GlobalStore.self) private var globalStore
@@ -51,6 +53,11 @@ struct ChatView: View {
                 )
             }
             .onDrop(of: [.image], isTargeted: nil, perform: uploadImagesByDropping)
+            .inspector(isPresented: $inspectorPresented){
+                Text(inspectorContent)
+                Spacer()
+            }
+            
     }
 }
 
@@ -61,7 +68,7 @@ extension ChatView {
         
         @Bindable var globalStore = globalStore
         
-        ToolbarItemGroup {
+        ToolbarItemGroup(placement: .principal) {
             if models.isEmpty {
                 Text("No Available Model")
             } else {
@@ -78,6 +85,14 @@ extension ChatView {
                 Text("None").tag(nil as KnowledgeBase?)
             }
         }
+        
+        ToolbarItemGroup {
+            Button {
+                inspectorPresented.toggle()
+            } label: {
+                Image(systemName: "sidebar.right")
+            }
+        }
     }
     
     
@@ -85,7 +100,9 @@ extension ChatView {
     func MessagesView(_ messages: [Message]) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             ForEach(messages) { message in
-                MessageView(message: message)
+                MessageView(message: message,
+                            inspectorPresented: $inspectorPresented,
+                            inspectorContent: $inspectorContent)
                     .scrollTargetLayout()
             }
         }

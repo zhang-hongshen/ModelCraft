@@ -246,16 +246,6 @@
         }
       }
     },
-    "Evaluating prompt cost:" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "评估提示词耗时："
-          }
-        }
-      }
-    },
     "Failed" : {
       "localizations" : {
         "zh-Hans" : {
@@ -272,16 +262,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "通用"
-          }
-        }
-      }
-    },
-    "Generating response cost:" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "生成回答耗时："
           }
         }
       }
@@ -366,16 +346,6 @@
         }
       }
     },
-    "Loading model cost:" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "加载模型耗时："
-          }
-        }
-      }
-    },
     "Model" : {
       "localizations" : {
         "zh-Hans" : {
@@ -427,7 +397,14 @@
       }
     },
     "OK" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "好的"
+          }
+        }
+      }
     },
     "Refresh" : {
       "localizations" : {
@@ -529,9 +506,6 @@
         }
       }
     },
-    "This is an Placeholder" : {
-
-    },
     "Title" : {
       "localizations" : {
         "zh-Hans" : {
@@ -552,28 +526,8 @@
         }
       }
     },
-    "Token per second:" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "每秒Token："
-          }
-        }
-      }
-    },
     "Tool" : {
 
-    },
-    "Total cost:" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "总耗时："
-          }
-        }
-      }
     },
     "View" : {
       "localizations" : {

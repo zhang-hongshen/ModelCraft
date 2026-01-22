@@ -73,6 +73,7 @@ extension DownloadedModelsView {
     func DownloadedModelListCell(_ model: ModelInfo) -> some View {
         HStack {
             Label(model.name, systemImage: "shippingbox")
+            
             Spacer()
             if let task = deleteTasks.first(where: { $0.modelName == model.name }) {
                 Text(task.statusLocalizedDescription)

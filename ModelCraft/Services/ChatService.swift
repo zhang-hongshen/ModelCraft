@@ -78,9 +78,6 @@ class ChatService {
         
         Task(priority: .background) {
             try await generateTitleIfNeeded(model: model, chat: chat)
-        }
-        
-        Task(priority: .background) {
             try await summarizeChatIfNeeded(model: model, chat: chat)
         }
     }

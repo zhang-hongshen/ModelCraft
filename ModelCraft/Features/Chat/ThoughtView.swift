@@ -15,9 +15,7 @@ struct ThoughtView: View {
     
     var body: some View {
         DisclosureGroup("Thinking", isExpanded: $isExpanded) {
-            Text(thought)
-                .foregroundColor(.secondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            Text(thought).foregroundStyle(.secondary)
         }
     }
 }

@@ -42,3 +42,20 @@ extension RandomAccessCollection where Element: Identifiable {
     }
     
 }
+
+extension RandomAccessCollection where Element == Message {
+    
+    func toString() -> String {
+        return self.map { msg in
+            let roleTag: String
+            switch msg.role {
+            case .user:      roleTag = "user"
+            case .assistant: roleTag = "assistant"
+            case .tool:      roleTag = "tool"
+            default:         roleTag = "other"
+            }
+            return "<\(roleTag)>\(msg.content)</\(roleTag)>"
+        }.joined(separator: "\n")
+    }
+    
+}

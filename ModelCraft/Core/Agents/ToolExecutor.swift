@@ -14,20 +14,18 @@ class ToolExecutor {
     func dispatch(_ toolCall: ToolCall) throws -> String {
         var toolCallRes = ""
         switch toolCall.tool {
-        case "read_from_file":
+        case .readFromFile:
             let path = toolCall.parameters["path"] ?? ""
             toolCallRes = try readFromFile(path)
-        case "write_to_file":
+        case .writeToFile:
             let path = toolCall.parameters["path"] ?? ""
-            let content = toolCall.parameters["path"] ?? ""
+            let content = toolCall.parameters["content"] ?? ""
             try writeToFile(path, content: content)
             toolCallRes = "Successfully write to file \(path)"
-        case "execute_command":
+        case .executeCommand:
             guard let command = toolCall.parameters["command"] else { return "" }
             let (output, error) = try executeCommand(command)
             toolCallRes = error == nil ? output : error!
-        default:
-            toolCallRes = "Error: Tool '\(toolCall.tool)' not found."
         }
         return toolCallRes
     }
