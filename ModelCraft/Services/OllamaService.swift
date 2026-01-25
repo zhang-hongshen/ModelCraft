@@ -28,15 +28,15 @@ class OllamaService {
     }
     
     func pullModel(model: String) -> AnyPublisher<PullModelResponse, AFError> {
-        client.pullModel(PullModelRequest(name: model))
+        client.pullModel(PullModelRequest(model: model))
     }
     
     func deleteModel(model: String) async throws {
-        try await client.deleteModel(DeleteModelRequest(name: model))
+        try await client.deleteModel(DeleteModelRequest(model: model))
     }
     
     func deleteModel(model: String) -> AnyPublisher<Void, Error> {
-        client.deleteModel(DeleteModelRequest(name: model))
+        client.deleteModel(DeleteModelRequest(model: model))
     }
     
     func chat(model: String, messages: [OllamaKit.Message]) -> AnyPublisher<ChatResponse, AFError> {

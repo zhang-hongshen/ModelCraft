@@ -5,6 +5,7 @@
 //  Created by Hongshen on 5/1/26.
 //
 
+import AppKit
 import Foundation
 
 class ToolExecutor {
@@ -15,17 +16,31 @@ class ToolExecutor {
         var toolCallRes = ""
         switch toolCall.tool {
         case .readFromFile:
-            let path = toolCall.parameters["path"] ?? ""
+            
+            let path = toolCall.parameters["path"]?.stringValue ?? ""
             toolCallRes = try readFromFile(path)
         case .writeToFile:
-            let path = toolCall.parameters["path"] ?? ""
-            let content = toolCall.parameters["content"] ?? ""
+            let path = toolCall.parameters["path"]?.stringValue ?? ""
+            let content = toolCall.parameters["content"]?.stringValue ?? ""
             try writeToFile(path, content: content)
-            toolCallRes = "Successfully write to file \(path)"
+            toolCallRes = "Successfully wrote to file \(path)"
         case .executeCommand:
-            guard let command = toolCall.parameters["command"] else { return "" }
+            guard let command = toolCall.parameters["command"]?.stringValue else { return "" }
             let (output, error) = try executeCommand(command)
             toolCallRes = error == nil ? output : error!
+        case .composeEmail:
+            composeEmail(recipients: toolCall.parameters["recipients"]?.arrayValue?.compactMap { $0.stringValue  } ?? [],
+                          subject: toolCall.parameters["subject"]?.stringValue ?? "",
+                          body: toolCall.parameters["body"]?.stringValue ?? "")
+            toolCallRes = "Successfully composed email"
+        case .composeMessage:
+            composeMessage(recipients: toolCall.parameters["recipients"]?.arrayValue?.compactMap { $0.stringValue  } ?? [],
+                          body: toolCall.parameters["body"]?.stringValue ?? "")
+            toolCallRes = "Successfully composed message"
+        case .openBrowser:
+            guard let url = toolCall.parameters["url"]?.stringValue else { return "" }
+            openBrowser(url: url)
+            toolCallRes = "Successfully opend \(url)"
         }
         return toolCallRes
     }
@@ -82,4 +97,45 @@ func executeCommand(
     let output = (outputData.flatMap { String(data: $0, encoding: .utf8)} ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
     let error = errorData.flatMap { String(data: $0, encoding: .utf8) } ?? nil
     return (output, error)
+}
+
+
+func composeEmail(recipients: [String], subject: String, body: String) {
+    var components = URLComponents()
+    components.scheme = "mailto"
+    components.path = recipients.joined(separator: ",")
+    components.queryItems = [
+        URLQueryItem(name: "subject", value: subject),
+        URLQueryItem(name: "body", value: body)
+    ]
+    
+    guard let url = components.url else { return }
+    DispatchQueue.main.async {
+        NSWorkspace.shared.open(url)
+    }
+}
+
+func composeMessage(recipients: [String], body: String) {
+    var components = URLComponents()
+    components.scheme = "sms"
+    components.path = recipients.joined(separator: ",")
+    components.queryItems = [
+        URLQueryItem(name: "body", value: body)
+    ]
+    
+    guard let url = components.url else { return }
+    DispatchQueue.main.async {
+        NSWorkspace.shared.open(url)
+    }
+}
+
+func openBrowser(url: String) {
+    guard let urlPath = URL(string: url) else {
+        print("Invalid URL")
+        return
+    }
+    
+    DispatchQueue.main.async {
+        NSWorkspace.shared.open(urlPath)
+    }
 }

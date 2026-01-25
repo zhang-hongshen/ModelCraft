@@ -105,6 +105,7 @@ extension ChatInputView {
         }
         .tint(disabled ? .secondary : .accentColor)
         .disabled(disabled)
+        .keyboardShortcut(.return, modifiers: .command)
     }
 }
 

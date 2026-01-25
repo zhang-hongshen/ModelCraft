@@ -32,7 +32,7 @@ final class TagStreamParserTests: XCTestCase {
 
             for event in events {
                 switch event {
-                case .tag(let name, let content):
+                case .inTag(let name, let content):
                     switch name {
                     case "thought": thought.append(content)
                     case "answer": answer.append(content)
@@ -60,7 +60,7 @@ final class TagStreamParserTests: XCTestCase {
             for chunk in chunks {
                 for event in parser.feed(chunk) {
                     switch event {
-                    case .tag(let name, let content):
+                    case .inTag(let name, let content):
                         switch name {
                         case "thought": thought.append(content)
                         case "answer": answer.append(content)

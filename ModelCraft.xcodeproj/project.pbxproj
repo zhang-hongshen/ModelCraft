@@ -46,6 +46,7 @@
 		706D82642F1E1ED600029818 /* Tab.swift in Sources */ = {isa = PBXBuildFile; fileRef = 706D82632F1E1ED400029818 /* Tab.swift */; };
 		706D82662F1EB26600029818 /* SpeechManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 706D82652F1EB26500029818 /* SpeechManager.swift */; };
 		7078AB342BB514A9004B3819 /* ModelTaskStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7078AB332BB514A9004B3819 /* ModelTaskStatus.swift */; };
+		70873F5F2F2562BB00C07EB3 /* Value.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70873F5E2F2562B800C07EB3 /* Value.swift */; };
 		70896C632BB727AB006FEF6A /* ModelContext+.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70896C622BB727AB006FEF6A /* ModelContext+.swift */; };
 		708C5EE22F0B8B6100127118 /* ToolExecutor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 708C5EE12F0B8B5D00127118 /* ToolExecutor.swift */; };
 		708C5EE42F0B8F6000127118 /* CommandExecutor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 708C5EE32F0B8F5800127118 /* CommandExecutor.swift */; };
@@ -183,6 +184,7 @@
 		706D82632F1E1ED400029818 /* Tab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tab.swift; sourceTree = "<group>"; };
 		706D82652F1EB26500029818 /* SpeechManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechManager.swift; sourceTree = "<group>"; };
 		7078AB332BB514A9004B3819 /* ModelTaskStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelTaskStatus.swift; sourceTree = "<group>"; };
+		70873F5E2F2562B800C07EB3 /* Value.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Value.swift; sourceTree = "<group>"; };
 		70896C622BB727AB006FEF6A /* ModelContext+.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ModelContext+.swift"; sourceTree = "<group>"; };
 		708C5EE12F0B8B5D00127118 /* ToolExecutor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolExecutor.swift; sourceTree = "<group>"; };
 		708C5EE32F0B8F5800127118 /* CommandExecutor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandExecutor.swift; sourceTree = "<group>"; };
@@ -333,11 +335,10 @@
 		708C5EDE2F0B86F000127118 /* Core */ = {
 			isa = PBXGroup;
 			children = (
-				708C5EE02F0B8B1500127118 /* Agents */,
-				70FDA0252F20D31F00F9DBD8 /* Utils */,
-				706D82652F1EB26500029818 /* SpeechManager.swift */,
 				70CE60982BAD302000A2D0B0 /* LocalFileURL.swift */,
 				70FE03A02F13FD820061CCEB /* Actor */,
+				708C5EE02F0B8B1500127118 /* Agents */,
+				70FDA0252F20D31F00F9DBD8 /* Utils */,
 			);
 			path = Core;
 			sourceTree = "<group>";
@@ -517,6 +518,7 @@
 		70FDA0252F20D31F00F9DBD8 /* Utils */ = {
 			isa = PBXGroup;
 			children = (
+				706D82652F1EB26500029818 /* SpeechManager.swift */,
 				701954222BC8244E00CD2ED3 /* CollectionManager.swift */,
 				701954242BC8286E00CD2ED3 /* FixedLengthTextSplitter.swift */,
 				70CE4D282BB83BF500E1DEE2 /* Pasteboard.swift */,
@@ -540,6 +542,7 @@
 		70FDA0272F20D33500F9DBD8 /* Plain */ = {
 			isa = PBXGroup;
 			children = (
+				70873F5E2F2562B800C07EB3 /* Value.swift */,
 				701954262BC8D9ED00CD2ED3 /* AgentPrompt.swift */,
 				70097F822D6DA73C00DDDEDF /* AppError.swift */,
 				7019542E2BCAA04A00CD2ED3 /* ErrorWrapper.swift */,
@@ -738,6 +741,7 @@
 				70CE606A2BAD2D4500A2D0B0 /* ContentView.swift in Sources */,
 				70CE4D332BB9522F00E1DEE2 /* KnowledgeBaseEdition.swift in Sources */,
 				7041EA722BB2AC8D00286AE3 /* ServerStatusView.swift in Sources */,
+				70873F5F2F2562BB00C07EB3 /* Value.swift in Sources */,
 				70271B3C2BC046F300E21A6E /* KnowledgaBaseModelActor.swift in Sources */,
 				70C22FE72BAFD5C2002754C7 /* DefaultImageView.swift in Sources */,
 				701954292BCA309300CD2ED3 /* Theme+.swift in Sources */,
@@ -1002,7 +1006,7 @@
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 0.5.0;
+				MARKETING_VERSION = 0.5.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.zhanghongshen.ModelCraft;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
@@ -1055,7 +1059,7 @@
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 0.5.0;
+				MARKETING_VERSION = 0.5.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.zhanghongshen.ModelCraft;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;

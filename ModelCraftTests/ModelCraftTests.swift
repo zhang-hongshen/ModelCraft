@@ -113,6 +113,10 @@ final class ModelCraftTests: XCTestCase {
     }
     
     
+    func testSendEmail() {
+        sendEmail(recipients: ["123@qq.com"], subject: "subject", body: "body")
+    }
+    
     func testPerformanceExample() throws {
         // This is an example of a performance test case.
         measure {

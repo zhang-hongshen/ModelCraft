@@ -340,8 +340,7 @@ extension MessageView {
     }
     
     func regenerateAssistantMessage() {
-        guard let chat = message.chat,
-              case .assistantWaitingForRequest = chat.status else { return }
+        guard let chat = message.chat else { return }
         guard let model = globalStore.selectedModel else {
             globalStore.errorWrapper = ErrorWrapper(error: AppError.noSelectedModel)
             return
@@ -352,12 +351,10 @@ extension MessageView {
         guard index >= 1 else { return }
         let userMessage = chat.sortedMessages[index - 1]
         Task {
-            try await service.sendMessage(
-                model: model,
-                knowledgeBase: globalStore.selectedKnowledgeBase,
-                chat: chat,
-                content: userMessage.content,
-                images: userMessage.images)
+            try await service.resendMessage(model: model,
+                                            knowledgeBase: globalStore.selectedKnowledgeBase,
+                                            chat: chat,
+                                            message: userMessage)
         }
         
     }
