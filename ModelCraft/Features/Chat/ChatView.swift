@@ -7,7 +7,6 @@
 
 import SwiftUI
 import SwiftData
-import Combine
 import TipKit
 
 import OllamaKit
@@ -21,7 +20,7 @@ struct ChatView: View {
     @State private var draft = Message(role: .user)
     @State private var selectedImages = Set<Data>()
     @State private var inspectorPresented = false
-    @State private var inspectorContent = ""
+    @State private var inspectorContent = AnyView(EmptyView())
     
     @Environment(ChatService.self) private var service
     @Environment(GlobalStore.self) private var globalStore
@@ -54,7 +53,7 @@ struct ChatView: View {
             }
             .onDrop(of: [.image], isTargeted: nil, perform: uploadImagesByDropping)
             .inspector(isPresented: $inspectorPresented){
-                Text(inspectorContent)
+                inspectorContent
                 Spacer()
             }
             
@@ -101,9 +100,10 @@ extension ChatView {
         VStack(alignment: .leading, spacing: 10) {
             ForEach(messages) { message in
                 MessageView(message: message,
-                            inspectorPresented: $inspectorPresented,
-                            inspectorContent: $inspectorContent)
-                    .scrollTargetLayout()
+                            inspectorPresented: $inspectorPresented) { content in
+                    self.inspectorContent = AnyView(content)
+                }
+                .scrollTargetLayout()
             }
         }
     }

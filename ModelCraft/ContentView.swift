@@ -7,14 +7,11 @@
 
 import SwiftUI
 import SwiftData
-import Combine
 import OrderedCollections
-import ActivityIndicatorView
 
 struct ContentView: View {
     
     @State private var modelTaskTimer: Timer? = nil
-    @State private var modelTaskCancellables: Set<AnyCancellable> = []
     @State private var selectedKnowledgeBase: KnowledgeBase? = nil
     
     @Environment(\.modelContext) private var modelContext
@@ -30,21 +27,19 @@ struct ContentView: View {
     @Query private var knowledgeBases: [KnowledgeBase] = []
     
     var body: some View {
-        NavigationStack {
-            NavigationSplitView {
-                Sidebar()
-            } detail: {
-                Detail()
+        NavigationSplitView {
+            Sidebar()
+        } detail: {
+            Detail()
+        }
+        .task {
+            modelTaskTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { timer in
+                guard timer.isValid else { return }
+                Task.detached { try await self.handleModelTask() }
             }
-            .task {
-                modelTaskTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { timer in
-                    guard timer.isValid else { return }
-                    Task.detached { try await self.handleModelTask() }
-                }
-            }
-            .sheet(item: $selectedKnowledgeBase) { knowledgeBase in
-                KnowledgeBaseEdition(konwledgeBase: knowledgeBase)
-            }
+        }
+        .sheet(item: $selectedKnowledgeBase) { knowledgeBase in
+            KnowledgeBaseEdition(konwledgeBase: knowledgeBase)
         }
     }
 }
@@ -169,65 +164,56 @@ extension ContentView {
     
     private func deleteChats(offsets: IndexSet) {
         withAnimation {
-            for index in offsets {
-                modelContext.delete(chats[index])
-            }
+            offsets.map { chats[$0] }.forEach(modelContext.delete)
             try? modelContext.save()
         }
     }
     
-    private func handleModelTask() throws {
+    private func handleModelTask() async throws {
         try deleteDupliateDownloadTask()
         for task in modelTasks.filter({ $0.status == .new}) {
             switch task.type {
-            case .download: handleDownloadTask(task)
-            case .delete: handleDeleteTask(task)
+            case .download: await handleDownloadTask(task)
+            case .delete: await handleDeleteTask(task)
             }
         }
     }
     
     private func deleteDupliateDownloadTask() throws {
         let downloadedModelNames = Set(models.map { $0.name })
-        for task in modelTasks.filter({ $0.type == .download && downloadedModelNames.contains($0.modelName) }) {
-            modelContext.delete(task)
-        }
+        modelContext.delete(modelTasks.filter({ $0.type == .download && downloadedModelNames.contains($0.modelName) }))
         try modelContext.save()
     }
     
-    func handleDownloadTask(_ task: ModelTask) {
+    func handleDownloadTask(_ task: ModelTask) async {
         task.status = .running
-        
-        OllamaService.shared.pullModel(model: task.modelName)
-            .sink { completion in
-                switch completion {
-                case .finished: task.status = .completed
-                case .failure(_): task.status = .failed
-                }
-            } receiveValue: { response in
+        do {
+            for try await response in OllamaService.shared.pullModel(model: task.modelName) {
                 print(response)
                 if response.status == "success" {
-                    print("Task completed")
                     task.status = .completed
+                    modelContext.delete(task)
+                    try? modelContext.save()
                     return
                 }
                 if let completed = response.completed, let total = response.total {
                     task.value = Double(completed)
                     task.total = Double(total)
                 }
-            }.store(in: &modelTaskCancellables)
+            }
+        } catch {
+            task.status = .failed
+        }
     }
     
-    func handleDeleteTask(_ task: ModelTask) {
+    func handleDeleteTask(_ task: ModelTask) async {
         task.status = .running
-        OllamaService.shared.deleteModel(model: task.modelName)
-            .sink { completion in
-                switch completion {
-                case .finished: task.status = .completed
-                case .failure(_): task.status = .failed
-                }
-            } receiveValue: { _ in
-                task.status = .completed
-            }.store(in: &modelTaskCancellables)
+        do {
+            try await OllamaService.shared.deleteModel(model: task.modelName)
+            task.status = .completed
+        } catch {
+            task.status = .failed
+        }
     }
     
     func stopModelTask() {

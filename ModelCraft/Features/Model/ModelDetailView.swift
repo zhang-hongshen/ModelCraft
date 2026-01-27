@@ -7,7 +7,6 @@
 
 import SwiftUI
 import SwiftData
-import Combine
 
 import OllamaKit
 
@@ -18,7 +17,6 @@ struct ModelDetailView: View {
     @State private var isLoading = false
     @State private var searchText = ""
     @State private var selectedModelNames = Set<String>()
-    @State private var cancellables = Set<AnyCancellable>()
     
     @Query(filter: ModelTask.predicateByType(.download))
     private var downloadTasks: [ModelTask] = []

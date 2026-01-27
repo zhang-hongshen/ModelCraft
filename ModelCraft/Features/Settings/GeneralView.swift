@@ -6,12 +6,10 @@
 //
 
 import SwiftUI
-import Combine
 
 struct GeneralView: View {
     
     @State private var isCheckingServerStatus = false
-    @State private var cancellables: Set<AnyCancellable> = []
     @Environment(GlobalStore.self) private var globalStore
     @Environment(UserSettings.self) private var userSettings
     
@@ -63,7 +61,11 @@ struct GeneralView: View {
                         if isCheckingServerStatus {
                             ProgressView().controlSize(.small)
                         } else {
-                            Button("Check", action: checkServerStatus)
+                            Button("Check") {
+                                Task {
+                                    await checkServerStatus()
+                                }
+                            }
                         }
                     }
                 }
@@ -75,15 +77,11 @@ struct GeneralView: View {
 }
 
 extension GeneralView {
-    private func checkServerStatus() {
+    
+    private func checkServerStatus() async {
         isCheckingServerStatus = true
-        OllamaService.shared.reachable()
-            .sink { reachable in
-                // modify environment server status
-                globalStore.serverStatus = reachable ? .connected : .disconnected
-                isCheckingServerStatus = false
-            }
-            .store(in: &cancellables)
+        globalStore.serverStatus = await OllamaService.shared.reachable() ? .connected : .disconnected
+        isCheckingServerStatus = false
     }
 }
 

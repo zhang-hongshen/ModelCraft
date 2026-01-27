@@ -8,17 +8,15 @@
 import SwiftUI
 import AVFoundation
 import NaturalLanguage
-import Combine
 
 import MarkdownUI
 import Splash
-import ActivityIndicatorView
 
 struct MessageView: View {
     
     @Bindable var message: Message
     @Binding var inspectorPresented: Bool
-    @Binding var inspectorContent: String
+    var updateInspector: (any View) -> Void
     
     @State private var copied = false
     @State private var isHovering = false
@@ -127,9 +125,10 @@ extension MessageView {
     @ViewBuilder
     func ChatInputView() -> some View {
         VStack(alignment: .trailing) {
-            TextEditor(text: $message.content)
-                .textEditorStyle(.plain)
-                .font(.body)
+            TextField("", text: $message.content, axis: .vertical)
+                .lineLimit(1...5)
+                .textFieldStyle(.plain)
+            
             HStack {
                 Button(role: .cancel) {
                     isEditing = false
@@ -168,7 +167,7 @@ extension MessageView {
     
     @ViewBuilder
     func UserMessageContentView(_ message: Message) -> some View {
-        Markdown(message.status != .failed ? message.content : "Failed.Please try again later.")
+        Markdown(message.content)
             .markdownTheme(.modelCraft)
             .markdownCodeSyntaxHighlighter(.splash(theme: self.splashTheme))
             .textSelection(.enabled)
@@ -187,11 +186,10 @@ extension MessageView {
         HStack(alignment: .top) {
             VStack(alignment: .leading) {
                 
-                ActivityIndicatorView(isVisible: Binding(
-                    get: {message.status == .new},
-                    set: { _ in }),
-                                      type: .opacityDots())
-                .frame(width: 30, height: 10)
+                
+                if message.status == .new {
+                    ProgressView().controlSize(.small)
+                }
                 
                 if !message.content.isEmpty {
                     AssistantMessageContentView(message)
@@ -293,7 +291,7 @@ extension MessageView {
                         HStack {
                             Button {
                                 inspectorPresented = true
-                                inspectorContent = step.observation ?? ""
+                                updateInspector(Text(step.observation ?? ""))
                             } label: {
                                 Label(toolCall.localizedName, systemImage: toolCall.icon)
                             }
@@ -327,7 +325,6 @@ extension MessageView {
         guard let chat = message.chat,
                 case .assistantWaitingForRequest = chat.status else { return }
         guard let model = globalStore.selectedModel else {
-            globalStore.errorWrapper = ErrorWrapper(error: AppError.noSelectedModel)
             return
         }
         Task {
@@ -342,7 +339,6 @@ extension MessageView {
     func regenerateAssistantMessage() {
         guard let chat = message.chat else { return }
         guard let model = globalStore.selectedModel else {
-            globalStore.errorWrapper = ErrorWrapper(error: AppError.noSelectedModel)
             return
         }
         guard let index = chat.sortedMessages.firstIndex(of: message) else {
@@ -376,8 +372,7 @@ import SwiftData
         <answer>answer</answer>
         """)
     MessageView(message: message,
-                inspectorPresented: .constant(true),
-                inspectorContent: .constant("content"))
+                inspectorPresented: .constant(true)) { _ in }
         .modelContainer(container)
         .environment(SpeechManager())
         .environment(GlobalStore())

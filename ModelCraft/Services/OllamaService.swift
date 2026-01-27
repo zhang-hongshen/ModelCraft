@@ -6,18 +6,62 @@
 //
 
 import Foundation
-import Combine
 import OllamaKit
-import Alamofire
+import AppKit
 
 class OllamaService {
+    
     static let shared = OllamaService()
     
     private let client = OllamaClient(baseURL: URL(string: ProcessInfo.processInfo.environment["OLLAMA_HOST"] ?? "http://localhost:11434")!)
     
-    func reachable() -> AnyPublisher<Bool, Never> {
-        client.reachable()
+    private var observers: [Any] = []
+    
+    init() {
+        #if canImport(AppKit)
+        let center = NSWorkspace.shared.notificationCenter
+    
+        let terminateObserver = center.addObserver(
+            forName: NSApplication.willTerminateNotification,
+            object: nil,
+            queue: .main) { _ in
+            print("willTerminateNotification")
+            self.stop()
+        }
+        let sleepObserver = center.addObserver(
+            forName: NSWorkspace.screensDidSleepNotification,
+            object: nil,
+            queue: .main) { _ in
+            self.start()
+        }
+        let wakeObserver = center.addObserver(
+            forName: NSWorkspace.screensDidWakeNotification,
+            object: nil,
+            queue: .main) { _ in
+            self.stop()
+        }
+        #endif
+
+        observers = [terminateObserver, sleepObserver, wakeObserver]
     }
+    
+    deinit {
+        observers.forEach { NSWorkspace.shared.notificationCenter.removeObserver($0) }
+    }
+    
+#if os(macOS)
+    func start() {
+        Task(priority: .background) {
+            try CommandExecutor.run(Bundle.main.url(forAuxiliaryExecutable: "ollama"), arguments: ["serve"]) { (_, _) in }
+        }
+    }
+    
+    func stop() {
+        Task(priority: .background) {
+            try CommandExecutor.run(Bundle.main.url(forAuxiliaryExecutable: "ollama"), arguments: ["stop"]) { (_, _) in }
+        }
+    }
+#endif
     
     func reachable() async -> Bool {
         await client.reachable()
@@ -27,7 +71,7 @@ class OllamaService {
         try await client.models().models
     }
     
-    func pullModel(model: String) -> AnyPublisher<PullModelResponse, AFError> {
+    func pullModel(model: String) -> AsyncThrowingStream<PullModelResponse, Error> {
         client.pullModel(PullModelRequest(model: model))
     }
     
@@ -35,18 +79,14 @@ class OllamaService {
         try await client.deleteModel(DeleteModelRequest(model: model))
     }
     
-    func deleteModel(model: String) -> AnyPublisher<Void, Error> {
-        client.deleteModel(DeleteModelRequest(model: model))
-    }
-    
-    func chat(model: String, messages: [OllamaKit.Message]) -> AnyPublisher<ChatResponse, AFError> {
+    func chat(model: String, messages: [OllamaKit.Message]) -> AsyncThrowingStream<ChatResponse, Error> {
         return client.chat(ChatRequest(model: model,
-                                messages: messages))
+                                messages: messages), timeout: 120)
     }
     
     func chat(model: String, messages: [OllamaKit.Message]) async throws -> ChatResponse {
         return try await client.chat(ChatRequest(model: model,
-                                messages: messages))
+                                                 messages: messages), timeout: 120)
     }
     
     func modelTags(_ model: String) async throws -> [ModelInfo] {

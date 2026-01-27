@@ -126,6 +126,26 @@
         }
       }
     },
+    "Composing Email" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在撰写邮件"
+          }
+        }
+      }
+    },
+    "Composing Message" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在编写短信"
+          }
+        }
+      }
+    },
     "Connected" : {
       "localizations" : {
         "zh-Hans" : {
@@ -242,6 +262,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "编辑"
+          }
+        }
+      }
+    },
+    "Executing command %@" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在执行命令%@"
           }
         }
       }
@@ -396,12 +426,22 @@
         }
       }
     },
-    "OK" : {
+    "Opening %@" : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "好的"
+            "value" : "正在打开 %@"
+          }
+        }
+      }
+    },
+    "Reading from file %@" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在读取文件 %@"
           }
         }
       }
@@ -442,6 +482,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "对话时自动滚动到底部"
+          }
+        }
+      }
+    },
+    "Searching for %@" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在搜索 %@"
           }
         }
       }
@@ -555,6 +605,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "等待下载"
+          }
+        }
+      }
+    },
+    "Writing to file %@" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在写入文件 %@"
           }
         }
       }

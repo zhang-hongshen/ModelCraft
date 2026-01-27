@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import SwiftUI
 
 struct ToolCall: Codable {
     let tool: ToolCallType
@@ -27,15 +28,28 @@ struct ToolCall: Codable {
 
 extension ToolCall {
     
-    var localizedName: String {
-        switch tool {
-        case .readFromFile: "Reading from file \(parameters["path"] ?? "")"
-        case .writeToFile: "Writing to file \(parameters["path"] ?? "")"
-        case .executeCommand: "Executing command \(parameters["command"] ?? "")"
-        case .composeEmail: "Composing Email"
-        case .composeMessage: "Composing Message"
-        case .openBrowser: "Opening Browser"
-        }
+    var localizedName: LocalizedStringKey {
+            let path = parameters["path"] ?? "Unknown"
+            let command = parameters["command"] ?? "None"
+            let url = parameters["url"] ?? ""
+            let query = parameters["query"] ?? ""
+
+            switch tool {
+            case .readFromFile:
+                return "Reading from file \(String(describing: path))"
+            case .writeToFile:
+                return "Writing to file \(String(describing: path))"
+            case .executeCommand:
+                return "Executing command \(String(describing: command))"
+            case .composeEmail:
+                return "Composing Email"
+            case .composeMessage:
+                return "Composing Message"
+            case .openBrowser:
+                return "Opening \(String(describing: url))"
+            case .mapSearch:
+                return "Searching for \(String(describing: query))"
+            }
     }
     
     var icon: String {
@@ -46,6 +60,7 @@ extension ToolCall {
         case .composeEmail: "mail"
         case .composeMessage: "message"
         case .openBrowser: "link"
+        case .mapSearch: "map"
         }
     }
 }
@@ -57,4 +72,5 @@ enum ToolCallType: String, Codable {
     case composeEmail = "compose_email"
     case composeMessage = "compose_message"
     case openBrowser = "open_browser"
+    case mapSearch = "map_search"
 }

@@ -12,130 +12,52 @@ class ToolExecutor {
     
     static let shared = ToolExecutor()
     
-    func dispatch(_ toolCall: ToolCall) throws -> String {
-        var toolCallRes = ""
-        switch toolCall.tool {
-        case .readFromFile:
-            
-            let path = toolCall.parameters["path"]?.stringValue ?? ""
-            toolCallRes = try readFromFile(path)
-        case .writeToFile:
-            let path = toolCall.parameters["path"]?.stringValue ?? ""
-            let content = toolCall.parameters["content"]?.stringValue ?? ""
-            try writeToFile(path, content: content)
-            toolCallRes = "Successfully wrote to file \(path)"
-        case .executeCommand:
-            guard let command = toolCall.parameters["command"]?.stringValue else { return "" }
-            let (output, error) = try executeCommand(command)
-            toolCallRes = error == nil ? output : error!
-        case .composeEmail:
-            composeEmail(recipients: toolCall.parameters["recipients"]?.arrayValue?.compactMap { $0.stringValue  } ?? [],
-                          subject: toolCall.parameters["subject"]?.stringValue ?? "",
-                          body: toolCall.parameters["body"]?.stringValue ?? "")
-            toolCallRes = "Successfully composed email"
-        case .composeMessage:
-            composeMessage(recipients: toolCall.parameters["recipients"]?.arrayValue?.compactMap { $0.stringValue  } ?? [],
-                          body: toolCall.parameters["body"]?.stringValue ?? "")
-            toolCallRes = "Successfully composed message"
-        case .openBrowser:
-            guard let url = toolCall.parameters["url"]?.stringValue else { return "" }
-            openBrowser(url: url)
-            toolCallRes = "Successfully opend \(url)"
+    func dispatch(_ toolCall: ToolCall) async -> CallToolResult {
+        var res = CallToolResult(content: [])
+        var parameters = toolCall.parameters
+        do {
+            switch toolCall.tool {
+            case .readFromFile:
+                guard let path = parameters["path"]?.stringValue else { break }
+                res.content.append(.text(.init(text: try FileTool.readFromFile(path))))
+            case .writeToFile:
+                guard let path = parameters["path"]?.stringValue,
+                   let content = parameters["content"]?.stringValue else {
+                    break
+                }
+                try FileTool.writeToFile(path, content: content)
+            case .executeCommand:
+                guard let command = parameters["command"]?.stringValue else { break }
+                res.content.append(.text(.init(text: try FileTool.executeCommand(command))))
+            case .composeEmail:
+                guard let recipients = parameters["recipients"]?.arrayValue?.compactMap({ $0.stringValue  }) else { break }
+                AppTool.composeEmail(recipients: recipients,
+                              subject: parameters["subject"]?.stringValue ?? "",
+                              body: parameters["body"]?.stringValue ?? "")
+                
+            case .composeMessage:
+                guard let recipients = parameters["recipients"]?.arrayValue?.compactMap({ $0.stringValue  }) else { break }
+                AppTool.composeMessage(recipients: recipients,
+                              body: parameters["body"]?.stringValue ?? "")
+            case .openBrowser:
+                guard let url = parameters["url"]?.stringValue else { break }
+                AppTool.openBrowser(url: url)
+            case .mapSearch:
+                guard let query = parameters["query"]?.stringValue else { break }
+                let useCurrentLocation = parameters["useCurrentLocation"]?.boolValue ?? false
+                let places = try await MapTool.search(query: query, useCurrentLocation: useCurrentLocation)
+                let encoder = JSONEncoder()
+                encoder.outputFormatting = [.prettyPrinted]
+                let jsonData = try encoder.encode(places)
+                let jsonString = String(data: jsonData, encoding: .utf8) ?? ""
+                res.content.append(.text(.init(text: jsonString)))
+            }
+        } catch {
+            print(error.localizedDescription)
+            res = CallToolResult.error(error)
         }
-        return toolCallRes
+        
+        return res
     }
 }
 
-private func resolvePath(_ path: String) -> URL {
-    let sandboxRootPath: String = {
-        let paths = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)
-        return paths[0].path
-    }()
-    if path.hasPrefix(sandboxRootPath) {
-        return URL(fileURLWithPath: path)
-    }
-    return URL(fileURLWithPath: sandboxRootPath).appendingPathComponent(path)
-}
-
-func writeToFile(_ path: String, content: String) throws {
-    let url = resolvePath(path)
-    let directory = url.deletingLastPathComponent()
-    try FileManager.default.createDirectory(
-        at: directory,
-        withIntermediateDirectories: true)
-    let data = content.data(using: .utf8)!
-    try data.write(to: url, options: .atomic)
-}
-
-func readFromFile(_ path: String) throws -> String {
-    let url = resolvePath(path)
-    let data = try Data(contentsOf: url)
-    return String(decoding: data, as: UTF8.self)
-}
-
-@discardableResult
-func executeCommand(
-    _ command: String
-) throws -> (output: String, error: String?) {
-
-    let process = Process()
-    process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-    process.arguments = ["sh", "-c", command]
-    process.currentDirectoryURL = resolvePath("")
-    
-    let stdout = Pipe()
-    let stderr = Pipe()
-    process.standardOutput = stdout
-    process.standardError = stderr
-
-    try process.run()
-    process.waitUntilExit()
-
-    let outputData = try stdout.fileHandleForReading.readToEnd()
-    let errorData = try stderr.fileHandleForReading.readToEnd()
-    
-    let output = (outputData.flatMap { String(data: $0, encoding: .utf8)} ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-    let error = errorData.flatMap { String(data: $0, encoding: .utf8) } ?? nil
-    return (output, error)
-}
-
-
-func composeEmail(recipients: [String], subject: String, body: String) {
-    var components = URLComponents()
-    components.scheme = "mailto"
-    components.path = recipients.joined(separator: ",")
-    components.queryItems = [
-        URLQueryItem(name: "subject", value: subject),
-        URLQueryItem(name: "body", value: body)
-    ]
-    
-    guard let url = components.url else { return }
-    DispatchQueue.main.async {
-        NSWorkspace.shared.open(url)
-    }
-}
-
-func composeMessage(recipients: [String], body: String) {
-    var components = URLComponents()
-    components.scheme = "sms"
-    components.path = recipients.joined(separator: ",")
-    components.queryItems = [
-        URLQueryItem(name: "body", value: body)
-    ]
-    
-    guard let url = components.url else { return }
-    DispatchQueue.main.async {
-        NSWorkspace.shared.open(url)
-    }
-}
-
-func openBrowser(url: String) {
-    guard let urlPath = URL(string: url) else {
-        print("Invalid URL")
-        return
-    }
-    
-    DispatchQueue.main.async {
-        NSWorkspace.shared.open(urlPath)
-    }
-}

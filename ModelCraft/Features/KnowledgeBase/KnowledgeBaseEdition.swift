@@ -38,8 +38,7 @@ struct KnowledgeBaseEdition: View {
             case .success(let urls):
                 konwledgeBase.files.append(contentsOf: urls)
             case .failure(let error):
-                globalStore.errorWrapper = ErrorWrapper(error: error,
-                                                        recoverySuggestion: "Please try again later!")
+                print(error.localizedDescription)
             }
         }
     }

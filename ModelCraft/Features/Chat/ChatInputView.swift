@@ -54,14 +54,13 @@ extension ChatInputView {
                 }
             }
             
-            TextEditor(text: $draft.content)
-                .frame(maxHeight: 100)
-                .fixedSize(horizontal: false, vertical: true)
+            
+            TextField("", text: $draft.content, axis: .vertical)
+                .lineLimit(1...5)
                 .font(.title3)
-                .textEditorStyle(.plain)
+                .textFieldStyle(.plain)
             
-            
-            HStack {
+            HStack(alignment: .bottom) {
                 UploadImageButton()
                 Spacer()
                 Group {
@@ -71,7 +70,7 @@ extension ChatInputView {
                         SubmitMessageButton()
                     }
                 }
-            }
+            }.font(.title2)
         }
         .buttonStyle(.borderless)
         .imageScale(.large)

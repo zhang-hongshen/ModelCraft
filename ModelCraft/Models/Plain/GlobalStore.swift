@@ -11,7 +11,6 @@ import SwiftUI
 class GlobalStore {
     var serverStatus: ServerStatus = .disconnected
     var selectedModel: String? = nil
-    var errorWrapper: ErrorWrapper? = nil
     var selectedKnowledgeBase: KnowledgeBase? = nil
     var currentTab: Tab? = nil
 }

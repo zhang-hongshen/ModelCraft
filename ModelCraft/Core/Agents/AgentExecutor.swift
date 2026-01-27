@@ -5,17 +5,18 @@
 //  Created by Hongshen on 5/1/26.
 //
 
-import Combine
+import Foundation
 
 
 enum AgentStreamEvent {
     case token(String)
     case finished(String)
-    case error(Error)
+    case error(String)
 }
 
 class AgentExecutor {
-    private var cancellable: AnyCancellable?
+    
+    private var currentTask: Task<Void, Never>?
     
     func run<T: RandomAccessCollection>(
         model: String,
@@ -25,29 +26,31 @@ class AgentExecutor {
         summary: String? = nil,
         onEvent: @escaping (AgentStreamEvent) -> Void
     ) where T.Element == Message {
-        let initialMessages = history + [AgentPrompt.completeTask(task: input, relevantDocuments: relevantDocuments, summary: summary)]
-        executeStep(model: model, messages: initialMessages, onEvent: onEvent)
+        stop()
+        currentTask = Task {
+            let initialMessages = history + [AgentPrompt.completeTask(task: input, relevantDocuments: relevantDocuments, summary: summary)]
+            
+            do {
+                try await executeStep(model: model, messages: initialMessages, onEvent: onEvent)
+            } catch {
+                onEvent(.error(error.localizedDescription))
+            }
+        }
     }
 
     private func executeStep(
         model: String,
         messages: [Message],
         onEvent: @escaping (AgentStreamEvent) -> Void
-    ) {
+    ) async throws {
         
         var action = ""
         var aiResponse = ""
         let parser = TagStreamParser()
-        
-        self.cancellable = OllamaService.shared.chat(
+        for try await response in OllamaService.shared.chat(
             model: model,
             messages: messages.compactMap(OllamaService.toChatRequestMessage)
-        )
-        .sink { completion in
-            if case .failure(let error) = completion {
-                onEvent(.error(error))
-            }
-        } receiveValue: { response in
+        ) {
             guard let token = response.message?.content else { return }
             print(token)
             onEvent(.token(token))
@@ -61,22 +64,33 @@ class AgentExecutor {
                     guard let toolCall = ToolCall(json: action) else {
                         continue
                     }
-                    var toolCallResult = ""
-                    do {
-                        toolCallResult = try ToolExecutor.shared.dispatch(toolCall)
-                    } catch {
-                        toolCallResult = "Error: \(error.localizedDescription)"
-                        onEvent(.error(error))
+                    
+                    let callToolResult =  await ToolExecutor.shared.dispatch(toolCall)
+                    let encoder = JSONEncoder()
+                    encoder.outputFormatting = [.prettyPrinted, .withoutEscapingSlashes]
+                    var content: String {
+                        do {
+                            let content = try encoder.encode(callToolResult.content)
+                            guard let contentString = String(data: content, encoding: .utf8) else {
+                                onEvent(.error("Failed to decode UTF8 string from serialized data"))
+                                return "Internal serialization failure"
+                            }
+                            if let isError = callToolResult.isError, isError {
+                                onEvent(.error(contentString))
+                            }
+                            return contentString
+                        } catch {
+                            onEvent(.error(error.localizedDescription))
+                            return error.localizedDescription
+                        }
                     }
-                    print("Tool Call Result: \(toolCallResult)")
-                    let observation = "<observation>\(toolCallResult)</observation>"
+                    let observation = "<observation>\(content)</observation>"
                     onEvent(.token(observation))
                     let aiMessage = Message(role: .assistant, content: aiResponse)
                     let toolMessage = Message(role: .tool, content: observation)
                     let updatedHistory = messages + [aiMessage, toolMessage]
-                    action = ""
-                    self.stop()
-                    self.executeStep(model: model, messages: updatedHistory, onEvent: onEvent)
+                    try await executeStep(model: model, messages: updatedHistory, onEvent: onEvent)
+                    
                 case .inTag(let name, let content):
                     if name == "action" {
                         action += content
@@ -91,7 +105,7 @@ class AgentExecutor {
     }
     
     func stop() {
-        cancellable?.cancel()
-        cancellable = nil
+        currentTask?.cancel()
+        currentTask = nil
     }
 }

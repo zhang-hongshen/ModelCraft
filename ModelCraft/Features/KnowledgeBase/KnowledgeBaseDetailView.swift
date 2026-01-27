@@ -38,8 +38,7 @@ struct KnowledgeBaseDetailView: View {
                 case .success(let urls):
                     urls.forEach { konwledgeBase.files.append($0) }
                 case .failure(let error):
-                    globalStore.errorWrapper = ErrorWrapper(error: error,
-                                                            recoverySuggestion: "Please try again later!")
+                    print(error.localizedDescription)
                 }
             }
             .dropDestination(for: URL.self) { items, location in

@@ -7,7 +7,6 @@
 
 import SwiftUI
 import SwiftData
-import Combine
 
 import OllamaKit
 
@@ -20,7 +19,6 @@ struct ModelStore: View {
     @State private var isLoading = false
     @State private var selectedModelName : String? = nil
     @State private var searchText = ""
-    @State private var cancellables = Set<AnyCancellable>()
     
     @Query(filter: ModelTask.predicateUnCompletedDownloadTask,
            sort: \ModelTask.createdAt,

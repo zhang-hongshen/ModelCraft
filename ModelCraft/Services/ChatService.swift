@@ -7,7 +7,6 @@
 
 import SwiftUI
 import SwiftData
-import Combine
 
 @Observable
 class ChatService {
@@ -71,7 +70,7 @@ class ChatService {
                 resetChatStatus(chat: chat)
                 
             case .error(let error):
-                assistantMessage.content.append(error.localizedDescription)
+                assistantMessage.content.append(error)
                 assistantMessage.status = .failed
             }
         }

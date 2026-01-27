@@ -112,9 +112,17 @@ final class ModelCraftTests: XCTestCase {
         print("video content: ", try await url.readContent())
     }
     
-    
-    func testSendEmail() {
-        sendEmail(recipients: ["123@qq.com"], subject: "subject", body: "body")
+    func testTextDecoding() throws {
+        let json = #"{"type": "text", "text": "Hello, this is a test email."}"#.data(using: .utf8)!
+        
+        let block = try JSONDecoder().decode(ContentBlock.self, from: json)
+        
+        if case .text(let content) = block {
+            XCTAssertEqual(content.text, "Hello, this is a test email.")
+            XCTAssertEqual(content.type, "text")
+        } else {
+            XCTFail("Expected .text case")
+        }
     }
     
     func testPerformanceExample() throws {
@@ -123,7 +131,5 @@ final class ModelCraftTests: XCTestCase {
             // Put the code you want to measure the time of here.
         }
     }
-    
-    
 
 }

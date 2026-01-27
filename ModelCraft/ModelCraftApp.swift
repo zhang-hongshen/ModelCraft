@@ -8,8 +8,6 @@
 import SwiftUI
 import SwiftData
 import AVFoundation
-import Combine
-import TipKit
 
 import OllamaKit
 
@@ -36,7 +34,6 @@ struct ModelCraftApp: App {
     
     @State private var chatService: ChatService
     @State private var models: [ModelInfo] = []
-    @State private var cancellables: Set<AnyCancellable> = []
     @State private var checkServerStatusTaskTimer: Timer? = nil
     @State private var fetchDownloadedModelsTaskTimer: Timer? = nil
     
@@ -48,9 +45,6 @@ struct ModelCraftApp: App {
     
     init() {
         self.chatService = ChatService(container: sharedModelContainer)
-#if os(macOS)
-        startOllamaServer()
-#endif
     }
     
     var body: some Scene {
@@ -59,21 +53,12 @@ struct ModelCraftApp: App {
                 ContentView()
                     .background(.ultraThinMaterial)
                     .applyUserSettings()
-                    .alert(globalStore.errorWrapper?.localizedDescription ?? "",
-                           isPresented: Binding(
-                            get: { globalStore.errorWrapper != nil },
-                            set: { _ in }),
-                           presenting: globalStore.errorWrapper){ _ in
-                        Button("OK") {
-                            globalStore.errorWrapper = nil
-                        }
-                    } message: { errorWrapper in
-                        Text(errorWrapper.recoverySuggestion)
-                    }
                     .task {
                         checkServerStatusTaskTimer = Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { timer in
                             guard timer.isValid else { return }
-                            checkServerStatus()
+                            Task {
+                                await checkServerStatus()
+                            }
                         }
                         fetchDownloadedModelsTaskTimer = Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { timer in
                             guard timer.isValid else { return }
@@ -120,37 +105,6 @@ struct ModelCraftApp: App {
 
 extension ModelCraftApp {
     
-#if os(macOS)
-    
-
-    
-    func startOllamaServer() {
-        globalStore.serverStatus = .launching
-        DispatchQueue.global(qos: .background).async {
-            do {
-                try CommandExecutor.run(Bundle.main.url(forAuxiliaryExecutable: "ollama"), arguments: ["serve"]) { (_, _) in
-                    
-                }
-
-            } catch {
-                print("Failed to start Ollama server: \(error)")
-            }
-        }
-    }
-    
-    func stopOllamaServer() {
-        DispatchQueue.global(qos: .background).async {
-            do {
-                try CommandExecutor.run(Bundle.main.url(forAuxiliaryExecutable: "ollama"), arguments: ["stop"]) { (_, _) in
-                    
-                }
-            } catch {
-                print("Failed to stop Ollama server: \(error)")
-            }
-        }
-    }
-#endif
-    
     func fetchDownloadedModels() async {
         do {
             models = try await OllamaService.shared.models()
@@ -162,18 +116,13 @@ extension ModelCraftApp {
         }
     }
     
-    private func checkServerStatus() {
-        OllamaService.shared.reachable()
-            .sink { reachable in
-                // modify environment server status
-                globalStore.serverStatus = reachable ? .connected : .disconnected
+    private func checkServerStatus() async {
+        globalStore.serverStatus = await OllamaService.shared.reachable() ? .connected : .disconnected
 #if os(macOS)
-                if globalStore.serverStatus == .disconnected {
-                    startOllamaServer()
-                }
+        if globalStore.serverStatus == .disconnected {
+            OllamaService.shared.start()
+        }
 #endif
-            }
-            .store(in: &cancellables)
     }
     
     

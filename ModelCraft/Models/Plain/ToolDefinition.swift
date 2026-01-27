@@ -15,7 +15,8 @@ struct ToolDefinitions {
         executeCommand,
         composeEmail,
         composeMessage,
-        openBrowser
+        openBrowser,
+        mapSearch
     ]
     
     // MARK: - Read From File
@@ -116,4 +117,25 @@ struct ToolDefinitions {
             required: ["url"]
         )
     )
+    
+    private static let mapSearch = Tool(
+        name: "map_search",
+        description: "Search for points of interest, restaurants, or locations nearby or in a specific area. Returns details like address, distance, and contact info.",
+        inputSchema: InputSchema(
+            type: "object",
+            properties: [
+                "query": Property(
+                    type: "string",
+                    description: "The search keyword, e.g., 'coffee shop', 'Central Park', 'Sushi', or 'Beijing Capital Airport'."
+                ),
+                "useCurrentLocation": Property(
+                    type: "boolean",
+                    description: "Set to true if the user implies their current location (e.g., 'near me', 'around here'). Set to false if a specific city or remote location is mentioned (e.g., 'restaurants in London')."
+                )
+            ],
+            required: ["query", "useCurrentLocation"]
+        )
+    )
+    
+    
 }
