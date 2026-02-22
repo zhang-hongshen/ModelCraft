@@ -14,7 +14,7 @@ public enum ParseState: Equatable {
 
 public enum ParseEvent: Equatable {
     case outside
-    case inTag(name: String, content: String)
+    case inTag(tag: String, content: String)
 }
 
 public final class TagStreamParser {
@@ -100,7 +100,7 @@ public final class TagStreamParser {
     private func emitText(_ text: String) -> [ParseEvent] {
         guard !text.isEmpty else { return [] }
         if case .inTag(let name) = state {
-            return [.inTag(name: name, content: text)]
+            return [.inTag(tag: name, content: text)]
         }
         return []
     }

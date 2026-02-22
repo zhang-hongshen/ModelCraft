@@ -14,25 +14,6 @@ import OllamaKit
 @main
 struct ModelCraftApp: App {
     
-    let sharedModelContainer: ModelContainer = {
-        let schema = Schema([
-            Message.self, Chat.self, ModelTask.self,
-            KnowledgeBase.self
-        ])
-#if DEBUG
-        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
-#else
-        let modelConfiguration = ModelConfiguration(schema: schema)
-#endif
-
-        do {
-            return try ModelContainer(for: schema, configurations: [modelConfiguration])
-        } catch {
-            fatalError("Could not create ModelContainer: \(error)")
-        }
-    }()
-    
-    @State private var chatService: ChatService
     @State private var models: [ModelInfo] = []
     @State private var checkServerStatusTaskTimer: Timer? = nil
     @State private var fetchDownloadedModelsTaskTimer: Timer? = nil
@@ -43,9 +24,7 @@ struct ModelCraftApp: App {
     
     @Environment(\.openWindow) private var openWindow
     
-    init() {
-        self.chatService = ChatService(container: sharedModelContainer)
-    }
+    init() {}
     
     var body: some Scene {
         Group {
@@ -87,12 +66,11 @@ struct ModelCraftApp: App {
             }
 #endif
         }
-        .modelContainer(sharedModelContainer)
+        .modelContainer(ModelContainer.shared)
         .environment(\.downaloadedModels, models)
         .environment(speechManager)
         .environment(globalStore)
         .environment(userSettings)
-        .environment(chatService)
         .windowResizability(.contentSize)
         .commands {
             SidebarCommands()

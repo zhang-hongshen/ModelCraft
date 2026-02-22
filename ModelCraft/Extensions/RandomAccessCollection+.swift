@@ -42,7 +42,7 @@ extension RandomAccessCollection where Element: Identifiable {
     }
     
 }
-
+    
 extension RandomAccessCollection where Element == Message {
     
     func toString() -> String {

@@ -116,6 +116,16 @@
         }
       }
     },
+    "Clicking (%lf,%lf)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Clicking (%1$lf,%2$lf)"
+          }
+        }
+      }
+    },
     "Completed" : {
       "localizations" : {
         "zh-Hans" : {
@@ -276,6 +286,9 @@
         }
       }
     },
+    "Executing Script" : {
+
+    },
     "Failed" : {
       "localizations" : {
         "zh-Hans" : {
@@ -285,6 +298,9 @@
           }
         }
       }
+    },
+    "Failed to parse map data" : {
+
     },
     "General" : {
       "localizations" : {
@@ -406,6 +422,16 @@
         }
       }
     },
+    "Moving to (%lf, %lf)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Moving to (%1$lf, %2$lf)"
+          }
+        }
+      }
+    },
     "No Available Model" : {
       "localizations" : {
         "zh-Hans" : {
@@ -426,6 +452,9 @@
         }
       }
     },
+    "Ollama Model" : {
+
+    },
     "Opening %@" : {
       "localizations" : {
         "zh-Hans" : {
@@ -445,6 +474,9 @@
           }
         }
       }
+    },
+    "Ready" : {
+
     },
     "Refresh" : {
       "localizations" : {
@@ -476,15 +508,8 @@
         }
       }
     },
-    "Scroll to bottom automatically when chatting" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "对话时自动滚动到底部"
-          }
-        }
-      }
+    "Search for %@" : {
+
     },
     "Searching for %@" : {
       "localizations" : {
@@ -545,6 +570,9 @@
           }
         }
       }
+    },
+    "Taking Screenshot" : {
+
     },
     "Thinking" : {
       "localizations" : {

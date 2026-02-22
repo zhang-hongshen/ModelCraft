@@ -46,9 +46,9 @@ actor ChatModelActor {
             let unsummarizedCount = sorted.count - chat.lastSummaryIndex - bufferCount
             
             guard unsummarizedCount >= threshold else { return }
-            
+
             let endSummaryIndex = sorted.count - bufferCount - 1
-            let summarySlice = Array(sorted[chat.lastSummaryIndex...endSummaryIndex])
+            let summarySlice = Array(sorted[chat.lastSummaryIndex + 1...endSummaryIndex])
             
             guard let newSummary = try await summaryLogic(chat.summary, summarySlice) else {
                 return

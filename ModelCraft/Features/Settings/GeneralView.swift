@@ -31,9 +31,7 @@ struct GeneralView: View {
                     }
                 }
             }
-            Toggle("Scroll to bottom automatically when chatting", isOn: $userSettings.automaticallyScrollToBottom)
-            
-            
+
             Section {
                 
                 Slider(value: $userSettings.speakingRate, in: 0...1) {

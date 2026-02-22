@@ -6,32 +6,27 @@
 //
 
 import Foundation
-
-
-enum AgentStreamEvent {
-    case token(String)
-    case finished(String)
-    case error(String)
-}
+import SwiftData
+import UniformTypeIdentifiers
 
 class AgentExecutor {
     
     private var currentTask: Task<Void, Never>?
     
-    func run<T: RandomAccessCollection>(
+    func run(
         model: String,
         input: String,
-        history: T,
-        relevantDocuments: [String],
+        history: [Message],
+        knowledgeBaseID: PersistentIdentifier?,
         summary: String? = nil,
         onEvent: @escaping (AgentStreamEvent) -> Void
-    ) where T.Element == Message {
+    ) {
         stop()
         currentTask = Task {
-            let initialMessages = history + [AgentPrompt.completeTask(task: input, relevantDocuments: relevantDocuments, summary: summary)]
-            
+            let initialMessages = history + [AgentPrompt.completeTask(task: input, summary: summary)]
             do {
-                try await executeStep(model: model, messages: initialMessages, onEvent: onEvent)
+                try await executeStep(model: model, messages: initialMessages,
+                                      knowledgeBaseID: knowledgeBaseID, onEvent: onEvent)
             } catch {
                 onEvent(.error(error.localizedDescription))
             }
@@ -41,6 +36,7 @@ class AgentExecutor {
     private func executeStep(
         model: String,
         messages: [Message],
+        knowledgeBaseID: PersistentIdentifier?,
         onEvent: @escaping (AgentStreamEvent) -> Void
     ) async throws {
         
@@ -61,38 +57,30 @@ class AgentExecutor {
                     if action.isEmpty {
                         continue
                     }
-                    guard let toolCall = ToolCall(json: action) else {
+                    guard var toolCall = ToolCall(json: action) else {
                         continue
+                    }
+                    if toolCall.tool == .searchRelevantDocuments, let id = knowledgeBaseID {
+                        toolCall.parameters["knowledge_base_id"] = .data(mimeType: UTType.json.preferredMIMEType, try JSONEncoder().encode(id))
                     }
                     
                     let callToolResult =  await ToolExecutor.shared.dispatch(toolCall)
                     let encoder = JSONEncoder()
                     encoder.outputFormatting = [.prettyPrinted, .withoutEscapingSlashes]
-                    var content: String {
-                        do {
-                            let content = try encoder.encode(callToolResult.content)
-                            guard let contentString = String(data: content, encoding: .utf8) else {
-                                onEvent(.error("Failed to decode UTF8 string from serialized data"))
-                                return "Internal serialization failure"
-                            }
-                            if let isError = callToolResult.isError, isError {
-                                onEvent(.error(contentString))
-                            }
-                            return contentString
-                        } catch {
-                            onEvent(.error(error.localizedDescription))
-                            return error.localizedDescription
-                        }
+                    guard let observation = String(data: try encoder.encode(callToolResult), encoding: .utf8) else {
+                        onEvent(.error("Failed to encode Observation as UTF8"))
+                        return
                     }
-                    let observation = "<observation>\(content)</observation>"
-                    onEvent(.token(observation))
-                    let aiMessage = Message(role: .assistant, content: aiResponse)
-                    let toolMessage = Message(role: .tool, content: observation)
-                    let updatedHistory = messages + [aiMessage, toolMessage]
-                    try await executeStep(model: model, messages: updatedHistory, onEvent: onEvent)
+
+                    let observationMsg = "<observation>\(observation)</observation>"
+                    onEvent(.token(observationMsg))
+                    let aiMessage = Message(role: .assistant, content: aiResponse + observationMsg)
+                    let updatedHistory = messages + [aiMessage]
+                    try await executeStep(model: model, messages: updatedHistory,
+                                          knowledgeBaseID: knowledgeBaseID, onEvent: onEvent)
                     
-                case .inTag(let name, let content):
-                    if name == "action" {
+                case .inTag(let tag, let content):
+                    if tag == "action" {
                         action += content
                     }
                 }

@@ -11,16 +11,13 @@ import SwiftData
 @Observable
 class ChatService {
     
-    private let container: ModelContainer
     private let chatModelActor: ChatModelActor
     
     private let executor = AgentExecutor()
     
     init(container: ModelContainer) {
-        self.container = container
         self.chatModelActor = ChatModelActor(modelContainer: container)
     }
-    
     
     func createChat() async throws -> Chat {
         return try await chatModelActor.create()
@@ -36,23 +33,18 @@ class ChatService {
     ) async throws {
         let userMessage = Message(role: .user, chat: chat, content: content, images: images)
         let assistantMessage = Message(role: .assistant, chat: chat, status: .new)
-        let history = chat.messages.suffix(from: chat.lastSummaryIndex)
+        let history = Array(chat.messages.suffix(from: chat.lastSummaryIndex))
         
         try await chatModelActor.addMessages(
             chatID: chat.id,
             messages: [userMessage, assistantMessage])
         chat.status = .userWaitingForResponse
         
-        var relevantDocuments: [String] = []
-        if let knowledgeBase = knowledgeBase {
-            relevantDocuments = await knowledgeBase.search(content)
-        }
-        
         executor.run(
             model: model,
             input: content,
             history: history,
-            relevantDocuments: relevantDocuments,
+            knowledgeBaseID: knowledgeBase?.id,
             summary: chat.summary
         ) { [weak self] event in
             guard let self = self else { return }
@@ -72,11 +64,12 @@ class ChatService {
             case .error(let error):
                 assistantMessage.content.append(error)
                 assistantMessage.status = .failed
+                resetChatStatus(chat: chat)
             }
         }
         
         Task(priority: .background) {
-            try await generateTitleIfNeeded(model: model, chat: chat)
+//            try await generateTitleIfNeeded(model: model, chat: chat)
             try await summarizeChatIfNeeded(model: model, chat: chat)
         }
     }

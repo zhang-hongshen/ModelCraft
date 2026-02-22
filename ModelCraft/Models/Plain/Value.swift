@@ -8,7 +8,7 @@
 import Foundation
 
 /// A codable value.
-public enum Value: Hashable, Sendable {
+public enum Value: Hashable {
     case null
     case bool(Bool)
     case int(Int)
@@ -17,7 +17,7 @@ public enum Value: Hashable, Sendable {
     case data(mimeType: String? = nil, Data)
     case array([Value])
     case object([String: Value])
-
+    
     /// Create a `Value` from a `Codable` value.
     /// - Parameter value: The codable value
     /// - Returns: A value
@@ -89,6 +89,13 @@ public enum Value: Hashable, Sendable {
         guard case let .object(value) = self else { return nil }
         return value
     }
+    
+//    /// Returns the `object` value if the value is an `object`,
+//    /// otherwise returns `nil`.
+//    public var objectValue: AnyObject? {
+//        guard case let .object(value) = self else { return nil }
+//        return value
+//    }
 }
 
 // MARK: - Codable
@@ -142,29 +149,6 @@ extension Value: Codable {
             try container.encode(value)
         case .object(let value):
             try container.encode(value)
-        }
-    }
-}
-
-extension Value: CustomStringConvertible {
-    public var description: String {
-        switch self {
-        case .null:
-            return ""
-        case .bool(let value):
-            return value.description
-        case .int(let value):
-            return value.description
-        case .double(let value):
-            return value.description
-        case .string(let value):
-            return value.description
-        case let .data(mimeType, value):
-            return value.dataURLEncoded(mimeType: mimeType)
-        case .array(let value):
-            return value.description
-        case .object(let value):
-            return value.description
         }
     }
 }

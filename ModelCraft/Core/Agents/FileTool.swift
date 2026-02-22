@@ -39,15 +39,15 @@ class FileTool {
     @discardableResult
     static func executeCommand(
         _ command: String
-    ) throws -> String {
+    ) throws -> CommandResult {
 
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
         process.arguments = ["sh", "-c", command]
         process.currentDirectoryURL = resolvePath("")
         
-        let stdout = Pipe()
-        let stderr = Pipe()
+        let stdoutPipe = Pipe()
+        let stderrPipe = Pipe()
         process.standardOutput = stdout
         process.standardError = stderr
         
@@ -55,16 +55,19 @@ class FileTool {
         process.waitUntilExit()
         
         
-        let outputData = try stdout.fileHandleForReading.readToEnd()
-        let errorData = try stderr.fileHandleForReading.readToEnd()
+        let outputData = try stdoutPipe.fileHandleForReading.readToEnd()
+        let errorData = try stderrPipe.fileHandleForReading.readToEnd()
         
-        let output = (outputData.flatMap { String(data: $0, encoding: .utf8)} ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-        let error = errorData.flatMap { String(data: $0, encoding: .utf8) } ?? nil
-        if let error = error {
-            throw RuntimeError(error)
-        }
-        return output
+        let stdout = (outputData.flatMap { String(data: $0, encoding: .utf8)} ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let stderr = errorData.flatMap { String(data: $0, encoding: .utf8) } ?? ""
+        return CommandResult(stdout: stdout, stderr: stderr, exitCode: Int(process.terminationStatus))
         
     }
     
+}
+
+struct CommandResult {
+    let stdout: String
+    let stderr: String
+    let exitCode: Int
 }

@@ -13,15 +13,20 @@ struct ToolDefinitions {
         readFromFile,
         writeToFile,
         executeCommand,
-        composeEmail,
-        composeMessage,
-        openBrowser,
-        mapSearch
+//        composeEmail,
+//        composeMessage,
+//        openBrowser,
+        searchMap,
+        searchRelevantDocuments,
+        executeAppleScript,
+        captureScreen,
+        move,
+        click
     ]
     
     // MARK: - Read From File
     private static let readFromFile = Tool(
-        name: "read_from_file",
+        name: .readFromFile,
         description: "Reads and returns the complete text content from a file at a specified path.",
         inputSchema: InputSchema(
             type: "object",
@@ -36,7 +41,7 @@ struct ToolDefinitions {
     
     // MARK: - Write To File
     private static let writeToFile = Tool(
-        name: "write_to_file",
+        name: .writeToFile,
         description: "Writes text content to a file. It creates the file if it doesn't exist or overwrites it if it already exists.",
         inputSchema: InputSchema(
             type: "object",
@@ -54,8 +59,8 @@ struct ToolDefinitions {
     
     // MARK: - Execute Command
     private static let executeCommand = Tool(
-        name: "execute_command",
-        description: "Executes a shell command on the host system and returns its standard output and error messages.",
+        name: .executeCommand,
+        description: "Executes a shell command",
         inputSchema: InputSchema(
             type: "object",
             properties: [
@@ -69,8 +74,8 @@ struct ToolDefinitions {
     
     // MARK: - Compose Email
     private static let composeEmail = Tool(
-        name: "compose_email",
-        description: "Triggers the default mail client to compose an email. This opens a draft window for the user to review and send manually.",
+        name: .composeEmail,
+        description: "Triggers the default mail client to compose an email.",
         inputSchema: InputSchema(
             type: "object",
             properties: [
@@ -93,13 +98,17 @@ struct ToolDefinitions {
     
     // MARK: - Compose Message Tool
     private static let composeMessage = Tool(
-        name: "compose_message",
+        name: .composeEmail,
         description: "Opens the Messages app to send a text message to one or more recipients.",
         inputSchema: InputSchema(
             type: "object",
             properties: [
-                "recipients": Property(type: "array", description: "Phone numbers."),
-                "body": Property(type: "string", description: "The content of the message.")
+                "recipients": Property(
+                    type: "array",
+                    description: "Phone numbers."),
+                "body": Property(
+                    type: "string",
+                    description: "The content of the message.")
             ],
             required: ["recipients", "body"]
         )
@@ -107,35 +116,110 @@ struct ToolDefinitions {
     
     // MARK: - Open Browser Tool
     private static let openBrowser = Tool(
-        name: "open_browser",
+        name: .openBrowser,
         description: "Opens a specific URL in the default web browser.",
         inputSchema: InputSchema(
             type: "object",
             properties: [
-                "url": Property(type: "string", description: "The full URL to open (starting with http:// or https://).")
+                "url": Property(
+                    type: "string",
+                    description: "The full URL to open (starting with http:// or https://).")
             ],
             required: ["url"]
         )
     )
     
-    private static let mapSearch = Tool(
-        name: "map_search",
-        description: "Search for points of interest, restaurants, or locations nearby or in a specific area. Returns details like address, distance, and contact info.",
+    private static let searchMap = Tool(
+        name: .searchMap,
+        description: "Search for points of interest, restaurants, or locations nearby or in a specific area.",
         inputSchema: InputSchema(
             type: "object",
             properties: [
                 "query": Property(
                     type: "string",
-                    description: "The search keyword, e.g., 'coffee shop', 'Central Park', 'Sushi', or 'Beijing Capital Airport'."
+                    description: "The search keyword."
                 ),
                 "useCurrentLocation": Property(
                     type: "boolean",
-                    description: "Set to true if the user implies their current location (e.g., 'near me', 'around here'). Set to false if a specific city or remote location is mentioned (e.g., 'restaurants in London')."
+                    description: "Set to true if the user implies their current location. Set to false if a specific city or remote location is mentioned."
+                ),
+                "numOfResults": Property(
+                    type: "number",
+                    description: "The maximum number of results to return. Defaults to 5 if not specified."
                 )
             ],
             required: ["query", "useCurrentLocation"]
         )
     )
     
+    private static let searchRelevantDocuments = Tool(
+        name: .searchRelevantDocuments,
+        description: "Search for information in the user's uploaded documents.",
+        inputSchema: InputSchema(
+            type: "object",
+            properties: [
+                "query": Property(
+                    type: "string",
+                    description: "The keyword or question to search for in the document database."
+                )
+            ],
+            required: ["query"]
+        )
+    )
     
+    private static let executeAppleScript = Tool(
+        name: .executeAppleScript,
+        description:
+            """
+            Primary tool for app automation. Use this to: 
+            1) Control app-specific features (e.g., play music, create reminders).
+            2) Automate GUI actions (e.g., clicking menus, moving windows). 
+            """,
+        inputSchema: InputSchema(
+            type: "object",
+            properties: [
+                "script": Property(
+                    type: "string",
+                    description: "The AppleScript code."
+                )
+            ],
+            required: ["script"]
+        )
+    )
+    
+    static let captureScreen = Tool(
+        name: .captureScreen,
+        description: "Takes a high-resolution screenshot of the current screen to analyze the UI layout and identify element coordinates.",
+        inputSchema: InputSchema(
+            type: "object",
+            properties: [:],
+            required: []
+        )
+    )
+    
+    static let click = Tool(
+        name: .click,
+        description: "Simulates a mouse click at the specified (x, y) coordinates. Coordinates should be based on the screenshot provided.",
+        inputSchema: .init(
+            type: "object",
+            properties: [
+                "x": .init(type: "number", description: "The horizontal coordinate."),
+                "y": .init(type: "number", description: "The vertical coordinate.")
+            ],
+            required: ["x", "y"]
+        )
+    )
+    
+    static let move = Tool(
+        name: .move,
+        description: "Moves the mouse cursor to a specific (x, y) location without clicking.",
+        inputSchema: .init(
+            type: "object",
+            properties: [
+                "x": .init(type: "number", description: "The target x coordinate."),
+                "y": .init(type: "number", description: "The target y coordinate.")
+            ],
+            required: ["x", "y"]
+        )
+    )
 }

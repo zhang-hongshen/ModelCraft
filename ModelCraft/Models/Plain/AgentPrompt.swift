@@ -10,18 +10,23 @@ import SwiftUI
 
 class AgentPrompt {
     
-    static func completeTask(task: String, relevantDocuments: [String], summary: String? = nil) -> Message{
+    static func completeTask(task: String, summary: String? = nil) -> Message{
         
         let toolsJSON = try? JSONEncoder().encode(ToolDefinitions.allTools)
         let tools = String(data: toolsJSON ?? Data(), encoding: .utf8) ?? "No available tools"
-        let toolNames = ToolDefinitions.allTools.map{ $0.name }.joined(separator: ",")
+        let toolNames = ToolDefinitions.allTools.map{ $0.name.rawValue }.joined(separator: ",")
         return Message(
             role: .user,
             content: """
             <role>
                 Complete the following tasks as best you can.
             </role>
+            
+            <previous_summary>
+                \(summary ?? "No previous history.")
+            </previous_summary>
             <available_tools>\(tools)</available_tools>
+            
             <instructions>
                 Using the following format:
                 <task>the task you must complete</task>
@@ -50,15 +55,6 @@ class AgentPrompt {
             
             </rules>
             
-            <context>
-                <relevant_documents>
-                    \(!relevantDocuments.isEmpty ? relevantDocuments.joined(separator: "\n") : "No relevant documtns")
-                <\relevant_documents>
-                <history_summary>
-                    \(summary ?? "No previous history.")
-                </history_summary>
-            </context>
-            
             Begin!
             
             <task>\(task)</task>
@@ -74,29 +70,27 @@ class AgentPrompt {
             role: .user,
             content: """
             <role>
-            You are an assistant that maintains a concise rolling summary of a conversation.
+            You are a Memory Compressor.
+            Compress the following conversation history into a concise summary.
             </role>
             
-            <instructions>
-            1. If <previous_summary> is empty, create a new summary based solely on <messages>.
-            2. If <previous_summary> exists, merge it with the new information from <messages>:
-               - Preserve essential context, goals, facts, decisions, or constraints from the previous summary.
-               - Add or update key points from the new messages that change the situation, reveal new facts, or refine goals.
-               - Remove outdated or irrelevant information.
-            3. Keep the summary objective and concise — 3 to 6 sentences maximum.
-            4. Exclude greetings, small talk, and unimportant details.
-            5. Do not include instructions, explanations, or formatting other than plain text.
-
-            Your response must contain only the updated summary text — no XML tags or metadata.
-            </instructions>
-
-            <previous_summary>
-            \(previousSummary ?? "None")
-            </previous_summary>
+            <previous_summary>\(previousSummary ?? "None")</previous_summary>
             
-            <conversation>
-            \(conversation)
-            </conversation>
+            <input>\(conversation)</input>
+            
+            <output_foramt>
+            ## Background
+            (Context of the task)
+            
+            ## Key Decisions
+            (Key technical decisions made)
+            
+            ## Progress
+            (What has been achieved so far)
+            
+            ## Current State
+            (Pending tasks and next steps)
+            </output_format>
             """
         )
     }

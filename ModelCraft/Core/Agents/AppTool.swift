@@ -49,5 +49,23 @@ class AppTool {
             NSWorkspace.shared.open(urlPath)
         }
     }
-
+    
+    static func executeAppleScript(_ script: String) throws -> String {
+        
+        guard let script = NSAppleScript(source: script) else {
+            throw RuntimeError("Script initialization failed: Potential syntax error.")
+        }
+        
+        var error: NSDictionary?
+        let outputDescriptor = script.executeAndReturnError(&error)
+        
+        if let err = error {
+            let errorMsg = err[NSAppleScript.errorMessage] as? String ?? "Unknown error"
+            let errorCode = err[NSAppleScript.errorNumber] as? Int ?? 0
+            throw RuntimeError(errorMsg)
+        }
+        
+        return outputDescriptor.stringValue ?? ""
+    }
+    
 }

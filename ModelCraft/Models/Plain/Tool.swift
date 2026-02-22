@@ -6,12 +6,12 @@
 //
 
 public struct Tool: Codable {
-    let name: String
+    let name: ToolCallName
     let description: String
     let inputSchema: InputSchema
     let outputSchema: OutputSchema?
     
-    init(name: String, description: String,
+    init(name: ToolCallName, description: String,
          inputSchema: InputSchema, outputSchema: OutputSchema? = nil) {
         self.name = name
         self.description = description

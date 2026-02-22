@@ -10,12 +10,9 @@ import SwiftUI
 
 @Observable
 class UserSettings {
+    
     var appearance: Appearance = .system {
         didSet { UserDefaults.standard.set(appearance.rawValue, forKey: UserDefaults.appearance) }
-    }
-
-    var automaticallyScrollToBottom = false {
-        didSet { UserDefaults.standard.set(automaticallyScrollToBottom, forKey: UserDefaults.automaticallyScrollToBottom) }
     }
 
     var language = Locale.defaultLanguage {

@@ -24,6 +24,10 @@ struct ModelDetailView: View {
     @Environment(\.downaloadedModels) private var downloadedModels
     @Environment(\.modelContext) private var modelContext
     
+    private let columns = [
+        GridItem(.adaptive(minimum: 180, maximum: 250), spacing: 16)
+    ]
+    
     private var filteredModels: [ModelInfo] {
         if searchText.isEmpty {
             return models
@@ -40,12 +44,15 @@ struct ModelDetailView: View {
     
     @ViewBuilder
     func ContentView() -> some View {
-        List(selection: $selectedModelNames) {
-            ForEach(filteredModels, id: \.name) { model in
-                ListCell(model).tag(model.name)
+        ScrollView {
+            LazyVGrid(columns: columns, spacing: 16) {
+                ForEach(filteredModels, id: \.name) { model in
+                    TagCard(model)
+                }
             }
+            .padding()
         }
-        .listStyle(.inset)
+        .background(Color(nsColor: .windowBackgroundColor).opacity(0.3))
     }
     
     @ViewBuilder
@@ -82,6 +89,48 @@ extension ModelDetailView {
             }
         }
     }
+    
+    @ViewBuilder
+    func TagCard(_ model: ModelInfo) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Image(systemName: "tag.fill")
+                    .foregroundStyle(Color.accentColor)
+                Text(model.name)
+                    .font(.headline)
+                    .lineLimit(1)
+            }
+            
+            Divider()
+            
+            HStack {
+                Spacer()
+                if downloadedModels.map({ $0.name }).contains(model.name) {
+                    Label("Ready", systemImage: "checkmark.circle.fill")
+                        .foregroundStyle(.secondary)
+                        .font(.caption.bold())
+                } else if let task = downloadTasks.first(where: { $0.modelName == model.name }) {
+                    ModelTaskStatus(task: task)
+                } else {
+                    Button {
+                        createDownloadModelTask(model.name)
+                    } label: {
+                        Label("Download", systemImage: "arrow.down.circle")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
+                }
+            }
+        }
+        .padding()
+        .background(Color(nsColor: .controlBackgroundColor))
+        .cornerRadius(12)
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Color.gray.opacity(0.1), lineWidth: 1)
+        )
+    }
 }
 
 extension ModelDetailView {
@@ -99,6 +148,7 @@ extension ModelDetailView {
     }
 
 }
+
 
 #Preview {
     ModelDetailView(modelName: "deepseek-r1")

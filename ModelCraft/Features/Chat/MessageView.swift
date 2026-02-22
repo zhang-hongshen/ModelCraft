@@ -8,6 +8,7 @@
 import SwiftUI
 import AVFoundation
 import NaturalLanguage
+import MapKit
 
 import MarkdownUI
 import Splash
@@ -287,17 +288,16 @@ extension MessageView {
                     if !step.thought.isEmpty {
                         ThoughtView(thought: step.thought)
                     }
-                    if let action = step.action, let toolCall = ToolCall(json: action), let observation = step.observation {
-                        HStack {
-                            Button {
-                                inspectorPresented = true
-                                updateInspector(Text(step.observation ?? ""))
-                            } label: {
-                                Label(toolCall.localizedName, systemImage: toolCall.icon)
-                            }
-                            Text(observation)
-                        }.foregroundStyle(.secondary)
+                    if let action = step.action,
+                        let toolCall = ToolCall(json: action) {
                         
+                        Button {
+                            inspectorPresented = true
+                            updateInspector(ActionInspector(toolCall: toolCall,
+                                                            callToolResult: CallToolResult(json: step.observation ?? "")))
+                        } label: {
+                            Label(toolCall.localizedName, systemImage: toolCall.icon)
+                        }.foregroundStyle(.secondary)
                     }
                 }
             }
@@ -316,6 +316,73 @@ extension MessageView {
             
         }
         
+    }
+    
+    
+    @ViewBuilder
+    func ActionInspector(toolCall: ToolCall, callToolResult: CallToolResult? = nil) -> some View {
+        if let result = callToolResult {
+            switch toolCall.tool {
+            case .executeCommand:
+                Text(toolCall.parameters["command"]?.stringValue ?? "No command")
+                
+            case .executeAppleScript:
+                Text(toolCall.parameters["script"]?.stringValue ?? "No script")
+            case .searchMap:
+                { () -> AnyView in
+                    guard case .text(let textContent) = result.content.first else {
+                        return AnyView(EmptyView())
+                    }
+                    
+                    do {
+                        let places = try textContent.text.toArray(of: MapPlace.self)
+                        return AnyView(
+                            Map {
+                                ForEach(places) { place in
+                                    Marker(place.name,
+                                           coordinate: .init(latitude: place.latitude, longitude: place.longitude))
+                                }
+                            }
+                        )
+                    } catch {
+                        return AnyView(Text("Failed to parse map data"))
+                    }
+                }()
+                
+            case .captureScreen:
+                CallTollResultView(result)
+            default:
+                EmptyView()
+            }
+        } else {
+            EmptyView()
+        }
+    }
+    
+    @ViewBuilder
+    func CallTollResultView(_ callToolResult : CallToolResult) -> some View {
+        VStack {
+            ForEach(Array(callToolResult.content.enumerated()), id: \.offset) { index, content in
+                ContentBlock(content)
+            }
+        }
+    }
+    
+    @ViewBuilder
+    func ContentBlock(_ contentBlock: ContentBlock) -> some View {
+        switch contentBlock {
+        case .text(let textContent):
+            Text(textContent.text)
+        case .image(let imageContent):
+            if let imageData = Data(base64Encoded: imageContent.data),
+               let platformImage = PlatformImage(data: imageData){
+                Image(platformImage: platformImage)
+                    .resizable()
+                    .scaledToFit()
+            }
+        default:
+            EmptyView()
+        }
     }
 }
 
@@ -338,13 +405,12 @@ extension MessageView {
     
     func regenerateAssistantMessage() {
         guard let chat = message.chat else { return }
+        guard let index = chat.sortedMessages.firstIndex(of: message), index >= 1 else {
+            return
+        }
         guard let model = globalStore.selectedModel else {
             return
         }
-        guard let index = chat.sortedMessages.firstIndex(of: message) else {
-            return
-        }
-        guard index >= 1 else { return }
         let userMessage = chat.sortedMessages[index - 1]
         Task {
             try await service.resendMessage(model: model,

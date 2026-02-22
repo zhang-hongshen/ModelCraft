@@ -22,13 +22,10 @@ struct ChatView: View {
     @State private var inspectorPresented = false
     @State private var inspectorContent = AnyView(EmptyView())
     
-    @Environment(ChatService.self) private var service
     @Environment(GlobalStore.self) private var globalStore
     @Environment(\.downaloadedModels) private var models
     
-    @AppStorage(UserDefaults.automaticallyScrollToBottom)
-    private var automaticallyScrollToBottom = false
-    
+    private let service = ChatService(container: ModelContainer.shared)
     private let minWidth: CGFloat = 270
     
     private var chatStatus: ChatStatus {
@@ -100,10 +97,11 @@ extension ChatView {
         VStack(alignment: .leading, spacing: 10) {
             ForEach(messages) { message in
                 MessageView(message: message,
-                            inspectorPresented: $inspectorPresented) { content in
-                    self.inspectorContent = AnyView(content)
-                }
+                            inspectorPresented: $inspectorPresented,
+                            updateInspector: { content in
+                    self.inspectorContent = AnyView(content)})
                 .scrollTargetLayout()
+                .environment(service)
             }
         }
     }
@@ -122,9 +120,7 @@ extension ChatView {
                     scrollToBottom(proxy)
                 }
                 .onChange(of: chat.messages.last) {
-                    if automaticallyScrollToBottom {
-                        scrollToBottom(proxy)
-                    }
+                    scrollToBottom(proxy)
                 }
             }
             .scrollDismissesKeyboard(.interactively)
