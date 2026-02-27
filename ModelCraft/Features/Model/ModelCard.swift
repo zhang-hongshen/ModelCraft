@@ -6,12 +6,13 @@
 //
 
 import SwiftUI
-import OllamaKit
 
 struct ModelCard: View {
     
-    let model: ModelInfo
+    let model: LMModel
+    
     @State private var isHovered = false
+    @Environment(\.modelContext) var modelContext
     
     var body: some View {
         NavigationLink(value: model.name) {
@@ -26,24 +27,27 @@ struct ModelCard: View {
                         .foregroundStyle(Color.accentColor)
                 }
                 
-                Text(model.name)
+                Text(model.displayName)
                     .font(.headline)
                     .lineLimit(1)
                     .truncationMode(.middle)
                 
-                Text("Ollama Model")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                Button {
+                    
+                } label: {
+                    Text("Download")
+                }
+
             }
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 20)
+            .padding(.vertical, Layout.padding)
             .background(
-                RoundedRectangle(cornerRadius: 12)
+                RoundedRectangle()
                     .fill(Color(nsColor: .controlBackgroundColor))
                     .shadow(color: .black.opacity(isHovered ? 0.2 : 0), radius: 5, x: 0, y: 2)
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 12)
+                RoundedRectangle()
                     .stroke(Color.accentColor.opacity(isHovered ? 0.5 : 0), lineWidth: 2)
             )
         }
@@ -52,6 +56,18 @@ struct ModelCard: View {
             withAnimation(.easeInOut(duration: 0.2)) {
                 isHovered = hovering
             }
+        }
+    }
+}
+
+extension ModelCard {
+    
+    func createDownloadModelTask() {
+        switch model.configuration.id {
+        case .id(let modelId, let revision):
+            modelContext.persist(ModelTask(modelId: modelId, type: .download))
+        case .directory(_):
+            break
         }
     }
 }

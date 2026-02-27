@@ -9,13 +9,10 @@ import SwiftUI
 import SwiftData
 import AVFoundation
 
-import OllamaKit
-
 @main
 struct ModelCraftApp: App {
     
-    @State private var models: [ModelInfo] = []
-    @State private var checkServerStatusTaskTimer: Timer? = nil
+    @State private var models: [LMModel] = []
     @State private var fetchDownloadedModelsTaskTimer: Timer? = nil
     
     private let globalStore = GlobalStore()
@@ -33,18 +30,12 @@ struct ModelCraftApp: App {
                     .background(.ultraThinMaterial)
                     .applyUserSettings()
                     .task {
-                        checkServerStatusTaskTimer = Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { timer in
-                            guard timer.isValid else { return }
-                            Task {
-                                await checkServerStatus()
-                            }
-                        }
-                        fetchDownloadedModelsTaskTimer = Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { timer in
-                            guard timer.isValid else { return }
-                            Task {
-                                await fetchDownloadedModels()
-                            }
-                        }
+//                        fetchDownloadedModelsTaskTimer = Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { timer in
+//                            guard timer.isValid else { return }
+//                            Task {
+//                                await fetchDownloadedModels()
+//                            }
+//                        }
                     }
             }.commands {
                 CommandGroup(after: .help) {
@@ -66,7 +57,7 @@ struct ModelCraftApp: App {
             }
 #endif
         }
-        .modelContainer(ModelContainer.shared)
+        .modelContainer(.shared)
         .environment(\.downaloadedModels, models)
         .environment(speechManager)
         .environment(globalStore)
@@ -83,25 +74,15 @@ struct ModelCraftApp: App {
 
 extension ModelCraftApp {
     
-    func fetchDownloadedModels() async {
-        do {
-            models = try await OllamaService.shared.models()
-            if globalStore.selectedModel == nil || !models.map({ $0.name }).contains(globalStore.selectedModel!) {
-                globalStore.selectedModel = models.first?.name
-            }
-        } catch {
-            print("Failed to fetch models: \(error)")
-        }
-    }
-    
-    private func checkServerStatus() async {
-        globalStore.serverStatus = await OllamaService.shared.reachable() ? .connected : .disconnected
-#if os(macOS)
-        if globalStore.serverStatus == .disconnected {
-            OllamaService.shared.start()
-        }
-#endif
-    }
-    
+//    func fetchDownloadedModels() async {
+//        do {
+//            models = try await OllamaService.shared.models()
+//            if globalStore.selectedModel == nil || !models.map({ $0.name }).contains(globalStore.selectedModel!) {
+//                globalStore.selectedModel = models.first?.name
+//            }
+//        } catch {
+//            print("Failed to fetch models: \(error)")
+//        }
+//    }
     
 }

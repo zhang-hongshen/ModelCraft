@@ -4,9 +4,11 @@
 //
 //  Created by Hongshen on 22/3/2024.
 //
+
 import Foundation
 import SwiftData
 import SwiftUI
+import MLXLMCommon
 
 @Model
 class Message {
@@ -17,14 +19,23 @@ class Message {
     var role: MessageRole
     var content: String
     var images: [Data]
+    var _toolCall: String?
+    @Transient var toolCall: ToolCall? {
+        guard let data = _toolCall?.data(using: .utf8) else { return nil }
+        return try? JSONDecoder().decode(ToolCall.self, from: data)
+    }
     var status: MessageStatus
     
     init(role: MessageRole = .user, chat: Chat? = nil, content: String = "",
-         images: [Data] = [], status: MessageStatus = .generated) {
+         images: [Data] = [], toolCall: ToolCall? = nil, status: MessageStatus = .generated) {
         self.chat = chat
         self.role = role
         self.content = content
         self.images = images
+        if let toolCall = toolCall {
+            let data = try? JSONEncoder().encode(toolCall)
+            self._toolCall = String(data: data ?? Data(), encoding: .utf8)
+        }
         self.status = status
     }
     

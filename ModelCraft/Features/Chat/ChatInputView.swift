@@ -9,8 +9,8 @@ import SwiftUI
 
 struct ChatInputView: View {
     
+    @State var chat: Chat?
     @Binding var draft: Message
-    var chatStatus: ChatStatus
     var onSubmit: () -> Void
     var onStop: () -> Void
     var onUploadImages: ([URL]) -> Void
@@ -64,7 +64,7 @@ extension ChatInputView {
                 UploadImageButton()
                 Spacer()
                 Group {
-                    if chatStatus != .assistantWaitingForRequest {
+                    if chat?.sortedMessages.last?.status == .generating {
                         StopGenerateMessageButton()
                     } else {
                         SubmitMessageButton()
@@ -110,8 +110,8 @@ extension ChatInputView {
 
 #Preview {
     ChatInputView(
+        chat: Chat(),
         draft: .constant(Message(chat: Chat())),
-        chatStatus: .assistantResponding,
         onSubmit: {},
         onStop: {},
         onUploadImages: {_ in })

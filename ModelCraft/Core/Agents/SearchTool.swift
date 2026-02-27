@@ -10,7 +10,7 @@ import MapKit
 
 class SearchTool {
     
-    static func searchMap(query: String, useCurrentLocation: Bool = false, numOfResults: Int = 5) async throws -> [MapPlace] {
+    static func searchMap(query: String, useCurrentLocation: Bool = false, numOfResults: Int) async throws -> [MapPlace] {
         let request = MKLocalSearch.Request()
         request.naturalLanguageQuery = query
         if useCurrentLocation, let userLoc = LocationManager.shared.currentLocation?.coordinate {

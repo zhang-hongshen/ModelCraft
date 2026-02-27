@@ -8,11 +8,9 @@
 import SwiftUI
 import SwiftData
 
-import OllamaKit
-
 struct DownloadedModelsView: View {
     
-    @State private var selectedModelNames: Set<String> = []
+    @State private var selectedModelIds: Set<String> = []
     @State private var selectedTasks: Set<ModelTask> = []
     @State private var isFetchingData = false
     @State private var confirmationDialogPresented = false
@@ -31,16 +29,16 @@ struct DownloadedModelsView: View {
     private var uncompletedDownloadTasks: [ModelTask] = []
     
     var body: some View {
-        List(selection: $selectedModelNames) {
-            ForEach(models, id: \.name) { model in
+        List(selection: $selectedModelIds) {
+            ForEach(models) { model in
                 DownloadedModelListCell(model).tag(model.name)
             }
             ForEach(uncompletedDownloadTasks) { task in
                 HStack{
-                    Label(task.modelName, systemImage: "shippingbox")
+                    Label(task.modelId, systemImage: "shippingbox")
                     Spacer()
                     ModelTaskStatus(task: task)
-                }.tag(task.modelName)
+                }.tag(task.modelId)
             }.foregroundStyle(.secondary)
         }
         .contextMenu {
@@ -70,15 +68,13 @@ extension DownloadedModelsView {
     }
     
     @ViewBuilder
-    func DownloadedModelListCell(_ model: ModelInfo) -> some View {
+    func DownloadedModelListCell(_ model: LMModel) -> some View {
         HStack {
             Label(model.name, systemImage: "shippingbox")
             
             Spacer()
-            if let task = deleteTasks.first(where: { $0.modelName == model.name }) {
+            if let task = deleteTasks.first(where: { $0.modelId == model.id }) {
                 Text(task.statusLocalizedDescription)
-            } else {
-                Text(verbatim: ByteCountFormatter.string(fromByteCount: Int64(model.size), countStyle: .file))
             }
         }
     }
@@ -88,8 +84,8 @@ extension DownloadedModelsView {
 extension DownloadedModelsView {
     
     func createDeleteModelTask() {
-        let tasks = selectedModelNames.compactMap { modelName in
-            ModelTask(modelName: modelName, type: .delete)
+        let tasks = selectedModelIds.compactMap { modelId in
+            ModelTask(modelId: modelId, type: .delete)
         }
         modelContext.persist(tasks)
         modelContext.delete(selectedTasks)

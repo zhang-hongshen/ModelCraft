@@ -9,7 +9,7 @@ import Foundation
 
 class FileTool {
     
-    static func resolvePath(_ path: String) -> URL {
+    static private func resolvePath(_ path: String) -> URL {
         let sandboxRootPath: String = {
             let paths = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)
             return paths[0].path
@@ -29,6 +29,8 @@ class FileTool {
         let data = content.data(using: .utf8)!
         try data.write(to: url, options: .atomic)
     }
+    
+    
 
     static func readFromFile(_ path: String) throws -> String {
         let url = resolvePath(path)

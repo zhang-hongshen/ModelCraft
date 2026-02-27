@@ -9,8 +9,6 @@ import SwiftUI
 import SwiftData
 import TipKit
 
-import OllamaKit
-
 struct ChatView: View {
     
     @State var chat: Chat?
@@ -23,14 +21,9 @@ struct ChatView: View {
     @State private var inspectorContent = AnyView(EmptyView())
     
     @Environment(GlobalStore.self) private var globalStore
-    @Environment(\.downaloadedModels) private var models
     
-    private let service = ChatService(container: ModelContainer.shared)
+    private let service = ChatService()
     private let minWidth: CGFloat = 270
-    
-    private var chatStatus: ChatStatus {
-        chat?.status ?? .assistantWaitingForRequest
-    }
     
     var body: some View {
         MainView()
@@ -39,11 +32,13 @@ struct ChatView: View {
             .toolbar(content: ToolbarItems)
             .safeAreaInset(edge: .bottom) {
                 ChatInputView(
+                    chat: chat,
                     draft: $draft,
-                    chatStatus: chatStatus,
                     onSubmit: submitDraft,
                     onStop: {
-                        service.stopGenerating(chat: chat)
+                        if let chat = chat {
+                            service.stopGenerating(chat: chat)
+                        }
                     },
                     onUploadImages: uploadImages
                 )
@@ -65,12 +60,12 @@ extension ChatView {
         @Bindable var globalStore = globalStore
         
         ToolbarItemGroup(placement: .principal) {
-            if models.isEmpty {
+            if MLXService.availableModels.isEmpty {
                 Text("No Available Model")
             } else {
                 Picker("Models", selection: $globalStore.selectedModel) {
-                    ForEach(models, id: \.name) { model in
-                        Text(verbatim: model.name).tag(model.name)
+                    ForEach(MLXService.availableModels) { model in
+                        Text(model.displayName).tag(model)
                     }
                 }
             }
@@ -159,25 +154,23 @@ extension ChatView {
     }
     
     func submitDraft() {
-        guard let model = globalStore.selectedModel,
-                case .assistantWaitingForRequest = chatStatus else { return }
-        let (content, imaegs) = (draft.content, draft.images)
+        guard let model = globalStore.selectedModel else { return }
+        let activeChat: Chat
+        if let chat = chat {
+            activeChat = chat
+        } else {
+            activeChat = service.createChat()
+            globalStore.currentTab = .chat(activeChat)
+        }
+        let message = Message(role: .user, chat: activeChat,
+                              content: draft.content, images: draft.images)
         clearDraft()
         Task {
-            let activeChat: Chat
-            if let chat = chat {
-                activeChat = chat
-            } else {
-                activeChat = try await service.createChat()
-                globalStore.currentTab = .chat(activeChat)
-            }
-            
             try await service.sendMessage(
                 model: model,
                 knowledgeBase: globalStore.selectedKnowledgeBase,
                 chat: activeChat,
-                content: content,
-                images: imaegs
+                message: message
             )
             
         }

@@ -7,93 +7,89 @@
 
 import Foundation
 import SwiftData
+import MLXLMCommon
 import UniformTypeIdentifiers
 
 class AgentExecutor {
     
-    private var currentTask: Task<Void, Never>?
-    
+    @MainActor
     func run(
-        model: String,
-        input: String,
-        history: [Message],
+        model: LMModel,
         knowledgeBaseID: PersistentIdentifier?,
-        summary: String? = nil,
-        onEvent: @escaping (AgentStreamEvent) -> Void
-    ) {
-        stop()
-        currentTask = Task {
-            let initialMessages = history + [AgentPrompt.completeTask(task: input, summary: summary)]
-            do {
-                try await executeStep(model: model, messages: initialMessages,
-                                      knowledgeBaseID: knowledgeBaseID, onEvent: onEvent)
-            } catch {
-                onEvent(.error(error.localizedDescription))
-            }
-        }
-    }
-
-    private func executeStep(
-        model: String,
-        messages: [Message],
-        knowledgeBaseID: PersistentIdentifier?,
-        onEvent: @escaping (AgentStreamEvent) -> Void
-    ) async throws {
+        chat: Chat,
+        message: Message
+    ) async throws -> Void {
+        let history = Array(chat.sortedMessages.suffix(from: chat.lastSummaryIndex))
+        var messages = history + [AgentPrompt.completeTask(task: message.content, summary: chat.summary)]
         
-        var action = ""
-        var aiResponse = ""
-        let parser = TagStreamParser()
-        for try await response in OllamaService.shared.chat(
-            model: model,
-            messages: messages.compactMap(OllamaService.toChatRequestMessage)
-        ) {
-            guard let token = response.message?.content else { return }
-            print(token)
-            onEvent(.token(token))
-            aiResponse += token
-            for event in parser.feed(token) {
-                switch event {
-                case .outside:
-                    if action.isEmpty {
-                        continue
-                    }
-                    guard var toolCall = ToolCall(json: action) else {
-                        continue
-                    }
-                    if toolCall.tool == .searchRelevantDocuments, let id = knowledgeBaseID {
-                        toolCall.parameters["knowledge_base_id"] = .data(mimeType: UTType.json.preferredMIMEType, try JSONEncoder().encode(id))
-                    }
-                    
-                    let callToolResult =  await ToolExecutor.shared.dispatch(toolCall)
-                    let encoder = JSONEncoder()
-                    encoder.outputFormatting = [.prettyPrinted, .withoutEscapingSlashes]
-                    guard let observation = String(data: try encoder.encode(callToolResult), encoding: .utf8) else {
-                        onEvent(.error("Failed to encode Observation as UTF8"))
-                        return
-                    }
-
-                    let observationMsg = "<observation>\(observation)</observation>"
-                    onEvent(.token(observationMsg))
-                    let aiMessage = Message(role: .assistant, content: aiResponse + observationMsg)
-                    let updatedHistory = messages + [aiMessage]
-                    try await executeStep(model: model, messages: updatedHistory,
-                                          knowledgeBaseID: knowledgeBaseID, onEvent: onEvent)
-                    
-                case .inTag(let tag, let content):
-                    if tag == "action" {
-                        action += content
-                    }
+        while(true) {
+            var availableTools =  ToolDefinition.allTools
+            if let knowledgeBaseID = knowledgeBaseID {
+                availableTools.append(ToolDefinition.createSearchRelevantDocuments(knowledgeBaseID: knowledgeBaseID).schema)
+            }
+            let assistantMessage = Message(role: .assistant, chat: chat, status: .new)
+            ModelContainer.shared.mainContext.persist(assistantMessage)
+            var isToolCall = false
+            
+            for await batch in try await MLXService.shared.generate(
+                model: model, messages: messages, tools: availableTools) {
+                assistantMessage.status = .generating
+                
+                if let toolCall = batch.toolCall {
+                    let toolResult = try await handleToolCall(toolCall)
+                    let data = try? JSONEncoder().encode(toolCall)
+                    assistantMessage._toolCall = String(data: data ?? Data(), encoding: .utf8)
+                    print("Tool Call \(assistantMessage._toolCall)")
+                    let toolMessage = Message(role: .tool, chat: chat, content: toolResult, status: .generated)
+                    ModelContainer.shared.mainContext.persist(toolMessage)
+                    isToolCall = true
+                    break
+                }
+                
+                if let chunk = batch.chunk {
+                    isToolCall = false
+                    assistantMessage.content.append(chunk)
+                    print("chunk \(chunk)")
                 }
             }
             
-            if response.done {
-                onEvent(.finished(token))
+            assistantMessage.status = .generated
+            if(!isToolCall) {
+                break
             }
+            messages = Array(chat.sortedMessages.suffix(from: chat.lastSummaryIndex))
         }
+        
     }
     
-    func stop() {
-        currentTask?.cancel()
-        currentTask = nil
+    private func handleToolCall(_ toolCall: ToolCall) async throws -> String {
+        switch toolCall.function.name {
+        case ToolNames.readFromFile:
+            let result = try await toolCall.execute(with: ToolDefinition.readFromFile)
+            return result.toolResult
+        case ToolNames.writeToFile:
+            let result = try await toolCall.execute(with: ToolDefinition.writeToFile)
+            return result.toolResult
+        case ToolNames.executeCommand:
+            let result = try await toolCall.execute(with: ToolDefinition.executeCommand)
+            return result.toolResult
+        case ToolNames.searchMap:
+            let result = try await toolCall.execute(with: ToolDefinition.searchMap)
+            return result.toolResult
+        case ToolNames.captureScreen:
+            let result = try await toolCall.execute(with: ToolDefinition.captureScreen)
+            return result.toolResult
+        case ToolNames.click:
+            let result = try await toolCall.execute(with: ToolDefinition.click)
+            return result.toolResult
+        case ToolNames.move:
+            let result = try await toolCall.execute(with: ToolDefinition.move)
+            return result.toolResult
+        default:
+            return "Unknown tool: \(toolCall.function.name)"
+        }
     }
 }
+
+
+

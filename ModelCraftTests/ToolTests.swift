@@ -24,7 +24,7 @@ final class ToolTests: XCTestCase {
     }
     
     func testMapSearch() async throws {
-        let places = try await MapTool.search(query: "resturant", useCurrentLocation: true)
+        let places = try await SearchTool.searchMap(query: "resturant", useCurrentLocation: true)
     }
     
     func testPerformanceExample() throws {

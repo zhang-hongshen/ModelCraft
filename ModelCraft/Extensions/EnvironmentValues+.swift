@@ -6,10 +6,9 @@
 //
 
 import SwiftUI
-import OllamaKit
 import AVFoundation
 
 extension EnvironmentValues {
     
-    @Entry var downaloadedModels: [ModelInfo] = []
+    @Entry var downaloadedModels: [LMModel] = []
 }

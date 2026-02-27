@@ -119,7 +119,6 @@ final class ModelCraftTests: XCTestCase {
         
         if case .text(let content) = block {
             XCTAssertEqual(content.text, "Hello, this is a test email.")
-            XCTAssertEqual(content.type, "text")
         } else {
             XCTFail("Expected .text case")
         }

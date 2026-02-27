@@ -32,21 +32,19 @@ class ScreenControlManager {
     }
     
     func move(x: Double, y: Double) {
-        return move(x: CGFloat(x), y: CGFloat(y))
+        return move(to: CGPoint(x: x, y: y))
     }
     
-    func move(to x: CGFloat, y: CGFloat) {
-        let point = CGPoint(x: x, y: y)
+    func move(to point: CGPoint) {
         let moveEvent = CGEvent(mouseEventSource: nil, mouseType: .mouseMoved, mouseCursorPosition: point, mouseButton: .left)
         moveEvent?.post(tap: .cghidEventTap)
     }
     
     func click(x: Double, y: Double) {
-        return click(x: CGFloat(x), y: CGFloat(y))
+        return click(to: CGPoint(x: x, y: y))
     }
     
-    func click(x: CGFloat, y: CGFloat) {
-        let point = CGPoint(x: x, y: y)
+    func click(to point: CGPoint) {
         let source = CGEventSource(stateID: .combinedSessionState)
         
         let mouseDown = CGEvent(mouseEventSource: source, mouseType: .leftMouseDown, mouseCursorPosition: point, mouseButton: .left)

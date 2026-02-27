@@ -14,11 +14,9 @@ struct ModelTaskStatus: View {
     
     var body: some View {
         HStack(alignment: .center) {
-            if task.value > 0 &&  task.total > 0 {
-                Text("\(ByteCountFormatter.string(fromByteCount: Int64(task.value), countStyle: .file)) / \(ByteCountFormatter.string(fromByteCount: Int64(task.total), countStyle: .file))")
+            Text("\(ByteCountFormatter.string(fromByteCount: task.completedUnitCount, countStyle: .file)) / \(ByteCountFormatter.string(fromByteCount: task.totalUnitCount, countStyle: .file))")
                 
-                Text(task.progress, format: .percent.precision(.fractionLength(1)).rounded(rule: .down))
-            }
+                Text(task.fractionCompleted, format: .percent.precision(.fractionLength(1)).rounded(rule: .down))
             switch task.status {
             case .new:
                 ProgressView().controlSize(.small)
@@ -59,25 +57,19 @@ extension ModelTaskStatus {
     
     func restartTask(_ task: ModelTask) {
         modelContext.delete(task)
-        modelContext.insert(ModelTask(modelName: task.modelName, type: .download))
+        modelContext.insert(ModelTask(modelId: task.modelId, type: .download))
         try? modelContext.save()
     }
 }
 
 #Preview {
-    let runningTask = ModelTask(modelName: "",
-                         value: 200,
-                         total: 1024,
+    let runningTask = ModelTask(modelId: "",
                          status: .running,
                          type: .download)
-    let stoppedTask = ModelTask(modelName: "",
-                                value: 300*1024,
-                                total: 1024*1024,
+    let stoppedTask = ModelTask(modelId: "",
                                 status: .stopped,
                                 type: .download)
-    let failedTask = ModelTask(modelName: "",
-                                value: 400*1024*1024,
-                                total: 1024*1024*1024,
+    let failedTask = ModelTask(modelId: "",
                                 status: .failed,
                                 type: .download)
     ModelTaskStatus(task: runningTask)

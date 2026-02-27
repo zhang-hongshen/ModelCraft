@@ -20,9 +20,7 @@ class Chat {
     var summary: String? = nil
     
     var lastSummaryIndex: Int = 0
-    
-    var status: ChatStatus = ChatStatus.assistantWaitingForRequest
-    
+
     @Relationship(deleteRule: .cascade, inverse: \Message.chat)
     var messages: [Message] = []
     
@@ -32,6 +30,10 @@ class Chat {
 
 extension Chat {
     
+    var status: MessageStatus {
+        sortedMessages.last?.status ?? .generated
+    }
+    
     var sortedMessages: [Message] {
         messages.sorted{ $0.createdAt < $1.createdAt }
     }
@@ -40,20 +42,8 @@ extension Chat {
         sortedMessages.last { $0.role == .assistant && $0.status == .generating }
     }
     
-    func truncateMessages(after message: Message) -> [Message] {
-        guard let index = sortedMessages.firstIndex (where: { $0.id == message.id }) else { return [] }
-        let messagesToDelete = Array(sortedMessages[index...])
-        let idsToDelete = Set(messagesToDelete.map { $0.id })
-        messages.removeAll { idsToDelete.contains($0.id) }
-        return messagesToDelete
+    func truncateMessages(messages: [Message]){
+        self.messages.removeAll { messages.map { $0.id }.contains($0.id) }
     }
     
-}
-
-// Possible values of the `chatStatus` property.
-
-enum ChatStatus: Codable {
-    case assistantWaitingForRequest
-    case userWaitingForResponse
-    case assistantResponding
 }

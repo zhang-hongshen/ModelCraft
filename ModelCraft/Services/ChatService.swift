@@ -11,122 +11,88 @@ import SwiftData
 @Observable
 class ChatService {
     
-    private let chatModelActor: ChatModelActor
+    private let chatModelActor = ChatModelActor(modelContainer: ModelContainer.shared)
     
     private let executor = AgentExecutor()
     
-    init(container: ModelContainer) {
-        self.chatModelActor = ChatModelActor(modelContainer: container)
-    }
+    private var currentTask: Task<Void, any Error>? = nil
     
-    func createChat() async throws -> Chat {
-        return try await chatModelActor.create()
+    @MainActor
+    func createChat() -> Chat {
+        let chat = Chat()
+        ModelContainer.shared.mainContext.persist(chat)
+        return chat
     }
     
     @MainActor
     func sendMessage(
-        model: String,
+        model: LMModel,
         knowledgeBase: KnowledgeBase?,
         chat: Chat,
-        content: String,
-        images: [Data]
+        message: Message,
     ) async throws {
-        let userMessage = Message(role: .user, chat: chat, content: content, images: images)
-        let assistantMessage = Message(role: .assistant, chat: chat, status: .new)
-        let history = Array(chat.messages.suffix(from: chat.lastSummaryIndex))
         
-        try await chatModelActor.addMessages(
-            chatID: chat.id,
-            messages: [userMessage, assistantMessage])
-        chat.status = .userWaitingForResponse
+        ModelContainer.shared.mainContext.persist(message)
         
-        executor.run(
-            model: model,
-            input: content,
-            history: history,
-            knowledgeBaseID: knowledgeBase?.id,
-            summary: chat.summary
-        ) { [weak self] event in
-            guard let self = self else { return }
-            switch event {
-            case .token(let text):
-                if case .userWaitingForResponse = chat.status {
-                    chat.status = .assistantResponding
-                    assistantMessage.status = .generating
-                }
-                guard case .assistantResponding = chat.status else { return }
-                assistantMessage.content.append(text)
-                
-            case .finished:
-                assistantMessage.status = .generated
-                resetChatStatus(chat: chat)
-                
-            case .error(let error):
-                assistantMessage.content.append(error)
-                assistantMessage.status = .failed
-                resetChatStatus(chat: chat)
-            }
+        currentTask = Task {
+            try await executor.run(model: model, knowledgeBaseID: knowledgeBase?.persistentModelID, chat: chat, message: message)
         }
         
         Task(priority: .background) {
-//            try await generateTitleIfNeeded(model: model, chat: chat)
-            try await summarizeChatIfNeeded(model: model, chat: chat)
+            try await generateTitleIfNeeded(model: model, chatID: chat.id)
+            try await summarizeChatIfNeeded(model: model, chatID: chat.id)
         }
+        try await withTaskCancellationHandler {
+            try await currentTask?.value
+        } onCancel: {
+            Task { @MainActor in
+                currentTask?.cancel()
+            }
+        }
+        currentTask = nil
     }
     
     @MainActor
     func resendMessage(
-        model: String,
+        model: LMModel,
         knowledgeBase: KnowledgeBase?,
         chat: Chat,
         message: Message
     ) async throws {
-        chat.status = .userWaitingForResponse
-        let messages = chat.truncateMessages(after: message)
-        try await chatModelActor.deleteMessages(messages: messages)
+        guard let index = chat.sortedMessages.firstIndex (where: { $0.id == message.id }) else { return }
+        let messagesToDelete = Array(chat.sortedMessages[index...])
+        chat.truncateMessages(messages: messagesToDelete)
+        ModelContainer.shared.mainContext.delete(messagesToDelete)
         try await sendMessage(
             model: model,
             knowledgeBase: knowledgeBase,
             chat: chat,
-            content: message.content,
-            images: message.images)
+            message: message)
     }
     
-    private func summarizeChatIfNeeded (model: String, chat: Chat) async throws {
-        try await chatModelActor.updateSummary(chatID: chat.id, model: model) { previousSummary, messages in
+    private func summarizeChatIfNeeded (model: LMModel, chatID: PersistentIdentifier) async throws {
+        try await chatModelActor.updateSummary(chatID: chatID) { previousSummary, messages in
                 let prompt = AgentPrompt.summarize(previousSummary: previousSummary, messages: messages)
-            let response = try await OllamaService.shared.chat(
+            return try await MLXService.shared.generate(
                 model: model,
-                messages: [prompt].compactMap(OllamaService.toChatRequestMessage))
-                return response.message?.content
+                messages: [prompt])
         }
     }
 
-    private func generateTitleIfNeeded (model: String, chat: Chat) async throws {
-        if chat.title != nil {
-            return
-        }
-        try await chatModelActor.generateTitle(chatID: chat.id, model: model) { messages in
+    private func generateTitleIfNeeded (model: LMModel, chatID: PersistentIdentifier) async throws {
+        try await chatModelActor.generateTitle(chatID: chatID) { messages in
             let prompt = AgentPrompt.generateTitle(messages: messages)
-            let response = try await OllamaService.shared.chat(
+            return try await MLXService.shared.generate(
                 model: model,
-                messages: [prompt].compactMap(OllamaService.toChatRequestMessage))
-                return response.message?.content
+                messages: [prompt])
         }
     }
     
-    func stopGenerating(chat: Chat?) {
-        guard let chat = chat else { return }
+    func stopGenerating(chat: Chat) {
+        currentTask?.cancel()
+        currentTask = nil
         if let currentMessage = chat.currentGeneratingAssistantMessage {
             currentMessage.status = .generated
-        }
-        resetChatStatus(chat: chat)
-    }
-
-    private func resetChatStatus(chat: Chat) {
-        chat.status = .assistantWaitingForRequest
-        Task {
-            try await chatModelActor.updateStatus(chatID: chat.id, status: .assistantWaitingForRequest)
         }
     }
 }

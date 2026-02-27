@@ -12,6 +12,7 @@ import MapKit
 
 import MarkdownUI
 import Splash
+import MLXLMCommon
 
 struct MessageView: View {
     
@@ -142,7 +143,6 @@ extension MessageView {
                 } label: {
                     Image(systemName: "arrow.up.circle.fill")
                 }.tint(.accentColor)
-                    .disabled(message.chat?.status == .assistantResponding)
             }
             .buttonStyle(.borderless)
             .imageScale(.large)
@@ -243,65 +243,22 @@ extension MessageView {
         }
     }
     
-    private struct Step: Identifiable {
-        let id = UUID()
-        var thought: String = ""
-        var action: String? = nil
-        var observation: String? = nil
-    }
-    
     func AssistantMessageContentView(_ message: Message) -> some View {
-        
-        let parser = TagStreamParser()
-        var steps: [Step] = []
-        var answer = ""
-        for event in parser.feed(message.content) {
-            guard case .inTag(let name, let content) = event else { continue }
-            switch name {
-            case "thought":
-                if steps.isEmpty || steps.last?.action != nil {
-                    steps.append(Step(thought: content))
-                } else {
-                    steps[steps.count - 1].thought += content
-                }
-            case "action":
-                if steps.isEmpty {
-                    steps.append(Step(action: content))
-                } else {
-                    let lastIdx = steps.count - 1
-                    steps[lastIdx].action = (steps[lastIdx].action ?? "") + content
-                }
-            case "observation":
-                if steps.isEmpty {
-                    steps.append(Step(observation: content))
-                } else {
-                    let lastIdx = steps.count - 1
-                    steps[lastIdx].observation = (steps[lastIdx].observation ?? "") + content
-                }
-            case "answer": answer += content
-            default: break
-            }
-        }
-        return VStack(alignment: .leading) {
-            ForEach(steps) { step in
-                VStack(alignment: .leading) {
-                    if !step.thought.isEmpty {
-                        ThoughtView(thought: step.thought)
-                    }
-                    if let action = step.action,
-                        let toolCall = ToolCall(json: action) {
-                        
-                        Button {
-                            inspectorPresented = true
-                            updateInspector(ActionInspector(toolCall: toolCall,
-                                                            callToolResult: CallToolResult(json: step.observation ?? "")))
-                        } label: {
-                            Label(toolCall.localizedName, systemImage: toolCall.icon)
-                        }.foregroundStyle(.secondary)
-                    }
+        VStack(alignment: .leading) {
+            
+            VStack(alignment: .leading) {
+                ThoughtView(thought: message.content)
+                if let toolCall = message.toolCall {
+                    Button {
+                        inspectorPresented = true
+                        updateInspector(ActionInspector(toolCall: toolCall))
+                    } label: {
+                        Label(toolCall.localizedName, systemImage: toolCall.icon)
+                    }.foregroundStyle(.secondary)
                 }
             }
-            Markdown(message.status != .failed ? answer : "Please try again later.")
+            
+            Markdown(message.status != .failed ? message.content : "Please try again later.")
                 .markdownTheme(.modelCraft)
                 .markdownCodeSyntaxHighlighter(.splash(theme: self.splashTheme))
                 .textSelection(.enabled)
@@ -320,66 +277,41 @@ extension MessageView {
     
     
     @ViewBuilder
-    func ActionInspector(toolCall: ToolCall, callToolResult: CallToolResult? = nil) -> some View {
-        if let result = callToolResult {
-            switch toolCall.tool {
-            case .executeCommand:
-                Text(toolCall.parameters["command"]?.stringValue ?? "No command")
+    func ActionInspector(toolCall: ToolCall) -> some View {
+        let arguments = toolCall.function.arguments
+        switch toolCall.function.name {
+        case ToolNames.executeCommand:
+            Text(arguments["command"]?.stringValue ?? "No command")
+        case ToolNames.searchMap:
+            { () -> AnyView in
                 
-            case .executeAppleScript:
-                Text(toolCall.parameters["script"]?.stringValue ?? "No script")
-            case .searchMap:
-                { () -> AnyView in
-                    guard case .text(let textContent) = result.content.first else {
-                        return AnyView(EmptyView())
-                    }
-                    
-                    do {
-                        let places = try textContent.text.toArray(of: MapPlace.self)
-                        return AnyView(
-                            Map {
-                                ForEach(places) { place in
-                                    Marker(place.name,
-                                           coordinate: .init(latitude: place.latitude, longitude: place.longitude))
-                                }
+                do {
+                    let places = try toolCall.toolResult.toArray(of: MapPlace.self)
+                    return AnyView(
+                        Map {
+                            ForEach(places) { place in
+                                Marker(place.name,
+                                       coordinate: .init(latitude: place.latitude, longitude: place.longitude))
                             }
-                        )
-                    } catch {
-                        return AnyView(Text("Failed to parse map data"))
-                    }
-                }()
-                
-            case .captureScreen:
-                CallTollResultView(result)
-            default:
+                        }
+                    )
+                } catch {
+                    return AnyView(Text("Failed to parse map data"))
+                }
+            }()
+            
+        case ToolNames.captureScreen:
+            if let data = toolCall.toolResult.data(using: .utf8),
+               let output = try? JSONDecoder().decode(CaptureScreenOutput.self, from: data),
+               let imageData = Data(base64Encoded: output.imageBase64),
+               let platformImage = PlatformImage(data: imageData){
+                    Image(platformImage: platformImage)
+                        .resizable()
+                        .scaledToFit()
+            } else {
                 EmptyView()
             }
-        } else {
-            EmptyView()
-        }
-    }
-    
-    @ViewBuilder
-    func CallTollResultView(_ callToolResult : CallToolResult) -> some View {
-        VStack {
-            ForEach(Array(callToolResult.content.enumerated()), id: \.offset) { index, content in
-                ContentBlock(content)
-            }
-        }
-    }
-    
-    @ViewBuilder
-    func ContentBlock(_ contentBlock: ContentBlock) -> some View {
-        switch contentBlock {
-        case .text(let textContent):
-            Text(textContent.text)
-        case .image(let imageContent):
-            if let imageData = Data(base64Encoded: imageContent.data),
-               let platformImage = PlatformImage(data: imageData){
-                Image(platformImage: platformImage)
-                    .resizable()
-                    .scaledToFit()
-            }
+           
         default:
             EmptyView()
         }
@@ -389,8 +321,7 @@ extension MessageView {
 extension MessageView {
     
     func submitMessage() {
-        guard let chat = message.chat,
-                case .assistantWaitingForRequest = chat.status else { return }
+        guard let chat = message.chat else { return }
         guard let model = globalStore.selectedModel else {
             return
         }
@@ -443,5 +374,5 @@ import SwiftData
         .environment(SpeechManager())
         .environment(GlobalStore())
         .environment(UserSettings())
-        .environment(ChatService(container: container))
+        .environment(ChatService())
 }

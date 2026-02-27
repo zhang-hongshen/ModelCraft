@@ -51,35 +51,8 @@ struct GeneralView: View {
                 }
             }
             
-            
-            Section {
-                LabeledContent("Status") {
-                    HStack {
-                        ServerStatusView()
-                        if isCheckingServerStatus {
-                            ProgressView().controlSize(.small)
-                        } else {
-                            Button("Check") {
-                                Task {
-                                    await checkServerStatus()
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            
         }
         .formStyle(.grouped)
-    }
-}
-
-extension GeneralView {
-    
-    private func checkServerStatus() async {
-        isCheckingServerStatus = true
-        globalStore.serverStatus = await OllamaService.shared.reachable() ? .connected : .disconnected
-        isCheckingServerStatus = false
     }
 }
 

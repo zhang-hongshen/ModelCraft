@@ -57,9 +57,6 @@ extension ContentView {
         }
         .listStyle(.sidebar)
         .navigationSplitViewColumnWidth(min: 160, ideal: 170, max: 180)
-        .safeAreaInset(edge: .bottom) {
-            ServerStatusView().padding()
-        }
     }
     
     @ViewBuilder
@@ -170,7 +167,6 @@ extension ContentView {
     }
     
     private func handleModelTask() async throws {
-        try deleteDupliateDownloadTask()
         for task in modelTasks.filter({ $0.status == .new}) {
             switch task.type {
             case .download: await handleDownloadTask(task)
@@ -179,28 +175,18 @@ extension ContentView {
         }
     }
     
-    private func deleteDupliateDownloadTask() throws {
-        let downloadedModelNames = Set(models.map { $0.name })
-        modelContext.delete(modelTasks.filter({ $0.type == .download && downloadedModelNames.contains($0.modelName) }))
-        try modelContext.save()
-    }
-    
     func handleDownloadTask(_ task: ModelTask) async {
         task.status = .running
         do {
-            for try await response in OllamaService.shared.pullModel(model: task.modelName) {
-                print(response)
-                if response.status == "success" {
-                    task.status = .completed
-                    modelContext.delete(task)
-                    try? modelContext.save()
-                    return
-                }
-                if let completed = response.completed, let total = response.total {
-                    task.value = Double(completed)
-                    task.total = Double(total)
-                }
+            
+            for try await progress in ModelService.shared.download(modelId: task.modelId) {
+                task.completedUnitCount = progress.completedUnitCount
+                task.totalUnitCount = progress.totalUnitCount
+                task.fractionCompleted = progress.fractionCompleted
             }
+            task.status = .completed
+            modelContext.delete(task)
+            try? modelContext.save()
         } catch {
             task.status = .failed
         }
@@ -209,7 +195,7 @@ extension ContentView {
     func handleDeleteTask(_ task: ModelTask) async {
         task.status = .running
         do {
-            try await OllamaService.shared.deleteModel(model: task.modelName)
+//            try await OllamaService.shared.deleteModel(model: task.modelId)
             task.status = .completed
         } catch {
             task.status = .failed

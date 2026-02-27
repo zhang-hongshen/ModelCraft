@@ -8,17 +8,18 @@
 import SwiftUI
 import SwiftData
 
-import OllamaKit
-
 struct ModelStore: View {
     
-    @State private var models: [ModelInfo] = []
-    @State private var filtedModels: [ModelInfo] = []
+    @State private var models: [LMModel] = []
     @State private var showSubDownloadingTask = false
     
     @State private var isLoading = false
     @State private var selectedModelName : String? = nil
     @State private var searchText = ""
+    @State private var page = 0
+    
+    private let pageSize = 20
+    private let columns = [GridItem(.adaptive(minimum: 200), spacing: 16)]
     
     @Query(filter: ModelTask.predicateUnCompletedDownloadTask,
            sort: \ModelTask.createdAt,
@@ -26,37 +27,33 @@ struct ModelStore: View {
     private var uncompletedDownloadTasks: [ModelTask] = []
     
     private var currentDownloadingTaskProgress: Double {
-        let total = uncompletedDownloadTasks.map { $0.total }.reduce(0) { partialResult, currentTotal in
+        let total = uncompletedDownloadTasks.map { $0.totalUnitCount }.reduce(0) { partialResult, currentTotal in
             return partialResult + currentTotal
         }
         if total == 0 {
             return 0
         }
-        let current = uncompletedDownloadTasks.map { $0.value }.reduce(0) { partialResult, currentTotal in
+        let current = uncompletedDownloadTasks.map { $0.completedUnitCount }.reduce(0) { partialResult, currentTotal in
             return partialResult + currentTotal
         }
-        return current / total
-    }
-    
-    private var orderedModels: [ModelInfo] {
-        models.sorted(using: KeyPathComparator(\.name))
-    }
-    
-    private var filteredModels: [ModelInfo] {
-        if searchText.isEmpty {
-            return orderedModels
-        }
-        return orderedModels.filter { $0.name.hasPrefix(searchText) }
+        return Double(current) / Double(total)
     }
     
     var body: some View {
-        NavigationStack {
+        ScrollView {
             ContentView()
+                .padding()
                 .toolbar(content: ToolbarItems)
                 .searchable(text: $searchText)
-                .task { fetchModels() }
-                .navigationDestination(for: String.self) { modelName in
-                    ModelDetailView(modelName: modelName)
+                .task {
+                    do {
+                        models = try await fetchModels()
+                    } catch {}
+                }
+                .onChange(of: searchText) { oldValue, newValue in
+                    Task(priority: .background){
+                        models = try await fetchModels()
+                    }
                 }
         }
     }
@@ -77,10 +74,10 @@ extension ModelStore {
                     List {
                         ForEach(uncompletedDownloadTasks) { task in
                             HStack{
-                                Label(task.modelName, systemImage: "shippingbox")
+                                Label(task.modelId, systemImage: "shippingbox")
                                 Spacer()
                                 ModelTaskStatus(task: task)
-                            }.tag(task.modelName)
+                            }.tag(task.modelId)
                         }
                     }
                 }
@@ -90,7 +87,9 @@ extension ModelStore {
                 ProgressView().controlSize(.small)
             } else {
                 Button("Refresh", systemImage: "arrow.triangle.2.circlepath") {
-                    fetchModels()
+                    Task {
+                        models = try await fetchModels()
+                    }
                 }
             }
         }
@@ -98,35 +97,41 @@ extension ModelStore {
     
     @ViewBuilder
     func ContentView() -> some View {
-        if models.isEmpty {
-            List {
-                ForEach(0..<5) { _ in
-                    Text("").redacted(reason: .placeholder)
+        if isLoading {
+            LazyVGrid(columns: columns, spacing: 16) {
+                ForEach(0..<10) { _ in
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(Color.secondary.opacity(0.1))
+                        .frame(height: 220)
+                        .redacted(reason: .placeholder)
                 }
             }
         } else {
-            List(selection: $selectedModelName) {
-                ForEach(filteredModels, id: \.name) { model in
-                    NavigationLink(value: model.name) {
-                        Label(model.name, systemImage: "shippingbox")
-                    }
-                    .buttonStyle(.borderless)
+            LazyVGrid(columns: columns, spacing: 20) {
+                ForEach(models) { model in
+                    ModelCard(model: model)
                 }
+                
+                EmptyView()
+                    .frame(maxWidth: .infinity)
+                    .onAppear {
+                        Task {
+                            page += 1
+                            models.append(contentsOf: try await fetchModels())
+                        }
+                    }
             }
         }
-        
     }
     
 }
 
 extension ModelStore {
     
-    func fetchModels() {
-        Task(priority: .userInitiated) {
-            isLoading = true
-            defer { isLoading = false }
-            models = try await OllamaService.shared.libraryModels()
-        }
+    func fetchModels() async throws -> [LMModel] {
+        isLoading = true
+        defer { isLoading = false }
+        return try await ModelService.shared.fetchModels(keyword: searchText, page: page, pageSize: pageSize)
     }
 
 }

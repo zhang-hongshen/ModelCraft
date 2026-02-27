@@ -9,8 +9,7 @@ import SwiftUI
 
 @Observable
 class GlobalStore {
-    var serverStatus: ServerStatus = .disconnected
-    var selectedModel: String? = nil
+    var selectedModel: LMModel? = MLXService.availableModels[0]
     var selectedKnowledgeBase: KnowledgeBase? = nil
     var currentTab: Tab? = nil
 }

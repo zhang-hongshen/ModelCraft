@@ -107,6 +107,7 @@
       }
     },
     "Check" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -137,6 +138,7 @@
       }
     },
     "Composing Email" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -147,6 +149,7 @@
       }
     },
     "Composing Message" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -157,6 +160,7 @@
       }
     },
     "Connected" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -217,6 +221,7 @@
       }
     },
     "Disconnected" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -237,6 +242,7 @@
       }
     },
     "Downloaded" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -285,9 +291,6 @@
           }
         }
       }
-    },
-    "Executing Script" : {
-
     },
     "Failed" : {
       "localizations" : {
@@ -363,6 +366,7 @@
       }
     },
     "Launching" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -452,10 +456,8 @@
         }
       }
     },
-    "Ollama Model" : {
-
-    },
     "Opening %@" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -474,9 +476,6 @@
           }
         }
       }
-    },
-    "Ready" : {
-
     },
     "Refresh" : {
       "localizations" : {
@@ -542,6 +541,7 @@
       }
     },
     "Status" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -605,6 +605,9 @@
       }
     },
     "Tool" : {
+
+    },
+    "Unkown Tool Call" : {
 
     },
     "View" : {
