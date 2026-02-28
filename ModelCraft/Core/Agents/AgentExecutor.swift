@@ -19,6 +19,7 @@ class AgentExecutor {
         chat: Chat,
         message: Message
     ) async throws -> Void {
+        
         let history = Array(chat.sortedMessages.suffix(from: chat.lastSummaryIndex))
         var messages = history + [AgentPrompt.completeTask(task: message.content, summary: chat.summary)]
         
@@ -36,20 +37,20 @@ class AgentExecutor {
                 assistantMessage.status = .generating
                 
                 if let toolCall = batch.toolCall {
+                    isToolCall = true
                     let toolResult = try await handleToolCall(toolCall)
                     let data = try? JSONEncoder().encode(toolCall)
                     assistantMessage._toolCall = String(data: data ?? Data(), encoding: .utf8)
                     print("Tool Call \(assistantMessage._toolCall)")
                     let toolMessage = Message(role: .tool, chat: chat, content: toolResult, status: .generated)
                     ModelContainer.shared.mainContext.persist(toolMessage)
-                    isToolCall = true
                     break
                 }
                 
                 if let chunk = batch.chunk {
                     isToolCall = false
                     assistantMessage.content.append(chunk)
-                    print("chunk \(chunk)")
+                    print("\(chunk)", terminator: "")
                 }
             }
             

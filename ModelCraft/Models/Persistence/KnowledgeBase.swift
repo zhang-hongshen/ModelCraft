@@ -42,13 +42,13 @@ extension KnowledgeBase {
         "knowledgeBase:\(id)"
     }
     
-    func search(_ text: String) async -> [String] {
+    func search(_ text: String, numOfResults: Int? = nil) async -> [String] {
         if indexStatus == .unindexed {
             Task.detached {
                 self.createEmedding()
             }
         }
-        return await CollectionManager(collectionName).query(text).map{ $0.text }
+        return await CollectionManager(collectionName).query(text, numOfResults: numOfResults ?? 10).map{ $0.text }
     }
     
     func createEmedding() {

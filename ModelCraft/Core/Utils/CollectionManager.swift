@@ -44,7 +44,7 @@ class CollectionManager {
         }
     }
     
-    func query( _ text: String, numOfResults: Int = 10) async -> [SearchResult] {
+    func query( _ text: String, numOfResults: Int) async -> [SearchResult] {
         
         let documents = documentSpliiter.createDocuments(text)
         let embeddings = documents.compactMap { NLEmbedding.sentenceEmbedding(for: $0) }
@@ -64,7 +64,6 @@ class CollectionManager {
             return allResults
         }
 
-        // remove duplicate documents and sorted by score
         return Array(
             Dictionary(grouping: results, by: \.id)
                 .mapValues { $0.max(by: { $0.score < $1.score })! }

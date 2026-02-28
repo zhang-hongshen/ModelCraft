@@ -15,26 +15,13 @@ class AgentPrompt {
             role: .user,
             content: """
             ## Role
+            You are a helpful assistant.
             Complete the following tasks as best you can.
 
             ## Context
             ### Previous Summary
             \(summary ?? "No previous history.")
-
-            ## Instructions
-            Use the following format:
-
-            Task: the input task you must complete
-            Thought: you should always think about what to do
-            Action: the action to take
-            Action Input: the input to the action
-            Observation: the result of the action
-            ... (this Thought/Action/Action Input/Observation can repeat N times)
-            Thought: I now know the final answer
-            Final Answer: the final answer to the original input question
-
-
-            Begin!
+            
             Task: \(task)
             """
         )

@@ -60,7 +60,7 @@ class ChatService {
         message: Message
     ) async throws {
         guard let index = chat.sortedMessages.firstIndex (where: { $0.id == message.id }) else { return }
-        let messagesToDelete = Array(chat.sortedMessages[index...])
+        let messagesToDelete = Array(chat.sortedMessages[(index+1)...])
         chat.truncateMessages(messages: messagesToDelete)
         ModelContainer.shared.mainContext.delete(messagesToDelete)
         try await sendMessage(

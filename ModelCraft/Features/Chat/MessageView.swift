@@ -335,14 +335,12 @@ extension MessageView {
     }
     
     func regenerateAssistantMessage() {
-        guard let chat = message.chat else { return }
-        guard let index = chat.sortedMessages.firstIndex(of: message), index >= 1 else {
+        guard let chat = message.chat, let model = globalStore.selectedModel else { return }
+        let messages = chat.sortedMessages
+        guard let index = messages.firstIndex(of: message),
+            let userMessage = messages[..<index].reversed().first(where: { $0.role == .user }) else {
             return
         }
-        guard let model = globalStore.selectedModel else {
-            return
-        }
-        let userMessage = chat.sortedMessages[index - 1]
         Task {
             try await service.resendMessage(model: model,
                                             knowledgeBase: globalStore.selectedKnowledgeBase,

@@ -9,16 +9,16 @@ import Foundation
 import SwiftData
 
 import MLXLMCommon
-import Tokenizers
-
 
 struct ToolDefinition {
     
-    static let allTools: [ToolSpec] = [
+    static let allTools = [
         readFromFile.schema,
         writeToFile.schema,
         executeCommand.schema,
         captureScreen.schema,
+        click.schema,
+        move.schema,
     ]
     
     static let readFromFile = Tool<ReadFromFileInput, ReadFromFileOutput>(
@@ -87,6 +87,7 @@ struct ToolDefinition {
             description: "Search for information in the user's uploaded documents.",
             parameters: [
                 .required("query", type: .string, description: "The keyword or question to search for in the document database."),
+                .optional("numOfResults", type: .int, description: "The maximum number of results to return. Defaults to 10 if not specified.")
             ]
         ) { input in
             let knowledgaBaseModelActor = KnowledgaBaseModelActor(modelContainer: SwiftData.ModelContainer.shared)

@@ -26,8 +26,8 @@ actor KnowledgaBaseModelActor {
         }
     }
     
-    func searchRelevantDocuments(knowledgeBaseID: PersistentIdentifier, query: String) async -> [String]{
+    func searchRelevantDocuments(knowledgeBaseID: PersistentIdentifier, query: String, numOfResults: Int? = nil) async -> [String]{
         guard let knowledgeBase = modelContext.model(for: knowledgeBaseID) as? KnowledgeBase else { return [] }
-        return await knowledgeBase.search(query)
+        return await knowledgeBase.search(query, numOfResults: numOfResults)
     }
 }
