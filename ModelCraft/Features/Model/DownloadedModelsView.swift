@@ -11,13 +11,11 @@ import SwiftData
 struct DownloadedModelsView: View {
     
     @State private var selectedModelIds: Set<String> = []
-    @State private var selectedTasks: Set<ModelTask> = []
-    @State private var isFetchingData = false
     @State private var confirmationDialogPresented = false
     
     @Environment(\.modelContext) private var modelContext
-    @Environment(\.downaloadedModels) private var models
     
+    @Query(sort: \LocalModel.createdAt, order: .reverse) private var models: [LocalModel]
     @Query(filter: ModelTask.predicateByType(.delete),
            sort: \ModelTask.createdAt,
            order: .reverse)
@@ -30,15 +28,17 @@ struct DownloadedModelsView: View {
     
     var body: some View {
         List(selection: $selectedModelIds) {
+            
             ForEach(models) { model in
-                DownloadedModelListCell(model).tag(model.name)
+                DownloadedModelListCell(model).tag(model.modelID)
             }
+            
             ForEach(uncompletedDownloadTasks) { task in
                 HStack{
-                    Label(task.modelId, systemImage: "shippingbox")
+                    Label(task.modelID, systemImage: "shippingbox")
                     Spacer()
                     ModelTaskStatus(task: task)
-                }.tag(task.modelId)
+                }.tag(task.modelID)
             }.foregroundStyle(.secondary)
         }
         .contextMenu {
@@ -68,12 +68,12 @@ extension DownloadedModelsView {
     }
     
     @ViewBuilder
-    func DownloadedModelListCell(_ model: LMModel) -> some View {
+    func DownloadedModelListCell(_ model: LocalModel) -> some View {
         HStack {
-            Label(model.name, systemImage: "shippingbox")
+            Label(model.displayName, systemImage: "shippingbox")
             
             Spacer()
-            if let task = deleteTasks.first(where: { $0.modelId == model.id }) {
+            if let task = deleteTasks.first(where: { $0.modelID == model.modelID }) {
                 Text(task.statusLocalizedDescription)
             }
         }
@@ -88,7 +88,6 @@ extension DownloadedModelsView {
             ModelTask(modelId: modelId, type: .delete)
         }
         modelContext.persist(tasks)
-        modelContext.delete(selectedTasks)
     }
 }
 

@@ -7,14 +7,13 @@
 
 import SwiftUI
 import SwiftData
-import TipKit
 
 struct ChatView: View {
     
     @State var chat: Chat?
     
     @Query private var knowledgeBases: [KnowledgeBase] = []
-    
+    @Query private var localModels: [LocalModel] = []
     @State private var draft = Message(role: .user)
     @State private var selectedImages = Set<Data>()
     @State private var inspectorPresented = false
@@ -60,11 +59,11 @@ extension ChatView {
         @Bindable var globalStore = globalStore
         
         ToolbarItemGroup(placement: .principal) {
-            if MLXService.availableModels.isEmpty {
+            if localModels.isEmpty {
                 Text("No Available Model")
             } else {
                 Picker("Models", selection: $globalStore.selectedModel) {
-                    ForEach(MLXService.availableModels) { model in
+                    ForEach(localModels) { model in
                         Text(model.displayName).tag(model)
                     }
                 }

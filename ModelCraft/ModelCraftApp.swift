@@ -12,14 +12,13 @@ import AVFoundation
 @main
 struct ModelCraftApp: App {
     
-    @State private var models: [LMModel] = []
-    @State private var fetchDownloadedModelsTaskTimer: Timer? = nil
+    @State private var modelTaskTimer: Timer? = nil
+    
+    @Environment(\.openWindow) private var openWindow
     
     private let globalStore = GlobalStore()
     private let userSettings = UserSettings()
     private let speechManager = SpeechManager()
-    
-    @Environment(\.openWindow) private var openWindow
     
     init() {}
     
@@ -30,12 +29,10 @@ struct ModelCraftApp: App {
                     .background(.ultraThinMaterial)
                     .applyUserSettings()
                     .task {
-//                        fetchDownloadedModelsTaskTimer = Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { timer in
-//                            guard timer.isValid else { return }
-//                            Task {
-//                                await fetchDownloadedModels()
-//                            }
-//                        }
+                        modelTaskTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { timer in
+                            guard timer.isValid else { return }
+                            try? self.handleModelTask()
+                        }
                     }
             }.commands {
                 CommandGroup(after: .help) {
@@ -58,7 +55,6 @@ struct ModelCraftApp: App {
 #endif
         }
         .modelContainer(.shared)
-        .environment(\.downaloadedModels, models)
         .environment(speechManager)
         .environment(globalStore)
         .environment(userSettings)
@@ -74,15 +70,61 @@ struct ModelCraftApp: App {
 
 extension ModelCraftApp {
     
-//    func fetchDownloadedModels() async {
-//        do {
-//            models = try await OllamaService.shared.models()
-//            if globalStore.selectedModel == nil || !models.map({ $0.name }).contains(globalStore.selectedModel!) {
-//                globalStore.selectedModel = models.first?.name
-//            }
-//        } catch {
-//            print("Failed to fetch models: \(error)")
-//        }
-//    }
+    private func handleModelTask() throws {
+        let descriptor = FetchDescriptor<ModelTask>(
+            predicate: ModelTask.predicateUnCompletedTask
+        )
+
+        let modelTasks = try ModelContainer.shared.mainContext.fetch(descriptor)
+        for task in modelTasks.filter({ $0.status == .new}) {
+            switch task.type {
+            case .download: handleDownloadTask(task)
+            case .delete: handleDeleteTask(task)
+            }
+        }
+    }
+    
+    func handleDownloadTask(_ task: ModelTask) {
+        print("Downloading \(task.modelID)")
+        
+        let downloadTask = Task {
+            task.status = .running
+            do {
+                for try await progress in ModelService.shared.downloadModel(modelID: task.modelID) {
+                    task.completedUnitCount = progress.completedUnitCount
+                    task.totalUnitCount = progress.totalUnitCount
+                    task.fractionCompleted = progress.fractionCompleted
+                }
+                task.status = .completed
+                let localModel = LocalModel(modelID: task.modelID, size: task.completedUnitCount, type: .llm)
+                ModelContainer.shared.mainContext.delete(task)
+                ModelContainer.shared.mainContext.persist(localModel)
+                print("Insert Local Model \(localModel)")
+                
+            } catch is CancellationError {
+                task.status = .stopped
+            } catch {
+                task.status = .failed
+            }
+        }
+        globalStore.runningTasks[task.modelID] = downloadTask
+    }
+    
+    func handleDeleteTask(_ task: ModelTask) {
+        print("Deleting \(task.modelID)")
+        let deleteTask = Task {
+            task.status = .running
+            do {
+                try ModelService.shared.deleteModel(modelID: task.modelID)
+                task.status = .completed
+                ModelContainer.shared.mainContext.delete(task)
+            } catch is CancellationError {
+                task.status = .stopped
+            } catch {
+                task.status = .failed
+            }
+        }
+        globalStore.runningTasks[task.modelID] = deleteTask
+    }
     
 }

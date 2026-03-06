@@ -15,7 +15,9 @@ class ModelService {
     
     static let shared = ModelService()
     
-    func fetchModels(keyword: String, page: Int = 0, pageSize: Int = 20) async throws -> [LMModel] {
+    private let baseURL = "https://huggingface.co/api"
+    
+    func searchModel(keyword: String, page: Int = 0, pageSize: Int = 20) async throws -> [ModelStoreModel] {
         var parameters: [String: Any] = [
             "author": "mlx-community",
             "filter": "mlx",
@@ -29,29 +31,20 @@ class ModelService {
             parameters["search"] = keyword
         }
         
-        let models = try await AF.request("https://huggingface.co/api/models",
-                                          method: .get, parameters: parameters)
+        return try await AF.request(baseURL + "/models", method: .get, parameters: parameters)
             .validate()
-            .serializingDecodable([HuggingfaceModel].self, decoder: JSONDecoder.default)
+            .serializingDecodable([ModelStoreModel].self, decoder: JSONDecoder.default)
             .value
-        
-        return models.map { model in
-            let config = ModelConfiguration(id: model.id)
-            
-            return LMModel(
-                name: model.id,
-                configuration: config,
-                type: model.isVLM ? .vlm : .llm
-            )
-        }
     }
     
-    func download(modelId: String) -> AsyncThrowingStream<Progress, Error> {
-        let repo = Hub.Repo(id: modelId)
+    func downloadModel(modelID: String) -> AsyncThrowingStream<Progress, Error> {
+        
+        let repo = Hub.Repo(id: modelID)
         return AsyncThrowingStream { continuation in
             let task = Task {
                 do {
-                    _ = try await Hub.snapshot(from: repo) { progress in
+                    _ = try await HubApi.default.snapshot(from: repo) { progress in
+                        print("modelID:\(modelID) progress:\(progress.fractionCompleted)")
                         continuation.yield(progress)
                     }
                     continuation.finish()
@@ -64,17 +57,11 @@ class ModelService {
             }
         }
     }
-}
-
-struct HuggingfaceModel: Decodable {
-    let id: String
-    let modelId: String
-    let downloads: Int
-    let tags: [String]
-    let pipelineTag: String?
     
-    var isVLM: Bool {
-        return pipelineTag == "image-text-to-text" || (pipelineTag?.contains("vision") ?? false)
+    func deleteModel(modelID: String) throws {
+        let modelFolder = URL.applicationSupportDirectory
+            .appendingPathComponent("huggingface", conformingTo: .folder)
+            .appendingPathComponent(modelID, conformingTo: .folder)
+        try FileManager.default.removeItem(at: modelFolder)
     }
 }
-

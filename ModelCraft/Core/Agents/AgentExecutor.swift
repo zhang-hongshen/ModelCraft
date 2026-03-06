@@ -14,14 +14,15 @@ class AgentExecutor {
     
     @MainActor
     func run(
-        model: LMModel,
+        model: LocalModel,
         knowledgeBaseID: PersistentIdentifier?,
         chat: Chat,
-        message: Message
+        message: Message,
+        plan: String
     ) async throws -> Void {
         
         let history = Array(chat.sortedMessages.suffix(from: chat.lastSummaryIndex))
-        var messages = history + [AgentPrompt.completeTask(task: message.content, summary: chat.summary)]
+        var messages = history + [AgentPrompt.answerQuestion(question: message.content, plan: plan, summary: chat.summary)]
         
         while(true) {
             var availableTools =  ToolDefinition.allTools

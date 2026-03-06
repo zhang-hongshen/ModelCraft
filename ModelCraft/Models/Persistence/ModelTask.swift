@@ -9,13 +9,12 @@ import Foundation
 import SwiftData
 import SwiftUI
 
-
 @Model
 class ModelTask {
     
-    @Attribute(.unique) var id = UUID()
+    @Attribute(.unique) var id: String
     var createdAt: Date = Date.now
-    var modelId: String
+    var modelID: String
     var totalUnitCount: Int64
     var completedUnitCount: Int64
     var fractionCompleted: Double
@@ -33,7 +32,8 @@ class ModelTask {
     init(modelId: String, totalUnitCount: Int64 = 0,
          completedUnitCount: Int64 = 0, fractionCompleted: Double = 0,
          status: TaskStatus = .new, type: TaskType) {
-        self.modelId = modelId
+        self.id = "\(modelId)-\(type.rawValue)"
+        self.modelID = modelId
         self.totalUnitCount = totalUnitCount
         self.completedUnitCount = completedUnitCount
         self.fractionCompleted = fractionCompleted

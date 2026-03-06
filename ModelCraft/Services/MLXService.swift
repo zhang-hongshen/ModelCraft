@@ -19,13 +19,6 @@ class MLXService {
     
     static let shared = MLXService()
     
-    /// List of available models that can be used for generation.
-    /// Includes both language models (LLM) and vision-language models (VLM).
-    static let availableModels: [LMModel] = [
-        LMModel(name: "mlx-community/Llama-3.2-1B-Instruct-4bit", configuration: LLMRegistry.llama3_2_1B_4bit, type: .llm),
-        LMModel(name: "mlx-community/Qwen2.5-VL-3B-Instruct-4bit", configuration: VLMRegistry.qwen2_5VL3BInstruct4Bit, type: .vlm),
-    ]
-    
     /// Cache to store loaded model containers to avoid reloading.
     private let modelCache = NSCache<NSString, ModelContainer>()
     
@@ -35,16 +28,16 @@ class MLXService {
     private(set) var downloadQueue: [String: Progress] = [:]
     
     /// Loads a model from the hub or retrieves it from cache.
-    /// - Parameter model: The model configuration to load
+    /// - Parameter modelID: The model configuration to load
     /// - Returns: A ModelContainer instance containing the loaded model
     /// - Throws: Errors that might occur during model loading
-    private func load(model: LMModel) async throws -> ModelContainer {
+    private func load(model: LocalModel) async throws -> ModelContainer {
         
         // Set GPU memory limit to prevent out of memory issues
         Memory.cacheLimit = 20 * 1024 * 1024
         
         // Return cached model if available to avoid reloading
-        if let container = modelCache.object(forKey: model.name as NSString) {
+        if let container = modelCache.object(forKey: model.modelID as NSString) {
             return container
         } else {
             // Select appropriate factory based on model type
@@ -58,19 +51,21 @@ class MLXService {
             
             // Load model and track download progress
             let container = try await factory.loadContainer(
-                hub: .default, configuration: model.configuration
+                hub: .default, configuration: ModelConfiguration(id: model.modelID)
             ) { progress in
                 Task { @MainActor in
-                    self.downloadQueue[model.name] = progress
+                    self.downloadQueue[model.modelID] = progress
+                    
                     print("progress \(progress.fractionCompleted)")
+                    
                     if progress.isFinished {
-                        self.downloadQueue.removeValue(forKey: model.name)
+                        self.downloadQueue.removeValue(forKey: model.modelID)
                     }
                 }
             }
             
             // Cache the loaded model for future use
-            modelCache.setObject(container, forKey: model.name as NSString)
+            modelCache.setObject(container, forKey: model.modelID as NSString)
             
             return container
         }
@@ -83,7 +78,7 @@ class MLXService {
     ///   - tools: Array of available tools
     /// - Returns: An AsyncStream of generated text tokens
     /// - Throws: Errors that might occur during generation
-    func generate(model: LMModel, messages: [Message], tools: [ToolSpec] = []) async throws -> AsyncStream<Generation> {
+    func generate(model: LocalModel, messages: [Message], tools: [ToolSpec] = []) async throws -> AsyncStream<Generation> {
         // Load or retrieve model from cache
         let modelContainer = try await load(model: model)
         // Map app-specific Message type to Chat.Message for model input
@@ -107,7 +102,7 @@ class MLXService {
     }
     
     
-    func generate(model: LMModel, messages: [Message], tools: [ToolSpec] = []) async throws -> String {
+    func generate(model: LocalModel, messages: [Message], tools: [ToolSpec] = []) async throws -> String {
         // Load or retrieve model from cache
         let modelContainer = try await load(model: model)
         

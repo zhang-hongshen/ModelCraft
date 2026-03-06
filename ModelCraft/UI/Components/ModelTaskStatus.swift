@@ -57,7 +57,7 @@ extension ModelTaskStatus {
     
     func restartTask(_ task: ModelTask) {
         modelContext.delete(task)
-        modelContext.insert(ModelTask(modelId: task.modelId, type: .download))
+        modelContext.insert(ModelTask(modelId: task.modelID, type: .download))
         try? modelContext.save()
     }
 }

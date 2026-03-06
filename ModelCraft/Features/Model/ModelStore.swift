@@ -10,7 +10,7 @@ import SwiftData
 
 struct ModelStore: View {
     
-    @State private var models: [LMModel] = []
+    @State private var models: [ModelStoreModel] = []
     @State private var showSubDownloadingTask = false
     
     @State private var isLoading = false
@@ -60,6 +60,7 @@ struct ModelStore: View {
 }
 
 extension ModelStore {
+    
     @ToolbarContentBuilder
     func ToolbarItems() -> some ToolbarContent {
         ToolbarItemGroup {
@@ -74,10 +75,10 @@ extension ModelStore {
                     List {
                         ForEach(uncompletedDownloadTasks) { task in
                             HStack{
-                                Label(task.modelId, systemImage: "shippingbox")
+                                Label(task.modelID, systemImage: "shippingbox")
                                 Spacer()
                                 ModelTaskStatus(task: task)
-                            }.tag(task.modelId)
+                            }.tag(task.modelID)
                         }
                     }
                 }
@@ -128,10 +129,10 @@ extension ModelStore {
 
 extension ModelStore {
     
-    func fetchModels() async throws -> [LMModel] {
+    func fetchModels() async throws -> [ModelStoreModel] {
         isLoading = true
         defer { isLoading = false }
-        return try await ModelService.shared.fetchModels(keyword: searchText, page: page, pageSize: pageSize)
+        return try await ModelService.shared.searchModel(keyword: searchText, page: page, pageSize: pageSize)
     }
 
 }

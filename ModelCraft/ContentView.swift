@@ -11,32 +11,22 @@ import OrderedCollections
 
 struct ContentView: View {
     
-    @State private var modelTaskTimer: Timer? = nil
     @State private var selectedKnowledgeBase: KnowledgeBase? = nil
+    
+    @Query(sort: \Chat.createdAt, order: .reverse) private var chats: [Chat]
+    @Query private var knowledgeBases: [KnowledgeBase]
     
     @Environment(\.modelContext) private var modelContext
     @Environment(\.scenePhase) private var scenePhase
-    @Environment(\.downaloadedModels) private var models
+    
     @Environment(GlobalStore.self) private var globalStore
     
-    @Query(sort: \Chat.createdAt, order: .reverse) private var chats: [Chat]
-    @Query(filter: ModelTask.predicateUnCompletedTask,
-           sort: \ModelTask.createdAt,
-           order: .reverse)
-    var modelTasks: [ModelTask] = []
-    @Query private var knowledgeBases: [KnowledgeBase] = []
     
     var body: some View {
         NavigationSplitView {
             Sidebar()
         } detail: {
             Detail()
-        }
-        .task {
-            modelTaskTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { timer in
-                guard timer.isValid else { return }
-                Task.detached { try await self.handleModelTask() }
-            }
         }
         .sheet(item: $selectedKnowledgeBase) { knowledgeBase in
             KnowledgeBaseEdition(konwledgeBase: knowledgeBase)
@@ -166,46 +156,7 @@ extension ContentView {
         }
     }
     
-    private func handleModelTask() async throws {
-        for task in modelTasks.filter({ $0.status == .new}) {
-            switch task.type {
-            case .download: await handleDownloadTask(task)
-            case .delete: await handleDeleteTask(task)
-            }
-        }
-    }
     
-    func handleDownloadTask(_ task: ModelTask) async {
-        task.status = .running
-        do {
-            
-            for try await progress in ModelService.shared.download(modelId: task.modelId) {
-                task.completedUnitCount = progress.completedUnitCount
-                task.totalUnitCount = progress.totalUnitCount
-                task.fractionCompleted = progress.fractionCompleted
-            }
-            task.status = .completed
-            modelContext.delete(task)
-            try? modelContext.save()
-        } catch {
-            task.status = .failed
-        }
-    }
-    
-    func handleDeleteTask(_ task: ModelTask) async {
-        task.status = .running
-        do {
-//            try await OllamaService.shared.deleteModel(model: task.modelId)
-            task.status = .completed
-        } catch {
-            task.status = .failed
-        }
-    }
-    
-    func stopModelTask() {
-        modelTasks.filter({ $0.status != .new})
-            .forEach { $0.status = .stopped }
-    }
 }
 
 #Preview {

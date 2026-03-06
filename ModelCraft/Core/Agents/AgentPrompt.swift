@@ -10,19 +10,59 @@ import SwiftUI
 
 class AgentPrompt {
     
-    static func completeTask(task: String, summary: String? = nil) -> Message{
+    static func planner(question: String) -> Message {
         return Message(
             role: .user,
             content: """
             ## Role
-            You are a helpful assistant.
-            Complete the following tasks as best you can.
+            You are a planning agent.
+
+            Create a step-by-step plan to solve the user's problem.
+
+            # Rules
+            - Only create a plan.
+            - Do NOT execute tools.
+            - The plan should contain clear logical steps.
+            - Keep the plan concise.
+
+            ## Output Format
+            Plan:
+            1. ...
+            2. ...
+            3. ...
+
+            ## User's Question
+            \(question)
+            """
+        )
+    }
+    
+    static func answerQuestion(question: String, plan: String, summary: String? = nil) -> Message {
+        return Message(
+            role: .user,
+            content: """
+            ## Role
+            You are a helpful assistant that executes a plan step by step.
 
             ## Context
+            
+            ### Plan
+            \(plan)
+            
             ### Previous Summary
             \(summary ?? "No previous history.")
             
-            Task: \(task)
+            ## Rules
+            - Follow the plan step by step.
+            - If information is required, call the appropriate tool.
+            - Use tool calls instead of guessing information.
+            - Only call one tool at a time.
+            - After receiving tool results, continue solving the task.
+            
+            When the task is completed, return the final answer to the user.
+            
+            ## User's Question 
+            \(question)
             """
         )
     }

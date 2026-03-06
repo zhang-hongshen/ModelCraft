@@ -15,7 +15,7 @@ struct ThoughtView: View {
     
     var body: some View {
         DisclosureGroup("Thinking", isExpanded: $isExpanded) {
-            Text(thought).foregroundStyle(.secondary)
+            Text(LocalizedStringKey(thought)).foregroundStyle(.secondary)
         }
     }
 }
