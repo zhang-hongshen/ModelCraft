@@ -18,25 +18,41 @@ class Message {
     var chat: Chat?
     var role: MessageRole
     var content: String
-    var images: [Data]
-    var _toolCall: String?
+    var attachments: [URL]
+    private var _toolCall: String?
+    var toolCallResult: String?
+    
     @Transient var toolCall: ToolCall? {
-        guard let data = _toolCall?.data(using: .utf8) else { return nil }
-        return try? JSONDecoder().decode(ToolCall.self, from: data)
+        get {
+            guard let data = _toolCall?.data(using: .utf8) else { return nil }
+            return try? JSONDecoder().decode(ToolCall.self, from: data)
+        }
+        
+        set {
+            guard let newValue else {
+                _toolCall = nil
+                return
+            }
+            
+            if let data = try? JSONEncoder().encode(newValue) {
+                _toolCall = String(data: data, encoding: .utf8)
+            } else {
+                _toolCall = nil
+            }
+        }
     }
     var status: MessageStatus
     
     init(role: MessageRole = .user, chat: Chat? = nil, content: String = "",
-         images: [Data] = [], toolCall: ToolCall? = nil, status: MessageStatus = .generated) {
+         attachments: [URL] = [], toolCall: ToolCall? = nil, toolCallResult: String? = nil,
+         status: MessageStatus = .generated) {
         self.chat = chat
         self.role = role
         self.content = content
-        self.images = images
-        if let toolCall = toolCall {
-            let data = try? JSONEncoder().encode(toolCall)
-            self._toolCall = String(data: data ?? Data(), encoding: .utf8)
-        }
+        self.attachments = attachments
+        self.toolCallResult = toolCallResult
         self.status = status
+        self.toolCall = toolCall
     }
     
 }
@@ -53,19 +69,7 @@ enum MessageRole: Codable {
         case .tool: "Tool"
         }
     }
-    
-    var icon: Image {
-        switch self {
-        case .user:
-            Image("User")
-        case .assistant:
-            Image("Assistant")
-        case .system:
-            Image("Assistant")
-        case .tool:
-            Image(systemName: "apple.terminal")
-        }
-    }
+
 }
 
 enum MessageStatus: Codable {

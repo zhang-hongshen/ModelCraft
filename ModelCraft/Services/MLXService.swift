@@ -11,6 +11,7 @@ import MLXLMCommon
 import MLXVLM
 import CoreImage
 import Tokenizers
+import UniformTypeIdentifiers
 
 
 /// A service class that manages machine learning models for text and vision-language tasks.
@@ -78,15 +79,13 @@ class MLXService {
     ///   - tools: Array of available tools
     /// - Returns: An AsyncStream of generated text tokens
     /// - Throws: Errors that might occur during generation
-    func generate(model: LocalModel, messages: [Message], tools: [ToolSpec] = []) async throws -> AsyncStream<Generation> {
+    func generate(model: LocalModel, messages: [MLXLMCommon.Chat.Message], tools: [ToolSpec] = []) async throws -> AsyncStream<Generation> {
         // Load or retrieve model from cache
         let modelContainer = try await load(model: model)
-        // Map app-specific Message type to Chat.Message for model input
-        let chat = messages.map{ toMessage($0) }
         
         // Prepare input for model processing
         let userInput = UserInput(
-            chat: chat,
+            chat: messages,
             processing: .init(resize: .init(width: 1024, height: 1024)),
             tools: tools,
         )
@@ -101,17 +100,24 @@ class MLXService {
         }
     }
     
-    
     func generate(model: LocalModel, messages: [Message], tools: [ToolSpec] = []) async throws -> String {
+        return try await generate(model: model, messages: messages.compactMap{ toMessage($0) }, tools: tools)
+    }
+    
+    /// Generates text based on the provided messages using the specified model.
+    /// - Parameters:
+    ///   - model: The language model to use for generation
+    ///   - messages: Array of chat messages including user, assistant, and system messages
+    ///   - tools: Array of available tools
+    /// - Returns: A String of generated text tokens
+    /// - Throws: Errors that might occur during generation
+    func generate(model: LocalModel, messages: [MLXLMCommon.Chat.Message], tools: [ToolSpec] = []) async throws -> String {
         // Load or retrieve model from cache
         let modelContainer = try await load(model: model)
         
-        // Map app-specific Message type to Chat.Message for model input
-        let chat = messages.map{ toMessage($0) }
-        
         // Prepare input for model processing
         let userInput = UserInput(
-            chat: chat,
+            chat: messages,
             processing: .init(resize: .init(width: 1024, height: 1024)),
             tools: tools,
         )
@@ -150,14 +156,15 @@ extension MLXService {
 
         // Process any attached media for VLM models
         
-        let images: [UserInput.Image] = message.images.compactMap{ imageData in
-            guard let ciImage = CIImage(data: imageData) else {
-                return nil
+        var images: [UserInput.Image] = []
+        var videos: [UserInput.Video] = []
+        for url in message.attachments {
+            if let type = UTType(filenameExtension: url.pathExtension), type.conforms(to: .image) {
+                images.append(.url(url))
+            } else if let type = UTType(filenameExtension: url.pathExtension), type.conforms(to: .movie) {
+                videos.append(.url(url))
             }
-            return .ciImage(ciImage)
         }
-        let videos: [UserInput.Video] = []
-//            videos = message.videos.map { videoURL in .url(videoURL) }
 
         return MLXLMCommon.Chat.Message(role: role, content: message.content, images: images, videos: videos)
     }

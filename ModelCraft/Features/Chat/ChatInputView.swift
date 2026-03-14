@@ -6,6 +6,8 @@
 //
 
 import SwiftUI
+import UniformTypeIdentifiers
+import AVKit
 
 struct ChatInputView: View {
     
@@ -13,7 +15,7 @@ struct ChatInputView: View {
     @Binding var draft: Message
     var onSubmit: () -> Void
     var onStop: () -> Void
-    var onUploadImages: ([URL]) -> Void
+    var onUpload: ([URL]) -> Void
     
     @State private var fileImporterPresented = false
     
@@ -24,11 +26,11 @@ struct ChatInputView: View {
             .safeAreaPadding()
             .background(.regularMaterial)
             .fileImporter(isPresented: $fileImporterPresented,
-                          allowedContentTypes: [.image],
+                          allowedContentTypes: [.image, .video],
                           allowsMultipleSelection: true) { result in
                 switch result {
                 case .success(let urls):
-                    onUploadImages(urls)
+                    onUpload(urls)
                 case .failure(let error):
                     debugPrint(error.localizedDescription)
                 }
@@ -42,13 +44,14 @@ extension ChatInputView {
     func MessageEditor() -> some View {
         VStack(alignment: .leading) {
             
-            if !draft.images.isEmpty {
+            if !draft.attachments.isEmpty {
                 ScrollView(.horizontal) {
                     HStack(alignment: .center) {
-                        ForEach(draft.images, id: \.self) { data in
-                            ImageView(data: data) {
-                                draft.images.removeAll { $0 == data }
-                            }.frame(height: 80)
+                        ForEach(draft.attachments, id: \.self) { url in
+                            AttachmentView(
+                                url: url,
+                                onDelete: { draft.attachments.removeAll { $0 == url }}
+                            ).frame(height: 80)
                         }
                     }
                 }
@@ -61,7 +64,7 @@ extension ChatInputView {
                 .textFieldStyle(.plain)
             
             HStack(alignment: .bottom) {
-                UploadImageButton()
+                UploadButton()
                 Spacer()
                 Group {
                     if chat?.sortedMessages.last?.status == .generating {
@@ -81,7 +84,7 @@ extension ChatInputView {
     }
     
     @ViewBuilder
-    func UploadImageButton() -> some View {
+    func UploadButton() -> some View {
         Button {
             fileImporterPresented = true
         } label: {
@@ -114,5 +117,5 @@ extension ChatInputView {
         draft: .constant(Message(chat: Chat())),
         onSubmit: {},
         onStop: {},
-        onUploadImages: {_ in })
+        onUpload: {_ in })
 }

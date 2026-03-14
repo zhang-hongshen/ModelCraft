@@ -10,11 +10,11 @@ import Foundation
 
 extension String {
     
-    func toArray<T: Decodable>(of type: T.Type) throws -> [T] {
+    func decode<T: Decodable>(of type: T.Type) throws -> T? {
         guard let data = self.data(using: .utf8) else {
-            return []
+            return nil
         }
         let decoder = JSONDecoder()
-        return try decoder.decode([T].self, from: data)
+        return try decoder.decode(T.self, from: data)
     }
 }

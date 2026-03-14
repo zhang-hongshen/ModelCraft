@@ -34,11 +34,7 @@ struct DownloadedModelsView: View {
             }
             
             ForEach(uncompletedDownloadTasks) { task in
-                HStack{
-                    Label(task.modelID, systemImage: "shippingbox")
-                    Spacer()
-                    ModelTaskStatus(task: task)
-                }.tag(task.modelID)
+                ModelTaskView(task: task).tag(task.modelID)
             }.foregroundStyle(.secondary)
         }
         .contextMenu {
@@ -73,6 +69,9 @@ extension DownloadedModelsView {
             Label(model.displayName, systemImage: "shippingbox")
             
             Spacer()
+            
+            Text(ByteCountFormatter.string(fromByteCount: model.size, countStyle: .file))
+            
             if let task = deleteTasks.first(where: { $0.modelID == model.modelID }) {
                 Text(task.statusLocalizedDescription)
             }

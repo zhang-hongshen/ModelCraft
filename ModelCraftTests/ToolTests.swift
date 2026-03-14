@@ -2,7 +2,7 @@
 //  ToolTests.swift
 //  ModelCraft
 //
-//  Created by 张鸿燊 on 25/1/26.
+//  Created by Hongshen on 25/1/26.
 //
 
 
@@ -24,9 +24,15 @@ final class ToolTests: XCTestCase {
     }
     
     func testMapSearch() async throws {
-        let places = try await SearchTool.searchMap(query: "resturant", useCurrentLocation: true)
+        let places = try await SearchTool.searchMap(query: "resturant", useCurrentLocation: true, numOfResults: 5)
     }
     
+    func testTakeScreenshot() async throws {
+        let result = await ScreenControlManager.shared.taskScreenshot()
+        if let (data, mimeType) = result {
+            print("Data \(data) MimeType \(mimeType)")
+        }
+    }
     func testPerformanceExample() throws {
         // This is an example of a performance test case.
         measure {

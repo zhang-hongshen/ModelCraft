@@ -81,7 +81,7 @@ extension ModelTask {
         let _status = TaskStatus.completed.rawValue
         let _type = TaskType.download.rawValue
         return #Predicate<ModelTask> {
-            $0._type == _type && $0._status == _status }
+            $0._type == _type && $0._status != _status }
     }
     
     static var predicateUnCompletedTask: Predicate<ModelTask> {

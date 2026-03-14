@@ -8,7 +8,9 @@
 import SwiftUI
 import SwiftData
 
-struct ModelStore: View {
+struct ModelStore: View {    
+    
+    @State private var viewMode: ViewMode = .list
     
     @State private var models: [ModelStoreModel] = []
     @State private var showSubDownloadingTask = false
@@ -17,6 +19,9 @@ struct ModelStore: View {
     @State private var selectedModelName : String? = nil
     @State private var searchText = ""
     @State private var page = 0
+    @State private var searchTask: Task<Void, Never>? = nil
+    
+    @Environment(\.horizontalSizeClass) private var sizeClass
     
     private let pageSize = 20
     private let columns = [GridItem(.adaptive(minimum: 200), spacing: 16)]
@@ -44,18 +49,20 @@ struct ModelStore: View {
             ContentView()
                 .padding()
                 .toolbar(content: ToolbarItems)
-                .searchable(text: $searchText)
-                .task {
-                    do {
-                        models = try await fetchModels()
-                    } catch {}
-                }
-                .onChange(of: searchText) { oldValue, newValue in
-                    Task(priority: .background){
-                        models = try await fetchModels()
-                    }
-                }
         }
+        .searchable(text: $searchText)
+        .refreshable { await reloadModels() }
+        .task { await reloadModels() }
+        .onChange(of: searchText) { oldValue, newValue in
+            searchTask?.cancel()
+            searchTask = Task {
+                try? await Task.sleep(nanoseconds: 500_000_000)
+                if !Task.isCancelled {
+                    await reloadModels()
+                }
+            }
+        }
+        
     }
 }
 
@@ -74,13 +81,16 @@ extension ModelStore {
                 .popover(isPresented: $showSubDownloadingTask, arrowEdge: .bottom) {
                     List {
                         ForEach(uncompletedDownloadTasks) { task in
-                            HStack{
-                                Label(task.modelID, systemImage: "shippingbox")
-                                Spacer()
-                                ModelTaskStatus(task: task)
-                            }.tag(task.modelID)
+                            ModelTaskView(task: task).tag(task.modelID)
                         }
                     }
+                }
+            }
+            
+            if sizeClass == .regular {
+                Picker("View Mode", selection: $viewMode) {
+                    Image(systemName: "square.grid.2x2").tag(ViewMode.grid)
+                    Image(systemName: "list.bullet").tag(ViewMode.list)
                 }
             }
             
@@ -89,7 +99,7 @@ extension ModelStore {
             } else {
                 Button("Refresh", systemImage: "arrow.triangle.2.circlepath") {
                     Task {
-                        models = try await fetchModels()
+                        await reloadModels()
                     }
                 }
             }
@@ -97,31 +107,76 @@ extension ModelStore {
     }
     
     @ViewBuilder
+    func LoadMoreView() -> some View {
+        ProgressView()
+            .frame(maxWidth: .infinity)
+            .onAppear {
+                Task { await loadMoreModels() }
+            }
+    }
+    
+    @ViewBuilder
     func ContentView() -> some View {
-        if isLoading {
-            LazyVGrid(columns: columns, spacing: 16) {
-                ForEach(0..<10) { _ in
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(Color.secondary.opacity(0.1))
-                        .frame(height: 220)
-                        .redacted(reason: .placeholder)
-                }
+        
+        switch viewMode {
+        case .grid:
+            if isLoading {
+                GridLoadingView()
+            } else {
+                GridView()
             }
-        } else {
-            LazyVGrid(columns: columns, spacing: 20) {
-                ForEach(models) { model in
-                    ModelCard(model: model)
-                }
-                
-                EmptyView()
-                    .frame(maxWidth: .infinity)
-                    .onAppear {
-                        Task {
-                            page += 1
-                            models.append(contentsOf: try await fetchModels())
-                        }
-                    }
+            
+        case .list:
+            if isLoading {
+                ListLoadingView()
+            } else {
+                ListView()
             }
+            
+        }
+    }
+    
+    @ViewBuilder
+    func GridLoadingView() -> some View {
+        LazyVGrid(columns: columns, spacing: 12) {
+            ForEach(0..<pageSize, id: \.self) { _ in
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color.secondary.opacity(0.1))
+                    .frame(height: 220)
+                    .redacted(reason: .placeholder)
+            }
+        }
+    }
+    
+    @ViewBuilder
+    func GridView() -> some View {
+        LazyVGrid(columns: columns, spacing: 12) {
+            ForEach(models) { model in
+                ModelCard(model: model, viewMode: viewMode)
+            }
+            LoadMoreView()
+        }
+    }
+    
+    @ViewBuilder
+    func ListLoadingView() -> some View {
+        LazyVStack(spacing: 12) {
+            ForEach(0..<pageSize, id: \.self) { _ in
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color.secondary.opacity(0.1))
+                    .frame(height: 220)
+                    .redacted(reason: .placeholder)
+            }
+        }
+    }
+    
+    @ViewBuilder
+    func ListView() -> some View {
+        LazyVStack(alignment: .center,spacing: 12) {
+            ForEach(models) { model in
+                ModelCard(model: model, viewMode: viewMode)
+            }
+            LoadMoreView()
         }
     }
     
@@ -130,9 +185,28 @@ extension ModelStore {
 extension ModelStore {
     
     func fetchModels() async throws -> [ModelStoreModel] {
+        return try await ModelService.shared.searchModel(keyword: searchText, page: page, pageSize: pageSize)
+    }
+    
+    func reloadModels() async {
+        page = 0
         isLoading = true
         defer { isLoading = false }
-        return try await ModelService.shared.searchModel(keyword: searchText, page: page, pageSize: pageSize)
+        do {
+            models = try await fetchModels()
+        } catch {
+            
+        }
+    }
+    
+    func loadMoreModels() async {
+        page += 1
+        do {
+            models.append(contentsOf: try await fetchModels())
+        } catch {
+            page -= 1
+        }
+        
     }
 
 }

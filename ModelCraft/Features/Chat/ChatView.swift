@@ -7,19 +7,21 @@
 
 import SwiftUI
 import SwiftData
+import UniformTypeIdentifiers
 
 struct ChatView: View {
     
     @State var chat: Chat?
     
     @Query private var knowledgeBases: [KnowledgeBase] = []
-    @Query private var localModels: [LocalModel] = []
+    @Query private var availableModels: [LocalModel] = []
     @State private var draft = Message(role: .user)
     @State private var selectedImages = Set<Data>()
     @State private var inspectorPresented = false
     @State private var inspectorContent = AnyView(EmptyView())
     
     @Environment(GlobalStore.self) private var globalStore
+    @Environment(\.horizontalSizeClass) private var sizeClass
     
     private let service = ChatService()
     private let minWidth: CGFloat = 270
@@ -30,20 +32,27 @@ struct ChatView: View {
                    minHeight: 250)
             .toolbar(content: ToolbarItems)
             .safeAreaInset(edge: .bottom) {
-                ChatInputView(
-                    chat: chat,
-                    draft: $draft,
-                    onSubmit: submitDraft,
-                    onStop: {
-                        if let chat = chat {
-                            service.stopGenerating(chat: chat)
-                        }
-                    },
-                    onUploadImages: uploadImages
-                )
+                VStack {
+                    
+                    if sizeClass == .compact {
+                        KnowledgeBasePicker()
+                    }
+                    
+                    ChatInputView(
+                        chat: chat,
+                        draft: $draft,
+                        onSubmit: submitDraft,
+                        onStop: {
+                            if let chat = chat {
+                                service.stopGenerating(chat: chat)
+                            }
+                        },
+                        onUpload: { draft.attachments.append(contentsOf: $0) }
+                    )
+                }
             }
-            .onDrop(of: [.image], isTargeted: nil, perform: uploadImagesByDropping)
-            .inspector(isPresented: $inspectorPresented){
+            .onDrop(of: [.image, .movie], isTargeted: nil, perform: uploadByDropping)
+            .toolInspector(isPresented: $inspectorPresented){
                 inspectorContent
                 Spacer()
             }
@@ -53,42 +62,71 @@ struct ChatView: View {
 
 extension ChatView {
     
+    @ViewBuilder
+    func ModelPicker() -> some View {
+        @Bindable var globalStore = globalStore
+        
+        if availableModels.isEmpty {
+            Text("No Available Model")
+        } else {
+            Picker("Models", selection: $globalStore.selectedModel) {
+                ForEach(availableModels) { model in
+                    Text(model.displayName).tag(model)
+                }
+                Text("No selected model").tag(nil as LocalModel?)
+            }
+        }
+    }
+    
+    @ViewBuilder
+    func KnowledgeBasePicker() -> some View {
+        @Bindable var globalStore = globalStore
+        
+        Picker("Knowledge Base", selection: $globalStore.selectedKnowledgeBase) {
+            ForEach(knowledgeBases) { knowledgeBase in
+                Text(verbatim: knowledgeBase.title).tag(knowledgeBase as KnowledgeBase?)
+            }
+            Text("No selected knowledge base").tag(nil as KnowledgeBase?)
+        }
+    }
+    
     @ToolbarContentBuilder
     func ToolbarItems() -> some ToolbarContent {
         
-        @Bindable var globalStore = globalStore
+        ToolbarItem(placement: .principal) {
+            ModelPicker()
+        }
         
-        ToolbarItemGroup(placement: .principal) {
-            if localModels.isEmpty {
-                Text("No Available Model")
-            } else {
-                Picker("Models", selection: $globalStore.selectedModel) {
-                    ForEach(localModels) { model in
-                        Text(model.displayName).tag(model)
-                    }
+        
+        if sizeClass == .regular {
+            ToolbarItem(placement: .principal) {
+                KnowledgeBasePicker()
+            }
+        
+            ToolbarItem {
+                Button {
+                    inspectorPresented.toggle()
+                } label: {
+                    Image(systemName: "sidebar.right")
                 }
             }
-            Picker("Knowledge Base", selection: $globalStore.selectedKnowledgeBase) {
-                ForEach(knowledgeBases) { knowledgeBase in
-                    Text(verbatim: knowledgeBase.title).tag(knowledgeBase as KnowledgeBase?)
+        } else {
+            ToolbarItem {
+                NavigationLink {
+                    ModelStore()
+                } label: {
+                    Image(systemName: "storefront")
                 }
-                Text("None").tag(nil as KnowledgeBase?)
+
             }
         }
         
-        ToolbarItemGroup {
-            Button {
-                inspectorPresented.toggle()
-            } label: {
-                Image(systemName: "sidebar.right")
-            }
-        }
     }
     
     
     @ViewBuilder
     func MessagesView(_ messages: [Message]) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
+        LazyVStack(alignment: .leading, spacing: 10) {
             ForEach(messages) { message in
                 MessageView(message: message,
                             inspectorPresented: $inspectorPresented,
@@ -128,28 +166,18 @@ extension ChatView {
 
 extension ChatView {
     
-    func uploadImagesByDropping(_ providers: [NSItemProvider]) -> Bool {
+    func uploadByDropping(_ providers: [NSItemProvider]) -> Bool {
         for provider in providers {
-            let progress = provider.loadDataRepresentation(for: .image) { dataOrNil, errorOrNil in
-                guard let data = dataOrNil else { return }
-                Task { @MainActor in
-                    draft.images.append(data)
-                }
+            provider.loadItem(forTypeIdentifier: UTType.fileURL.identifier) { item, error in
+                
+                guard let data = item as? Data,
+                      let url = URL(dataRepresentation: data, relativeTo: nil)
+                else { return }
+                
+                draft.attachments.append(url)
             }
-            debugPrint("progress: \(progress.fractionCompleted)%, total: \(progress.totalUnitCount)")
         }
         return true
-    }
-    
-    func uploadImages(_ urls: [URL]) {
-        for url in urls { 
-            do {
-                let data = try Data(contentsOf: url)
-                self.draft.images.append(data)
-            } catch {
-                print("uploadImages error, \(error.localizedDescription)")
-            }
-        }
     }
     
     func submitDraft() {
@@ -162,7 +190,7 @@ extension ChatView {
             globalStore.currentTab = .chat(activeChat)
         }
         let message = Message(role: .user, chat: activeChat,
-                              content: draft.content, images: draft.images)
+                              content: draft.content, attachments: draft.attachments)
         clearDraft()
         Task {
             try await service.sendMessage(
@@ -177,11 +205,11 @@ extension ChatView {
     
     func clearDraft() {
         draft.content = ""
-        draft.images = []
+        draft.attachments = []
     }
     
     func scrollToBottom(_ proxy: ScrollViewProxy) {
-        guard let lastID = chat?.messages.last?.id else { return }
+        guard let lastID = chat?.sortedMessages.last?.id else { return }
         withAnimation {
             proxy.scrollTo(lastID, anchor: .bottom)
         }
@@ -191,4 +219,5 @@ extension ChatView {
 #Preview {
     ChatView(chat: Chat())
         .environment(GlobalStore())
+        .modelContainer(ModelContainer.shared)
 }

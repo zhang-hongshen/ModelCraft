@@ -131,7 +131,12 @@ extension LocalFileURL: Identifiable {
                 guard let cgImage = cgImageOrNil else {
                     return
                 }
+                
+                #if canImport(AppKit)
                 let image = PlatformImage(cgImage: cgImage, size: .zero)
+                #else
+                let image = PlatformImage(cgImage: cgImage)
+                #endif
                 print("Extracted I-frame at \(time.seconds)s")
                
                 let fileName = "frame_\(CMTimeGetSeconds(time)).png"

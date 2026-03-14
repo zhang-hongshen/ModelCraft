@@ -20,9 +20,22 @@ struct ContentView: View {
     @Environment(\.scenePhase) private var scenePhase
     
     @Environment(GlobalStore.self) private var globalStore
-    
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     
     var body: some View {
+        if horizontalSizeClass == .regular {
+            RegularLayout()
+        } else {
+            CompactLayout()
+        }
+        
+    }
+}
+
+extension ContentView {
+    
+    @ViewBuilder
+    func RegularLayout() -> some View {
         NavigationSplitView {
             Sidebar()
         } detail: {
@@ -32,9 +45,6 @@ struct ContentView: View {
             KnowledgeBaseEdition(konwledgeBase: knowledgeBase)
         }
     }
-}
-
-extension ContentView {
     
     @ViewBuilder
     func Sidebar() -> some View {
@@ -132,6 +142,23 @@ extension ContentView {
         }
     }
 }
+
+extension ContentView {
+    
+    @ViewBuilder
+    func CompactLayout() -> some View {
+                
+        NavigationStack {
+            switch globalStore.currentTab {
+            case .chat(let chat):
+                ChatView(chat: chat)
+            default:
+                ChatView(chat: nil)
+            }
+        }
+    }
+}
+
 
 extension ContentView {
     private func addChat() {

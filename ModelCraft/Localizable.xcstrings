@@ -67,6 +67,7 @@
       }
     },
     "Ask" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -123,6 +124,12 @@
           "stringUnit" : {
             "state" : "new",
             "value" : "Clicking (%1$lf,%2$lf)"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "点击 (%1$lf,%2$lf)"
           }
         }
       }
@@ -432,6 +439,12 @@
             "state" : "new",
             "value" : "Moving to (%1$lf, %2$lf)"
           }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "移动到(%1$lf, %2$lf)"
+          }
         }
       }
     },
@@ -444,6 +457,19 @@
           }
         }
       }
+    },
+    "No selected knowledge base" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "未选择知识库"
+          }
+        }
+      }
+    },
+    "No selected model" : {
+
     },
     "None" : {
       "localizations" : {
@@ -618,6 +644,9 @@
           }
         }
       }
+    },
+    "View Mode" : {
+
     },
     "Waiting to delete" : {
       "localizations" : {

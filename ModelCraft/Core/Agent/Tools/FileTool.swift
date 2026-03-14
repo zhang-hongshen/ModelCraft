@@ -9,15 +9,15 @@ import Foundation
 
 class FileTool {
     
-    static private func resolvePath(_ path: String) -> URL {
-        let sandboxRootPath: String = {
+    static func resolvePath(_ path: String) -> URL {
+        let rootPath: String = {
             let paths = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)
             return paths[0].path
         }()
-        if path.hasPrefix(sandboxRootPath) {
+        if path.hasPrefix(rootPath) {
             return URL(fileURLWithPath: path)
         }
-        return URL(fileURLWithPath: sandboxRootPath).appendingPathComponent(path)
+        return URL(fileURLWithPath: rootPath).appendingPathComponent(path)
     }
 
     static func writeToFile(_ path: String, content: String) throws {
@@ -38,6 +38,7 @@ class FileTool {
         return String(decoding: data, as: UTF8.self)
     }
     
+    #if os(macOS)
     @discardableResult
     static func executeCommand(
         _ command: String
@@ -50,21 +51,22 @@ class FileTool {
         
         let stdoutPipe = Pipe()
         let stderrPipe = Pipe()
-        process.standardOutput = stdout
-        process.standardError = stderr
+        process.standardOutput = stdoutPipe
+        process.standardError = stderrPipe
+        
         
         try process.run()
         process.waitUntilExit()
         
-        
         let outputData = try stdoutPipe.fileHandleForReading.readToEnd()
         let errorData = try stderrPipe.fileHandleForReading.readToEnd()
         
-        let stdout = (outputData.flatMap { String(data: $0, encoding: .utf8)} ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let stdout = outputData.flatMap { String(data: $0, encoding: .utf8)} ?? ""
         let stderr = errorData.flatMap { String(data: $0, encoding: .utf8) } ?? ""
         return CommandResult(stdout: stdout, stderr: stderr, exitCode: Int(process.terminationStatus))
         
     }
+    #endif
     
 }
 

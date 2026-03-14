@@ -33,6 +33,7 @@ struct ModelCraftApp: App {
                             guard timer.isValid else { return }
                             try? self.handleModelTask()
                         }
+                        await SkillManager.shared.loadSkills()
                     }
             }.commands {
                 CommandGroup(after: .help) {
@@ -87,8 +88,11 @@ extension ModelCraftApp {
     func handleDownloadTask(_ task: ModelTask) {
         print("Downloading \(task.modelID)")
         
+        task.status = .running
         let downloadTask = Task {
-            task.status = .running
+            defer {
+                globalStore.runningTasks.removeValue(forKey: task.modelID)
+            }
             do {
                 for try await progress in ModelService.shared.downloadModel(modelID: task.modelID) {
                     task.completedUnitCount = progress.completedUnitCount
@@ -96,6 +100,7 @@ extension ModelCraftApp {
                     task.fractionCompleted = progress.fractionCompleted
                 }
                 task.status = .completed
+                
                 let localModel = LocalModel(modelID: task.modelID, size: task.completedUnitCount, type: .llm)
                 ModelContainer.shared.mainContext.delete(task)
                 ModelContainer.shared.mainContext.persist(localModel)
@@ -112,8 +117,11 @@ extension ModelCraftApp {
     
     func handleDeleteTask(_ task: ModelTask) {
         print("Deleting \(task.modelID)")
+        task.status = .running
         let deleteTask = Task {
-            task.status = .running
+            defer {
+                globalStore.runningTasks.removeValue(forKey: task.modelID)
+            }
             do {
                 try ModelService.shared.deleteModel(modelID: task.modelID)
                 task.status = .completed
@@ -125,6 +133,7 @@ extension ModelCraftApp {
             }
         }
         globalStore.runningTasks[task.modelID] = deleteTask
+        
     }
     
 }

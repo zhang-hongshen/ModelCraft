@@ -9,17 +9,25 @@ import Foundation
 import SwiftData
 
 import MLXLMCommon
+import Tokenizers
 
 struct ToolDefinition {
     
-    static let allTools = [
-        readFromFile.schema,
-        writeToFile.schema,
-        executeCommand.schema,
-        captureScreen.schema,
-        click.schema,
-        move.schema,
-    ]
+    static var allTools: [ToolSpec] {
+        var tools = [
+            readFromFile.schema,
+            writeToFile.schema,
+            captureScreen.schema,
+            click.schema,
+            move.schema
+        ]
+        
+        #if os(macOS)
+        tools.append(executeCommand.schema)
+        #endif
+        
+        return tools
+    }
     
     static let readFromFile = Tool<ReadFromFileInput, ReadFromFileOutput>(
         name: "read_from_file",
@@ -45,6 +53,7 @@ struct ToolDefinition {
         return WriteToFileOutput()
     }
     
+    #if os(macOS)
     static let executeCommand = Tool<ExecuteCommandInput, ExecuteCommandOutput>(
         name: "execute_command",
         description: "Executes a shell command",
@@ -60,6 +69,7 @@ struct ToolDefinition {
             stderr: result.stderr,
             exitCode: result.exitCode)
     }
+    #endif
     
     static let searchMap = Tool<SearchMapInput, SearchMapOutput>(
         name: "search_map",
@@ -101,13 +111,15 @@ struct ToolDefinition {
         description: "Takes a high-resolution screenshot of the current screen to analyze the UI layout and identify element coordinates.",
         parameters: []
     ) { input in
-        guard let (image, mimeType) = await ScreenControlManager.shared.taskScreenshot() else { return nil }
-        return CaptureScreenOutput(image: image, mimeType: mimeType)
+        print("Capturing screen...")
+        guard let (imageData, mimeType) = await ScreenControlManager.shared.taskScreenshot() else { return nil }
+        print("Capturing screen succeed.")
+        return CaptureScreenOutput(imageData: imageData, mimeType: mimeType)
     }
     
     static let click = Tool<ClickInput, ClickOutput>(
         name: "click",
-        description: "Simulates a mouse click at the specified (x, y) coordinates. Coordinates should be based on the screenshot provided.",
+        description: "Performs a mouse click at the specified (x, y) coordinates. Coordinates should be based on the screenshot provided.",
         parameters: [
             .required("x", type: .double, description: "The target x coordinate."),
             .required("y", type: .double, description: "The target y coordinate.")
@@ -119,7 +131,7 @@ struct ToolDefinition {
     
     static let move = Tool<MoveInput, MoveOutput>(
         name: "move",
-        description: "Moves the mouse cursor to a specific (x, y) location without clicking.",
+        description: "Moves the mouse cursor to a specific (x, y) location.",
         parameters: [
             .required("x", type: .double, description: "The target x coordinate."),
             .required("y", type: .double, description: "The target y coordinate.")
@@ -127,6 +139,54 @@ struct ToolDefinition {
     ) { input in
         await ScreenControlManager.shared.move(x: input.x, y: input.y)
         return MoveOutput()
+    }
+    
+    static let drag = Tool<DragInput, DragOutput>(
+        name: "drag",
+        description: "Presses the mouse at a starting point and drags it to another location.",
+        parameters: [
+            .required("startX", type: .double, description: "The starting x coordinate."),
+            .required("startY", type: .double, description: "The starting y coordinate."),
+            .required("endX", type: .double, description: "The destination x coordinate."),
+            .required("endY", type: .double, description: "The destination y coordinate.")
+        ]
+    ) { input in
+        await ScreenControlManager.shared.drag(
+            from: CGPoint(x: input.startX, y: input.startY),
+            to: CGPoint(x: input.endX, y: input.endY)
+        )
+        return DragOutput()
+    }
+    
+    static let scroll = Tool<ScrollInput, ScrollOutput>(
+        name: "scroll",
+        description: "Scrolls vertically at the current cursor position.",
+        parameters: [
+            .required("deltaY", type: .int, description: "Scroll amount in pixels. Negative scrolls down, positive scrolls up.")
+        ]
+    ) { input in
+        await ScreenControlManager.shared.scroll(deltaY: input.deltaY)
+        return ScrollOutput()
+    }
+    
+    static var activateSkill: Tool<ActivateSkillInput, ActivateSkillOutput> {
+        let availableSkills = SkillManager.shared.skillCatalogPrompt()
+        return Tool<ActivateSkillInput, ActivateSkillOutput>(
+            name: "activate_skill",
+            description:
+            """
+                Activate a skill to load its instructions.
+                \(availableSkills)
+            """,
+            parameters: [
+                .required("name", type: .string, description: "Skill name")
+            ]
+        ) { input in
+            
+            let skillText = SkillManager.shared.activateSkill(name: input.name)
+            
+            return ActivateSkillOutput(content: skillText ?? "")
+        }
     }
 }
 
@@ -138,16 +198,12 @@ struct ReadFromFileOutput: Codable {
     let content: String
 }
 
-
 struct WriteToFileInput: Codable {
     let path: String
     let content: String
 }
 
-struct WriteToFileOutput: Codable {
-    
-}
-
+struct WriteToFileOutput: Codable {}
 
 struct ExecuteCommandInput: Codable {
     let command: String
@@ -178,19 +234,11 @@ struct SearchRelevantDocumentsOutput: Codable {
     let docs: [String]
 }
 
-
-struct CaptureScreenInput: Codable {
-}
+struct CaptureScreenInput: Codable {}
 
 struct CaptureScreenOutput: Codable {
-    
-    let imageBase64: String
+    let imageData: Data
     let mimeType: String
-    
-    init(image: Data, mimeType: String) {
-        self.imageBase64 = image.base64EncodedString()
-        self.mimeType = mimeType
-    }
 }
 
 struct MoveInput: Codable {
@@ -198,14 +246,34 @@ struct MoveInput: Codable {
     let y: Double
 }
 
-struct MoveOutput: Codable {
-}
-
+struct MoveOutput: Codable {}
 
 struct ClickInput: Codable {
     let x: Double
     let y: Double
 }
 
-struct ClickOutput: Codable {
+struct ClickOutput: Codable {}
+
+struct DragInput: Codable {
+    let startX: Double
+    let startY: Double
+    let endX: Double
+    let endY: Double
+}
+
+struct DragOutput: Codable {}
+
+struct ScrollInput: Codable {
+    let deltaY: Int32
+}
+
+struct ScrollOutput: Codable {}
+
+struct ActivateSkillInput: Codable {
+    let name: String
+}
+
+struct ActivateSkillOutput: Codable {
+    let content: String
 }

@@ -6,9 +6,23 @@
 //
 
 import Foundation
+#if canImport(AppKit)
 import AppKit
+#elseif canImport(UIKit)
+import UIKit
+#endif
 
 class AppTool {
+    
+    private static func open(url: URL) {
+        DispatchQueue.main.async {
+            #if canImport(AppKit)
+            NSWorkspace.shared.open(url)
+            #elseif canImport(UIKit)
+            UIApplication.shared.open(url, options: [:], completionHandler: nil)
+            #endif
+        }
+    }
     
     static func composeEmail(recipients: [String], subject: String, body: String) {
         var components = URLComponents()
@@ -20,9 +34,7 @@ class AppTool {
         ]
         
         guard let url = components.url else { return }
-        DispatchQueue.main.async {
-            NSWorkspace.shared.open(url)
-        }
+        open(url: url)
     }
 
     static func composeMessage(recipients: [String], body: String) {
@@ -34,38 +46,16 @@ class AppTool {
         ]
         
         guard let url = components.url else { return }
-        DispatchQueue.main.async {
-            NSWorkspace.shared.open(url)
-        }
+        open(url: url)
     }
 
     static func openBrowser(url: String) {
-        guard let urlPath = URL(string: url) else {
+        guard let url = URL(string: url) else {
             print("Invalid URL")
             return
         }
         
-        DispatchQueue.main.async {
-            NSWorkspace.shared.open(urlPath)
-        }
-    }
-    
-    static func executeAppleScript(_ script: String) throws -> String {
-        
-        guard let script = NSAppleScript(source: script) else {
-            throw RuntimeError("Script initialization failed: Potential syntax error.")
-        }
-        
-        var error: NSDictionary?
-        let outputDescriptor = script.executeAndReturnError(&error)
-        
-        if let err = error {
-            let errorMsg = err[NSAppleScript.errorMessage] as? String ?? "Unknown error"
-            let errorCode = err[NSAppleScript.errorNumber] as? Int ?? 0
-            throw RuntimeError(errorMsg)
-        }
-        
-        return outputDescriptor.stringValue ?? ""
+        open(url: url)
     }
     
 }

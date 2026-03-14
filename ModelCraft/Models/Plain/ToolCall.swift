@@ -19,6 +19,7 @@ struct ToolNames {
     static let captureScreen = "capture_screen"
     static let move = "move"
     static let click = "click"
+    static let activateSkill = "activate_skill"
 }
 
 extension ToolCall {

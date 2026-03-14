@@ -1,5 +1,5 @@
 //
-//  ModelTaskStatus.swift
+//  ModelTaskView.swift
 //  ModelCraft
 //
 //  Created by Hongshen on 28/3/2024.
@@ -7,13 +7,18 @@
 
 import SwiftUI
 
-struct ModelTaskStatus: View {
+struct ModelTaskView: View {
     
     @State var task: ModelTask
+    
     @Environment(\.modelContext) private var modelContext
+    @Environment(GlobalStore.self) private var globalStore
     
     var body: some View {
         HStack(alignment: .center) {
+            Label(task.modelID, systemImage: "shippingbox")
+            Spacer()
+            
             Text("\(ByteCountFormatter.string(fromByteCount: task.completedUnitCount, countStyle: .file)) / \(ByteCountFormatter.string(fromByteCount: task.totalUnitCount, countStyle: .file))")
                 
                 Text(task.fractionCompleted, format: .percent.precision(.fractionLength(1)).rounded(rule: .down))
@@ -41,7 +46,7 @@ struct ModelTaskStatus: View {
     @ViewBuilder
     func DeleteTaskButton() -> some View {
         Button {
-            deleteTask(task)
+            deleteTask()
         } label: {
             Image(systemName: "xmark.circle.fill")
         }.buttonStyle(.borderless)
@@ -49,16 +54,19 @@ struct ModelTaskStatus: View {
     
 }
 
-extension ModelTaskStatus {
-    func deleteTask(_ task: ModelTask) {
+extension ModelTaskView {
+    
+    func deleteTask() {
         modelContext.delete(task)
         try? modelContext.save()
+        if let runningTask = globalStore.runningTasks[task.modelID] {
+            runningTask.cancel()
+            globalStore.runningTasks.removeValue(forKey: task.modelID)
+        }
     }
     
     func restartTask(_ task: ModelTask) {
-        modelContext.delete(task)
-        modelContext.insert(ModelTask(modelId: task.modelID, type: .download))
-        try? modelContext.save()
+        task.status = .new
     }
 }
 
@@ -72,7 +80,7 @@ extension ModelTaskStatus {
     let failedTask = ModelTask(modelId: "",
                                 status: .failed,
                                 type: .download)
-    ModelTaskStatus(task: runningTask)
-    ModelTaskStatus(task: stoppedTask)
-    ModelTaskStatus(task: failedTask)
+    ModelTaskView(task: runningTask)
+    ModelTaskView(task: stoppedTask)
+    ModelTaskView(task: failedTask)
 }

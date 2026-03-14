@@ -7,6 +7,7 @@
 
 import SwiftUI
 import QuickLookThumbnailing
+import UniformTypeIdentifiers
 
 enum ViewType: Identifiable, CaseIterable {
     case grid, list
@@ -36,7 +37,7 @@ struct FileThumbnail: View {
         if let previewImage {
             Image(platformImage: previewImage)
         } else {
-            Image(systemName: url.hasDirectoryPath ? "folder" : "doc.text")
+            Image(systemName: systemImageName(for: url))
         }
     }
     
@@ -64,6 +65,51 @@ extension FileThumbnail {
 #endif
             }
         }
+    }
+    
+    func systemImageName(for url: URL) -> String {
+        
+        if url.hasDirectoryPath {
+            return "folder"
+        }
+        
+        guard let type = UTType(filenameExtension: url.pathExtension) else {
+            return "document"
+        }
+        
+        if type.conforms(to: .image) {
+            return "photo"
+        }
+        
+        if type.conforms(to: .movie) || type.conforms(to: .video) {
+            return "video"
+        }
+        
+        if type.conforms(to: .audio) {
+            return "waveform"
+        }
+        
+        if type.conforms(to: .pdf) {
+            return "richtext.page"
+        }
+        
+        if type.conforms(to: .plainText) || type.conforms(to: .text) {
+            return "text.document"
+        }
+        
+        if type.conforms(to: .json) {
+            return "curlybraces"
+        }
+        
+        if type.conforms(to: .spreadsheet) {
+            return "tablecells"
+        }
+        
+        if type.conforms(to: .presentation) {
+            return "display"
+        }
+        
+        return "document"
     }
 }
     

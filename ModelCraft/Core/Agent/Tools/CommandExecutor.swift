@@ -7,6 +7,7 @@
 
 import Foundation
 
+#if os(macOS)
 enum CommandExecutor {
     
     @discardableResult
@@ -52,3 +53,4 @@ enum CommandExecutor {
         }
     
 }
+#endif

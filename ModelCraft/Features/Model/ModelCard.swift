@@ -10,8 +10,8 @@ import SwiftData
 
 struct ModelCard: View {
     
-    let model: ModelStoreModel
-    
+    @State var model: ModelStoreModel
+    @State var viewMode: ViewMode
     @State private var isHovered = false
     
     @Environment(\.modelContext) private var modelContext
@@ -37,8 +37,9 @@ struct ModelCard: View {
         case downloaded
     }
     
-    init(model: ModelStoreModel) {
+    init(model: ModelStoreModel, viewMode: ViewMode) {
         self.model = model
+        self.viewMode = viewMode
         let modelID = model.modelID
         self._downloadedModels = Query(
             filter: #Predicate<LocalModel> { $0.modelID == modelID }
@@ -51,71 +52,28 @@ struct ModelCard: View {
     }
     
     var body: some View {
-        VStack(spacing: 12) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 10)
-                    .fill(Color.accentColor.opacity(0.1))
-                    .frame(width: 60, height: 60)
-                
-                Image(systemName: "shippingbox.fill")
-                    .font(.system(size: 30))
-                    .foregroundStyle(Color.accentColor)
-            }
-            
-            Text(model.displayName)
-                .font(.headline)
-                .lineLimit(1)
-                .truncationMode(.middle)
-            Group {
-                switch downloadState {
-                        
-                case .notDownloaded:
-                    Button {
-                        createDownloadModelTask()
-                    } label: {
-                        Text("Download")
-                    }.disabled(downloadState != .notDownloaded)
-                    
-                case .downloading:
-                    ZStack {
-                        ProgressView(value: downloadTasks.first?.fractionCompleted)
-                            .progressViewStyle(.circular)
-                        
-                        Button {
-                            stopDownloadTask()
-                        } label: {
-                            Image(systemName: "stop.fill")
-                        }
-                        .buttonStyle(.plain)
-                    }
-                case .stopped:
-                    ZStack {
-                        ProgressView(value: downloadTasks.first?.fractionCompleted)
-                            .progressViewStyle(.circular)
-                        
-                        Button {
-                            resumeDownloadTask()
-                        } label: {
-                            Image(systemName: "play")
-                        }
-                        .buttonStyle(.plain)
-                    }
-                case .downloaded:
-                    Button {
-                        
-                    } label: {
-                        Text("Downloaded")
-                    }
-                    .buttonStyle(.plain)
+        Group {
+            switch viewMode {
+            case .grid:
+                VStack(spacing: 12) {
+                    ModelIcon()
+                    ModelName()
+                    DownloadActionView()
                 }
-            }.frame(height: 32)
-            
+            case .list:
+                HStack {
+                    ModelIcon()
+                    ModelName()
+                    Spacer()
+                    DownloadActionView()
+                }
+            }
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, Layout.padding)
+        .padding(Layout.padding)
         .background(
             RoundedRectangle()
-                .fill(Color(nsColor: .controlBackgroundColor))
+                .fill(.background)
                 .shadow(color: .black.opacity(isHovered ? 0.2 : 0), radius: 5, x: 0, y: 2)
         )
         .overlay(
@@ -128,6 +86,77 @@ struct ModelCard: View {
             }
         }
     }
+}
+
+extension ModelCard {
+    
+    @ViewBuilder
+    func ModelIcon() -> some View {
+        RoundedRectangle(cornerRadius: 10)
+            .fill(Color.accentColor.opacity(0.1))
+            .frame(width: 60, height: 60)
+            .overlay {
+                Image(systemName: "shippingbox.fill")
+                    .font(.system(size: 30))
+                    .foregroundStyle(Color.accentColor)
+            }
+    }
+    
+    @ViewBuilder
+    func ModelName() -> some View {
+        Text(model.displayName)
+            .font(.headline)
+            .lineLimit(1)
+            .truncationMode(.middle)
+    }
+    
+    @ViewBuilder
+    func DownloadActionView() -> some View {
+        Group {
+            switch downloadState {
+            case .notDownloaded:
+                Button {
+                    createDownloadModelTask()
+                } label: {
+                    Text("Download")
+                }
+                .disabled(downloadState != .notDownloaded)
+                
+            case .downloading:
+                ZStack {
+                    ProgressView(value: downloadTasks.first?.fractionCompleted)
+                        .progressViewStyle(.circular)
+                    
+                    Button {
+                        stopDownloadTask()
+                    } label: {
+                        Image(systemName: "stop.fill")
+                    }
+                    .buttonStyle(.plain)
+                }
+            case .stopped:
+                ZStack {
+                    ProgressView(value: downloadTasks.first?.fractionCompleted)
+                        .progressViewStyle(.circular)
+                    
+                    Button {
+                        resumeDownloadTask()
+                    } label: {
+                        Image(systemName: "play")
+                    }
+                    .buttonStyle(.plain)
+                }
+            case .downloaded:
+                Button {
+                    
+                } label: {
+                    Text("Downloaded")
+                }
+                .buttonStyle(.plain)
+            }
+        }.frame(height: 32)
+    }
+    
 }
 
 extension ModelCard {
@@ -145,8 +174,8 @@ extension ModelCard {
     }
     
     func stopDownloadTask() {
-        if let task = globalStore.runningTasks[model.modelID] {
-            task.cancel()
+        if let runningTask = globalStore.runningTasks[model.modelID] {
+            runningTask.cancel()
             globalStore.runningTasks.removeValue(forKey: model.modelID)
         }
     }

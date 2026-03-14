@@ -12,7 +12,7 @@ struct WelcomeView: View {
     var body: some View {
         VStack(alignment: .center) {
             Spacer()
-            MessageRole.assistant.icon
+            Image("Assistant")
                 .resizable()
                 .aspectRatio(contentMode: .fit)
                 .frame(height: 200)

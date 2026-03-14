@@ -30,7 +30,6 @@ struct MessageView: View {
     @Environment(UserSettings.self) private var userSettings
     @Environment(ChatService.self) private var service
     
-    private let imageHeight: CGFloat = 200
     private let columns = Array.init(repeating: GridItem(.flexible()), count: 4)
     
     private var splashTheme: Splash.Theme {
@@ -53,7 +52,7 @@ struct MessageView: View {
                     UserMessageView()
                 case .assistant:
                     AssistantMessageView()
-                case .system, .tool:
+                default:
                     EmptyView()
                 }
             }
@@ -75,12 +74,10 @@ extension MessageView {
     }
     
     @ViewBuilder
-    func MessageImageView(_ message: Message) -> some View {
+    func MessageAttachmentsView(_ attachments: [URL]) -> some View {
         LazyVGrid(columns: columns){
-            ForEach(message.images, id: \.self) { data in
-                ImageLoader(data: data, contentMode: .fit)
-                    .frame(height: imageHeight)
-                    .cornerRadius()
+            ForEach(attachments, id: \.self) { url in
+                AttachmentContentView(url: url).frame(height: 80)
             }
         }
     }
@@ -96,9 +93,8 @@ extension MessageView {
         HStack(alignment: .top) {
             Spacer()
             VStack(alignment: .trailing) {
-                if !message.images.isEmpty {
-                    MessageImageView(message)
-                }
+                MessageAttachmentsView(message.attachments)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
                 
                 if isEditing {
                     ChatInputView()
@@ -187,23 +183,14 @@ extension MessageView {
         HStack(alignment: .top) {
             VStack(alignment: .leading) {
                 
-                
                 if message.status == .new {
                     ProgressView().controlSize(.small)
-                }
-                
-                if !message.content.isEmpty {
+                } else {
+                    MessageAttachmentsView(message.attachments)
                     AssistantMessageContentView(message)
                         .contextMenu {
                             AssistantButtons()
                         }
-                }
-                
-                if !message.images.isEmpty {
-                    MessageImageView(message)
-                }
-                
-                if message.status != .new {
                     AssistantButtons()
                         .buttonStyle(.borderless)
                         .opacity(isHovering ? 1 : 0)
@@ -243,79 +230,73 @@ extension MessageView {
         }
     }
     
+//    func AssistantMessageContentView(_ message: Message) -> some View {
+//        
+//        var think = ""
+//        var answer = ""
+//        for event in TagStreamParser().feed(message.content) {
+//            if case .inTag(let tag, let content) = event {
+//                if tag == "think" {
+//                    think.append(content)
+//                } else {
+//                    answer.append(content)
+//                }
+//            }
+//        }
+//        
+//        return VStack(alignment: .leading) {
+//            
+//            if !think.isEmpty {
+//                ThinkView(think)
+//            }
+//            
+//            if !answer.isEmpty {
+//                Markdown(answer)
+//                    .markdownTheme(.modelCraft)
+//                    .markdownCodeSyntaxHighlighter(.splash(theme: self.splashTheme))
+//                    .textSelection(.enabled)
+//                    .multilineTextAlignment(.leading)
+//            }
+//            
+//            
+//            if let toolCall = message.toolCall,
+//                let toolCallResult = message.toolCallResult {
+//                Button {
+//                    inspectorPresented = true
+//                    updateInspector(ToolCallView(toolCall: toolCall, toolCallResult: toolCallResult))
+//                } label: {
+//                    Label(toolCall.localizedName, systemImage: toolCall.icon)
+//                }.foregroundStyle(.secondary)
+//            }
+//            
+//        }
+//        
+//    }
+    
     func AssistantMessageContentView(_ message: Message) -> some View {
         VStack(alignment: .leading) {
+
+            Markdown(message.content)
+                    .markdownTheme(.modelCraft)
+                    .markdownCodeSyntaxHighlighter(.splash(theme: self.splashTheme))
+                    .textSelection(.enabled)
+                    .multilineTextAlignment(.leading)
             
-            VStack(alignment: .leading) {
-                ThoughtView(thought: message.content)
-                if let toolCall = message.toolCall {
-                    Button {
-                        inspectorPresented = true
-                        updateInspector(ActionInspector(toolCall: toolCall))
-                    } label: {
-                        Label(toolCall.localizedName, systemImage: toolCall.icon)
-                    }.foregroundStyle(.secondary)
-                }
+            
+            if let toolCall = message.toolCall,
+                let toolCallResult = message.toolCallResult {
+                Button {
+                    inspectorPresented = true
+                    updateInspector(ToolCallView(toolCall: toolCall, toolCallResult: toolCallResult))
+                } label: {
+                    Label(toolCall.localizedName, systemImage: toolCall.icon)
+                }.foregroundStyle(.secondary)
             }
-            
-            Markdown(message.status != .failed ? message.content : "Please try again later.")
-                .markdownTheme(.modelCraft)
-                .markdownCodeSyntaxHighlighter(.splash(theme: self.splashTheme))
-                .textSelection(.enabled)
-                .multilineTextAlignment(.leading)
-                .contextMenu {
-                    Button {
-                        
-                    } label: {
-                        Text("Ask")
-                    }
-                }
-            
         }
         
     }
     
     
-    @ViewBuilder
-    func ActionInspector(toolCall: ToolCall) -> some View {
-        let arguments = toolCall.function.arguments
-        switch toolCall.function.name {
-        case ToolNames.executeCommand:
-            Text(arguments["command"]?.stringValue ?? "No command")
-        case ToolNames.searchMap:
-            { () -> AnyView in
-                
-                do {
-                    let places = try toolCall.toolResult.toArray(of: MapPlace.self)
-                    return AnyView(
-                        Map {
-                            ForEach(places) { place in
-                                Marker(place.name,
-                                       coordinate: .init(latitude: place.latitude, longitude: place.longitude))
-                            }
-                        }
-                    )
-                } catch {
-                    return AnyView(Text("Failed to parse map data"))
-                }
-            }()
-            
-        case ToolNames.captureScreen:
-            if let data = toolCall.toolResult.data(using: .utf8),
-               let output = try? JSONDecoder().decode(CaptureScreenOutput.self, from: data),
-               let imageData = Data(base64Encoded: output.imageBase64),
-               let platformImage = PlatformImage(data: imageData){
-                    Image(platformImage: platformImage)
-                        .resizable()
-                        .scaledToFit()
-            } else {
-                EmptyView()
-            }
-           
-        default:
-            EmptyView()
-        }
-    }
 }
 
 extension MessageView {
