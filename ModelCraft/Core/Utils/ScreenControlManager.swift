@@ -20,20 +20,16 @@ class ScreenControlManager {
     
     static let shared = ScreenControlManager()
     
-    // MARK: - Screen Size
-    var screenSize: CGSize {
+    var screen: CGRect {
         #if canImport(AppKit)
-        let frame = NSScreen.screens
+        NSScreen.screens
                 .map { $0.frame }
                 .reduce(CGRect.null) { $0.union($1) }
-        return frame.size
-        #elseif canImport(UIKit)
-        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene else {
-            return CGSize(width: 393, height: 852)
-        }
-        return windowScene.screen.bounds.size
         #else
-        return .zero
+        UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .map { $0.screen.bounds }
+            .reduce(CGRect.null) { $0.union($1) }
         #endif
     }
 
@@ -52,18 +48,11 @@ class ScreenControlManager {
             guard let image = CGDisplayCreateImage(display) else { continue }
             images.append((image, CGDisplayBounds(display)))
         }
-
-        let unionFrame = images
-            .map { $0.1 }
-            .reduce(CGRect.null) { $0.union($1) }
-
-        let width = Int(unionFrame.width)
-        let height = Int(unionFrame.height)
-
+        
         guard let ctx = CGContext(
             data: nil,
-            width: width,
-            height: height,
+            width: Int(screen.width),
+            height: Int(screen.height),
             bitsPerComponent: 8,
             bytesPerRow: 0,
             space: CGColorSpaceCreateDeviceRGB(),
@@ -72,8 +61,8 @@ class ScreenControlManager {
 
         for (image, frame) in images {
 
-            let x = frame.origin.x - unionFrame.origin.x
-            let y = frame.origin.y - unionFrame.origin.y
+            let x = frame.origin.x - screen.origin.x
+            let y = frame.origin.y - screen.origin.y
 
             ctx.draw(image, in: CGRect(x: x, y: y, width: frame.width, height: frame.height))
         }
@@ -197,7 +186,7 @@ class ScreenControlManager {
     
     func screenToSystemPoint(point: CGPoint) -> CGPoint {
         #if canImport(AppKit)
-        let height = screenSize.height
+        let height = screen.height
         return CGPoint(x: point.x, y: height - point.y)
         #else
         return CGPoint(x: point.x, y: point.y)

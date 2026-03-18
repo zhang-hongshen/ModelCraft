@@ -36,7 +36,6 @@ class ToolExecutor {
                     message.images.append(.ciImage(ciImage))
                 }
             }
-            
         case ToolNames.click:
             let result = try await toolCall.execute(with: ToolDefinition.click)
             toolCallResult = result.toolResult

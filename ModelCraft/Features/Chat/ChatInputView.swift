@@ -24,9 +24,9 @@ struct ChatInputView: View {
     var body: some View {
         MessageEditor()
             .safeAreaPadding()
-            .background(.regularMaterial)
+            .background(.ultraThinMaterial)
             .fileImporter(isPresented: $fileImporterPresented,
-                          allowedContentTypes: [.image, .video],
+                          allowedContentTypes: [.image, .movie],
                           allowsMultipleSelection: true) { result in
                 switch result {
                 case .success(let urls):
@@ -51,7 +51,7 @@ extension ChatInputView {
                             AttachmentView(
                                 url: url,
                                 onDelete: { draft.attachments.removeAll { $0 == url }}
-                            ).frame(height: 80)
+                            ).frame(height: 70)
                         }
                     }
                 }
@@ -60,7 +60,6 @@ extension ChatInputView {
             
             TextField("", text: $draft.content, axis: .vertical)
                 .lineLimit(1...5)
-                .font(.title3)
                 .textFieldStyle(.plain)
             
             HStack(alignment: .bottom) {
@@ -78,8 +77,11 @@ extension ChatInputView {
         .buttonStyle(.borderless)
         .imageScale(.large)
         .padding()
+        .background(
+            RoundedRectangle().fill(Color(NSColor.controlBackgroundColor))
+        )
         .overlay {
-            RoundedRectangle().fill(.clear).stroke(.primary, lineWidth: 1)
+            RoundedRectangle().stroke(.separator.opacity(0.7), lineWidth: 0.5)
         }
     }
     
@@ -118,4 +120,5 @@ extension ChatInputView {
         onSubmit: {},
         onStop: {},
         onUpload: {_ in })
+    .environment(GlobalStore())
 }

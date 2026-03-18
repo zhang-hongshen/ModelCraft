@@ -33,6 +33,7 @@ final class ToolTests: XCTestCase {
             print("Data \(data) MimeType \(mimeType)")
         }
     }
+    
     func testPerformanceExample() throws {
         // This is an example of a performance test case.
         measure {

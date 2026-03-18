@@ -77,7 +77,7 @@ extension MessageView {
     func MessageAttachmentsView(_ attachments: [URL]) -> some View {
         LazyVGrid(columns: columns){
             ForEach(attachments, id: \.self) { url in
-                AttachmentContentView(url: url).frame(height: 80)
+                AttachmentContentView(url: url).frame(height: 70)
             }
         }
     }
@@ -123,6 +123,20 @@ extension MessageView {
     @ViewBuilder
     func ChatInputView() -> some View {
         VStack(alignment: .trailing) {
+            
+            if !message.attachments.isEmpty {
+                ScrollView(.horizontal) {
+                    HStack(alignment: .center) {
+                        ForEach(message.attachments, id: \.self) { url in
+                            AttachmentView(
+                                url: url,
+                                onDelete: { message.attachments.removeAll { $0 == url }}
+                            ).frame(height: 70)
+                        }
+                    }
+                }
+            }
+            
             TextField("", text: $message.content, axis: .vertical)
                 .lineLimit(1...5)
                 .textFieldStyle(.plain)
@@ -234,11 +248,13 @@ extension MessageView {
 //        
 //        var think = ""
 //        var answer = ""
+//        
 //        for event in TagStreamParser().feed(message.content) {
 //            if case .inTag(let tag, let content) = event {
+//                
 //                if tag == "think" {
 //                    think.append(content)
-//                } else {
+//                } else if tag == "answer" {
 //                    answer.append(content)
 //                }
 //            }
@@ -295,8 +311,7 @@ extension MessageView {
         }
         
     }
-    
-    
+        
 }
 
 extension MessageView {

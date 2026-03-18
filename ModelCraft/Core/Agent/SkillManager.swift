@@ -71,6 +71,7 @@ extension SkillManager {
         
         Skill directory:
         \(skill.location.deletingLastPathComponent().path)
+        Relative paths in this skill are relative to the skill directory.
         </skill_content>
         """
     }

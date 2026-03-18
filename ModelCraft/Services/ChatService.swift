@@ -38,7 +38,7 @@ class ChatService {
             let messages = [PromptBuilder.planExecutionSystemPrompt]
             + Array(chat.sortedMessages.suffix(from: chat.lastSummaryIndex))
             + [PromptBuilder.answerQuestion(question: message.content, summary: chat.summary)]
-            try await executor.run(model: model, knowledgeBaseID: knowledgeBase?.persistentModelID, chat: chat, messages: messages.compactMap { MLXService.shared.toMessage($0) })
+            try await executor.run(model: model, knowledgeBaseID: knowledgeBase?.persistentModelID, chat: chat, messages: messages.compactMap { LLMService.shared.toMessage($0) })
         }
         
         Task(priority: .background) {
@@ -76,18 +76,18 @@ class ChatService {
     private func summarizeChatIfNeeded (model: LocalModel, chatID: PersistentIdentifier) async throws {
         try await chatModelActor.updateSummary(chatID: chatID) { previousSummary, messages in
                 let prompt = PromptBuilder.summarize(previousSummary: previousSummary, messages: messages)
-            return try await MLXService.shared.generate(
+            return try await LLMService.shared.generate(
                 model: model,
-                messages: [prompt])
+                messages: prompt)
         }
     }
 
     private func generateTitleIfNeeded (model: LocalModel, chatID: PersistentIdentifier) async throws {
         try await chatModelActor.generateTitle(chatID: chatID) { messages in
             let prompt = PromptBuilder.generateTitle(messages: messages)
-            return try await MLXService.shared.generate(
+            return try await LLMService.shared.generate(
                 model: model,
-                messages: [prompt])
+                messages: prompt)
         }
     }
     

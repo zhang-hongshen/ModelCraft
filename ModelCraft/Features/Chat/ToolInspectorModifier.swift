@@ -10,7 +10,7 @@ import SwiftUI
 struct ToolInspectorModifier: ViewModifier {
     
     @Binding var isPresented: Bool
-    let content: AnyView
+    @State var content: AnyView
     
     @Environment(\.horizontalSizeClass) private var sizeClass
 

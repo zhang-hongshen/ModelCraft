@@ -21,12 +21,12 @@ class AgentExecutor {
     ) async throws -> Void {
         var availableTools =  ToolDefinition.allTools
         if let knowledgeBaseID = knowledgeBaseID {
-            availableTools.append(ToolDefinition.createSearchRelevantDocuments(knowledgeBaseID: knowledgeBaseID).schema)
+            availableTools.append(ToolDefinition.searchRelevantDocuments(knowledgeBaseID: knowledgeBaseID).schema)
         }
         let assistantMessage = Message(role: .assistant, chat: chat, status: .new)
         ModelContainer.shared.mainContext.persist(assistantMessage)
         
-        for await batch in try await MLXService.shared.generate(
+        for await batch in try await LLMService.shared.generate(
             model: model, messages: messages, tools: availableTools) {
             assistantMessage.status = .generating
             
@@ -37,7 +37,7 @@ class AgentExecutor {
                 assistantMessage.toolCallResult = toolCallResult
                 assistantMessage.status = .generated
                 try await self.run(model: model, knowledgeBaseID: knowledgeBaseID,
-                                   chat: chat, messages: messages + [MLXService.shared.toMessage(assistantMessage), toolMessage])
+                                   chat: chat, messages: messages + [LLMService.shared.toMessage(assistantMessage), toolMessage])
                 break
             }
             

@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		70008A2D2F6725B7006593CA /* KVCacheManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70008A2C2F6725B3006593CA /* KVCacheManager.swift */; };
 		7001D9B02EC10DEB00047F6B /* ChatInputView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7001D9AF2EC10DEB00047F6B /* ChatInputView.swift */; };
 		7008FD8F2E80414200D62EF6 /* NLEmbedding+.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7008FD8E2E80413E00D62EF6 /* NLEmbedding+.swift */; };
 		70097F7D2D6B58E100DDDEDF /* WelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70097F7C2D6B58E100DDDEDF /* WelcomeView.swift */; };
@@ -58,7 +59,7 @@
 		7071E3812F26A33800CACB8B /* CallToolResult.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7071E3802F26A33100CACB8B /* CallToolResult.swift */; };
 		7071E3832F27C56100CACB8B /* FileTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7071E3822F27C55E00CACB8B /* FileTool.swift */; };
 		7071E3852F27C5B600CACB8B /* AppTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7071E3842F27C5B300CACB8B /* AppTool.swift */; };
-		7078AA122F4B79E000711940 /* MLXService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7078AA112F4B79DF00711940 /* MLXService.swift */; };
+		7078AA122F4B79E000711940 /* LLMService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7078AA112F4B79DF00711940 /* LLMService.swift */; };
 		7078AA152F4B7A8100711940 /* MLXEmbedders in Frameworks */ = {isa = PBXBuildFile; productRef = 7078AA142F4B7A8100711940 /* MLXEmbedders */; };
 		7078AA172F4B7A8100711940 /* MLXLLM in Frameworks */ = {isa = PBXBuildFile; productRef = 7078AA162F4B7A8100711940 /* MLXLLM */; };
 		7078AA192F4B7A8100711940 /* MLXLMCommon in Frameworks */ = {isa = PBXBuildFile; productRef = 7078AA182F4B7A8100711940 /* MLXLMCommon */; };
@@ -171,6 +172,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		70008A2C2F6725B3006593CA /* KVCacheManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KVCacheManager.swift; sourceTree = "<group>"; };
 		7001D9AF2EC10DEB00047F6B /* ChatInputView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatInputView.swift; sourceTree = "<group>"; };
 		7008FD8E2E80413E00D62EF6 /* NLEmbedding+.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NLEmbedding+.swift"; sourceTree = "<group>"; };
 		70097F7C2D6B58E100DDDEDF /* WelcomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeView.swift; sourceTree = "<group>"; };
@@ -222,7 +224,7 @@
 		7071E3802F26A33100CACB8B /* CallToolResult.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CallToolResult.swift; sourceTree = "<group>"; };
 		7071E3822F27C55E00CACB8B /* FileTool.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileTool.swift; sourceTree = "<group>"; };
 		7071E3842F27C5B300CACB8B /* AppTool.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTool.swift; sourceTree = "<group>"; };
-		7078AA112F4B79DF00711940 /* MLXService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MLXService.swift; sourceTree = "<group>"; };
+		7078AA112F4B79DF00711940 /* LLMService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LLMService.swift; sourceTree = "<group>"; };
 		7078AA1E2F4C065A00711940 /* HubApi+.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HubApi+.swift"; sourceTree = "<group>"; };
 		7078AB0A2F4CA42F00711940 /* JSONDecoder+.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "JSONDecoder+.swift"; sourceTree = "<group>"; };
 		7078AB0C2F4CA44E00711940 /* JSONEncoder+.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "JSONEncoder+.swift"; sourceTree = "<group>"; };
@@ -349,8 +351,9 @@
 		706D729D2BB6B076004ACF35 /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				70008A2C2F6725B3006593CA /* KVCacheManager.swift */,
 				70823EC72F520F6F0011DF58 /* ModelService.swift */,
-				7078AA112F4B79DF00711940 /* MLXService.swift */,
+				7078AA112F4B79DF00711940 /* LLMService.swift */,
 				70FE039E2F13EF9D0061CCEB /* ChatService.swift */,
 			);
 			path = Services;
@@ -844,6 +847,7 @@
 				70C22FCC2BAEE24C002754C7 /* Image+.swift in Sources */,
 				701954232BC8244E00CD2ED3 /* CollectionManager.swift in Sources */,
 				7071E3852F27C5B600CACB8B /* AppTool.swift in Sources */,
+				70008A2D2F6725B7006593CA /* KVCacheManager.swift in Sources */,
 				705483F82BBE992800256094 /* DeleteButton.swift in Sources */,
 				70E2017B2BAE825A00CFE1D7 /* ChatView.swift in Sources */,
 				70CE60BE2BAD60AE00A2D0B0 /* SettingsView.swift in Sources */,
@@ -867,7 +871,7 @@
 				706D82642F1E1ED600029818 /* Tab.swift in Sources */,
 				7078AB162F4F7C3800711940 /* JSONValue+.swift in Sources */,
 				701954272BC8D9ED00CD2ED3 /* PromptBuilder.swift in Sources */,
-				7078AA122F4B79E000711940 /* MLXService.swift in Sources */,
+				7078AA122F4B79E000711940 /* LLMService.swift in Sources */,
 				70B13D132BBC66FC00A42F3C /* KnowledgeBaseDetailListView.swift in Sources */,
 				704DEF652F63C94C00BA7F4C /* ViewMode.swift in Sources */,
 				708EC0E92F4A09520055D765 /* ScreenControlManager.swift in Sources */,

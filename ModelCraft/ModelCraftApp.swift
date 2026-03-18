@@ -9,6 +9,8 @@ import SwiftUI
 import SwiftData
 import AVFoundation
 
+import MLX
+
 @main
 struct ModelCraftApp: App {
     
@@ -34,6 +36,7 @@ struct ModelCraftApp: App {
                             try? self.handleModelTask()
                         }
                         await SkillManager.shared.loadSkills()
+                        MLX.Memory.cacheLimit = Int(ProcessInfo.processInfo.physicalMemory >> 1)
                     }
             }.commands {
                 CommandGroup(after: .help) {

@@ -308,6 +308,9 @@
         }
       }
     },
+    "Failed to load map" : {
+
+    },
     "Failed to parse map data" : {
 
     },
@@ -342,6 +345,7 @@
       }
     },
     "Indexing..." : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {

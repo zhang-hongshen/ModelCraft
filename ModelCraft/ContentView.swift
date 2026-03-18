@@ -86,22 +86,16 @@ extension ContentView {
     func KnowledgeBaseSection() -> some View {
         Section {
             ForEach(knowledgeBases) { knowledgeBase in
-                HStack {
-                    Label(knowledgeBase.title, systemImage: knowledgeBase.icon)
-                    if case .indexing = knowledgeBase.indexStatus {
-                        Text("Indexing...").font(.footnote)
+                Label(knowledgeBase.title, systemImage: knowledgeBase.icon)
+                    .tag(Tab.knowledgeBase(knowledgeBase))
+                    .contextMenu{
+                        Button("Edit") {
+                            selectedKnowledgeBase = knowledgeBase
+                        }
+                        DeleteButton(style: .textOnly) {
+                            modelContext.delete(knowledgeBase)
+                        }
                     }
-                }
-                
-                .tag(Tab.knowledgeBase(knowledgeBase))
-                .contextMenu{
-                    Button("Edit") {
-                        selectedKnowledgeBase = knowledgeBase
-                    }
-                    DeleteButton(style: .textOnly) {
-                        modelContext.delete(knowledgeBase)
-                    }
-                }
             }
         } header: {
             HStack {

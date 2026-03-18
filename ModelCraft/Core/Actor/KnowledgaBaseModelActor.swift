@@ -13,9 +13,6 @@ actor KnowledgaBaseModelActor {
     
     func insert(_ model: KnowledgeBase) {
         modelContext.persist(model)
-        Task.detached {
-            model.createEmedding()
-        }
     }
     
     func delete(_ model: KnowledgeBase) {
@@ -28,6 +25,6 @@ actor KnowledgaBaseModelActor {
     
     func searchRelevantDocuments(knowledgeBaseID: PersistentIdentifier, query: String, numOfResults: Int? = nil) async -> [String]{
         guard let knowledgeBase = modelContext.model(for: knowledgeBaseID) as? KnowledgeBase else { return [] }
-        return await knowledgeBase.search(query, numOfResults: numOfResults)
+        return await knowledgeBase.search(query: query, numOfResults: numOfResults ?? 10)
     }
 }

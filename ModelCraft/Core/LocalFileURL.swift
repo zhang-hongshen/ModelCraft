@@ -31,7 +31,7 @@ extension LocalFileURL: Identifiable {
             return try String(contentsOf: self, encoding: .utf8)
         } else if type.conforms(to: .audio) {
             return try await readAudioContent()
-        } else if type.conforms(to: .video) || type.conforms(to: .quickTimeMovie) {
+        } else if type.conforms(to: .movie) {
             return try await readVideoContent()
         }
         return ""

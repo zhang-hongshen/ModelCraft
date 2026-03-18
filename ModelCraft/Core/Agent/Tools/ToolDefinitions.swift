@@ -17,11 +17,14 @@ struct ToolDefinition {
         var tools = [
             readFromFile.schema,
             writeToFile.schema,
+            searchMap.schema,
             captureScreen.schema,
             click.schema,
-            move.schema
+            move.schema,
+            drag.schema,
+            scroll.schema,
+            activateSkill.schema
         ]
-        
         #if os(macOS)
         tools.append(executeCommand.schema)
         #endif
@@ -91,7 +94,7 @@ struct ToolDefinition {
         return SearchMapOutput(places: places)
     }
     
-    static func createSearchRelevantDocuments(knowledgeBaseID: PersistentIdentifier) -> Tool<SearchRelevantDocumentsInput, SearchRelevantDocumentsOutput>{
+    static func searchRelevantDocuments(knowledgeBaseID: PersistentIdentifier) -> Tool<SearchRelevantDocumentsInput, SearchRelevantDocumentsOutput>{
         return Tool(
             name: "search_relevant_documents",
             description: "Search for information in the user's uploaded documents.",

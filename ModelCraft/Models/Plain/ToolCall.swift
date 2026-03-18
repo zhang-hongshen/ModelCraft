@@ -19,6 +19,8 @@ struct ToolNames {
     static let captureScreen = "capture_screen"
     static let move = "move"
     static let click = "click"
+    static let drag = "drag"
+    static let scroll = "scroll"
     static let activateSkill = "activate_skill"
 }
 

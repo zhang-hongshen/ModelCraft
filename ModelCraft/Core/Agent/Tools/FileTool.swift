@@ -64,7 +64,6 @@ class FileTool {
         let stdout = outputData.flatMap { String(data: $0, encoding: .utf8)} ?? ""
         let stderr = errorData.flatMap { String(data: $0, encoding: .utf8) } ?? ""
         return CommandResult(stdout: stdout, stderr: stderr, exitCode: Int(process.terminationStatus))
-        
     }
     #endif
     

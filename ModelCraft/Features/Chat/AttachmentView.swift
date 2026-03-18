@@ -37,13 +37,9 @@ struct AttachmentContentView: View {
         Group {
             if let type = UTType(filenameExtension: url.pathExtension),
                type.conforms(to: .movie) {
-                
                 VideoPlayer(player: AVPlayer(url: url))
-                
             } else {
-                
                 FileThumbnail(url: url)
-                
             }
         }
     }

@@ -21,22 +21,7 @@ struct ToolCallView: View {
         case ToolNames.executeCommand:
             Text(arguments["command"]?.stringValue ?? "No command")
         case ToolNames.searchMap:
-            { () -> AnyView in
-                
-                do {
-                    let places = try toolCallResult.decode(of: [MapPlace].self) ?? []
-                    return AnyView(
-                        Map {
-                            ForEach(places) { place in
-                                Marker(place.name,
-                                       coordinate: .init(latitude: place.latitude, longitude: place.longitude))
-                            }
-                        }
-                    )
-                } catch {
-                    return AnyView(Text("Failed to parse map data"))
-                }
-            }()
+            mapView(for: toolCallResult)
         case ToolNames.readFromFile, ToolNames.writeToFile:
             if let path = arguments["path"]?.stringValue {
                 FilePreviewView(url: FileTool.resolvePath(path) )
@@ -50,6 +35,29 @@ struct ToolCallView: View {
             }
         default:
             EmptyView()
+        }
+    }
+}
+
+extension ToolCallView {
+    
+    @ViewBuilder
+    private func mapView(for toolCallResult: String) -> some View {
+        if let output = try? toolCallResult.decode(of: SearchMapOutput.self) {
+            Map {
+                ForEach(output.places) { place in
+                    Marker(place.name, coordinate: CLLocationCoordinate2D(
+                        latitude: place.latitude,
+                        longitude: place.longitude
+                    ))
+                }
+            }
+        } else {
+            ContentUnavailableView(
+                "Failed to load map",
+                systemImage: "map.slash",
+                description: Text("Failed to parse map data")
+            )
         }
     }
 }

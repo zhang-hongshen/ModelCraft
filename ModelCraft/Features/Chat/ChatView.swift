@@ -32,24 +32,17 @@ struct ChatView: View {
                    minHeight: 250)
             .toolbar(content: ToolbarItems)
             .safeAreaInset(edge: .bottom) {
-                VStack {
-                    
-                    if sizeClass == .compact {
-                        KnowledgeBasePicker()
-                    }
-                    
-                    ChatInputView(
-                        chat: chat,
-                        draft: $draft,
-                        onSubmit: submitDraft,
-                        onStop: {
-                            if let chat = chat {
-                                service.stopGenerating(chat: chat)
-                            }
-                        },
-                        onUpload: { draft.attachments.append(contentsOf: $0) }
-                    )
-                }
+                ChatInputView(
+                    chat: chat,
+                    draft: $draft,
+                    onSubmit: submitDraft,
+                    onStop: {
+                        if let chat = chat {
+                            service.stopGenerating(chat: chat)
+                        }
+                    },
+                    onUpload: { draft.attachments.append(contentsOf: $0) }
+                )
             }
             .onDrop(of: [.image, .movie], isTargeted: nil, perform: uploadByDropping)
             .toolInspector(isPresented: $inspectorPresented){
@@ -69,7 +62,10 @@ extension ChatView {
         if availableModels.isEmpty {
             Text("No Available Model")
         } else {
-            Picker("Models", selection: $globalStore.selectedModel) {
+            
+            Picker("Models",
+                   systemImage: "shippingbox",
+                   selection: $globalStore.selectedModel) {
                 ForEach(availableModels) { model in
                     Text(model.displayName).tag(model)
                 }
@@ -148,10 +144,7 @@ extension ChatView {
                 }
                 .contentMargins(.leading, Layout.padding, for: .scrollContent)
                 .contentMargins(0, for: .scrollIndicators)
-                .onChange(of: chat.messages) {
-                    scrollToBottom(proxy)
-                }
-                .onChange(of: chat.messages.last) {
+                .onChange(of: chat.sortedMessages.last) {
                     scrollToBottom(proxy)
                 }
             }

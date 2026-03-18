@@ -123,17 +123,16 @@ extension ModelCard {
                 .disabled(downloadState != .notDownloaded)
                 
             case .downloading:
-                ZStack {
-                    ProgressView(value: downloadTasks.first?.fractionCompleted)
-                        .progressViewStyle(.circular)
-                    
-                    Button {
-                        stopDownloadTask()
-                    } label: {
-                        Image(systemName: "stop.fill")
+                ProgressView(value: downloadTasks.first?.fractionCompleted)
+                    .progressViewStyle(.circular)
+                    .overlay {
+                        Button {
+                            stopDownloadTask()
+                        } label: {
+                            Image(systemName: "stop.fill")
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
-                }
             case .stopped:
                 ZStack {
                     ProgressView(value: downloadTasks.first?.fractionCompleted)
