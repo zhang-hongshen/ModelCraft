@@ -23,8 +23,8 @@ struct ModelStore: View {
     
     @Environment(\.horizontalSizeClass) private var sizeClass
     
-    private let pageSize = 20
-    private let columns = [GridItem(.adaptive(minimum: 200), spacing: 16)]
+    private static let pageSize = 20
+    private static let columns = [GridItem(.adaptive(minimum: 200), spacing: 16)]
     
     @Query(filter: ModelTask.predicateUnCompletedDownloadTask,
            sort: \ModelTask.createdAt,
@@ -138,8 +138,8 @@ extension ModelStore {
     
     @ViewBuilder
     func GridLoadingView() -> some View {
-        LazyVGrid(columns: columns, spacing: 12) {
-            ForEach(0..<pageSize, id: \.self) { _ in
+        LazyVGrid(columns: ModelStore.columns, spacing: 12) {
+            ForEach(0..<ModelStore.pageSize, id: \.self) { _ in
                 RoundedRectangle(cornerRadius: 12)
                     .fill(Color.secondary.opacity(0.1))
                     .frame(height: 220)
@@ -150,7 +150,7 @@ extension ModelStore {
     
     @ViewBuilder
     func GridView() -> some View {
-        LazyVGrid(columns: columns, spacing: 12) {
+        LazyVGrid(columns: ModelStore.columns, spacing: 12) {
             ForEach(models) { model in
                 ModelCard(model: model, viewMode: viewMode)
             }
@@ -161,7 +161,7 @@ extension ModelStore {
     @ViewBuilder
     func ListLoadingView() -> some View {
         LazyVStack(spacing: 12) {
-            ForEach(0..<pageSize, id: \.self) { _ in
+            ForEach(0..<ModelStore.pageSize, id: \.self) { _ in
                 RoundedRectangle(cornerRadius: 12)
                     .fill(Color.secondary.opacity(0.1))
                     .frame(height: 220)
@@ -185,7 +185,7 @@ extension ModelStore {
 extension ModelStore {
     
     func fetchModels() async throws -> [ModelStoreModel] {
-        return try await ModelService.shared.searchModel(keyword: searchText, page: page, pageSize: pageSize)
+        return try await ModelService.shared.searchModel(keyword: searchText, page: page, pageSize: ModelStore.pageSize)
     }
     
     func reloadModels() async {

@@ -30,6 +30,9 @@
         }
       }
     },
+    "%lld items" : {
+
+    },
     "Acknowledgements" : {
 
     },
@@ -86,6 +89,9 @@
           }
         }
       }
+    },
+    "Browse Files" : {
+
     },
     "Cancel" : {
       "localizations" : {
@@ -452,6 +458,9 @@
         }
       }
     },
+    "Name" : {
+
+    },
     "No Available Model" : {
       "localizations" : {
         "zh-Hans" : {
@@ -461,6 +470,9 @@
           }
         }
       }
+    },
+    "No files added yet" : {
+
     },
     "No selected knowledge base" : {
       "localizations" : {
@@ -496,6 +508,9 @@
         }
       }
     },
+    "Project Documentation" : {
+
+    },
     "Reading from file %@" : {
       "localizations" : {
         "zh-Hans" : {
@@ -515,6 +530,9 @@
           }
         }
       }
+    },
+    "Remove" : {
+
     },
     "Retry" : {
       "localizations" : {
@@ -548,6 +566,9 @@
           }
         }
       }
+    },
+    "Source Files" : {
+
     },
     "Speaking Rate" : {
       "localizations" : {
@@ -614,6 +635,7 @@
       }
     },
     "Title" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {

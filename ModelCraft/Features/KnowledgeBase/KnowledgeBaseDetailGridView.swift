@@ -14,10 +14,10 @@ struct KnowledgeBaseDetailGridView: View {
     
     @State private var columns: [GridItem] = []
     
-    private let gridCellWidth: CGFloat = 80
-    private let columnPadding: CGFloat = 20
+    private static let gridCellWidth: CGFloat = 80
+    private static let columnPadding: CGFloat = 20
     // gridCellWidth + columnPadding
-    private let width: CGFloat = 100
+    private static let width: CGFloat = 100
     
     private var files: [LocalFileURL] { konwledgeBase.files }
     
@@ -50,9 +50,9 @@ struct KnowledgeBaseDetailGridView: View {
             .contentMargins(0, for: .scrollIndicators)
             .onTapGesture(perform: clearSelection)
             .onChange(of: proxy.size.width, initial: true) {
-                let count = Int(proxy.size.width / width)
-                columns = Array(repeating: GridItem(.fixed(gridCellWidth),
-                                                    spacing: columnPadding,
+                let count = Int(proxy.size.width / KnowledgeBaseDetailGridView.width)
+                columns = Array(repeating: GridItem(.fixed(KnowledgeBaseDetailGridView.gridCellWidth),
+                                                    spacing: KnowledgeBaseDetailGridView.columnPadding,
                                                     alignment: .top),
                                 count: count)
             }
@@ -63,15 +63,15 @@ struct KnowledgeBaseDetailGridView: View {
                 keyAction(keyPress.key)
             }
         }
-        .frame(minWidth: width * 2)
+        .frame(minWidth: KnowledgeBaseDetailGridView.width * 2)
     }
     
     @ViewBuilder
     func GridCell(_ url: URL) -> some View {
         VStack {
-            FileThumbnail(url: url, frameWidth: gridCellWidth)
+            FileThumbnail(url: url, frameWidth: KnowledgeBaseDetailGridView.gridCellWidth)
                 .padding(Layout.padding)
-                .frame(width: gridCellWidth, height: gridCellWidth)
+                .frame(width: KnowledgeBaseDetailGridView.gridCellWidth, height: KnowledgeBaseDetailGridView.gridCellWidth)
                 .background {
                     if selectedFiles.contains(url) {
                         RoundedRectangle().fill(.selection)
@@ -83,7 +83,7 @@ struct KnowledgeBaseDetailGridView: View {
                 .truncationMode(.middle)
                 .multilineTextAlignment(.center)
         }
-        .frame(width: gridCellWidth)
+        .frame(width: KnowledgeBaseDetailGridView.gridCellWidth)
         .onTapGesture {
 #if canImport(AppKit)
             if NSApp.currentEvent?.modifierFlags.contains(.command) == true {

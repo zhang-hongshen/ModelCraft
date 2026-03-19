@@ -24,11 +24,11 @@ struct ChatView: View {
     @Environment(\.horizontalSizeClass) private var sizeClass
     
     private let service = ChatService()
-    private let minWidth: CGFloat = 270
+    private static let minWidth: CGFloat = 270
     
     var body: some View {
         MainView()
-            .frame(minWidth: minWidth,
+            .frame(minWidth: ChatView.minWidth,
                    minHeight: 250)
             .toolbar(content: ToolbarItems)
             .safeAreaInset(edge: .bottom) {

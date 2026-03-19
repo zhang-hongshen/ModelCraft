@@ -30,7 +30,7 @@ struct MessageView: View {
     @Environment(UserSettings.self) private var userSettings
     @Environment(ChatService.self) private var service
     
-    private let columns = Array.init(repeating: GridItem(.flexible()), count: 4)
+    private static let columns = Array.init(repeating: GridItem(.flexible()), count: 4)
     
     private var splashTheme: Splash.Theme {
         switch self.colorScheme {
@@ -75,7 +75,7 @@ extension MessageView {
     
     @ViewBuilder
     func MessageAttachmentsView(_ attachments: [URL]) -> some View {
-        LazyVGrid(columns: columns){
+        LazyVGrid(columns: MessageView.columns){
             ForEach(attachments, id: \.self) { url in
                 AttachmentContentView(url: url).frame(height: 70)
             }
