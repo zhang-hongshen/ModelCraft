@@ -6,7 +6,7 @@
 //
 
 import Foundation
-
+import CryptoKit
 
 extension String {
     
@@ -16,5 +16,12 @@ extension String {
         }
         let decoder = JSONDecoder()
         return try decoder.decode(T.self, from: data)
+    }
+    
+    var sha256String: String {
+        guard let data = self.data(using: .utf8) else { return "" }
+        let digest = SHA256.hash(data: data)
+        
+        return digest.compactMap { String(format: "%02x", $0) }.joined()
     }
 }

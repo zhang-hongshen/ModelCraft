@@ -31,7 +31,6 @@ class AgentExecutor {
             assistantMessage.status = .generating
             
             if let toolCall = batch.toolCall {
-                print("Tool Call \(toolCall)")
                 assistantMessage.toolCall = toolCall
                 let (toolCallResult, toolMessage) = try await ToolExecutor.shared.dispath(toolCall)
                 assistantMessage.toolCallResult = toolCallResult

@@ -46,10 +46,6 @@ struct ModelCraftApp: App {
                 }
             }
             
-            WindowGroup(id: "acknowledgments") {
-                AcknowledgmentView().applyUserSettings()
-            }
-            
 #if os(macOS)
             Settings {
                 SettingsView().background(.ultraThinMaterial)

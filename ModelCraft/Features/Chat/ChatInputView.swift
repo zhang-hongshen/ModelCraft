@@ -6,20 +6,22 @@
 //
 
 import SwiftUI
-import UniformTypeIdentifiers
-import AVKit
 
-struct ChatInputView: View {
+struct ChatInputView<Content: View>: View {
     
-    @State var chat: Chat?
-    @Binding var draft: Message
-    var onSubmit: () -> Void
-    var onStop: () -> Void
-    var onUpload: ([URL]) -> Void
+    @Bindable var userInput: Message
+    var trailing: () -> Content
     
     @State private var fileImporterPresented = false
-    
     @Environment(GlobalStore.self) private var globalStore
+    
+    init(
+        userInput: Bindable<Message>,
+        @ViewBuilder trailing: @escaping () -> Content
+    ) {
+        self._userInput = userInput
+        self.trailing = trailing
+    }
     
     var body: some View {
         MessageEditor()
@@ -30,7 +32,7 @@ struct ChatInputView: View {
                           allowsMultipleSelection: true) { result in
                 switch result {
                 case .success(let urls):
-                    onUpload(urls)
+                    userInput.attachments.append(contentsOf: urls)
                 case .failure(let error):
                     debugPrint(error.localizedDescription)
                 }
@@ -44,13 +46,13 @@ extension ChatInputView {
     func MessageEditor() -> some View {
         VStack(alignment: .leading) {
             
-            if !draft.attachments.isEmpty {
+            if !userInput.attachments.isEmpty {
                 ScrollView(.horizontal) {
                     HStack(alignment: .center) {
-                        ForEach(draft.attachments, id: \.self) { url in
+                        ForEach(userInput.attachments, id: \.self) { url in
                             AttachmentView(
                                 url: url,
-                                onDelete: { draft.attachments.removeAll { $0 == url }}
+                                onDelete: { userInput.attachments.removeAll { $0 == url }}
                             ).frame(height: 70)
                         }
                     }
@@ -58,27 +60,21 @@ extension ChatInputView {
             }
             
             
-            TextField("", text: $draft.content, axis: .vertical)
+            TextField("Type Anything", text: $userInput.content, axis: .vertical)
                 .lineLimit(1...5)
                 .textFieldStyle(.plain)
             
             HStack(alignment: .bottom) {
                 UploadButton()
                 Spacer()
-                Group {
-                    if chat?.sortedMessages.last?.status == .generating {
-                        StopGenerateMessageButton()
-                    } else {
-                        SubmitMessageButton()
-                    }
-                }
+                trailing()
             }.font(.title2)
         }
         .buttonStyle(.borderless)
         .imageScale(.large)
         .padding()
         .background(
-            RoundedRectangle().fill(Color(NSColor.controlBackgroundColor))
+            RoundedRectangle().fill(.background)
         )
         .overlay {
             RoundedRectangle().stroke(.separator.opacity(0.7), lineWidth: 0.5)
@@ -94,31 +90,12 @@ extension ChatInputView {
         }
     }
     
-    @ViewBuilder
-    func StopGenerateMessageButton() -> some View {
-        Button(action: onStop) {
-            Image(systemName: "stop.circle.fill")
-        }
-    }
     
-    @ViewBuilder
-    func SubmitMessageButton() -> some View {
-        let disabled = globalStore.selectedModel == nil || draft.content.isEmpty
-        Button(action: onSubmit) {
-            Image(systemName: "arrow.up.circle.fill")
-        }
-        .tint(disabled ? .secondary : .accentColor)
-        .disabled(disabled)
-        .keyboardShortcut(.return, modifiers: .command)
-    }
 }
 
 #Preview {
     ChatInputView(
-        chat: Chat(),
-        draft: .constant(Message(chat: Chat())),
-        onSubmit: {},
-        onStop: {},
-        onUpload: {_ in })
+        userInput: .init(Message(chat: Chat())),
+        trailing: {})
     .environment(GlobalStore())
 }

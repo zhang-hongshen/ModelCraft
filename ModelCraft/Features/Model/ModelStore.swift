@@ -88,10 +88,15 @@ extension ModelStore {
             }
             
             if sizeClass == .regular {
-                Picker("View Mode", selection: $viewMode) {
-                    Image(systemName: "square.grid.2x2").tag(ViewMode.grid)
-                    Image(systemName: "list.bullet").tag(ViewMode.list)
+                Menu {
+                    Picker("", selection: $viewMode) {
+                        Text("as List").tag(ViewMode.list)
+                        Text("as Grid").tag(ViewMode.grid)
+                    }.pickerStyle(.inline)
+                } label: {
+                    Image(systemName: viewMode.systemImage)
                 }
+                .labelsHidden()
             }
             
             if isLoading {
@@ -214,4 +219,5 @@ extension ModelStore {
 #Preview {
     ModelStore()
         .modelContainer(for: [ModelTask.self], inMemory: true)
+        .environment(GlobalStore())
 }

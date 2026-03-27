@@ -86,7 +86,7 @@ extension ContentView {
     func KnowledgeBaseSection() -> some View {
         Section {
             ForEach(knowledgeBases) { knowledgeBase in
-                Label(knowledgeBase.title, systemImage: knowledgeBase.icon)
+                Label(knowledgeBase.title, systemImage: "book")
                     .tag(Tab.knowledgeBase(knowledgeBase))
                     .contextMenu{
                         Button("Edit") {

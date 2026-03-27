@@ -5,7 +5,6 @@
 //  Created by Hongshen on 23/2/26.
 //
 
-import CryptoKit
 import CoreImage
 import UniformTypeIdentifiers
 
@@ -66,14 +65,6 @@ class LLMService {
         }
     }
     
-    
-    private func generateModelKVCacheKey(modelID: String, content: String) -> String {
-        let combinedString = "\(modelID)_\(content)"
-        let data = Data(combinedString.utf8)
-        let hash = Insecure.MD5.hash(data: data)
-        return hash.map { String(format: "%02hhx", $0) }.joined()
-    }
-    
     /// Generates text based on the provided messages using the specified model.
     /// - Parameters:
     ///   - model: The language model to use for generation
@@ -86,40 +77,34 @@ class LLMService {
         let modelContainer = try await load(model: model)
         
         // Prepare input for model processing
+        
         let userInput = UserInput(
-            chat: messages,
+            chat: [messages.last!],
             processing: .init(resize: .init(width: 1024, height: 1024)),
             tools: tools,
         )
         
+        let historyInput = UserInput(chat: Array(messages.dropLast()), tools: tools)
+        let key = "\(model.modelID)_\(historyInput.prompt.description)".sha256String
         
         // Generate response using the model
         return try await modelContainer.perform { (context: ModelContext) in
-            let lmInput = try await context.processor.prepare(input: userInput)
+            let userLMInput = try await context.processor.prepare(input: userInput)
+            
             let parameters = GenerateParameters(temperature: 0.7)
             
-            let systemPrompt = messages.first!.content
-            let key = generateModelKVCacheKey(modelID: model.modelID, content: systemPrompt)
-            var cache: [KVCache]
-            
-            if let oldCache = KVCacheManager.shared.load(for: key) {
-                cache = oldCache
-            } else {
-                print("Creating new cache")
-                let newCache = context.model.newCache(parameters: nil)
-                let promptTokens = context.tokenizer.encode(text: systemPrompt)
-                
-                print("tokens length \(promptTokens.count)")
+            var cache = context.model.newCache(parameters: parameters)
 
-                _ = context.model(MLXArray(promptTokens).reshaped([1, -1]), cache: newCache)
+            if !KVCacheManager.shared.load(for: key, into: &cache) {
+                let historyTokens = try await context.processor.prepare(input: historyInput).text.tokens
                 
-                print("Saving cache")
-                KVCacheManager.shared.save(cache: newCache, for: key)
-                cache = newCache
+                _ = context.model(historyTokens.reshaped([1, -1]), cache: cache)
+                
+                KVCacheManager.shared.save(cache: cache, for: key)
             }
             
             return try MLXLMCommon.generate(
-                input: lmInput, cache: cache,
+                input: userLMInput, cache: cache,
                 parameters: parameters, context: context)
         }
     }

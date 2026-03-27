@@ -97,7 +97,25 @@ extension MessageView {
                     .frame(maxWidth: .infinity, alignment: .trailing)
                 
                 if isEditing {
-                    ChatInputView()
+                    ChatInputView(
+                        userInput: $message,
+                        trailing: {
+                            HStack {
+                                Button(role: .cancel) {
+                                    isEditing = false
+                                } label: {
+                                    Image(systemName: "xmark.circle")
+                                }
+                                Button {
+                                    submitMessage()
+                                    isEditing = false
+                                } label: {
+                                    Image(systemName: "arrow.up.circle.fill")
+                                }
+                            }
+                            .buttonStyle(.borderless)
+                            .imageScale(.large)
+                        })
                 } else {
                     if !message.content.isEmpty {
                         UserMessageContentView(message)
@@ -117,49 +135,6 @@ extension MessageView {
                 
             }
             
-        }
-    }
-    
-    @ViewBuilder
-    func ChatInputView() -> some View {
-        VStack(alignment: .trailing) {
-            
-            if !message.attachments.isEmpty {
-                ScrollView(.horizontal) {
-                    HStack(alignment: .center) {
-                        ForEach(message.attachments, id: \.self) { url in
-                            AttachmentView(
-                                url: url,
-                                onDelete: { message.attachments.removeAll { $0 == url }}
-                            ).frame(height: 70)
-                        }
-                    }
-                }
-            }
-            
-            TextField("", text: $message.content, axis: .vertical)
-                .lineLimit(1...5)
-                .textFieldStyle(.plain)
-            
-            HStack {
-                Button(role: .cancel) {
-                    isEditing = false
-                } label: {
-                    Image(systemName: "xmark.circle")
-                }
-                Button {
-                    submitMessage()
-                    isEditing = false
-                } label: {
-                    Image(systemName: "arrow.up.circle.fill")
-                }.tint(.accentColor)
-            }
-            .buttonStyle(.borderless)
-            .imageScale(.large)
-        }
-        .padding()
-        .background {
-            RoundedRectangle().fill(.quaternary).stroke(.primary, lineWidth: 1)
         }
     }
     

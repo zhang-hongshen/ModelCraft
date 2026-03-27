@@ -13,7 +13,7 @@ final class KVCacheManager {
 
     static let shared = KVCacheManager()
 
-    private let activeCache: NSCache<NSString, NSArray> = {
+    private let inMemoryCache: NSCache<NSString, NSArray> = {
         let cache = NSCache<NSString, NSArray>()
         cache.countLimit = 10
         return cache
@@ -36,29 +36,35 @@ final class KVCacheManager {
         
         for (i, layer) in cache.enumerated() {
             let state = layer.state
-            MLX.eval(state)
             arrays["k_\(i)"] = state[0]
             arrays["v_\(i)"] = state[1]
         }
 
         guard !arrays.isEmpty else { return }
-
-        activeCache.setObject(cache as NSArray, forKey: key as NSString)
+        
+        MLX.eval(arrays.values)
+        
+        print("Saving cache to memory")
+        inMemoryCache.setObject(cache as NSArray, forKey: key as NSString)
+        
         let url = cacheDir.appendingPathComponent("\(key).safetensors")
-
         do {
+            print("Saving cache to disk")
             try MLX.save(arrays: arrays, url: url)
         } catch {
-            print("Cache save failed:", error)
+            print("Saving cache failed:", error)
         }
     }
 
     // MARK: - Load
-    func load(for key: String) -> [any KVCache]? {
+    func load(for key: String, into emptyCache: inout [any KVCache]) -> Bool {
 
-        if let hit = activeCache.object(forKey: key as NSString) as? [any KVCache] {
-            print("Active Cache Hit")
-            return hit
+        if let hit = inMemoryCache.object(forKey: key as NSString) as? [any KVCache] {
+            print("Loading cache from memory")
+                        for (i, layer) in hit.enumerated() where i < emptyCache.count {
+                emptyCache[i].state = layer.state
+            }
+            return true
         }
         
         let url = cacheDir.appendingPathComponent("\(key).safetensors")
@@ -66,7 +72,7 @@ final class KVCacheManager {
         guard FileManager.default.fileExists(atPath: url.path),
               let dict = try? MLX.loadArrays(url: url)
         else {
-            return nil
+            return false
         }
 
         let sortedIndices = dict.keys
@@ -74,23 +80,22 @@ final class KVCacheManager {
                 .compactMap { Int($0.dropFirst(2)) }
                 .sorted()
 
-        guard !sortedIndices.isEmpty else { return nil }
+        guard !sortedIndices.isEmpty else { return false }
         
         var cache: [any KVCache] = []
 
+        print("Loading Cache from disk")
         for i in sortedIndices {
             guard let k = dict["k_\(i)"],
                   let v = dict["v_\(i)"]
             else {
-                return nil
+                return false
             }
-
-            let layerCache = KVCacheSimple()
-            layerCache.state = [k, v]
-            cache.append(layerCache)
+            emptyCache[i].state = [k, v]
         }
-        activeCache.setObject(cache as NSArray, forKey: key as NSString)
-        return cache
+        
+        inMemoryCache.setObject(cache as NSArray, forKey: key as NSString)
+        return true
     }
 
     // MARK: - Clear

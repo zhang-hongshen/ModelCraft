@@ -15,7 +15,7 @@ struct ChatView: View {
     
     @Query private var knowledgeBases: [KnowledgeBase] = []
     @Query private var availableModels: [LocalModel] = []
-    @State private var draft = Message(role: .user)
+    @Bindable private var draft = Message(role: .user)
     @State private var selectedImages = Set<Data>()
     @State private var inspectorPresented = false
     @State private var inspectorContent = AnyView(EmptyView())
@@ -28,20 +28,20 @@ struct ChatView: View {
     
     var body: some View {
         MainView()
-            .frame(minWidth: ChatView.minWidth,
-                   minHeight: 250)
+            .frame(minWidth: ChatView.minWidth, minHeight: 250)
             .toolbar(content: ToolbarItems)
             .safeAreaInset(edge: .bottom) {
                 ChatInputView(
-                    chat: chat,
-                    draft: $draft,
-                    onSubmit: submitDraft,
-                    onStop: {
-                        if let chat = chat {
-                            service.stopGenerating(chat: chat)
+                    userInput: $draft,
+                    trailing: {
+                        HStack {
+                            if chat?.sortedMessages.last?.status == .generating {
+                                StopGenerateMessageButton()
+                            } else {
+                                SubmitMessageButton()
+                            }
                         }
-                    },
-                    onUpload: { draft.attachments.append(contentsOf: $0) }
+                    }
                 )
             }
             .onDrop(of: [.image, .movie], isTargeted: nil, perform: uploadByDropping)
@@ -57,68 +57,105 @@ extension ChatView {
     
     @ViewBuilder
     func ModelPicker() -> some View {
-        @Bindable var globalStore = globalStore
         
         if availableModels.isEmpty {
-            Text("No Available Model")
+            Text("No Models Available").disabled(true)
         } else {
-            
-            Picker("Models",
-                   systemImage: "shippingbox",
-                   selection: $globalStore.selectedModel) {
-                ForEach(availableModels) { model in
-                    Text(model.displayName).tag(model)
+            ForEach(availableModels) { model in
+                Button {
+                    globalStore.selectedModel = model
+                } label: {
+                    Text(model.displayName)
+                    if globalStore.selectedModel == model {
+                        Image(systemName: "checkmark")
+                    }
                 }
-                Text("No selected model").tag(nil as LocalModel?)
             }
         }
     }
     
     @ViewBuilder
     func KnowledgeBasePicker() -> some View {
-        @Bindable var globalStore = globalStore
-        
-        Picker("Knowledge Base", selection: $globalStore.selectedKnowledgeBase) {
-            ForEach(knowledgeBases) { knowledgeBase in
-                Text(verbatim: knowledgeBase.title).tag(knowledgeBase as KnowledgeBase?)
-            }
-            Text("No selected knowledge base").tag(nil as KnowledgeBase?)
+        Button {
+            globalStore.selectedKnowledgeBase = nil
+        } label: {
+            Label("None", systemImage: "circle.slash")
         }
+        ForEach(knowledgeBases) { kb in
+            Button {
+                globalStore.selectedKnowledgeBase = kb
+            } label: {
+                Label(kb.title, systemImage: "book")
+                if globalStore.selectedKnowledgeBase == kb {
+                    Image(systemName: "checkmark")
+                }
+            }
+        }
+        
     }
-    
+
     @ToolbarContentBuilder
     func ToolbarItems() -> some ToolbarContent {
-        
         ToolbarItem(placement: .principal) {
-            ModelPicker()
+            Menu {
+                Section("Active Model") {
+                    ModelPicker()
+                }
+                
+                Section("Knowledge Base") {
+                    KnowledgeBasePicker()
+                }
+            } label: {
+                VStack(alignment: .leading) {
+                    Text(globalStore.selectedModel?.displayName ?? "Select Model")
+                        .font(.headline)
+                    if let kb = globalStore.selectedKnowledgeBase {
+                        Text(kb.title)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+            .menuStyle(.button)
         }
-        
-        
-        if sizeClass == .regular {
-            ToolbarItem(placement: .principal) {
-                KnowledgeBasePicker()
-            }
-        
-            ToolbarItem {
-                Button {
-                    inspectorPresented.toggle()
-                } label: {
-                    Image(systemName: "sidebar.right")
-                }
-            }
-        } else {
-            ToolbarItem {
-                NavigationLink {
-                    ModelStore()
-                } label: {
-                    Image(systemName: "storefront")
-                }
 
+        ToolbarItemGroup(placement: .primaryAction) {
+            if sizeClass == .regular {
+                Button {
+                    withAnimation(.spring()) {
+                        inspectorPresented.toggle()
+                    }
+                } label: {
+                    Label("Inspector", systemImage: "sidebar.right")
+                }
+                .help("Toggle Info Sidebar")
             }
+            
         }
-        
     }
     
+    
+    @ViewBuilder
+    func StopGenerateMessageButton() -> some View {
+        Button {
+            if let chat = chat {
+                service.stopGenerating(chat: chat)
+            }
+        } label: {
+            Image(systemName: "stop.circle.fill")
+        }
+    }
+    
+    @ViewBuilder
+    func SubmitMessageButton() -> some View {
+        let disabled = globalStore.selectedModel == nil || draft.content.isEmpty
+        Button(action: submitDraft) {
+            Image(systemName: "arrow.up.circle.fill")
+        }
+        .tint(disabled ? .secondary :  .primary)
+        .disabled(disabled)
+        .keyboardShortcut(.return, modifiers: .command)
+    }
     
     @ViewBuilder
     func MessagesView(_ messages: [Message]) -> some View {

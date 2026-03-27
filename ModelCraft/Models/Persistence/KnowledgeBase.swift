@@ -7,13 +7,10 @@
 import Foundation
 import SwiftData
 
-import SVDB
-
 @Model
 class KnowledgeBase {
     @Attribute(.unique) var id = UUID()
     var createdAt: Date = Date.now
-    var icon: String = "book"
     var title: String
     var files: [LocalFileURL] {
         didSet {

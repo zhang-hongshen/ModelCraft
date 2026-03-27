@@ -33,10 +33,10 @@
     "%lld items" : {
 
     },
-    "Acknowledgements" : {
+    "Acknowledgments" : {
 
     },
-    "Acknowledgments" : {
+    "Active Model" : {
 
     },
     "Add Files" : {
@@ -68,6 +68,12 @@
           }
         }
       }
+    },
+    "as Grid" : {
+
+    },
+    "as List" : {
+
     },
     "Ask" : {
       "extractionState" : "stale",
@@ -361,6 +367,9 @@
         }
       }
     },
+    "Inspector" : {
+
+    },
     "Knowledge Base" : {
       "localizations" : {
         "zh-Hans" : {
@@ -433,6 +442,7 @@
       }
     },
     "Models" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -462,6 +472,7 @@
 
     },
     "No Available Model" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -474,7 +485,11 @@
     "No files added yet" : {
 
     },
+    "No Models Available" : {
+
+    },
     "No selected knowledge base" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -483,9 +498,6 @@
           }
         }
       }
-    },
-    "No selected model" : {
-
     },
     "None" : {
       "localizations" : {
@@ -655,7 +667,13 @@
         }
       }
     },
+    "Toggle Info Sidebar" : {
+
+    },
     "Tool" : {
+
+    },
+    "Type Anything" : {
 
     },
     "Unkown Tool Call" : {
@@ -670,9 +688,6 @@
           }
         }
       }
-    },
-    "View Mode" : {
-
     },
     "Waiting to delete" : {
       "localizations" : {

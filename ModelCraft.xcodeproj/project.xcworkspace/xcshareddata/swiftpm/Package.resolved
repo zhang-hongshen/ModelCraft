@@ -1,5 +1,5 @@
 {
-  "originHash" : "e4e473f142ebf75547fdf8b2046a0577d82d72dbcb57e5a248a12f9691496b9d",
+  "originHash" : "d9c9fee9dbb7723b7607c8be01c61a780cd45cf376d506dd9e67b2e1552a9e1b",
   "pins" : [
     {
       "identity" : "alamofire",
@@ -11,12 +11,39 @@
       }
     },
     {
-      "identity" : "kingfisher",
+      "identity" : "apikit",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/onevcat/Kingfisher",
+      "location" : "https://github.com/ishkawa/APIKit.git",
       "state" : {
-        "revision" : "2ef543ee21d63734e1c004ad6c870255e8716c50",
-        "version" : "7.12.0"
+        "revision" : "b839e53b870104798035b279d2a6168b0a2227b1",
+        "version" : "5.4.0"
+      }
+    },
+    {
+      "identity" : "heliumlogger",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/Kitura/HeliumLogger.git",
+      "state" : {
+        "revision" : "fc2a71597ae974da5282d751bcc11965964bccce",
+        "version" : "2.0.0"
+      }
+    },
+    {
+      "identity" : "licenseplist",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/mono0926/LicensePlist",
+      "state" : {
+        "revision" : "d66dd02655edf264aa0647897decab7f82a869ea",
+        "version" : "3.27.2"
+      }
+    },
+    {
+      "identity" : "loggerapi",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/Kitura/LoggerAPI.git",
+      "state" : {
+        "revision" : "4e6b45e850ffa275e8e26a24c6454fd709d5b6ac",
+        "version" : "2.0.0"
       }
     },
     {
@@ -53,15 +80,6 @@
       "state" : {
         "revision" : "7f4df436eb78fe64fe2c32c58006e9949fa28ad8",
         "version" : "0.16.0"
-      }
-    },
-    {
-      "identity" : "svdb",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/Dripfarm/SVDB.git",
-      "state" : {
-        "revision" : "01e78b8bb9423e40201db450180f731c9a67c554",
-        "version" : "2.0.0"
       }
     },
     {
@@ -110,12 +128,30 @@
       }
     },
     {
+      "identity" : "swift-html-entities",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/Kitura/swift-html-entities.git",
+      "state" : {
+        "revision" : "d8ca73197f59ce260c71bd6d7f6eb8bbdccf508b",
+        "version" : "4.0.1"
+      }
+    },
+    {
       "identity" : "swift-jinja",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/huggingface/swift-jinja.git",
       "state" : {
         "revision" : "f731f03bf746481d4fda07f817c3774390c4d5b9",
         "version" : "2.3.2"
+      }
+    },
+    {
+      "identity" : "swift-log",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-log.git",
+      "state" : {
+        "revision" : "bbd81b6725ae874c69e9b8c8804d462356b55523",
+        "version" : "1.10.1"
       }
     },
     {
@@ -152,6 +188,24 @@
       "state" : {
         "revision" : "664e1b5a65296cd957dfdf262cd120ca88f3b24b",
         "version" : "0.15.0"
+      }
+    },
+    {
+      "identity" : "xcodeedit",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/tomlokhorst/XcodeEdit.git",
+      "state" : {
+        "revision" : "0e550cdee72844b35431afc3a1e176042be6d0f0",
+        "version" : "2.13.0"
+      }
+    },
+    {
+      "identity" : "yams",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/jpsim/Yams.git",
+      "state" : {
+        "revision" : "3d6871d5b4a5cd519adf233fbb576e0a2af71c17",
+        "version" : "5.4.0"
       }
     },
     {
