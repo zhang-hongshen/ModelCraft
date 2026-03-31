@@ -10,7 +10,7 @@ import SwiftUI
 struct KnowledgeBaseDetailGridView: View {
     
     @Bindable var konwledgeBase: KnowledgeBase
-    @Binding var selectedFiles: Set<LocalFileURL>
+    @Binding var selectedFiles: Set<URL>
     
     @State private var columns: [GridItem] = []
     
@@ -19,16 +19,16 @@ struct KnowledgeBaseDetailGridView: View {
     // gridCellWidth + columnPadding
     private static let width: CGFloat = 100
     
-    private var files: [LocalFileURL] { konwledgeBase.files }
+    private var files: [URL] { konwledgeBase.files }
     
-    private var defaultSelection: LocalFileURL? { files.first }
+    private var defaultSelection: URL? { files.first }
     
-    private var preSelection: LocalFileURL? {
+    private var preSelection: URL? {
         guard let selection = selectedFiles.first else { return defaultSelection }
         return files.element(before: selection)
     }
     
-    private var nextSelection: LocalFileURL? {
+    private var nextSelection: URL? {
         guard let selection = selectedFiles.first else { return defaultSelection }
         guard let element = files.element(after: selection) else { return files.first }
         return element
@@ -38,7 +38,7 @@ struct KnowledgeBaseDetailGridView: View {
         GeometryReader { proxy in
             ScrollView {
                 LazyVGrid(columns: columns, spacing: 20){
-                    ForEach(files) { url in
+                    ForEach(files, id: \.self) { url in
                         GridCell(url)
                     }
                     .onDelete {
@@ -108,7 +108,7 @@ extension KnowledgeBaseDetailGridView {
     }
     
     func keyAction(_ key: KeyEquivalent) -> KeyPress.Result {
-        var selection: LocalFileURL? = nil
+        var selection: URL? = nil
         switch key {
         case .leftArrow: selection = preSelection
         case .rightArrow: selection = nextSelection

@@ -7,40 +7,23 @@
 
 import Foundation
 
-extension RandomAccessCollection where Element: Identifiable {
+extension RandomAccessCollection where Element: Equatable {
     
-    func id(after id: Element.ID?) -> Element.ID? {
-        guard let index = self.firstIndex(where: { $0.id == id }) else { return nil }
-        let nextIndex = self.index(after: index)
-        if nextIndex < self.endIndex {
-            return self[nextIndex].id
-        }
-        return nil
-    }
-    
-    func id(before id: Element.ID?) -> Element.ID? {
-        guard let index = self.firstIndex(where: { $0.id == id }) else { return nil }
-        let previousIndex = self.index(before: index)
-        if previousIndex >= self.startIndex {
-            return self[previousIndex].id
-        }
-        return nil
-    }
-    
+    /// 获取当前元素的前一个元素
     func element(before element: Element) -> Element? {
-        guard let index = self.firstIndex(where: { $0.id == element.id }) else { return nil }
+        guard let index = self.firstIndex(of: element),
+              index > self.startIndex else { return nil }
         let previousIndex = self.index(before: index)
-        guard self.indices.contains(previousIndex) else { return nil }
         return self[previousIndex]
     }
     
+    /// 获取当前元素的后一个元素
     func element(after element: Element) -> Element? {
-        guard let index = self.firstIndex(where: { $0.id == element.id }) else { return nil }
+        guard let index = self.firstIndex(of: element) else { return nil }
         let nextIndex = self.index(after: index)
-        guard self.indices.contains(nextIndex) else { return nil }
+        guard nextIndex < self.endIndex else { return nil }
         return self[nextIndex]
     }
-    
 }
     
 extension RandomAccessCollection where Element == Message {

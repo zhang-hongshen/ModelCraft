@@ -13,7 +13,7 @@ struct KnowledgeBaseDetailView: View {
     @Bindable var konwledgeBase: KnowledgeBase
     
     @State private var fileImporterPresented: Bool = false
-    @State private var selectedFiles: Set<LocalFileURL> = []
+    @State private var selectedFiles: Set<URL> = []
     @State private var selectedViewType: ViewType = .list
 
     @Environment(GlobalStore.self)private var globalStore

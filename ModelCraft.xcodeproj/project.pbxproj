@@ -50,7 +50,7 @@
 		705483F82BBE992800256094 /* DeleteButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 705483F72BBE992800256094 /* DeleteButton.swift */; };
 		705827642F60730600804D90 /* Skills in Resources */ = {isa = PBXBuildFile; fileRef = 705827632F60730600804D90 /* Skills */; };
 		7067E8242BCD1AE600FF2797 /* AttachmentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7067E8232BCD1AE600FF2797 /* AttachmentView.swift */; };
-		706943CE2F76624700B271AA /* license_plist.yml in Resources */ = {isa = PBXBuildFile; fileRef = 706943CD2F76623A00B271AA /* license_plist.yml */; };
+		706943D22F79113500B271AA /* Settings.bundle in Resources */ = {isa = PBXBuildFile; fileRef = 706943D12F79113500B271AA /* Settings.bundle */; };
 		706D82642F1E1ED600029818 /* Tab.swift in Sources */ = {isa = PBXBuildFile; fileRef = 706D82632F1E1ED400029818 /* Tab.swift */; };
 		706D82662F1EB26600029818 /* SpeechManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 706D82652F1EB26500029818 /* SpeechManager.swift */; };
 		7071E37B2F26666600CACB8B /* ToolTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7071E37A2F26666100CACB8B /* ToolTests.swift */; };
@@ -111,7 +111,7 @@
 		70CE607C2BAD2D4700A2D0B0 /* ModelCraftTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70CE607B2BAD2D4700A2D0B0 /* ModelCraftTests.swift */; };
 		70CE60862BAD2D4700A2D0B0 /* ModelCraftUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70CE60852BAD2D4700A2D0B0 /* ModelCraftUITests.swift */; };
 		70CE60882BAD2D4700A2D0B0 /* ModelCraftUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70CE60872BAD2D4700A2D0B0 /* ModelCraftUITestsLaunchTests.swift */; };
-		70CE609C2BAD302000A2D0B0 /* LocalFileURL.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70CE60982BAD302000A2D0B0 /* LocalFileURL.swift */; };
+		70CE609C2BAD302000A2D0B0 /* URL+.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70CE60982BAD302000A2D0B0 /* URL+.swift */; };
 		70CE60A22BAD386E00A2D0B0 /* Message.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70CE60A12BAD386E00A2D0B0 /* Message.swift */; };
 		70CE60BE2BAD60AE00A2D0B0 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70CE60BD2BAD60AE00A2D0B0 /* SettingsView.swift */; };
 		70CE60C32BAD616600A2D0B0 /* GeneralView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70CE60C22BAD616600A2D0B0 /* GeneralView.swift */; };
@@ -121,7 +121,6 @@
 		70E201802BAEB86A00CFE1D7 /* MarkdownUI in Frameworks */ = {isa = PBXBuildFile; productRef = 70E2017F2BAEB86A00CFE1D7 /* MarkdownUI */; };
 		70E201852BAEC08900CFE1D7 /* SplashCodeSyntaxHighlighter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70E201842BAEC08900CFE1D7 /* SplashCodeSyntaxHighlighter.swift */; };
 		70E201872BAEC0C700CFE1D7 /* TextOutputFormat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70E201862BAEC0C700CFE1D7 /* TextOutputFormat.swift */; };
-		70F2856F2F7660AD003728F3 /* Settings.bundle in Resources */ = {isa = PBXBuildFile; fileRef = 70F2856E2F7660AD003728F3 /* Settings.bundle */; };
 		70FDA0202F20B67C00F9DBD8 /* ThinkView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70FDA01F2F20B67700F9DBD8 /* ThinkView.swift */; };
 		70FDA0242F20C21300F9DBD8 /* ToolCall.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70FDA0232F20C21000F9DBD8 /* ToolCall.swift */; };
 		70FE039F2F13EFA20061CCEB /* ChatService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70FE039E2F13EF9D0061CCEB /* ChatService.swift */; };
@@ -213,7 +212,7 @@
 		705483F72BBE992800256094 /* DeleteButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeleteButton.swift; sourceTree = "<group>"; };
 		705827632F60730600804D90 /* Skills */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Skills; path = ModelCraft/Core/Agent/Skills; sourceTree = "<group>"; };
 		7067E8232BCD1AE600FF2797 /* AttachmentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttachmentView.swift; sourceTree = "<group>"; };
-		706943CD2F76623A00B271AA /* license_plist.yml */ = {isa = PBXFileReference; lastKnownFileType = text.yaml; path = license_plist.yml; sourceTree = "<group>"; };
+		706943D12F79113500B271AA /* Settings.bundle */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.plug-in"; path = Settings.bundle; sourceTree = "<group>"; };
 		706D82632F1E1ED400029818 /* Tab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tab.swift; sourceTree = "<group>"; };
 		706D82652F1EB26500029818 /* SpeechManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechManager.swift; sourceTree = "<group>"; };
 		7071E37A2F26666100CACB8B /* ToolTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolTests.swift; sourceTree = "<group>"; };
@@ -271,7 +270,7 @@
 		70CE60812BAD2D4700A2D0B0 /* ModelCraftUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ModelCraftUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		70CE60852BAD2D4700A2D0B0 /* ModelCraftUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelCraftUITests.swift; sourceTree = "<group>"; };
 		70CE60872BAD2D4700A2D0B0 /* ModelCraftUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelCraftUITestsLaunchTests.swift; sourceTree = "<group>"; };
-		70CE60982BAD302000A2D0B0 /* LocalFileURL.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LocalFileURL.swift; sourceTree = "<group>"; };
+		70CE60982BAD302000A2D0B0 /* URL+.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "URL+.swift"; sourceTree = "<group>"; };
 		70CE60A12BAD386E00A2D0B0 /* Message.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Message.swift; sourceTree = "<group>"; };
 		70CE60BD2BAD60AE00A2D0B0 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		70CE60C22BAD616600A2D0B0 /* GeneralView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeneralView.swift; sourceTree = "<group>"; };
@@ -280,7 +279,6 @@
 		70E2017A2BAE825A00CFE1D7 /* ChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatView.swift; sourceTree = "<group>"; };
 		70E201842BAEC08900CFE1D7 /* SplashCodeSyntaxHighlighter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplashCodeSyntaxHighlighter.swift; sourceTree = "<group>"; };
 		70E201862BAEC0C700CFE1D7 /* TextOutputFormat.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextOutputFormat.swift; sourceTree = "<group>"; };
-		70F2856E2F7660AD003728F3 /* Settings.bundle */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.plug-in"; path = Settings.bundle; sourceTree = "<group>"; };
 		70FDA01F2F20B67700F9DBD8 /* ThinkView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThinkView.swift; sourceTree = "<group>"; };
 		70FDA0232F20C21000F9DBD8 /* ToolCall.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolCall.swift; sourceTree = "<group>"; };
 		70FE039E2F13EF9D0061CCEB /* ChatService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatService.swift; sourceTree = "<group>"; };
@@ -387,7 +385,6 @@
 		708C5EDE2F0B86F000127118 /* Core */ = {
 			isa = PBXGroup;
 			children = (
-				70CE60982BAD302000A2D0B0 /* LocalFileURL.swift */,
 				70FE03A02F13FD820061CCEB /* Actor */,
 				708C5EE02F0B8B1500127118 /* Agent */,
 				70FDA0252F20D31F00F9DBD8 /* Utils */,
@@ -451,13 +448,12 @@
 		70CE605B2BAD2D4500A2D0B0 = {
 			isa = PBXGroup;
 			children = (
-				706943CD2F76623A00B271AA /* license_plist.yml */,
-				70F2856E2F7660AD003728F3 /* Settings.bundle */,
 				705827632F60730600804D90 /* Skills */,
 				70CE60662BAD2D4500A2D0B0 /* ModelCraft */,
 				70CE607A2BAD2D4700A2D0B0 /* ModelCraftTests */,
 				70CE60842BAD2D4700A2D0B0 /* ModelCraftUITests */,
 				70CE60652BAD2D4500A2D0B0 /* Products */,
+				706943D12F79113500B271AA /* Settings.bundle */,
 			);
 			sourceTree = "<group>";
 		};
@@ -522,7 +518,6 @@
 		70CE609A2BAD302000A2D0B0 /* Extensions */ = {
 			isa = PBXGroup;
 			children = (
-				7078AB152F4F7C3500711940 /* JSONValue+.swift */,
 				702477B52F48B3E4003B72D5 /* Array+.swift */,
 				7045BF442BB314E700CE61D1 /* Bundle+.swift */,
 				70955E8D2BB2E29B00015B79 /* Comparable+.swift */,
@@ -533,6 +528,7 @@
 				70C22FCB2BAEE24C002754C7 /* Image+.swift */,
 				7078AB0A2F4CA42F00711940 /* JSONDecoder+.swift */,
 				7078AB0C2F4CA44E00711940 /* JSONEncoder+.swift */,
+				7078AB152F4F7C3500711940 /* JSONValue+.swift */,
 				703845822BB6674600E3128B /* Locale+.swift */,
 				702477B32F48A5E6003B72D5 /* ModelContainer+.swift */,
 				70896C622BB727AB006FEF6A /* ModelContext+.swift */,
@@ -542,6 +538,7 @@
 				708EC0EA2F4A315A0055D765 /* String+.swift */,
 				70C22FEC2BAFDFE9002754C7 /* TabView+.swift */,
 				701954282BCA309300CD2ED3 /* Theme+.swift */,
+				70CE60982BAD302000A2D0B0 /* URL+.swift */,
 				70CE60C52BAD61F600A2D0B0 /* UserDefaults+.swift */,
 				70C22FC52BAECD10002754C7 /* VIew+.swift */,
 			);
@@ -647,12 +644,10 @@
 				70CE60622BAD2D4500A2D0B0 /* Resources */,
 				70271B392BC0454600E21A6E /* Copy Files */,
 				701954442BCB943A00CD2ED3 /* Embed XPC Services */,
-				70CE58E72F7664AB00A2D0B0 /* Copy Acknowledgements */,
 			);
 			buildRules = (
 			);
 			dependencies = (
-				70F2856D2F765869003728F3 /* PBXTargetDependency */,
 			);
 			name = ModelCraft;
 			packageProductDependencies = (
@@ -746,7 +741,6 @@
 				7027C41D2D63396B00D37D14 /* XCRemoteSwiftPackageReference "WhisperKit" */,
 				7078AA132F4B7A8100711940 /* XCRemoteSwiftPackageReference "mlx-swift-lm" */,
 				7078AB0E2F4D5AEB00711940 /* XCRemoteSwiftPackageReference "Alamofire" */,
-				70F2856B2F765838003728F3 /* XCRemoteSwiftPackageReference "LicensePlist" */,
 			);
 			productRefGroup = 70CE60652BAD2D4500A2D0B0 /* Products */;
 			projectDirPath = "";
@@ -764,12 +758,11 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				706943D22F79113500B271AA /* Settings.bundle in Resources */,
 				70CE60722BAD2D4600A2D0B0 /* Preview Assets.xcassets in Resources */,
 				70CE606E2BAD2D4600A2D0B0 /* Assets.xcassets in Resources */,
-				70F2856F2F7660AD003728F3 /* Settings.bundle in Resources */,
 				705827642F60730600804D90 /* Skills in Resources */,
 				70A574AA2BB07264008E3750 /* Localizable.xcstrings in Resources */,
-				706943CE2F76624700B271AA /* license_plist.yml in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -791,23 +784,6 @@
 		};
 /* End PBXResourcesBuildPhase section */
 
-/* Begin PBXShellScriptBuildPhase section */
-		70CE58E72F7664AB00A2D0B0 /* Copy Acknowledgements */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputPaths = (
-			);
-			name = "Copy Acknowledgements";
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "echo \"Will copy acknowledgements\"\n\nACKNOWLEDGEMENTS_DIR=${BUILT_PRODUCTS_DIR}/${CONTENTS_FOLDER_PATH}/com.mono0926.LicensePlist.Output\nDESTINATION_PATH=${BUILT_PRODUCTS_DIR}/${CONTENTS_FOLDER_PATH}/Settings.bundle/\n\ncp -r \"${ACKNOWLEDGEMENTS_DIR}\"/* \"${DESTINATION_PATH}\"\nrm -rf \"${ACKNOWLEDGEMENTS_DIR}\"";
-		};
-/* End PBXShellScriptBuildPhase section */
-
 /* Begin PBXSourcesBuildPhase section */
 		70CE60602BAD2D4500A2D0B0 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
@@ -824,7 +800,7 @@
 				70097F7F2D6C04BB00DDDEDF /* MessageView.swift in Sources */,
 				7014FA1D2F5DE2A400552108 /* ToolCallView.swift in Sources */,
 				70097F832D6DA73C00DDDEDF /* RuntimeError.swift in Sources */,
-				70CE609C2BAD302000A2D0B0 /* LocalFileURL.swift in Sources */,
+				70CE609C2BAD302000A2D0B0 /* URL+.swift in Sources */,
 				70CE606A2BAD2D4500A2D0B0 /* ContentView.swift in Sources */,
 				70CE4D332BB9522F00E1DEE2 /* KnowledgeBaseEdition.swift in Sources */,
 				7078AB122F4D5B6100711940 /* Data+.swift in Sources */,
@@ -944,10 +920,6 @@
 			isa = PBXTargetDependency;
 			target = 70CE60632BAD2D4500A2D0B0 /* ModelCraft */;
 			targetProxy = 70CE60822BAD2D4700A2D0B0 /* PBXContainerItemProxy */;
-		};
-		70F2856D2F765869003728F3 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			productRef = 70F2856C2F765869003728F3 /* LicensePlistBuildTool */;
 		};
 /* End PBXTargetDependency section */
 
@@ -1109,7 +1081,7 @@
 				ENABLE_RESOURCE_ACCESS_LOCATION = YES;
 				ENABLE_RESOURCE_ACCESS_PRINTING = NO;
 				ENABLE_RESOURCE_ACCESS_USB = NO;
-				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = ModelCraft/Info.plist;
@@ -1174,7 +1146,7 @@
 				ENABLE_RESOURCE_ACCESS_LOCATION = YES;
 				ENABLE_RESOURCE_ACCESS_PRINTING = NO;
 				ENABLE_RESOURCE_ACCESS_USB = NO;
-				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = ModelCraft/Info.plist;
@@ -1385,14 +1357,6 @@
 				minimumVersion = 2.3.0;
 			};
 		};
-		70F2856B2F765838003728F3 /* XCRemoteSwiftPackageReference "LicensePlist" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/mono0926/LicensePlist";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 3.27.2;
-			};
-		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -1440,11 +1404,6 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 70E2017E2BAEB86A00CFE1D7 /* XCRemoteSwiftPackageReference "swift-markdown-ui" */;
 			productName = MarkdownUI;
-		};
-		70F2856C2F765869003728F3 /* LicensePlistBuildTool */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 70F2856B2F765838003728F3 /* XCRemoteSwiftPackageReference "LicensePlist" */;
-			productName = "plugin:LicensePlistBuildTool";
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

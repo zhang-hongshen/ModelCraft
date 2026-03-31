@@ -34,7 +34,14 @@
 
     },
     "Acknowledgments" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "致谢"
+          }
+        }
+      }
     },
     "Active Model" : {
 
@@ -70,18 +77,21 @@
       }
     },
     "as Grid" : {
-
-    },
-    "as List" : {
-
-    },
-    "Ask" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "询问"
+            "value" : "网格"
+          }
+        }
+      }
+    },
+    "as List" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "列表"
           }
         }
       }
@@ -97,7 +107,14 @@
       }
     },
     "Browse Files" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "浏览文件"
+          }
+        }
+      }
     },
     "Cancel" : {
       "localizations" : {
@@ -115,17 +132,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "对话"
-          }
-        }
-      }
-    },
-    "Check" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "检查"
           }
         }
       }
@@ -152,39 +158,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "已完成"
-          }
-        }
-      }
-    },
-    "Composing Email" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "正在撰写邮件"
-          }
-        }
-      }
-    },
-    "Composing Message" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "正在编写短信"
-          }
-        }
-      }
-    },
-    "Connected" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "已连接"
           }
         }
       }
@@ -235,17 +208,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "删除中"
-          }
-        }
-      }
-    },
-    "Disconnected" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "断开连接"
           }
         }
       }
@@ -356,17 +318,6 @@
         }
       }
     },
-    "Indexing..." : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "索引中..."
-          }
-        }
-      }
-    },
     "Inspector" : {
 
     },
@@ -386,17 +337,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "语言"
-          }
-        }
-      }
-    },
-    "Launching" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "启动中"
           }
         }
       }
@@ -441,17 +381,6 @@
         }
       }
     },
-    "Models" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "模型"
-          }
-        }
-      }
-    },
     "Moving to (%lf, %lf)" : {
       "localizations" : {
         "en" : {
@@ -471,33 +400,11 @@
     "Name" : {
 
     },
-    "No Available Model" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "没有可用的模型"
-          }
-        }
-      }
-    },
     "No files added yet" : {
 
     },
     "No Models Available" : {
 
-    },
-    "No selected knowledge base" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "未选择知识库"
-          }
-        }
-      }
     },
     "None" : {
       "localizations" : {
@@ -505,17 +412,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "无"
-          }
-        }
-      }
-    },
-    "Opening %@" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "正在打开 %@"
           }
         }
       }
@@ -602,17 +498,6 @@
         }
       }
     },
-    "Status" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "状态"
-          }
-        }
-      }
-    },
     "Stopped" : {
       "localizations" : {
         "zh-Hans" : {
@@ -634,7 +519,14 @@
       }
     },
     "Taking Screenshot" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "截图中"
+          }
+        }
+      }
     },
     "Thinking" : {
       "localizations" : {
@@ -642,17 +534,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "思考中"
-          }
-        }
-      }
-    },
-    "Title" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "标题"
           }
         }
       }
@@ -674,7 +555,14 @@
 
     },
     "Type Anything" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "写些什么吧"
+          }
+        }
+      }
     },
     "Unkown Tool Call" : {
 

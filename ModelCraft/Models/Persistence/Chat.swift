@@ -42,6 +42,10 @@ extension Chat {
         sortedMessages.last { $0.role == .assistant && $0.status == .generating }
     }
     
+    var isGenerating: Bool {
+        sortedMessages.last?.status == .generating
+    }
+    
     func truncateMessages(messages: [Message]){
         self.messages.removeAll { messages.map { $0.id }.contains($0.id) }
     }

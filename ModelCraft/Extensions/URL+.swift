@@ -1,5 +1,5 @@
 //
-//  LocalFileURL.swift
+//  URL+.swift
 //  ModelCraft
 //
 //  Created by Hongshen on 25/2/2024.
@@ -12,15 +12,12 @@ import UniformTypeIdentifiers
 import WhisperKit
 import AVFoundation
 
-typealias LocalFileURL = URL
 
-extension LocalFileURL: Identifiable {
-    
-    public var id: Self { self }
+extension URL {
     
     func readContent() async throws -> String {
         guard isFileURL, let type = UTType(filenameExtension: pathExtension) else { return "" }
-        print("type = ", type)
+        
         if type.conforms(to: .pdf) {
             return readPDFContent()
         } else if type.conforms(to: .xml) {
@@ -85,68 +82,65 @@ extension LocalFileURL: Identifiable {
     }
     
     private func readVideoContent() async throws -> String {
-        try await extractIFrame()
+        try await extractIFrames()
         return ""
     }
     
-    private func extractIFrame() async throws {
+    private func extractIFrames() async throws -> [URL] {
         let asset = AVAsset(url: self)
+        
         guard let track = try await asset.loadTracks(withMediaType: .video).first else {
-            print("No video track found")
-            return
+            return []
         }
 
-        let reader = try! AVAssetReader(asset: asset)
+        let reader = try AVAssetReader(asset: asset)
         let output = AVAssetReaderTrackOutput(track: track, outputSettings: nil)
         reader.add(output)
-        
         reader.startReading()
 
         var iFrameTimes: [CMTime] = []
-        
         while let sampleBuffer = output.copyNextSampleBuffer() {
-        
-            // identify whether it is i-frame
-            if let attachments = CMSampleBufferGetSampleAttachmentsArray(sampleBuffer,
-                                                                         createIfNecessary: false) as? [[CFString: Any]],
-                let attachment = attachments.first,
-                let dependsOnOthers = attachment[kCMSampleAttachmentKey_DependsOnOthers] as? Bool, !dependsOnOthers {
-                    let pts = CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
-                    iFrameTimes.append(pts)
-                }
+            if let attachments = CMSampleBufferGetSampleAttachmentsArray(sampleBuffer, createIfNecessary: false) as? [[CFString: Any]],
+               let attachment = attachments.first,
+               let dependsOnOthers = attachment[kCMSampleAttachmentKey_DependsOnOthers] as? Bool, !dependsOnOthers {
+                iFrameTimes.append(CMSampleBufferGetPresentationTimeStamp(sampleBuffer))
+            }
         }
         reader.cancelReading()
 
-        let imageGenerator = AVAssetImageGenerator(asset: asset)
         
-        let picturesURL = FileManager.default.urls(for: .picturesDirectory, in: .userDomainMask).first!
-        print("pictures:", picturesURL.path())
-        for time in iFrameTimes {
-            imageGenerator.generateCGImageAsynchronously(for: time) { cgImageOrNil, time, errorOrNil in
-                print("generateCGImageAsynchronously completed")
-                if let error = errorOrNil {
-                    print("Failed to extract image at \(time.seconds)s: \(error)")
-                    return
-                }
-                guard let cgImage = cgImageOrNil else {
-                    return
-                }
-                
-                #if canImport(AppKit)
-                let image = PlatformImage(cgImage: cgImage, size: .zero)
-                #else
-                let image = PlatformImage(cgImage: cgImage)
-                #endif
-                print("Extracted I-frame at \(time.seconds)s")
-               
-                let fileName = "frame_\(CMTimeGetSeconds(time)).png"
-                do {
-                    try image.save(to: picturesURL.appending(path: fileName))
-                } catch {
-                    print("Failed to save image: \(error)")
+        let imageGenerator = AVAssetImageGenerator(asset: asset)
+        imageGenerator.appliesPreferredTrackTransform = true
+        
+        
+        let storageURL = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first!
+            .appendingPathComponent("video_frames", isDirectory: true)
+        try? FileManager.default.createDirectory(at: storageURL, withIntermediateDirectories: true)
+
+        return try await withThrowingTaskGroup(of: URL?.self) { group in
+            for time in iFrameTimes {
+                group.addTask {
+                    let (cgImage, _) = try await imageGenerator.image(at: time)
+                    
+                    #if canImport(AppKit)
+                    let image = PlatformImage(cgImage: cgImage, size: .zero)
+                    #else
+                    let image = PlatformImage(cgImage: cgImage)
+                    #endif
+                    
+                    let fileName = "frame_\(time.seconds).png"
+                    let fileURL = storageURL.appendingPathComponent(fileName)
+                    
+                    try image.save(to: fileURL)
+                    return fileURL
                 }
             }
+
+            var urls: [URL] = []
+            for try await url in group {
+                if let url = url { urls.append(url) }
+            }
+            return urls.sorted(by: { $0.lastPathComponent < $1.lastPathComponent })
         }
     }
-    
 }

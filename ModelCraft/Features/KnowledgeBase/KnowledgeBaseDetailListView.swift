@@ -10,11 +10,11 @@ import SwiftUI
 struct KnowledgeBaseDetailListView: View {
     
     @Bindable var konwledgeBase: KnowledgeBase
-    @Binding var selectedFiles: Set<LocalFileURL>
+    @Binding var selectedFiles: Set<URL>
     
     var body: some View {
         List(selection: $selectedFiles) {
-            ForEach(konwledgeBase.files) { url in
+            ForEach(konwledgeBase.files, id: \.self) { url in
                 ListCell(url).tag(url)
             }
             .onDelete {

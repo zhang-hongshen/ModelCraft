@@ -35,7 +35,7 @@ struct ChatView: View {
                     userInput: $draft,
                     trailing: {
                         HStack {
-                            if chat?.sortedMessages.last?.status == .generating {
+                            if let chat = chat, chat.isGenerating {
                                 StopGenerateMessageButton()
                             } else {
                                 SubmitMessageButton()

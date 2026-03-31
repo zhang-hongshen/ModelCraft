@@ -12,7 +12,7 @@ class KnowledgeBase {
     @Attribute(.unique) var id = UUID()
     var createdAt: Date = Date.now
     var title: String
-    var files: [LocalFileURL] {
+    var files: [URL] {
         didSet {
             let newFiles = files.filter { !oldValue.contains($0) }
             if newFiles.isEmpty {
@@ -39,7 +39,7 @@ extension KnowledgeBase {
         return KnowledgeIndexer(dbPath: dbPath).search(query: query, numOfResults: numOfResults)
     }
     
-    func createIndex(_ urls: [LocalFileURL]) {
+    func createIndex(_ urls: [URL]) {
         let engine = KnowledgeIndexer(dbPath: dbPath)
         let fileManager = FileManager.default
         
@@ -82,7 +82,7 @@ extension KnowledgeBase {
     }
     
     
-    func removeFiles<T>(_ urls: T) where T: Swift.Collection, T.Element == LocalFileURL {
+    func removeFiles<T>(_ urls: T) where T: Swift.Collection, T.Element == URL {
         let engine = KnowledgeIndexer(dbPath: dbPath)
         self.files.removeAll { urls.contains($0) }
         engine.removeIndex(paths: urls.compactMap{ $0.path() })
