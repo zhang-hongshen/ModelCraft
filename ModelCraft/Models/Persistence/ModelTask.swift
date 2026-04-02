@@ -18,16 +18,18 @@ class ModelTask {
     var totalUnitCount: Int64
     var completedUnitCount: Int64
     var fractionCompleted: Double
+    var _type: TaskType.RawValue
+    var _status: TaskType.RawValue
+    
     @Transient var type: TaskType {
         get { TaskType(rawValue: _type)! }
         set { _type = newValue.rawValue }
     }
-    var _type: TaskType.RawValue
+    
     @Transient var status: TaskStatus {
         get { TaskStatus(rawValue: _status)! }
         set { _status = newValue.rawValue }
     }
-    var _status: TaskType.RawValue
     
     init(modelId: String, totalUnitCount: Int64 = 0,
          completedUnitCount: Int64 = 0, fractionCompleted: Double = 0,

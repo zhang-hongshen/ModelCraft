@@ -30,7 +30,7 @@ struct DownloadedModelsView: View {
         List(selection: $selectedModelIds) {
             
             ForEach(models) { model in
-                DownloadedModelListCell(model).tag(model.modelID)
+                DownloadedModelListCell(model).tag(model.id)
             }
             
             ForEach(uncompletedDownloadTasks) { task in
@@ -65,14 +65,19 @@ extension DownloadedModelsView {
     
     @ViewBuilder
     func DownloadedModelListCell(_ model: LocalModel) -> some View {
+        let formatter = ByteCountFormatter()
+        formatter.allowedUnits = [.useGB, .useMB]
+        formatter.countStyle = .file
+        
+        return
         HStack {
             Label(model.displayName, systemImage: "shippingbox")
             
             Spacer()
             
-            Text(ByteCountFormatter.string(fromByteCount: model.size, countStyle: .file))
+            Text(formatter.string(fromByteCount: model.size))
             
-            if let task = deleteTasks.first(where: { $0.modelID == model.modelID }) {
+            if let task = deleteTasks.first(where: { $0.modelID == model.id }) {
                 Text(task.statusLocalizedDescription)
             }
         }

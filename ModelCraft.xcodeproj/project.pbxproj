@@ -44,13 +44,17 @@
 		703845832BB6674600E3128B /* Locale+.swift in Sources */ = {isa = PBXBuildFile; fileRef = 703845822BB6674600E3128B /* Locale+.swift */; };
 		704510282E825E3300C0EEED /* TextSplitter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 704510272E825E2F00C0EEED /* TextSplitter.swift */; };
 		7045BF452BB314E700CE61D1 /* Bundle+.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7045BF442BB314E700CE61D1 /* Bundle+.swift */; };
-		704DEF632F6309B100BA7F4C /* ToolInspectorModifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = 704DEF622F6309AF00BA7F4C /* ToolInspectorModifier.swift */; };
 		704DEF652F63C94C00BA7F4C /* ViewMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 704DEF642F63C94900BA7F4C /* ViewMode.swift */; };
 		705483F62BBE96AF00256094 /* DownloadedModelsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 705483F52BBE96AF00256094 /* DownloadedModelsView.swift */; };
 		705483F82BBE992800256094 /* DeleteButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 705483F72BBE992800256094 /* DeleteButton.swift */; };
 		705827642F60730600804D90 /* Skills in Resources */ = {isa = PBXBuildFile; fileRef = 705827632F60730600804D90 /* Skills */; };
 		7067E8242BCD1AE600FF2797 /* AttachmentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7067E8232BCD1AE600FF2797 /* AttachmentView.swift */; };
 		706943D22F79113500B271AA /* Settings.bundle in Resources */ = {isa = PBXBuildFile; fileRef = 706943D12F79113500B271AA /* Settings.bundle */; };
+		706943D52F7C16FB00B271AA /* CommandTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 706943D42F7C16FB00B271AA /* CommandTool.swift */; };
+		706943D72F7C183B00B271AA /* PathResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 706943D62F7C183B00B271AA /* PathResolver.swift */; };
+		706943D92F7C212E00B271AA /* ScreenControlTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 706943D82F7C212D00B271AA /* ScreenControlTool.swift */; };
+		706943DB2F7C21D700B271AA /* SkillTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 706943DA2F7C21D700B271AA /* SkillTool.swift */; };
+		706943DD2F7C24FA00B271AA /* ToolInspectorModifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = 706943DC2F7C24FA00B271AA /* ToolInspectorModifier.swift */; };
 		706D82642F1E1ED600029818 /* Tab.swift in Sources */ = {isa = PBXBuildFile; fileRef = 706D82632F1E1ED400029818 /* Tab.swift */; };
 		706D82662F1EB26600029818 /* SpeechManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 706D82652F1EB26500029818 /* SpeechManager.swift */; };
 		7071E37B2F26666600CACB8B /* ToolTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7071E37A2F26666100CACB8B /* ToolTests.swift */; };
@@ -73,9 +77,10 @@
 		7078AB162F4F7C3800711940 /* JSONValue+.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7078AB152F4F7C3500711940 /* JSONValue+.swift */; };
 		7078AB342BB514A9004B3819 /* ModelTaskView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7078AB332BB514A9004B3819 /* ModelTaskView.swift */; };
 		70823EC82F520F720011DF58 /* ModelService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70823EC72F520F6F0011DF58 /* ModelService.swift */; };
+		7082CD022F7E1A700080C2F5 /* ModelEntity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7082CD012F7E1A700080C2F5 /* ModelEntity.swift */; };
+		7082CD042F7E28350080C2F5 /* ScaledProgressViewStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7082CD032F7E282F0080C2F5 /* ScaledProgressViewStyle.swift */; };
 		70873F5F2F2562BB00C07EB3 /* Value.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70873F5E2F2562B800C07EB3 /* Value.swift */; };
 		70896C632BB727AB006FEF6A /* ModelContext+.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70896C622BB727AB006FEF6A /* ModelContext+.swift */; };
-		708C5EE42F0B8F6000127118 /* CommandExecutor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 708C5EE32F0B8F5800127118 /* CommandExecutor.swift */; };
 		708C5EE72F0B9D6100127118 /* AgentExecutor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 708C5EE62F0B9D5900127118 /* AgentExecutor.swift */; };
 		708EC0E52F49A27E0055D765 /* MapPlace.swift in Sources */ = {isa = PBXBuildFile; fileRef = 708EC0E42F49A27A0055D765 /* MapPlace.swift */; };
 		708EC0E92F4A09520055D765 /* ScreenControlManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 708EC0E82F4A09520055D765 /* ScreenControlManager.swift */; };
@@ -186,7 +191,6 @@
 		7014FA1C2F5DE29D00552108 /* ToolCallView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolCallView.swift; sourceTree = "<group>"; };
 		7014FA1E2F5DE52500552108 /* FilePreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilePreviewView.swift; sourceTree = "<group>"; };
 		7014FA342F5DFA5900552108 /* PlatformColor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlatformColor.swift; sourceTree = "<group>"; };
-		701954222BC8244E00CD2ED3 /* CollectionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollectionManager.swift; sourceTree = "<group>"; };
 		701954242BC8286E00CD2ED3 /* FixedLengthTextSplitter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FixedLengthTextSplitter.swift; sourceTree = "<group>"; };
 		701954262BC8D9ED00CD2ED3 /* PromptBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptBuilder.swift; sourceTree = "<group>"; };
 		701954282BCA309300CD2ED3 /* Theme+.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Theme+.swift"; sourceTree = "<group>"; };
@@ -206,13 +210,17 @@
 		704510272E825E2F00C0EEED /* TextSplitter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextSplitter.swift; sourceTree = "<group>"; };
 		7045BF442BB314E700CE61D1 /* Bundle+.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Bundle+.swift"; sourceTree = "<group>"; };
 		7045BF462BB3FE0A00CE61D1 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
-		704DEF622F6309AF00BA7F4C /* ToolInspectorModifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolInspectorModifier.swift; sourceTree = "<group>"; };
 		704DEF642F63C94900BA7F4C /* ViewMode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewMode.swift; sourceTree = "<group>"; };
 		705483F52BBE96AF00256094 /* DownloadedModelsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadedModelsView.swift; sourceTree = "<group>"; };
 		705483F72BBE992800256094 /* DeleteButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeleteButton.swift; sourceTree = "<group>"; };
 		705827632F60730600804D90 /* Skills */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Skills; path = ModelCraft/Core/Agent/Skills; sourceTree = "<group>"; };
 		7067E8232BCD1AE600FF2797 /* AttachmentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttachmentView.swift; sourceTree = "<group>"; };
 		706943D12F79113500B271AA /* Settings.bundle */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.plug-in"; path = Settings.bundle; sourceTree = "<group>"; };
+		706943D42F7C16FB00B271AA /* CommandTool.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandTool.swift; sourceTree = "<group>"; };
+		706943D62F7C183B00B271AA /* PathResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PathResolver.swift; sourceTree = "<group>"; };
+		706943D82F7C212D00B271AA /* ScreenControlTool.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenControlTool.swift; sourceTree = "<group>"; };
+		706943DA2F7C21D700B271AA /* SkillTool.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkillTool.swift; sourceTree = "<group>"; };
+		706943DC2F7C24FA00B271AA /* ToolInspectorModifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolInspectorModifier.swift; sourceTree = "<group>"; };
 		706D82632F1E1ED400029818 /* Tab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tab.swift; sourceTree = "<group>"; };
 		706D82652F1EB26500029818 /* SpeechManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechManager.swift; sourceTree = "<group>"; };
 		7071E37A2F26666100CACB8B /* ToolTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolTests.swift; sourceTree = "<group>"; };
@@ -230,9 +238,10 @@
 		7078AB152F4F7C3500711940 /* JSONValue+.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "JSONValue+.swift"; sourceTree = "<group>"; };
 		7078AB332BB514A9004B3819 /* ModelTaskView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelTaskView.swift; sourceTree = "<group>"; };
 		70823EC72F520F6F0011DF58 /* ModelService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelService.swift; sourceTree = "<group>"; };
+		7082CD012F7E1A700080C2F5 /* ModelEntity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelEntity.swift; sourceTree = "<group>"; };
+		7082CD032F7E282F0080C2F5 /* ScaledProgressViewStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScaledProgressViewStyle.swift; sourceTree = "<group>"; };
 		70873F5E2F2562B800C07EB3 /* Value.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Value.swift; sourceTree = "<group>"; };
 		70896C622BB727AB006FEF6A /* ModelContext+.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ModelContext+.swift"; sourceTree = "<group>"; };
-		708C5EE32F0B8F5800127118 /* CommandExecutor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandExecutor.swift; sourceTree = "<group>"; };
 		708C5EE62F0B9D5900127118 /* AgentExecutor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentExecutor.swift; sourceTree = "<group>"; };
 		708EC0E42F49A27A0055D765 /* MapPlace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapPlace.swift; sourceTree = "<group>"; };
 		708EC0E82F4A09520055D765 /* ScreenControlManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenControlManager.swift; sourceTree = "<group>"; };
@@ -324,10 +333,13 @@
 			children = (
 				7071E3842F27C5B300CACB8B /* AppTool.swift */,
 				7071E3822F27C55E00CACB8B /* FileTool.swift */,
-				708C5EE32F0B8F5800127118 /* CommandExecutor.swift */,
 				7071E37E2F269EAB00CACB8B /* SearchTool.swift */,
 				7078AB132F4EDE9600711940 /* ToolDefinitions.swift */,
 				7071E3802F26A33100CACB8B /* CallToolResult.swift */,
+				706943D42F7C16FB00B271AA /* CommandTool.swift */,
+				706943D62F7C183B00B271AA /* PathResolver.swift */,
+				706943D82F7C212D00B271AA /* ScreenControlTool.swift */,
+				706943DA2F7C21D700B271AA /* SkillTool.swift */,
 			);
 			path = Tools;
 			sourceTree = "<group>";
@@ -361,6 +373,14 @@
 				7078AB332BB514A9004B3819 /* ModelTaskView.swift */,
 			);
 			path = Model;
+			sourceTree = "<group>";
+		};
+		7082CD002F7E1A620080C2F5 /* Protocols */ = {
+			isa = PBXGroup;
+			children = (
+				7082CD012F7E1A700080C2F5 /* ModelEntity.swift */,
+			);
+			path = Protocols;
 			sourceTree = "<group>";
 		};
 		708C5EDC2F0B858600127118 /* UI */ = {
@@ -518,6 +538,7 @@
 		70CE609A2BAD302000A2D0B0 /* Extensions */ = {
 			isa = PBXGroup;
 			children = (
+				7082CD032F7E282F0080C2F5 /* ScaledProgressViewStyle.swift */,
 				702477B52F48B3E4003B72D5 /* Array+.swift */,
 				7045BF442BB314E700CE61D1 /* Bundle+.swift */,
 				70955E8D2BB2E29B00015B79 /* Comparable+.swift */,
@@ -568,7 +589,7 @@
 		70E201792BAE825100CFE1D7 /* Chat */ = {
 			isa = PBXGroup;
 			children = (
-				704DEF622F6309AF00BA7F4C /* ToolInspectorModifier.swift */,
+				706943DC2F7C24FA00B271AA /* ToolInspectorModifier.swift */,
 				7014FA1C2F5DE29D00552108 /* ToolCallView.swift */,
 				70FDA01F2F20B67700F9DBD8 /* ThinkView.swift */,
 				7001D9AF2EC10DEB00047F6B /* ChatInputView.swift */,
@@ -586,7 +607,6 @@
 				708EC0E82F4A09520055D765 /* ScreenControlManager.swift */,
 				7071E37C2F26997B00CACB8B /* LocationManager.swift */,
 				706D82652F1EB26500029818 /* SpeechManager.swift */,
-				701954222BC8244E00CD2ED3 /* CollectionManager.swift */,
 				701954242BC8286E00CD2ED3 /* FixedLengthTextSplitter.swift */,
 				70CE4D282BB83BF500E1DEE2 /* Pasteboard.swift */,
 				70C534102E7535A8006E6731 /* SemanticTextSplitter.swift */,
@@ -600,6 +620,7 @@
 		70FDA0262F20D32900F9DBD8 /* Models */ = {
 			isa = PBXGroup;
 			children = (
+				7082CD002F7E1A620080C2F5 /* Protocols */,
 				70FDA0272F20D33500F9DBD8 /* Plain */,
 				708C5EDF2F0B86F900127118 /* Persistence */,
 			);
@@ -814,15 +835,14 @@
 				70FDA0242F20C21300F9DBD8 /* ToolCall.swift in Sources */,
 				70CE4D292BB83BF500E1DEE2 /* Pasteboard.swift in Sources */,
 				7078AB0B2F4CA43200711940 /* JSONDecoder+.swift in Sources */,
+				706943DD2F7C24FA00B271AA /* ToolInspectorModifier.swift in Sources */,
 				70E201872BAEC0C700CFE1D7 /* TextOutputFormat.swift in Sources */,
 				7014F9AE2F5C885700552108 /* SkillManager.swift in Sources */,
 				7019542B2BCA3CE900CD2ED3 /* CopyButton.swift in Sources */,
 				7014F9AA2F5C87CC00552108 /* SkillDiscovery.swift in Sources */,
-				704DEF632F6309B100BA7F4C /* ToolInspectorModifier.swift in Sources */,
 				70097F7D2D6B58E100DDDEDF /* WelcomeView.swift in Sources */,
 				705483F62BBE96AF00256094 /* DownloadedModelsView.swift in Sources */,
 				70271B5E2BC1A97900E21A6E /* ModelStore.swift in Sources */,
-				708C5EE42F0B8F6000127118 /* CommandExecutor.swift in Sources */,
 				702E50612F54AD0A00FE28FD /* LocalModel.swift in Sources */,
 				7014F9AC2F5C881000552108 /* SkillParser.swift in Sources */,
 				702477B82F48B52D003B72D5 /* AgentStreamEvent.swift in Sources */,
@@ -831,6 +851,7 @@
 				70CE4D392BB9718900E1DEE2 /* FileManager+.swift in Sources */,
 				70CE60C62BAD61F600A2D0B0 /* UserDefaults+.swift in Sources */,
 				70C22FD72BAFD1B6002754C7 /* PlatformImage.swift in Sources */,
+				7082CD042F7E28350080C2F5 /* ScaledProgressViewStyle.swift in Sources */,
 				7078AB142F4EDE9900711940 /* ToolDefinitions.swift in Sources */,
 				70C22FCC2BAEE24C002754C7 /* Image+.swift in Sources */,
 				7071E3852F27C5B600CACB8B /* AppTool.swift in Sources */,
@@ -840,6 +861,7 @@
 				70CE60BE2BAD60AE00A2D0B0 /* SettingsView.swift in Sources */,
 				70C22FD12BAF2C35002754C7 /* RoundedRectangle+.swift in Sources */,
 				700C702A2E52FE830008EF5B /* TagStreamParser.swift in Sources */,
+				706943D72F7C183B00B271AA /* PathResolver.swift in Sources */,
 				70823EC82F520F720011DF58 /* ModelService.swift in Sources */,
 				7097F96B2BB02DD2001A91E3 /* ModelTask.swift in Sources */,
 				7071E3832F27C56100CACB8B /* FileTool.swift in Sources */,
@@ -857,11 +879,13 @@
 				7078AA1F2F4C065D00711940 /* HubApi+.swift in Sources */,
 				706D82642F1E1ED600029818 /* Tab.swift in Sources */,
 				7078AB162F4F7C3800711940 /* JSONValue+.swift in Sources */,
+				706943DB2F7C21D700B271AA /* SkillTool.swift in Sources */,
 				701954272BC8D9ED00CD2ED3 /* PromptBuilder.swift in Sources */,
 				7078AA122F4B79E000711940 /* LLMService.swift in Sources */,
 				70B13D132BBC66FC00A42F3C /* KnowledgeBaseDetailListView.swift in Sources */,
 				704DEF652F63C94C00BA7F4C /* ViewMode.swift in Sources */,
 				708EC0E92F4A09520055D765 /* ScreenControlManager.swift in Sources */,
+				7082CD022F7E1A700080C2F5 /* ModelEntity.swift in Sources */,
 				70981A0B2F60676D004E1A38 /* ToolExecutor.swift in Sources */,
 				708EC0E52F49A27E0055D765 /* MapPlace.swift in Sources */,
 				70E201852BAEC08900CFE1D7 /* SplashCodeSyntaxHighlighter.swift in Sources */,
@@ -879,11 +903,13 @@
 				7071E3812F26A33800CACB8B /* CallToolResult.swift in Sources */,
 				706D82662F1EB26600029818 /* SpeechManager.swift in Sources */,
 				70FE03A22F13FDDE0061CCEB /* ChatModelActor.swift in Sources */,
+				706943D52F7C16FB00B271AA /* CommandTool.swift in Sources */,
 				704510282E825E3300C0EEED /* TextSplitter.swift in Sources */,
 				70097F8D2D6EB2C400DDDEDF /* Date+.swift in Sources */,
 				70B13D152BBC678400A42F3C /* KnowledgeBaseDetailGridView.swift in Sources */,
 				70C22FE92BAFD5CA002754C7 /* ImageButton.swift in Sources */,
 				70CE4D312BB9500000E1DEE2 /* KnowledgeBaseDetailView.swift in Sources */,
+				706943D92F7C212E00B271AA /* ScreenControlTool.swift in Sources */,
 				7078AB0D2F4CA45300711940 /* JSONEncoder+.swift in Sources */,
 				70CE60682BAD2D4500A2D0B0 /* ModelCraftApp.swift in Sources */,
 			);

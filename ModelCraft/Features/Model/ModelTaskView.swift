@@ -24,7 +24,7 @@ struct ModelTaskView: View {
                 Text(task.fractionCompleted, format: .percent.precision(.fractionLength(1)).rounded(rule: .down))
             switch task.status {
             case .new:
-                ProgressView().controlSize(.small)
+                ProgressView().progressViewStyle(.scaled)
             case .running:
                 DeleteTaskButton()
             case .stopped:

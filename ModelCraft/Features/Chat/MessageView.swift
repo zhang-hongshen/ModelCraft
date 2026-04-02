@@ -173,7 +173,7 @@ extension MessageView {
             VStack(alignment: .leading) {
                 
                 if message.status == .new {
-                    ProgressView().controlSize(.small)
+                    ProgressView().progressViewStyle(.scaled)
                 } else {
                     MessageAttachmentsView(message.attachments)
                     AssistantMessageContentView(message)

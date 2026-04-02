@@ -98,12 +98,14 @@ extension ModelCraftApp {
                     task.totalUnitCount = progress.totalUnitCount
                     task.fractionCompleted = progress.fractionCompleted
                 }
+                try Task.checkCancellation()
+                
                 task.status = .completed
                 
-                let localModel = LocalModel(modelID: task.modelID, size: task.completedUnitCount, type: .llm)
+                let localModel = LocalModel(id: task.modelID, size: task.totalUnitCount, type: .llm)
                 ModelContainer.shared.mainContext.delete(task)
                 ModelContainer.shared.mainContext.persist(localModel)
-                print("Insert Local Model \(localModel)")
+                print("\(localModel.id) downloaded")
                 
             } catch is CancellationError {
                 task.status = .stopped

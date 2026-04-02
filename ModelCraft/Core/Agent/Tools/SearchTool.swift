@@ -6,9 +6,20 @@
 //
 
 import Foundation
+import SwiftData
 import MapKit
 
+import MLXLMCommon
+import Tokenizers
+
 class SearchTool {
+    
+    static var allTools: [ToolSpec] {
+        var tools = [
+            searchMap.schema
+        ]
+        return tools
+    }
     
     static func searchMap(query: String, useCurrentLocation: Bool = false, numOfResults: Int) async throws -> [MapPlace] {
         let request = MKLocalSearch.Request()
@@ -45,4 +56,59 @@ class SearchTool {
             )
         }
     }
+    
+    static let searchMap = Tool<SearchMapInput, SearchMapOutput>(
+        name: "search_map",
+        description: "Search for points of interest, restaurants, or locations nearby or in a specific area.",
+        parameters: [
+            .required("query", type: .string, description: "The search keyword."),
+            .required("useCurrentLocation", type: .bool, description: "Set to true if the user implies their current location. Set to false if a specific city or remote location is mentioned."),
+            .optional("numOfResults",
+                      type: .int,
+                      description: "The maximum number of results to return. Defaults to 5 if not specified.")
+        
+        ]
+    ) { input in
+        
+        let places = try await SearchTool.searchMap(
+            query: input.query,
+            useCurrentLocation: input.useCurrentLocation,
+            numOfResults: input.numOfResults ?? 5)
+        return SearchMapOutput(places: places)
+    }
+    
+    static func searchRelevantDocuments(knowledgeBaseID: PersistentIdentifier) -> Tool<SearchRelevantDocumentsInput, SearchRelevantDocumentsOutput>{
+        return Tool(
+            name: "search_relevant_documents",
+            description: "Search for information in the user's uploaded documents.",
+            parameters: [
+                .required("query", type: .string, description: "The keyword or question to search for in the document database."),
+                .optional("numOfResults", type: .int, description: "The maximum number of results to return. Defaults to 10 if not specified.")
+            ]
+        ) { input in
+            let knowledgaBaseModelActor = KnowledgaBaseModelActor(modelContainer: SwiftData.ModelContainer.shared)
+            let docs = await knowledgaBaseModelActor.searchRelevantDocuments(knowledgeBaseID: knowledgeBaseID, query: input.query)
+            return SearchRelevantDocumentsOutput(docs: docs)
+        }
+    }
+}
+
+
+struct SearchMapInput: Codable {
+    let query: String
+    let useCurrentLocation: Bool
+    let numOfResults: Int?
+}
+
+struct SearchMapOutput: Codable {
+    let places: [MapPlace]
+}
+
+struct SearchRelevantDocumentsInput: Codable {
+    let query: String
+    let numOfResults: Int?
+}
+
+struct SearchRelevantDocumentsOutput: Codable {
+    let docs: [String]
 }

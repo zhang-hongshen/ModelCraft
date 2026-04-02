@@ -37,7 +37,7 @@ class ModelService {
             .value
     }
     
-    func downloadModel(modelID: String) -> AsyncThrowingStream<Progress, Error> {
+    func  downloadModel(modelID: String) -> AsyncThrowingStream<Progress, Error> {
         
         let repo = Hub.Repo(id: modelID)
         return AsyncThrowingStream { continuation in
@@ -64,4 +64,5 @@ class ModelService {
             .appendingPathComponent(modelID, conformingTo: .folder)
         try FileManager.default.removeItem(at: modelFolder)
     }
+    
 }

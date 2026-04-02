@@ -21,7 +21,7 @@ class AgentExecutor {
     ) async throws -> Void {
         var availableTools =  ToolDefinition.allTools
         if let knowledgeBaseID = knowledgeBaseID {
-            availableTools.append(ToolDefinition.searchRelevantDocuments(knowledgeBaseID: knowledgeBaseID).schema)
+            availableTools.append(SearchTool.searchRelevantDocuments(knowledgeBaseID: knowledgeBaseID).schema)
         }
         let assistantMessage = Message(role: .assistant, chat: chat, status: .new)
         ModelContainer.shared.mainContext.persist(assistantMessage)

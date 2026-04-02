@@ -13,7 +13,6 @@ struct ModelStore: View {
     @State private var viewMode: ViewMode = .list
     
     @State private var models: [ModelStoreModel] = []
-    @State private var showSubDownloadingTask = false
     
     @State private var isLoading = false
     @State private var selectedModelName : String? = nil
@@ -25,24 +24,6 @@ struct ModelStore: View {
     
     private static let pageSize = 20
     private static let columns = [GridItem(.adaptive(minimum: 200), spacing: 16)]
-    
-    @Query(filter: ModelTask.predicateUnCompletedDownloadTask,
-           sort: \ModelTask.createdAt,
-           order: .reverse)
-    private var uncompletedDownloadTasks: [ModelTask] = []
-    
-    private var currentDownloadingTaskProgress: Double {
-        let total = uncompletedDownloadTasks.map { $0.totalUnitCount }.reduce(0) { partialResult, currentTotal in
-            return partialResult + currentTotal
-        }
-        if total == 0 {
-            return 0
-        }
-        let current = uncompletedDownloadTasks.map { $0.completedUnitCount }.reduce(0) { partialResult, currentTotal in
-            return partialResult + currentTotal
-        }
-        return Double(current) / Double(total)
-    }
     
     var body: some View {
         ScrollView {
@@ -71,36 +52,23 @@ extension ModelStore {
     @ToolbarContentBuilder
     func ToolbarItems() -> some ToolbarContent {
         ToolbarItemGroup {
-            if !uncompletedDownloadTasks.isEmpty {
-                Button {
-                    showSubDownloadingTask.toggle()
-                } label: {
-                    ProgressView(value: currentDownloadingTaskProgress, total: 1).controlSize(.small)
-                        .progressViewStyle(.circular)
-                }
-                .popover(isPresented: $showSubDownloadingTask, arrowEdge: .bottom) {
-                    List {
-                        ForEach(uncompletedDownloadTasks) { task in
-                            ModelTaskView(task: task).tag(task.modelID)
-                        }
-                    }
-                }
-            }
             
             if sizeClass == .regular {
                 Menu {
                     Picker("", selection: $viewMode) {
                         Text("as List").tag(ViewMode.list)
                         Text("as Grid").tag(ViewMode.grid)
-                    }.pickerStyle(.inline)
+                    }
+                    .pickerStyle(.inline)
+                    .labelsHidden()
                 } label: {
                     Image(systemName: viewMode.systemImage)
                 }
-                .labelsHidden()
             }
             
             if isLoading {
-                ProgressView().controlSize(.small)
+                ProgressView()
+                    .progressViewStyle(.scaled)
             } else {
                 Button("Refresh", systemImage: "arrow.triangle.2.circlepath") {
                     Task {
@@ -114,6 +82,7 @@ extension ModelStore {
     @ViewBuilder
     func LoadMoreView() -> some View {
         ProgressView()
+            .progressViewStyle(.scaled)
             .frame(maxWidth: .infinity)
             .onAppear {
                 Task { await loadMoreModels() }
@@ -122,7 +91,6 @@ extension ModelStore {
     
     @ViewBuilder
     func ContentView() -> some View {
-        
         switch viewMode {
         case .grid:
             if isLoading {
@@ -139,6 +107,7 @@ extension ModelStore {
             }
             
         }
+        
     }
     
     @ViewBuilder
@@ -147,7 +116,7 @@ extension ModelStore {
             ForEach(0..<ModelStore.pageSize, id: \.self) { _ in
                 RoundedRectangle(cornerRadius: 12)
                     .fill(Color.secondary.opacity(0.1))
-                    .frame(height: 220)
+                    .frame(height: 100)
                     .redacted(reason: .placeholder)
             }
         }
@@ -169,7 +138,7 @@ extension ModelStore {
             ForEach(0..<ModelStore.pageSize, id: \.self) { _ in
                 RoundedRectangle(cornerRadius: 12)
                     .fill(Color.secondary.opacity(0.1))
-                    .frame(height: 220)
+                    .frame(height: 100)
                     .redacted(reason: .placeholder)
             }
         }

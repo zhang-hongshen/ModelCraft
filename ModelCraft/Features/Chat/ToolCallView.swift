@@ -24,7 +24,7 @@ struct ToolCallView: View {
             mapView(for: toolCallResult)
         case ToolNames.readFromFile, ToolNames.writeToFile:
             if let path = arguments["path"]?.stringValue {
-                FilePreviewView(url: FileTool.resolvePath(path) )
+                FilePreviewView(url: PathResolver.resolve(path) )
             }
         case ToolNames.captureScreen:
             if let imageData = Data(base64Encoded: toolCallResult),

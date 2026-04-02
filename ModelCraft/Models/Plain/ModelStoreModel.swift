@@ -5,9 +5,8 @@
 //  Created by Hongshen on 4/3/26.
 //
 
-struct ModelStoreModel: Decodable, Identifiable {
+struct ModelStoreModel: Decodable, ModelEntity {
     let id: String
-    let modelID: String
     let downloads: Int
     let tags: [String]
     let pipelineTag: String?
@@ -18,16 +17,8 @@ struct ModelStoreModel: Decodable, Identifiable {
     
     enum CodingKeys: String, CodingKey {
         case id
-        case modelID = "modelId"
         case downloads
         case tags
         case pipelineTag
-    }
-}
-
-extension ModelStoreModel {
-    
-    var displayName: String {
-        id.components(separatedBy: "/").last ?? id
     }
 }

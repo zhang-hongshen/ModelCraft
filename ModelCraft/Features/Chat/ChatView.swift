@@ -251,3 +251,5 @@ extension ChatView {
         .environment(GlobalStore())
         .modelContainer(ModelContainer.shared)
 }
+
+

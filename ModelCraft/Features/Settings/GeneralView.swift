@@ -9,7 +9,6 @@ import SwiftUI
 
 struct GeneralView: View {
     
-    @State private var isCheckingServerStatus = false
     @Environment(GlobalStore.self) private var globalStore
     @Environment(UserSettings.self) private var userSettings
     

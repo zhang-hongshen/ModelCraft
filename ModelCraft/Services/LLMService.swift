@@ -36,7 +36,7 @@ class LLMService {
     private func load(model: LocalModel) async throws -> ModelContainer {
         
         // Return cached model if available to avoid reloading
-        if let container = modelCache.object(forKey: model.modelID as NSString) {
+        if let container = modelCache.object(forKey: model.id as NSString) {
             return container
         } else {
             // Select appropriate factory based on model type
@@ -50,16 +50,15 @@ class LLMService {
             
             // Load model and track download progress
             let container = try await factory.loadContainer(
-                hub: .default, configuration: ModelConfiguration(id: model.modelID)
+                hub: .default, configuration: ModelConfiguration(id: model.id)
             ) { progress in
                 Task { @MainActor in
                     print("progress \(progress.fractionCompleted)")
-
                 }
             }
             
             // Cache the loaded model for future use
-            modelCache.setObject(container, forKey: model.modelID as NSString)
+            modelCache.setObject(container, forKey: model.id as NSString)
             
             return container
         }
@@ -85,7 +84,7 @@ class LLMService {
         )
         
         let historyInput = UserInput(chat: Array(messages.dropLast()), tools: tools)
-        let key = "\(model.modelID)_\(historyInput.prompt.description)".sha256String
+        let key = "\(model.id)_\(historyInput.prompt.description)".sha256String
         
         // Generate response using the model
         return try await modelContainer.perform { (context: ModelContext) in

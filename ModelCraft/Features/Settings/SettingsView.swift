@@ -25,6 +25,6 @@ struct SettingsView: View {
                     Text("General")
                 }
         }
-        .tabViewStyle(.automatic)
+        
     }
 }

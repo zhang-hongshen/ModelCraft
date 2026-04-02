@@ -9,9 +9,9 @@ import SwiftData
 import Foundation
 
 @Model
-class LocalModel {
+class LocalModel: ModelEntity {
     
-    @Attribute(.unique) var modelID: String
+    @Attribute(.unique) var id: String
     
     var createdAt: Date = Date.now
     
@@ -28,18 +28,10 @@ class LocalModel {
         case vlm
     }
     
-    init(modelID: String, size: Int64, type: ModelType) {
-        self.modelID = modelID
+    init(id: String, size: Int64, type: ModelType) {
+        self.id = id
         self.size = size
         self.type = type
     }
     
-}
-
-
-extension LocalModel {
-    
-    var displayName: String {
-        modelID.components(separatedBy: "/").last ?? modelID
-    }
 }

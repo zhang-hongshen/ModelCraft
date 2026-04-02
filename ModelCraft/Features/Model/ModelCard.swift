@@ -24,7 +24,10 @@ struct ModelCard: View {
         if !downloadedModels.isEmpty {
             return .downloaded
         }
-        if !downloadTasks.isEmpty {
+        if let downloadTask = downloadTasks.first {
+            if downloadTask.status == .stopped {
+                return .stopped
+            }
             return .downloading
         }
         return .notDownloaded
@@ -40,9 +43,9 @@ struct ModelCard: View {
     init(model: ModelStoreModel, viewMode: ViewMode) {
         self.model = model
         self.viewMode = viewMode
-        let modelID = model.modelID
+        let modelID = model.id
         self._downloadedModels = Query(
-            filter: #Predicate<LocalModel> { $0.modelID == modelID }
+            filter: #Predicate<LocalModel> { $0.id == modelID }
         )
         let _type = TaskType.download.rawValue
         self._downloadTasks = Query(
@@ -61,7 +64,7 @@ struct ModelCard: View {
                     DownloadActionView()
                 }
             case .list:
-                HStack {
+                HStack(alignment: .center) {
                     ModelIcon()
                     ModelName()
                     Spacer()
@@ -98,7 +101,6 @@ extension ModelCard {
             .overlay {
                 Image(systemName: "shippingbox.fill")
                     .font(.system(size: 30))
-                    .foregroundStyle(Color.accentColor)
             }
     }
     
@@ -118,42 +120,42 @@ extension ModelCard {
                 Button {
                     createDownloadModelTask()
                 } label: {
-                    Text("Download")
+                    Image(systemName: "square.and.arrow.down")
                 }
                 .disabled(downloadState != .notDownloaded)
                 
             case .downloading:
                 ProgressView(value: downloadTasks.first?.fractionCompleted)
                     .progressViewStyle(.circular)
+                    .progressViewStyle(.scaled)
                     .overlay {
                         Button {
                             stopDownloadTask()
                         } label: {
                             Image(systemName: "stop.fill")
                         }
-                        .buttonStyle(.plain)
                     }
             case .stopped:
-                ZStack {
-                    ProgressView(value: downloadTasks.first?.fractionCompleted)
-                        .progressViewStyle(.circular)
-                    
-                    Button {
-                        resumeDownloadTask()
-                    } label: {
-                        Image(systemName: "play")
+                ProgressView(value: downloadTasks.first?.fractionCompleted)
+                    .progressViewStyle(.circular)
+                    .progressViewStyle(.scaled)
+                    .overlay {
+                        Button {
+                            resumeDownloadTask()
+                        } label: {
+                            Image(systemName: "play.fill")
+                        }
                     }
-                    .buttonStyle(.plain)
-                }
             case .downloaded:
                 Button {
                     
                 } label: {
                     Text("Downloaded")
                 }
-                .buttonStyle(.plain)
             }
-        }.frame(height: 32)
+        }
+        .font(.system(size: 20))
+        .buttonStyle(.plain)
     }
     
 }
@@ -162,20 +164,20 @@ extension ModelCard {
     
     func createDownloadModelTask() {
         let type = TaskType.download.rawValue
-        let modelID = model.modelID
+        let modelID = model.id
         let descriptor = FetchDescriptor<ModelTask>(
             predicate: #Predicate { $0.modelID == modelID && $0._type == type }
         )
         if let count = try? modelContext.fetchCount(descriptor), count != 0 {
             return
         }
-        modelContext.persist(ModelTask(modelId: model.modelID, type: .download))
+        modelContext.persist(ModelTask(modelId: model.id, type: .download))
     }
     
     func stopDownloadTask() {
-        if let runningTask = globalStore.runningTasks[model.modelID] {
+        if let runningTask = globalStore.runningTasks[model.id] {
             runningTask.cancel()
-            globalStore.runningTasks.removeValue(forKey: model.modelID)
+            globalStore.runningTasks.removeValue(forKey: model.id)
         }
     }
     
