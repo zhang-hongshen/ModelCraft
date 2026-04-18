@@ -10,16 +10,12 @@ import SwiftData
 import MapKit
 
 import MLXLMCommon
-import Tokenizers
 
 class SearchTool {
     
-    static var allTools: [ToolSpec] {
-        var tools = [
-            searchMap.schema
-        ]
-        return tools
-    }
+    static let allTools = [
+        searchMap.schema
+    ]
     
     static func searchMap(query: String, useCurrentLocation: Bool = false, numOfResults: Int) async throws -> [MapPlace] {
         let request = MKLocalSearch.Request()
@@ -77,7 +73,7 @@ class SearchTool {
         return SearchMapOutput(places: places)
     }
     
-    static func searchRelevantDocuments(knowledgeBaseID: PersistentIdentifier) -> Tool<SearchRelevantDocumentsInput, SearchRelevantDocumentsOutput>{
+    static func searchRelevantDocuments(projectID: PersistentIdentifier) -> Tool<SearchRelevantDocumentsInput, SearchRelevantDocumentsOutput>{
         return Tool(
             name: "search_relevant_documents",
             description: "Search for information in the user's uploaded documents.",
@@ -86,8 +82,8 @@ class SearchTool {
                 .optional("numOfResults", type: .int, description: "The maximum number of results to return. Defaults to 10 if not specified.")
             ]
         ) { input in
-            let knowledgaBaseModelActor = KnowledgaBaseModelActor(modelContainer: SwiftData.ModelContainer.shared)
-            let docs = await knowledgaBaseModelActor.searchRelevantDocuments(knowledgeBaseID: knowledgeBaseID, query: input.query)
+            let actor = ProjectModelActor(modelContainer: SwiftData.ModelContainer.shared)
+            let docs = await actor.searchRelevantDocuments(projectID: projectID, query: input.query)
             return SearchRelevantDocumentsOutput(docs: docs)
         }
     }

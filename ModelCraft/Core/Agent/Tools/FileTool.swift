@@ -8,17 +8,13 @@
 import Foundation
 
 import MLXLMCommon
-import Tokenizers
 
 class FileTool {
 
-    static var allTools: [ToolSpec] {
-        var tools = [
-            writeToFile.schema,
-            readFromFile.schema
-        ]
-        return tools
-    }
+    static let allTools = [
+        writeToFile.schema,
+        readFromFile.schema
+    ]
     
     static func writeToFile(_ path: String, content: String) throws {
         let url = PathResolver.resolve(path)

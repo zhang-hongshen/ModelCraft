@@ -10,6 +10,7 @@ struct ModelStoreModel: Decodable, ModelEntity {
     let downloads: Int
     let tags: [String]
     let pipelineTag: String?
+    let sizeInBytes: Int64?
     
     var isVLM: Bool {
         return pipelineTag == "image-text-to-text" || (pipelineTag?.contains("vision") ?? false)
@@ -20,5 +21,6 @@ struct ModelStoreModel: Decodable, ModelEntity {
         case downloads
         case tags
         case pipelineTag
+        case sizeInBytes = "usedStorage"
     }
 }

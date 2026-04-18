@@ -1,12 +1,12 @@
 //
-//  Tab.swift
+//  AppNavigationTab.swift
 //  ModelCraft
 //
 //  Created by Hongshen on 19/1/26.
 //
 
-enum Tab: Hashable {
+enum AppNavigationTab: Hashable {
     case chat(Chat)
-    case knowledgeBase(KnowledgeBase)
+    case project(Project)
     case modelStore, downloadedModels
 }

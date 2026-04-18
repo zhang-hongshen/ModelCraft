@@ -34,7 +34,7 @@ class ScreenControlManager {
     }
 
     // MARK: - Screenshot
-    func taskScreenshot() -> (Data, String)? {
+    func taskScreenshot() -> CGImage? {
         #if canImport(AppKit)
         var displayCount: UInt32 = 0
         CGGetActiveDisplayList(0, nil, &displayCount)
@@ -66,14 +66,7 @@ class ScreenControlManager {
 
             ctx.draw(image, in: CGRect(x: x, y: y, width: frame.width, height: frame.height))
         }
-
-        guard let merged = ctx.makeImage() else { return nil }
-        
-        let bitmap = NSBitmapImageRep(cgImage: merged)
-        guard let data = bitmap.representation(using: .png, properties: [:]) else { return nil }
-
-        return (data, UTType.png.preferredMIMEType!)
-        
+        return ctx.makeImage()
         #elseif canImport(UIKit)
         guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
               let window = windowScene.windows.first(where: { $0.isKeyWindow }) else {
@@ -83,9 +76,7 @@ class ScreenControlManager {
         let image = renderer.image { _ in
             window.drawHierarchy(in: window.bounds, afterScreenUpdates: true)
         }
-        guard let imageData = image.pngData() else { return nil }
-        return (imageData, UTType.png.preferredMIMEType!)
-        
+        return image.cgImage
         #else
         return nil
         #endif

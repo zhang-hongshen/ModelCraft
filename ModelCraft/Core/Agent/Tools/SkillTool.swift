@@ -8,16 +8,12 @@
 import Foundation
 
 import MLXLMCommon
-import Tokenizers
 
 class SkillTool {
     
-    static var allTools: [ToolSpec] {
-        var tools = [
-            activateSkill.schema,
-        ]
-        return tools
-    }
+    static let allTools = [
+        activateSkill.schema
+    ]
     
     static var activateSkill: Tool<ActivateSkillInput, ActivateSkillOutput> {
         let availableSkills = SkillManager.shared.skillCatalogPrompt()

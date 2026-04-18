@@ -10,7 +10,6 @@ import SwiftUI
 @Observable
 class GlobalStore {
     var selectedModel: LocalModel? = nil
-    var selectedKnowledgeBase: KnowledgeBase? = nil
-    var currentTab: Tab? = nil
+    var currentTab: AppNavigationTab? = nil
     var runningTasks: [String: Task<Void, Never>] = [:]
 }

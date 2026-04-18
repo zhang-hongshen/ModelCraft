@@ -15,9 +15,9 @@ class ModelTask {
     @Attribute(.unique) var id: String
     var createdAt: Date = Date.now
     var modelID: String
-    var totalUnitCount: Int64
-    var completedUnitCount: Int64
-    var fractionCompleted: Double
+    var totalUnitCount: Int64?
+    var completedUnitCount: Int64?
+    var fractionCompleted: Double?
     var _type: TaskType.RawValue
     var _status: TaskType.RawValue
     
@@ -31,8 +31,8 @@ class ModelTask {
         set { _status = newValue.rawValue }
     }
     
-    init(modelId: String, totalUnitCount: Int64 = 0,
-         completedUnitCount: Int64 = 0, fractionCompleted: Double = 0,
+    init(modelId: String, totalUnitCount: Int64? = nil,
+         completedUnitCount: Int64? = nil, fractionCompleted: Double? = nil,
          status: TaskStatus = .new, type: TaskType) {
         self.id = "\(modelId)-\(type.rawValue)"
         self.modelID = modelId

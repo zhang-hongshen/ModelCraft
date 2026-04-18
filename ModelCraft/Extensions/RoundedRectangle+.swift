@@ -9,6 +9,6 @@ import SwiftUI
 
 extension RoundedRectangle {
     init() {
-        self.init(cornerRadius: Layout.cornerRadius)
+        self.init(cornerRadius: Layout.cornerRadius, style: .continuous)
     }
 }

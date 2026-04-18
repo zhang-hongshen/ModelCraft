@@ -45,31 +45,22 @@ class PromptBuilder {
             )]
     }
     
-    static let planExecutionSystemPrompt = Message(
+    static let multiStepAgentSystemPrompt = Message(
         role: .system,
         content: """
         <role>
-            You are a helpful assistant that executes a plan step by step.
+            You are a helpful assistant.
+            You can use tools when needed to get information or perform actions.
         </role>
         
         <rules>
-        1. Follow the plan step by step.
-        2. If information is required, call the appropriate tool.
-        3. Use tool calls instead of guessing information.
-        4. Only call one tool at a time.
-        5. After receiving tool results, continue solving the task.
-        6. When the task is completed, return the final answer.
-        7. STRICTURE: Do not include any text outside of these tags(<plan>, <think>, <action>, <observation>, <answer>).
+        1. Use tools if they help you answer the user’s request.
+        2. Do not guess when you can call a tool.
+        3. Call at most one tool at a time.
+        4. If a tool is not needed, answer directly.
+        5. After receiving tool results, continue reasoning and respond naturally.
+        6. Return a normal, helpful answer to the user.
         </rules>
-
-        <execute_format>
-            <plan>A numbered list of steps to solve the task. Revise it if neccessary</plan>
-            <think>Reason about the current step.</think>
-            <action>the action to take</action>
-            <observation>the result of the action<observation>
-            ... (this think/action/observation can repeat N times)
-            <answer>Provide the final result when the task is complete</answer>
-        </execution_format>
         """
     )
     

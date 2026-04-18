@@ -4,22 +4,6 @@
     "" : {
 
     },
-    "%@ / %@" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$@ / %2$@"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$@ / %2$@"
-          }
-        }
-      }
-    },
     "%lld days ago" : {
       "localizations" : {
         "zh-Hans" : {
@@ -42,9 +26,6 @@
           }
         }
       }
-    },
-    "Active Model" : {
-
     },
     "Add Files" : {
       "localizations" : {
@@ -106,6 +87,12 @@
         }
       }
     },
+    "Audio not supported yet" : {
+
+    },
+    "Binary data (%@)" : {
+
+    },
     "Browse Files" : {
       "localizations" : {
         "zh-Hans" : {
@@ -135,6 +122,9 @@
           }
         }
       }
+    },
+    "Chats" : {
+
     },
     "Clicking (%lf,%lf)" : {
       "localizations" : {
@@ -182,6 +172,19 @@
         }
       }
     },
+    "Creating Image" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "生成图片中"
+          }
+        }
+      }
+    },
+    "Creating Video" : {
+
+    },
     "Dark" : {
       "localizations" : {
         "zh-Hans" : {
@@ -208,17 +211,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "删除中"
-          }
-        }
-      }
-    },
-    "Download" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "下载"
           }
         }
       }
@@ -289,6 +281,9 @@
     "Failed to parse map data" : {
 
     },
+    "Files" : {
+
+    },
     "General" : {
       "localizations" : {
         "zh-Hans" : {
@@ -315,19 +310,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "我能帮您什么吗？"
-          }
-        }
-      }
-    },
-    "Inspector" : {
-
-    },
-    "Knowledge Base" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "知识库"
           }
         }
       }
@@ -382,6 +364,9 @@
         }
       }
     },
+    "Move to project" : {
+
+    },
     "Moving to (%lf, %lf)" : {
       "localizations" : {
         "en" : {
@@ -405,7 +390,14 @@
 
     },
     "No Models Available" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "没有可用的模型"
+          }
+        }
+      }
     },
     "None" : {
       "localizations" : {
@@ -413,6 +405,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "无"
+          }
+        }
+      }
+    },
+    "Project" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "项目"
           }
         }
       }
@@ -441,7 +443,14 @@
       }
     },
     "Remove" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "移除"
+          }
+        }
+      }
     },
     "Retry" : {
       "localizations" : {
@@ -529,6 +538,9 @@
         }
       }
     },
+    "The model has been discarded to conserve memory and is no longer available. Please recreate the model container." : {
+
+    },
     "Thinking" : {
       "localizations" : {
         "zh-Hans" : {
@@ -549,9 +561,6 @@
         }
       }
     },
-    "Toggle Info Sidebar" : {
-
-    },
     "Tool" : {
 
     },
@@ -565,15 +574,31 @@
         }
       }
     },
+    "Unable to create a %@ with model ID '%@'. The model may not support this operation type." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Unable to create a %1$@ with model ID '%2$@'. The model may not support this operation type."
+          }
+        }
+      }
+    },
+    "Unable to load the Stable Diffusion model. Please check your internet connection or available storage space." : {
+
+    },
+    "Unable to open the image file." : {
+
+    },
     "Unkown Tool Call" : {
 
     },
-    "View" : {
+    "Vision" : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "视图"
+            "value" : "视觉"
           }
         }
       }

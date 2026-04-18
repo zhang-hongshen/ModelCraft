@@ -20,7 +20,27 @@ class Message {
     var content: String
     var attachments: [URL]
     private var _toolCall: String?
-    var toolCallResult: String?
+    private var _toolCallResult: String?
+    
+    @Transient var toolCallResult: CallToolResult? {
+        get {
+            guard let data = _toolCallResult?.data(using: .utf8) else { return nil }
+            return try? JSONDecoder().decode(CallToolResult.self, from: data)
+        }
+        
+        set {
+            guard let newValue else {
+                _toolCall = nil
+                return
+            }
+            
+            if let data = try? JSONEncoder().encode(newValue) {
+                _toolCall = String(data: data, encoding: .utf8)
+            } else {
+                _toolCall = nil
+            }
+        }
+    }
     
     @Transient var toolCall: ToolCall? {
         get {
@@ -44,15 +64,15 @@ class Message {
     var status: MessageStatus
     
     init(role: MessageRole = .user, chat: Chat? = nil, content: String = "",
-         attachments: [URL] = [], toolCall: ToolCall? = nil, toolCallResult: String? = nil,
+         attachments: [URL] = [], toolCall: ToolCall? = nil, toolCallResult: CallToolResult? = nil,
          status: MessageStatus = .generated) {
         self.chat = chat
         self.role = role
         self.content = content
         self.attachments = attachments
-        self.toolCallResult = toolCallResult
         self.status = status
         self.toolCall = toolCall
+        self.toolCallResult = toolCallResult
     }
     
 }

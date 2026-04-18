@@ -27,7 +27,6 @@ class ChatService {
     @MainActor
     func sendMessage(
         model: LocalModel,
-        knowledgeBase: KnowledgeBase?,
         chat: Chat,
         message: Message,
     ) async throws {
@@ -35,10 +34,10 @@ class ChatService {
         ModelContainer.shared.mainContext.persist(message)
         
         currentTask = Task {
-            let messages = [PromptBuilder.planExecutionSystemPrompt]
+            let messages = [PromptBuilder.multiStepAgentSystemPrompt]
             + Array(chat.sortedMessages.suffix(from: chat.lastSummaryIndex))
             + [PromptBuilder.answerQuestion(question: message.content, summary: chat.summary)]
-            try await executor.run(model: model, knowledgeBaseID: knowledgeBase?.persistentModelID, chat: chat, messages: messages.compactMap { LLMService.shared.toMessage($0) })
+            try await executor.run(model: model, projectID: chat.project?.persistentModelID, chat: chat, messages: messages.compactMap { LMService.shared.toMessage($0) })
         }
         
         Task(priority: .background) {
@@ -58,7 +57,6 @@ class ChatService {
     @MainActor
     func resendMessage(
         model: LocalModel,
-        knowledgeBase: KnowledgeBase?,
         chat: Chat,
         message: Message
     ) async throws {
@@ -68,7 +66,6 @@ class ChatService {
         ModelContainer.shared.mainContext.delete(messagesToDelete)
         try await sendMessage(
             model: model,
-            knowledgeBase: knowledgeBase,
             chat: chat,
             message: message)
     }
@@ -76,7 +73,7 @@ class ChatService {
     private func summarizeChatIfNeeded (model: LocalModel, chatID: PersistentIdentifier) async throws {
         try await chatModelActor.updateSummary(chatID: chatID) { previousSummary, messages in
                 let prompt = PromptBuilder.summarize(previousSummary: previousSummary, messages: messages)
-            return try await LLMService.shared.generate(
+            return try await LMService.shared.generate(
                 model: model,
                 messages: prompt)
         }
@@ -85,7 +82,7 @@ class ChatService {
     private func generateTitleIfNeeded (model: LocalModel, chatID: PersistentIdentifier) async throws {
         try await chatModelActor.generateTitle(chatID: chatID) { messages in
             let prompt = PromptBuilder.generateTitle(messages: messages)
-            return try await LLMService.shared.generate(
+            return try await LMService.shared.generate(
                 model: model,
                 messages: prompt)
         }

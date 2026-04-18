@@ -20,6 +20,22 @@
 		</dict>
 		<dict>
 			<key>File</key>
+			<string>com.mono0926.LicensePlist/EventSource</string>
+			<key>Title</key>
+			<string>EventSource</string>
+			<key>Type</key>
+			<string>PSChildPaneSpecifier</string>
+		</dict>
+		<dict>
+			<key>File</key>
+			<string>com.mono0926.LicensePlist/mlx-audio-swift</string>
+			<key>Title</key>
+			<string>mlx-audio-swift</string>
+			<key>Type</key>
+			<string>PSChildPaneSpecifier</string>
+		</dict>
+		<dict>
+			<key>File</key>
 			<string>com.mono0926.LicensePlist/mlx-swift</string>
 			<key>Title</key>
 			<string>mlx-swift</string>
@@ -52,17 +68,17 @@
 		</dict>
 		<dict>
 			<key>File</key>
-			<string>com.mono0926.LicensePlist/swift-argument-parser</string>
+			<string>com.mono0926.LicensePlist/swift-asn1</string>
 			<key>Title</key>
-			<string>swift-argument-parser</string>
+			<string>swift-asn1</string>
 			<key>Type</key>
 			<string>PSChildPaneSpecifier</string>
 		</dict>
 		<dict>
 			<key>File</key>
-			<string>com.mono0926.LicensePlist/swift-asn1</string>
+			<string>com.mono0926.LicensePlist/swift-atomics</string>
 			<key>Title</key>
-			<string>swift-asn1</string>
+			<string>swift-atomics</string>
 			<key>Type</key>
 			<string>PSChildPaneSpecifier</string>
 		</dict>
@@ -92,6 +108,14 @@
 		</dict>
 		<dict>
 			<key>File</key>
+			<string>com.mono0926.LicensePlist/swift-huggingface</string>
+			<key>Title</key>
+			<string>swift-huggingface</string>
+			<key>Type</key>
+			<string>PSChildPaneSpecifier</string>
+		</dict>
+		<dict>
+			<key>File</key>
 			<string>com.mono0926.LicensePlist/swift-jinja</string>
 			<key>Title</key>
 			<string>Jinja</string>
@@ -108,6 +132,14 @@
 		</dict>
 		<dict>
 			<key>File</key>
+			<string>com.mono0926.LicensePlist/swift-nio</string>
+			<key>Title</key>
+			<string>swift-nio</string>
+			<key>Type</key>
+			<string>PSChildPaneSpecifier</string>
+		</dict>
+		<dict>
+			<key>File</key>
 			<string>com.mono0926.LicensePlist/swift-numerics</string>
 			<key>Title</key>
 			<string>swift-numerics</string>
@@ -116,17 +148,17 @@
 		</dict>
 		<dict>
 			<key>File</key>
-			<string>com.mono0926.LicensePlist/swift-transformers</string>
+			<string>com.mono0926.LicensePlist/swift-system</string>
 			<key>Title</key>
-			<string>swift-transformers</string>
+			<string>swift-system</string>
 			<key>Type</key>
 			<string>PSChildPaneSpecifier</string>
 		</dict>
 		<dict>
 			<key>File</key>
-			<string>com.mono0926.LicensePlist/WhisperKit</string>
+			<string>com.mono0926.LicensePlist/swift-transformers</string>
 			<key>Title</key>
-			<string>WhisperKit</string>
+			<string>swift-transformers</string>
 			<key>Type</key>
 			<string>PSChildPaneSpecifier</string>
 		</dict>

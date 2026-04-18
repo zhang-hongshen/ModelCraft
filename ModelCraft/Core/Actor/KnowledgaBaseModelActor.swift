@@ -9,13 +9,13 @@ import Foundation
 import SwiftData
 
 @ModelActor
-actor KnowledgaBaseModelActor {
+actor ProjectModelActor {
     
-    func insert(_ model: KnowledgeBase) {
+    func insert(_ model: Project) {
         modelContext.persist(model)
     }
     
-    func delete(_ model: KnowledgeBase) {
+    func delete(_ model: Project) {
         modelContext.delete(model)
         try? modelContext.save()
         Task.detached {
@@ -23,8 +23,8 @@ actor KnowledgaBaseModelActor {
         }
     }
     
-    func searchRelevantDocuments(knowledgeBaseID: PersistentIdentifier, query: String, numOfResults: Int? = nil) async -> [String]{
-        guard let knowledgeBase = modelContext.model(for: knowledgeBaseID) as? KnowledgeBase else { return [] }
-        return await knowledgeBase.search(query: query, numOfResults: numOfResults ?? 10)
+    func searchRelevantDocuments(projectID: PersistentIdentifier, query: String, numOfResults: Int? = nil) async -> [String]{
+        guard let project = modelContext.model(for: projectID) as? Project else { return [] }
+        return await project.search(query: query, numOfResults: numOfResults ?? 10)
     }
 }

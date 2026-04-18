@@ -13,14 +13,14 @@ import Tokenizers
 class CommandTool {
     
     #if os(macOS)
+    static let allTools: [ToolSpec] = [
+        executeCommand.schema
+    ]
+    #else
+    static let allTools: [ToolSpec] = []
+    #endif
     
-    static var allTools: [ToolSpec] {
-        var tools = [
-            executeCommand.schema
-        ]
-        return tools
-    }
-    
+#if os(macOS)
     @discardableResult
     static func executeCommand(
         _ command: String

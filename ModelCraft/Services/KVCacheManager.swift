@@ -42,14 +42,12 @@ final class KVCacheManager {
 
         guard !arrays.isEmpty else { return }
         
-        MLX.eval(arrays.values)
-        
         print("Saving cache to memory")
         inMemoryCache.setObject(cache as NSArray, forKey: key as NSString)
         
         let url = cacheDir.appendingPathComponent("\(key).safetensors")
+        print("Saving cache to disk")
         do {
-            print("Saving cache to disk")
             try MLX.save(arrays: arrays, url: url)
         } catch {
             print("Saving cache failed:", error)
@@ -57,12 +55,12 @@ final class KVCacheManager {
     }
 
     // MARK: - Load
-    func load(for key: String, into emptyCache: inout [any KVCache]) -> Bool {
+    func load(for key: String, into cache: inout [any KVCache]) -> Bool {
 
-        if let hit = inMemoryCache.object(forKey: key as NSString) as? [any KVCache] {
+        if let memoryCache = inMemoryCache.object(forKey: key as NSString) as? [any KVCache] {
             print("Loading cache from memory")
-                        for (i, layer) in hit.enumerated() where i < emptyCache.count {
-                emptyCache[i].state = layer.state
+            for (i, layer) in memoryCache.enumerated() where i < cache.count {
+                cache[i].state = layer.state
             }
             return true
         }
@@ -81,8 +79,6 @@ final class KVCacheManager {
                 .sorted()
 
         guard !sortedIndices.isEmpty else { return false }
-        
-        var cache: [any KVCache] = []
 
         print("Loading Cache from disk")
         for i in sortedIndices {
@@ -91,7 +87,7 @@ final class KVCacheManager {
             else {
                 return false
             }
-            emptyCache[i].state = [k, v]
+            cache[i].state = [k, v]
         }
         
         inMemoryCache.setObject(cache as NSArray, forKey: key as NSString)

@@ -18,10 +18,10 @@ struct ModelTaskView: View {
         HStack(alignment: .center) {
             Label(task.modelID, systemImage: "shippingbox")
             Spacer()
+            if let fractionCompleted = task.fractionCompleted {
+                Text(fractionCompleted, format: .percent.precision(.fractionLength(1)).rounded(rule: .down))
+            }
             
-            Text("\(ByteCountFormatter.string(fromByteCount: task.completedUnitCount, countStyle: .file)) / \(ByteCountFormatter.string(fromByteCount: task.totalUnitCount, countStyle: .file))")
-                
-                Text(task.fractionCompleted, format: .percent.precision(.fractionLength(1)).rounded(rule: .down))
             switch task.status {
             case .new:
                 ProgressView().progressViewStyle(.scaled)

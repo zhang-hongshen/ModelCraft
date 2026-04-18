@@ -60,31 +60,32 @@ struct ModelCard: View {
             case .grid:
                 VStack(spacing: 12) {
                     ModelIcon()
-                    ModelName()
+                    ModelInfo()
                     DownloadActionView()
                 }
             case .list:
                 HStack(alignment: .center) {
                     ModelIcon()
-                    ModelName()
+                    ModelInfo()
                     Spacer()
                     DownloadActionView()
                 }
             }
         }
         .frame(maxWidth: .infinity)
-        .padding(Layout.padding)
+        .padding()
         .background(
             RoundedRectangle()
                 .fill(.background)
-                .shadow(color: .black.opacity(isHovered ? 0.2 : 0), radius: 5, x: 0, y: 2)
+                .shadow(color: .primary.opacity(isHovered ? 0.2 : 0), radius: 5, x: 0, y: 2)
+                .overlay(
+                    RoundedRectangle()
+                        .stroke(Color.secondary.opacity(isHovered ? 0.5 : 0), lineWidth: 1)
+                )
         )
-        .overlay(
-            RoundedRectangle()
-                .stroke(Color.accentColor.opacity(isHovered ? 0.5 : 0), lineWidth: 2)
-        )
+        .offset(y: isHovered ? -2 : 0)
         .onHover { hovering in
-            withAnimation(.easeInOut(duration: 0.2)) {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
                 isHovered = hovering
             }
         }
@@ -94,22 +95,43 @@ struct ModelCard: View {
 extension ModelCard {
     
     @ViewBuilder
-    func ModelIcon() -> some View {
-        RoundedRectangle(cornerRadius: 10)
-            .fill(Color.accentColor.opacity(0.1))
-            .frame(width: 60, height: 60)
+    func ModelIcon(size: CGFloat = 56) -> some View {
+        RoundedRectangle()
+            .fill(.quaternary.opacity(0.4))
+            .frame(width: size, height: size)
             .overlay {
                 Image(systemName: "shippingbox.fill")
-                    .font(.system(size: 30))
+                    .font(.system(size: size * 0.45, weight: .light))
+                    .foregroundStyle(.primary.opacity(0.8))
             }
     }
     
     @ViewBuilder
-    func ModelName() -> some View {
-        Text(model.displayName)
-            .font(.headline)
-            .lineLimit(1)
-            .truncationMode(.middle)
+    func ModelInfo() -> some View {
+        VStack(alignment: viewMode == .grid ? .center : .leading, spacing: 4) {
+            HStack {
+                Text(model.displayName)
+                    .font(.title3)
+                    .fontDesign(.rounded)
+                    .fontWeight(.semibold)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                
+                if model.isVLM {
+                    Text("Vision")
+                        .font(.caption2)
+                        .padding(Layout.padding)
+                        .background(.quaternary)
+                        .clipShape(Capsule())
+                }
+            }
+            
+            if let size = model.sizeInBytes {
+                Text(ByteCountFormatter.string(fromByteCount: size, countStyle: .file))
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+        }
     }
     
     @ViewBuilder
@@ -121,40 +143,46 @@ extension ModelCard {
                     createDownloadModelTask()
                 } label: {
                     Image(systemName: "square.and.arrow.down")
+                        .font(.title)
                 }
                 .disabled(downloadState != .notDownloaded)
                 
             case .downloading:
-                ProgressView(value: downloadTasks.first?.fractionCompleted)
-                    .progressViewStyle(.circular)
-                    .progressViewStyle(.scaled)
-                    .overlay {
-                        Button {
-                            stopDownloadTask()
-                        } label: {
-                            Image(systemName: "stop.fill")
+                if let fractionCompleted = downloadTasks.first?.fractionCompleted {
+                    ProgressView(value: fractionCompleted)
+                        .progressViewStyle(.circular)
+                        .overlay {
+                            Button {
+                                stopDownloadTask()
+                            } label: {
+                                Image(systemName: "stop.fill")
+                                    .font(.system(size: 16, weight: .bold))
+                            }
                         }
-                    }
+                } else {
+                    ProgressView()
+                }
+                
             case .stopped:
                 ProgressView(value: downloadTasks.first?.fractionCompleted)
                     .progressViewStyle(.circular)
-                    .progressViewStyle(.scaled)
                     .overlay {
                         Button {
                             resumeDownloadTask()
                         } label: {
                             Image(systemName: "play.fill")
+                                .font(.system(size: 16, weight: .bold))
                         }
                     }
             case .downloaded:
-                Button {
-                    
-                } label: {
-                    Text("Downloaded")
-                }
+                Text("Downloaded")
+                    .font(.caption2)
+                    .fontWeight(.bold)
+                    .padding(Layout.padding)
+                    .background(Color.primary.opacity(0.1))
+                    .clipShape(Capsule())
             }
         }
-        .font(.system(size: 20))
         .buttonStyle(.plain)
     }
     
@@ -171,7 +199,7 @@ extension ModelCard {
         if let count = try? modelContext.fetchCount(descriptor), count != 0 {
             return
         }
-        modelContext.persist(ModelTask(modelId: model.id, type: .download))
+        modelContext.persist(ModelTask(modelId: model.id, totalUnitCount: model.sizeInBytes, type: .download))
     }
     
     func stopDownloadTask() {

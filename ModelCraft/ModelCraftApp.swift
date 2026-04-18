@@ -21,6 +21,7 @@ struct ModelCraftApp: App {
     private let globalStore = GlobalStore()
     private let userSettings = UserSettings()
     private let speechManager = SpeechManager()
+    private let sttService = STTService()
     
     init() {}
     
@@ -36,7 +37,6 @@ struct ModelCraftApp: App {
                             try? self.handleModelTask()
                         }
                         await SkillManager.shared.loadSkills()
-                        MLX.Memory.cacheLimit = Int(ProcessInfo.processInfo.physicalMemory >> 1)
                     }
             }.commands {
                 CommandGroup(after: .help) {
@@ -58,6 +58,7 @@ struct ModelCraftApp: App {
         .environment(speechManager)
         .environment(globalStore)
         .environment(userSettings)
+        .environment(sttService)
         .windowResizability(.contentSize)
         .commands {
             SidebarCommands()
@@ -93,16 +94,15 @@ extension ModelCraftApp {
                 globalStore.runningTasks.removeValue(forKey: task.modelID)
             }
             do {
+                let localModel = LocalModel(id: task.modelID, size: task.totalUnitCount ?? 0)
                 for try await progress in ModelService.shared.downloadModel(modelID: task.modelID) {
                     task.completedUnitCount = progress.completedUnitCount
                     task.totalUnitCount = progress.totalUnitCount
                     task.fractionCompleted = progress.fractionCompleted
                 }
                 try Task.checkCancellation()
-                
                 task.status = .completed
                 
-                let localModel = LocalModel(id: task.modelID, size: task.totalUnitCount, type: .llm)
                 ModelContainer.shared.mainContext.delete(task)
                 ModelContainer.shared.mainContext.persist(localModel)
                 print("\(localModel.id) downloaded")

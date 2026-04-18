@@ -1,5 +1,5 @@
 //
-//  LLMService.swift
+//  LMService.swift
 //  ModelCraft
 //
 //  Created by Hongshen on 23/2/26.
@@ -18,9 +18,9 @@ import Tokenizers
 
 /// A service class that manages machine learning models for text and vision-language tasks.
 /// This class handles model loading, caching, and text generation using various LLM and VLM models.
-class LLMService {
+class LMService {
     
-    static let shared = LLMService()
+    static let shared = LMService()
     
     /// Cache to store loaded model containers to avoid reloading.
     private let modelCache: NSCache<NSString, ModelContainer> = {
@@ -39,23 +39,8 @@ class LLMService {
         if let container = modelCache.object(forKey: model.id as NSString) {
             return container
         } else {
-            // Select appropriate factory based on model type
-            let factory: ModelFactory =
-            switch model.type {
-            case .llm:
-                LLMModelFactory.shared
-            case .vlm:
-                VLMModelFactory.shared
-            }
-            
-            // Load model and track download progress
-            let container = try await factory.loadContainer(
-                hub: .default, configuration: ModelConfiguration(id: model.id)
-            ) { progress in
-                Task { @MainActor in
-                    print("progress \(progress.fractionCompleted)")
-                }
-            }
+            // Load model
+            let container = try await loadModelContainer(hub: .shared, configuration: ModelConfiguration(id: model.id))
             
             // Cache the loaded model for future use
             modelCache.setObject(container, forKey: model.id as NSString)
@@ -78,13 +63,16 @@ class LLMService {
         // Prepare input for model processing
         
         let userInput = UserInput(
-            chat: [messages.last!],
+            chat: messages,
             processing: .init(resize: .init(width: 1024, height: 1024)),
             tools: tools,
         )
         
-        let historyInput = UserInput(chat: Array(messages.dropLast()), tools: tools)
-        let key = "\(model.id)_\(historyInput.prompt.description)".sha256String
+//        let userInput = UserInput(
+//            chat: [messages.last!],
+//            processing: .init(resize: .init(width: 1024, height: 1024)),
+//            tools: tools,
+//        )
         
         // Generate response using the model
         return try await modelContainer.perform { (context: ModelContext) in
@@ -92,19 +80,24 @@ class LLMService {
             
             let parameters = GenerateParameters(temperature: 0.7)
             
-            var cache = context.model.newCache(parameters: parameters)
-
-            if !KVCacheManager.shared.load(for: key, into: &cache) {
-                let historyTokens = try await context.processor.prepare(input: historyInput).text.tokens
-                
-                _ = context.model(historyTokens.reshaped([1, -1]), cache: cache)
-                
-                KVCacheManager.shared.save(cache: cache, for: key)
-            }
-            
-            return try MLXLMCommon.generate(
-                input: userLMInput, cache: cache,
-                parameters: parameters, context: context)
+//            var cache = context.model.newCache(parameters: parameters)
+//            print("cache count \(cache.count)")
+//            if messages.count > 1 {
+//                let historyInput = UserInput(chat: Array(messages.dropLast()), tools: tools)
+//                let key = "\(model.id)_\(historyInput.prompt.description)".sha256String
+//                
+//                if !KVCacheManager.shared.load(for: key, into: &cache) {
+//                    let historyTokens = try await context.processor.prepare(input: historyInput).text.tokens
+//
+//                    _ = context.model(historyTokens.reshaped([1, -1]), cache: cache)
+//                    
+//                    KVCacheManager.shared.save(cache: cache, for: key)
+//                }
+//            }
+            return try MLXLMCommon.generate(input: userLMInput, parameters: parameters, context: context)
+//            return try MLXLMCommon.generate(
+//                input: userLMInput, cache: cache,
+//                parameters: parameters, context: context)
         }
     }
     
@@ -131,7 +124,7 @@ class LLMService {
     
 }
 
-extension LLMService {
+extension LMService {
     
     func toMessage(_ message: Message) -> MLXLMCommon.Chat.Message {
         let role: MLXLMCommon.Chat.Message.Role =

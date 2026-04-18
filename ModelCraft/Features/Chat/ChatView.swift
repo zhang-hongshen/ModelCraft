@@ -7,23 +7,30 @@
 
 import SwiftUI
 import SwiftData
-import UniformTypeIdentifiers
+
 
 struct ChatView: View {
     
     @State var chat: Chat?
     
-    @Query private var knowledgeBases: [KnowledgeBase] = []
     @Query private var availableModels: [LocalModel] = []
-    @Bindable private var draft = Message(role: .user)
+    @State private var draft = Message(role: .user)
     @State private var selectedImages = Set<Data>()
-    @State private var inspectorPresented = false
-    @State private var inspectorContent = AnyView(EmptyView())
+    @State private var isVoiceModeActive = false
+    @State var voiceState: VoiceState = .idle
+    
+    enum VoiceState {
+        case idle
+        case loading
+        case recording
+    }
     
     @Environment(GlobalStore.self) private var globalStore
     @Environment(\.horizontalSizeClass) private var sizeClass
+    @Environment(STTService.self) private var sttService
     
-    private let service = ChatService()
+    private let chatService = ChatService()
+    @Environment(STTService.self) private var service
     private static let minWidth: CGFloat = 270
     
     var body: some View {
@@ -32,24 +39,22 @@ struct ChatView: View {
             .toolbar(content: ToolbarItems)
             .safeAreaInset(edge: .bottom) {
                 ChatInputView(
-                    userInput: $draft,
+                    userInput: draft,
                     trailing: {
                         HStack {
                             if let chat = chat, chat.isGenerating {
                                 StopGenerateMessageButton()
                             } else {
-                                SubmitMessageButton()
+                                if draft.content.isEmpty {
+                                    voiceModeButton()
+                                } else {
+                                    SubmitMessageButton()
+                                }
                             }
                         }
                     }
                 )
             }
-            .onDrop(of: [.image, .movie], isTargeted: nil, perform: uploadByDropping)
-            .toolInspector(isPresented: $inspectorPresented){
-                inspectorContent
-                Spacer()
-            }
-            
     }
 }
 
@@ -73,65 +78,57 @@ extension ChatView {
             }
         }
     }
-    
-    @ViewBuilder
-    func KnowledgeBasePicker() -> some View {
-        Button {
-            globalStore.selectedKnowledgeBase = nil
-        } label: {
-            Label("None", systemImage: "circle.slash")
-        }
-        ForEach(knowledgeBases) { kb in
-            Button {
-                globalStore.selectedKnowledgeBase = kb
-            } label: {
-                Label(kb.title, systemImage: "book")
-                if globalStore.selectedKnowledgeBase == kb {
-                    Image(systemName: "checkmark")
-                }
-            }
-        }
-        
-    }
 
     @ToolbarContentBuilder
     func ToolbarItems() -> some ToolbarContent {
         ToolbarItem(placement: .principal) {
             Menu {
-                Section("Active Model") {
-                    ModelPicker()
-                }
-                
-                Section("Knowledge Base") {
-                    KnowledgeBasePicker()
-                }
+                ModelPicker()
             } label: {
                 VStack(alignment: .leading) {
                     Text(globalStore.selectedModel?.displayName ?? "Select Model")
                         .font(.headline)
-                    if let kb = globalStore.selectedKnowledgeBase {
-                        Text(kb.title)
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                    }
+
                 }
             }
             .menuStyle(.button)
         }
+    }
+    
+    @ViewBuilder
+    func voiceModeButton() -> some View {
+        let disabled = globalStore.selectedModel == nil
+        Button {
+            Task {
+                switch voiceState {
+                case .idle:
+                    voiceState = .loading
+                    await sttService.loadModel()
+                    await service.startRecording()
+                    voiceState = .recording
+                case .recording:
+                    service.stopRecording()
+                    voiceState = .idle
 
-        ToolbarItemGroup(placement: .primaryAction) {
-            if sizeClass == .regular {
-                Button {
-                    withAnimation(.spring()) {
-                        inspectorPresented.toggle()
-                    }
-                } label: {
-                    Label("Inspector", systemImage: "sidebar.right")
+                case .loading:
+                    break
                 }
-                .help("Toggle Info Sidebar")
             }
-            
+        } label: {
+            switch voiceState {
+            case .loading:
+                ProgressView()
+            case .recording:
+                Image(systemName: "stop.circle.fill")
+
+            case .idle:
+                Image(systemName: "waveform.circle.fill")
+            }
         }
+        .tint(voiceState == .recording
+              ? .accentColor
+              : (disabled ? .secondary : .primary))
+        .disabled(disabled)
     }
     
     
@@ -139,7 +136,7 @@ extension ChatView {
     func StopGenerateMessageButton() -> some View {
         Button {
             if let chat = chat {
-                service.stopGenerating(chat: chat)
+                chatService.stopGenerating(chat: chat)
             }
         } label: {
             Image(systemName: "stop.circle.fill")
@@ -161,12 +158,9 @@ extension ChatView {
     func MessagesView(_ messages: [Message]) -> some View {
         LazyVStack(alignment: .leading, spacing: 10) {
             ForEach(messages) { message in
-                MessageView(message: message,
-                            inspectorPresented: $inspectorPresented,
-                            updateInspector: { content in
-                    self.inspectorContent = AnyView(content)})
-                .scrollTargetLayout()
-                .environment(service)
+                MessageView(message: message)
+                    .scrollTargetLayout()
+                    .environment(chatService)
             }
         }
     }
@@ -178,6 +172,10 @@ extension ChatView {
                 ScrollView {
                     MessagesView(chat.sortedMessages)
                     .safeAreaPadding()
+                    
+                    Text(service.transcript)
+                        .padding()
+                        .animation(.easeInOut, value: service.transcript)
                 }
                 .contentMargins(.leading, Layout.padding, for: .scrollContent)
                 .contentMargins(0, for: .scrollIndicators)
@@ -196,40 +194,24 @@ extension ChatView {
 
 extension ChatView {
     
-    func uploadByDropping(_ providers: [NSItemProvider]) -> Bool {
-        for provider in providers {
-            provider.loadItem(forTypeIdentifier: UTType.fileURL.identifier) { item, error in
-                
-                guard let data = item as? Data,
-                      let url = URL(dataRepresentation: data, relativeTo: nil)
-                else { return }
-                
-                draft.attachments.append(url)
-            }
-        }
-        return true
-    }
-    
     func submitDraft() {
         guard let model = globalStore.selectedModel else { return }
         let activeChat: Chat
         if let chat = chat {
             activeChat = chat
         } else {
-            activeChat = service.createChat()
+            activeChat = chatService.createChat()
             globalStore.currentTab = .chat(activeChat)
         }
         let message = Message(role: .user, chat: activeChat,
                               content: draft.content, attachments: draft.attachments)
         clearDraft()
         Task {
-            try await service.sendMessage(
+            try await chatService.sendMessage(
                 model: model,
-                knowledgeBase: globalStore.selectedKnowledgeBase,
                 chat: activeChat,
                 message: message
             )
-            
         }
     }
     
@@ -246,9 +228,11 @@ extension ChatView {
     }
 }
 
+
 #Preview {
     ChatView(chat: Chat())
         .environment(GlobalStore())
+        .environment(STTService())
         .modelContainer(ModelContainer.shared)
 }
 

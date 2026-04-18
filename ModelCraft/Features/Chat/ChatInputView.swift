@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct ChatInputView<Content: View>: View {
     
@@ -16,10 +17,10 @@ struct ChatInputView<Content: View>: View {
     @Environment(GlobalStore.self) private var globalStore
     
     init(
-        userInput: Bindable<Message>,
+        userInput: Message,
         @ViewBuilder trailing: @escaping () -> Content
     ) {
-        self._userInput = userInput
+        self._userInput = Bindable(userInput)
         self.trailing = trailing
     }
     
@@ -27,6 +28,7 @@ struct ChatInputView<Content: View>: View {
         MessageEditor()
             .safeAreaPadding()
             .background(.ultraThinMaterial)
+            .onDrop(of: [.image, .movie], isTargeted: nil, perform: handleDrop)
             .fileImporter(isPresented: $fileImporterPresented,
                           allowedContentTypes: [.image, .movie],
                           allowsMultipleSelection: true) { result in
@@ -63,6 +65,7 @@ extension ChatInputView {
             TextField("Type Anything", text: $userInput.content, axis: .vertical)
                 .lineLimit(1...5)
                 .textFieldStyle(.plain)
+                .onDrop(of: [.image, .movie], isTargeted: nil, perform: handleDrop)
             
             HStack(alignment: .bottom) {
                 UploadButton()
@@ -90,12 +93,27 @@ extension ChatInputView {
         }
     }
     
+    func handleDrop(_ providers: [NSItemProvider]) -> Bool {
+        if providers.isEmpty {
+            return false
+        }
+        for provider in providers {
+            provider.loadObject(ofClass: URL.self) { url, error in
+                if let url = url {
+                    userInput.attachments.append(url)
+                } else if let error = error {
+                    print("Error: \(error.localizedDescription)")
+                }
+            }
+        }
+        return true
+    }
     
 }
 
 #Preview {
     ChatInputView(
-        userInput: .init(Message(chat: Chat())),
+        userInput: Message(chat: Chat()),
         trailing: {})
     .environment(GlobalStore())
 }

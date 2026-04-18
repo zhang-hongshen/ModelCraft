@@ -21,10 +21,14 @@ class Chat {
     
     var lastSummaryIndex: Int = 0
 
+    var project: Project? = nil
+    
     @Relationship(deleteRule: .cascade, inverse: \Message.chat)
     var messages: [Message] = []
     
-    init() {}
+    init(title: String? = nil) {
+        self.title = title
+    }
     
 }
 
@@ -50,4 +54,10 @@ extension Chat {
         self.messages.removeAll { messages.map { $0.id }.contains($0.id) }
     }
     
+    var displayCreatedAt: String {
+        if Calendar.current.isDateInToday(createdAt) {
+            return createdAt.formatted(date: .omitted, time: .shortened)
+        }
+        return createdAt.formatted(date: .abbreviated, time: .omitted)
+    }
 }

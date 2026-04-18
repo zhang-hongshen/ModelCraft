@@ -1,5 +1,5 @@
 //
-//  KnowledgeBase.swift
+//  Project.swift
 //  ModelCraft
 //
 //  Created by Hongshen on 31/3/2024.
@@ -8,10 +8,14 @@ import Foundation
 import SwiftData
 
 @Model
-class KnowledgeBase {
+class Project {
     @Attribute(.unique) var id = UUID()
     var createdAt: Date = Date.now
     var title: String
+    
+    @Relationship(deleteRule: .cascade, inverse: \Chat.project)
+    var chats: [Chat]
+    
     var files: [URL] {
         didSet {
             let newFiles = files.filter { !oldValue.contains($0) }
@@ -22,13 +26,14 @@ class KnowledgeBase {
         }
     }
     
-    init(title: String = "", files: [URL] = []) {
+    init(title: String = "", files: [URL] = [], chats: [Chat] = []) {
         self.title = title
         self.files = files
+        self.chats = chats
     }
 }
 
-extension KnowledgeBase {
+extension Project {
     
     private var dbPath: String {
         let folder = URL.documentsDirectory

@@ -6,12 +6,15 @@
 //
 
 import Foundation
+import AVFoundation
 import PDFKit
 import Vision
 import UniformTypeIdentifiers
-import WhisperKit
-import AVFoundation
 
+import MLXAudioSTT
+import MLXAudioCore
+import MLXAudioTTS
+import MLXAudioSTS
 
 extension URL {
     
@@ -76,9 +79,9 @@ extension URL {
     }
     
     private func readAudioContent() async throws -> String {
-        let whisperKit = try await WhisperKit(WhisperKitConfig(model: "openai_whisper-small"))
-        let result = try await whisperKit.transcribe(audioPath: self.path())
-        return result.map { $0.text }.joined(separator: "")
+        let sttModel = try await Qwen3ASRModel.fromPretrained("mlx-community/Qwen3-ASR-0.6B-4bit")
+        let (_, audioData) = try loadAudioArray(from: self)
+        return sttModel.generate(audio: audioData).text
     }
     
     private func readVideoContent() async throws -> String {

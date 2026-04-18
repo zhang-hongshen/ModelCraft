@@ -6,22 +6,19 @@
 //
 
 import Foundation
+import UniformTypeIdentifiers
 
 import MLXLMCommon
-import Tokenizers
 
 class ScreenControlTool {
     
-    static var allTools: [ToolSpec] {
-        var tools = [
-            captureScreen.schema,
-            click.schema,
-            move.schema,
-            drag.schema,
-            scroll.schema,
-        ]
-        return tools
-    }
+    static let allTools = [
+        captureScreen.schema,
+        click.schema,
+        move.schema,
+        drag.schema,
+        scroll.schema,
+    ]
     
     static let captureScreen = Tool<CaptureScreenInput, CaptureScreenOutput?>(
         name: "capture_screen",
@@ -29,9 +26,12 @@ class ScreenControlTool {
         parameters: []
     ) { input in
         print("Capturing screen...")
-        guard let (imageData, mimeType) = await ScreenControlManager.shared.taskScreenshot() else { return nil }
-        print("Capturing screen succeed.")
-        return CaptureScreenOutput(imageData: imageData, mimeType: mimeType)
+        guard let image = await ScreenControlManager.shared.taskScreenshot() else { return nil }
+        let type = UTType.png
+        guard let data = image.data(type: type),let mimeType = type.preferredMIMEType else {
+            return nil
+        }
+        return CaptureScreenOutput(imageData: data, mimeType: mimeType)
     }
     
     static let click = Tool<ClickInput, ClickOutput>(

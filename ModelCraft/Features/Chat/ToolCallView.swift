@@ -9,32 +9,90 @@ import SwiftUI
 import MapKit
 
 import MLXLMCommon
+import AVKit
 
 struct ToolCallView: View {
     
     @State var toolCall: ToolCall
-    @State var toolCallResult: String
+    @State var toolCallResult: CallToolResult
     
     var body: some View {
-        let arguments = toolCall.function.arguments
-        switch toolCall.function.name {
-        case ToolNames.executeCommand:
-            Text(arguments["command"]?.stringValue ?? "No command")
-        case ToolNames.searchMap:
-            mapView(for: toolCallResult)
-        case ToolNames.readFromFile, ToolNames.writeToFile:
-            if let path = arguments["path"]?.stringValue {
-                FilePreviewView(url: PathResolver.resolve(path) )
+        VStack(alignment: .leading, spacing: 8) {
+            ForEach(Array(toolCallResult.content.enumerated()), id: \.offset) { _, block in
+                contentView(for: block)
             }
-        case ToolNames.captureScreen:
-            if let imageData = Data(base64Encoded: toolCallResult),
-               let platformImage = PlatformImage(data: imageData){
-                    Image(platformImage: platformImage)
-                        .resizable()
-                        .scaledToFit()
+        }
+    }
+    
+}
+
+extension ToolCallView {
+    
+    @ViewBuilder
+    func contentView(for block: ContentBlock) -> some View {
+        switch block {
+            
+        case .text(let text):
+            let arguments = toolCall.function.arguments
+            switch toolCall.function.name {
+            case ToolNames.executeCommand:
+                Text(arguments["command"]?.stringValue ?? "No command")
+            case ToolNames.searchMap:
+                mapView(for: text.text)
+            case ToolNames.readFromFile, ToolNames.writeToFile:
+                if let path = arguments["path"]?.stringValue {
+                    FilePreviewView(url: PathResolver.resolve(path) )
+                }
+            default:
+                EmptyView()
             }
-        default:
-            EmptyView()
+        case .image(let image):
+            if let data = Data(base64Encoded: image.data),
+               let platformImage = PlatformImage(data: data) {
+                Image(platformImage: platformImage)
+                    .resizable()
+                    .scaledToFit()
+            }
+            
+        case .resourceLink(let link):
+            resourceView(link)
+            
+        case .embeddedResource(let resource):
+            embeddedResourceView(resource)
+            
+        case .audio:
+            Text("Audio not supported yet")
+        }
+    }
+        
+    @ViewBuilder
+    func resourceView(_ link: ResourceLink) -> some View {
+        let url = URL(fileURLWithPath: link.uri)
+        
+        if let mimeType = link.mimeType {
+            if mimeType.hasPrefix("image") {
+                AsyncImage(url: url) { image in
+                    image.resizable().scaledToFit()
+                } placeholder: {
+                    ProgressView()
+                }
+            } else if mimeType.hasPrefix("video") {
+                VideoPlayer(player: AVPlayer(url: url))
+            }
+        } else {
+            Link(link.title, destination: url)
+        }
+    }
+    
+    @ViewBuilder
+    func embeddedResourceView(_ resource: EmbeddedResource) -> some View {
+        switch resource.resource {
+            
+        case .text(let text):
+            Text(text.text)
+            
+        case .blob(let blob):
+            Text("Binary data (\(blob.mimeType ?? "unknown"))")
         }
     }
 }

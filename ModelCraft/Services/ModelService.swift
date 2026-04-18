@@ -31,10 +31,33 @@ class ModelService {
             parameters["search"] = keyword
         }
         
-        return try await AF.request(baseURL + "/models", method: .get, parameters: parameters)
-            .validate()
-            .serializingDecodable([ModelStoreModel].self, decoder: JSONDecoder.default)
-            .value
+        var models = try await AF.request(baseURL + "/models", method: .get, parameters: parameters)
+                .validate()
+                .serializingDecodable([ModelStoreModel].self, decoder: JSONDecoder.default)
+                .value
+            
+        return try await withThrowingTaskGroup(of: ModelStoreModel.self) { group in
+            for model in models {
+                group.addTask {
+                    var newModel = model
+                    do {
+                        newModel = try await AF.request(self.baseURL + "/models/\(model.id)", method: .get)
+                                .validate()
+                                .serializingDecodable(ModelStoreModel.self, decoder: JSONDecoder.default)
+                                .value
+                    } catch {
+                        print("size fetch failed for \(model.id)")
+                    }
+                    return newModel
+                }
+            }
+            var result: [ModelStoreModel] = []
+            for try await model in group {
+                result.append(model)
+            }
+            
+            return result
+        }
     }
     
     func  downloadModel(modelID: String) -> AsyncThrowingStream<Progress, Error> {
@@ -43,8 +66,9 @@ class ModelService {
         return AsyncThrowingStream { continuation in
             let task = Task {
                 do {
-                    _ = try await HubApi.default.snapshot(from: repo) { progress in
-                        print("modelID:\(modelID) progress:\(progress.fractionCompleted)")
+                    
+                    _ = try await HubApi.shared.snapshot(from: repo) { progress in
+                        print("\(modelID) \(progress.fractionCompleted)")
                         continuation.yield(progress)
                     }
                     continuation.finish()

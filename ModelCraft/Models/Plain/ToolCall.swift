@@ -22,11 +22,13 @@ struct ToolNames {
     static let drag = "drag"
     static let scroll = "scroll"
     static let activateSkill = "activate_skill"
+    static let textToImage = "textToImage"
+    static let textToVideo = "textToVideo"
 }
 
 extension ToolCall {
     
-    var localizedName: LocalizedStringKey {
+    var localizedDescription: LocalizedStringKey {
         let arguments = function.arguments
         switch function.name {
         case ToolNames.readFromFile:
@@ -54,6 +56,10 @@ extension ToolCall {
             return "Moving to (\(x), \(y))"
         case ToolNames.captureScreen:
             return "Taking Screenshot"
+        case ToolNames.textToImage:
+            return "Creating Image"
+        case ToolNames.textToVideo:
+            return "Creating Video"
         default:
             return "Unkown Tool Call"
         }
@@ -68,6 +74,8 @@ extension ToolCall {
         case ToolNames.searchRelevantDocuments: "magnifyingglass"
         case ToolNames.click, ToolNames.move: "pointer.arrow"
         case ToolNames.captureScreen: "camera"
+        case ToolNames.textToImage: "photo"
+        case ToolNames.textToVideo: "video"
         default: "error"
         }
     }

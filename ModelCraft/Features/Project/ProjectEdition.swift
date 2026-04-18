@@ -1,5 +1,5 @@
 //
-//  KnowledgeBaseEdition.swift
+//  ProjectEdition.swift
 //  ModelCraft
 //
 //  Created by Hongshen on 31/3/2024.
@@ -8,8 +8,8 @@
 import SwiftUI
 import SwiftData
 
-struct KnowledgeBaseEdition: View {
-    @Bindable var konwledgeBase: KnowledgeBase
+struct ProjectEdition: View {
+    @Bindable var project: Project
     @State private var fileImporterPresented: Bool = false
     @State private var selectedFiles: Set<URL> = []
     
@@ -25,7 +25,7 @@ struct KnowledgeBaseEdition: View {
                     .foregroundStyle(.secondary)
                     .fontWeight(.medium)
                 
-                TextField("Project Documentation", text: $konwledgeBase.title)
+                TextField("Project Documentation", text: $project.title)
                     .textFieldStyle(.plain)
                     .font(.title3)
                     .padding(Layout.padding)
@@ -45,7 +45,7 @@ struct KnowledgeBaseEdition: View {
                         .fontWeight(.medium)
                     Spacer()
                     
-                    Text("\(konwledgeBase.files.count) items")
+                    Text("\(project.files.count) items")
                         .font(.caption2)
                         .foregroundStyle(.tertiary)
                 }
@@ -58,7 +58,7 @@ struct KnowledgeBaseEdition: View {
                                 .stroke(Color.primary.opacity(0.05), lineWidth: 1)
                         )
                     
-                    if konwledgeBase.files.isEmpty {
+                    if project.files.isEmpty {
                         EmptyFilesView()
                     } else {
                         FilesList()
@@ -78,18 +78,18 @@ struct KnowledgeBaseEdition: View {
             allowsMultipleSelection: true
         ) { result in
             if case .success(let urls) = result {
-                konwledgeBase.files.append(contentsOf: urls)
+                project.files.append(contentsOf: urls)
             }
         }
     }
 }
 
 // MARK: - Subviews
-extension KnowledgeBaseEdition {
+extension ProjectEdition {
     
     @ViewBuilder
     func FilesList() -> some View {
-        List(konwledgeBase.files, id: \.self, selection: $selectedFiles) { url in
+        List(project.files, id: \.self, selection: $selectedFiles) { url in
             ListCell(url)
                 .listRowBackground(Color.clear)
                 .listRowSeparator(.visible, edges: .bottom)
@@ -123,7 +123,7 @@ extension KnowledgeBaseEdition {
             }
             
             Button(role: .destructive, action: {
-                konwledgeBase.removeFiles(selectedFiles)
+                project.removeFiles(selectedFiles)
                 selectedFiles.removeAll()
             }) {
                 Label("Remove", systemImage: "trash")
@@ -159,15 +159,15 @@ extension KnowledgeBaseEdition {
         .padding(.vertical, 4)
     }
 }
-extension KnowledgeBaseEdition {
+extension ProjectEdition {
     
     func save() {
         dismiss()
-        modelContext.persist(konwledgeBase)
+        modelContext.persist(project)
     }
     
 }
 
 #Preview {
-    KnowledgeBaseEdition(konwledgeBase: KnowledgeBase())
+    ProjectEdition(project: Project())
 }

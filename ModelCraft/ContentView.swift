@@ -11,10 +11,10 @@ import OrderedCollections
 
 struct ContentView: View {
     
-    @State private var selectedKnowledgeBase: KnowledgeBase? = nil
+    @State private var selectedProject: Project? = nil
     
     @Query(sort: \Chat.createdAt, order: .reverse) private var chats: [Chat]
-    @Query private var knowledgeBases: [KnowledgeBase]
+    @Query(sort: \Project.createdAt, order: .reverse) private var projects: [Project]
     
     @Environment(\.modelContext) private var modelContext
     @Environment(\.scenePhase) private var scenePhase
@@ -41,8 +41,8 @@ extension ContentView {
         } detail: {
             Detail()
         }
-        .sheet(item: $selectedKnowledgeBase) { knowledgeBase in
-            KnowledgeBaseEdition(konwledgeBase: knowledgeBase)
+        .sheet(item: $selectedProject) { project in
+            ProjectEdition(project: project)
         }
     }
     
@@ -52,7 +52,7 @@ extension ContentView {
         
         List(selection: $store.currentTab) {
             ChatSection()
-            KnowledgeBaseSection()
+            ProjectSection()
             ModelSection()
         }
         .listStyle(.sidebar)
@@ -63,10 +63,17 @@ extension ContentView {
     func ChatSection() -> some View {
         Section {
             ForEach(chats) { chat in
-                Text(chat.title ?? "New Chat").tag(Tab.chat(chat))
+                Text(chat.title ?? "New Chat").tag(AppNavigationTab.chat(chat))
                     .contextMenu{
                         DeleteButton(style: .textOnly) {
                             modelContext.delete(chat)
+                        }
+                        Menu("Move to project") {
+                            ForEach(projects) { project in
+                                Button(project.title) {
+                                    chat.project = project
+                                }
+                            }
                         }
                     }
             }
@@ -83,25 +90,25 @@ extension ContentView {
     }
     
     @ViewBuilder
-    func KnowledgeBaseSection() -> some View {
+    func ProjectSection() -> some View {
         Section {
-            ForEach(knowledgeBases) { knowledgeBase in
-                Label(knowledgeBase.title, systemImage: "book")
-                    .tag(Tab.knowledgeBase(knowledgeBase))
+            ForEach(projects) { project in
+                Label(project.title, systemImage: "book")
+                    .tag(AppNavigationTab.project(project))
                     .contextMenu{
                         Button("Edit") {
-                            selectedKnowledgeBase = knowledgeBase
+                            selectedProject = project
                         }
                         DeleteButton(style: .textOnly) {
-                            modelContext.delete(knowledgeBase)
+                            modelContext.delete(project)
                         }
                     }
             }
         } header: {
             HStack {
-                Text("Knowledge Base")
+                Text("Project")
                 Button(action: {
-                    selectedKnowledgeBase = KnowledgeBase()
+                    selectedProject = Project()
                 }, label: {
                     Image(systemName: "plus")
                 }).buttonStyle(.borderless)
@@ -112,8 +119,8 @@ extension ContentView {
     @ViewBuilder
     func ModelSection() -> some View {
         Section {
-            Label("Model Store", systemImage: "storefront").tag(Tab.modelStore)
-            Label("Downloaded Models", systemImage: "shippingbox").tag(Tab.downloadedModels)
+            Label("Model Store", systemImage: "storefront").tag(AppNavigationTab.modelStore)
+            Label("Downloaded Models", systemImage: "shippingbox").tag(AppNavigationTab.downloadedModels)
         } header: {
             Text("Model")
         }
@@ -126,9 +133,9 @@ extension ContentView {
             ChatView(chat: chat).navigationTitle(chat.title ?? "New Chat")
         case .modelStore:
             ModelStore().navigationTitle("Model Store")
-        case .knowledgeBase(let knowledgeBase):
-            KnowledgeBaseDetailView(konwledgeBase: knowledgeBase)
-                .navigationTitle(knowledgeBase.title)
+        case .project(let project):
+            ProjectView(project: project)
+                .navigationTitle(project.title)
         case .downloadedModels:
             DownloadedModelsView().navigationTitle("Downloaded Models")
         case .none:

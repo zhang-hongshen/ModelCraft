@@ -17,9 +17,8 @@ import MLXLMCommon
 struct MessageView: View {
     
     @Bindable var message: Message
-    @Binding var inspectorPresented: Bool
-    var updateInspector: (any View) -> Void
     
+    @State var toolCallPresented: Bool = false
     @State private var copied = false
     @State private var isHovering = false
     @State private var isEditing = false
@@ -95,10 +94,9 @@ extension MessageView {
             VStack(alignment: .trailing) {
                 MessageAttachmentsView(message.attachments)
                     .frame(maxWidth: .infinity, alignment: .trailing)
-                
                 if isEditing {
                     ChatInputView(
-                        userInput: $message,
+                        userInput: message,
                         trailing: {
                             HStack {
                                 Button(role: .cancel) {
@@ -219,51 +217,6 @@ extension MessageView {
         }
     }
     
-//    func AssistantMessageContentView(_ message: Message) -> some View {
-//        
-//        var think = ""
-//        var answer = ""
-//        
-//        for event in TagStreamParser().feed(message.content) {
-//            if case .inTag(let tag, let content) = event {
-//                
-//                if tag == "think" {
-//                    think.append(content)
-//                } else if tag == "answer" {
-//                    answer.append(content)
-//                }
-//            }
-//        }
-//        
-//        return VStack(alignment: .leading) {
-//            
-//            if !think.isEmpty {
-//                ThinkView(think)
-//            }
-//            
-//            if !answer.isEmpty {
-//                Markdown(answer)
-//                    .markdownTheme(.modelCraft)
-//                    .markdownCodeSyntaxHighlighter(.splash(theme: self.splashTheme))
-//                    .textSelection(.enabled)
-//                    .multilineTextAlignment(.leading)
-//            }
-//            
-//            
-//            if let toolCall = message.toolCall,
-//                let toolCallResult = message.toolCallResult {
-//                Button {
-//                    inspectorPresented = true
-//                    updateInspector(ToolCallView(toolCall: toolCall, toolCallResult: toolCallResult))
-//                } label: {
-//                    Label(toolCall.localizedName, systemImage: toolCall.icon)
-//                }.foregroundStyle(.secondary)
-//            }
-//            
-//        }
-//        
-//    }
-    
     func AssistantMessageContentView(_ message: Message) -> some View {
         VStack(alignment: .leading) {
 
@@ -274,14 +227,12 @@ extension MessageView {
                     .multilineTextAlignment(.leading)
             
             
-            if let toolCall = message.toolCall,
-                let toolCallResult = message.toolCallResult {
-                Button {
-                    inspectorPresented = true
-                    updateInspector(ToolCallView(toolCall: toolCall, toolCallResult: toolCallResult))
-                } label: {
-                    Label(toolCall.localizedName, systemImage: toolCall.icon)
-                }.foregroundStyle(.secondary)
+            if let toolCall = message.toolCall {
+                DisclosureGroup(toolCall.localizedDescription, isExpanded: $toolCallPresented) {
+                    if let toolCallResult = message.toolCallResult {
+                        ToolCallView(toolCall: toolCall, toolCallResult: toolCallResult)
+                    }
+                }
             }
         }
         
@@ -299,7 +250,6 @@ extension MessageView {
         Task {
             try await service.resendMessage(
                 model: model,
-                knowledgeBase: globalStore.selectedKnowledgeBase,
                 chat: chat,
                 message: message)
         }
@@ -314,7 +264,6 @@ extension MessageView {
         }
         Task {
             try await service.resendMessage(model: model,
-                                            knowledgeBase: globalStore.selectedKnowledgeBase,
                                             chat: chat,
                                             message: userMessage)
         }
@@ -337,8 +286,7 @@ import SwiftData
                 <observation>...</observation>
         <answer>answer</answer>
         """)
-    MessageView(message: message,
-                inspectorPresented: .constant(true)) { _ in }
+    MessageView(message: message)
         .modelContainer(container)
         .environment(SpeechManager())
         .environment(GlobalStore())

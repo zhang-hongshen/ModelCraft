@@ -35,7 +35,7 @@ struct CallToolResult: Codable {
         }
     }
     
-    init(content: [ContentBlock] = [], structuredContent: Value? = nil, isError: Bool) {
+    init(content: [ContentBlock] = [], structuredContent: Value? = nil, isError: Bool = false) {
         self.content = content
         self.structuredContent = structuredContent
         self.isError = isError
@@ -165,7 +165,7 @@ struct ResourceLink: Codable {
     let annotations: Annotations?
     let size: Int?
     
-    init(name: String, title: String, uri: String, description: String? = nil,
+    init(name: String = "", title: String = "", uri: String, description: String? = nil,
          mimeType: String? = nil, annotations: Annotations? = nil, size: Int? = nil) {
         self.type = .resourceLink
         self.name = name
