@@ -22,46 +22,126 @@ struct ToolNames {
     static let drag = "drag"
     static let scroll = "scroll"
     static let activateSkill = "activate_skill"
-    static let textToImage = "textToImage"
-    static let textToVideo = "textToVideo"
+    static let textToImage = "text_to_image"
+    static let textToVideo = "text_to_video"
 }
 
 extension ToolCall {
     
-    var localizedDescription: LocalizedStringKey {
+    func localizedDescription(toolCallStatus: ToolCallStatus) -> LocalizedStringKey {
         let arguments = function.arguments
         switch function.name {
         case ToolNames.readFromFile:
             let path = arguments["path"]?.stringValue ?? "Unknown"
-            return "Reading from file \(String(describing: path))"
+            switch toolCallStatus {
+            case .running: 
+                return "Reading \(String(describing: path))"
+            case .completed:
+                return "Read \(String(describing: path))"
+            case .failed:
+                return "Failed to read \(String(describing: path))"
+            }
         case ToolNames.writeToFile:
             let path = arguments["path"]?.stringValue ?? "Unknown"
-            return "Writing to file \(String(describing: path))"
+            switch toolCallStatus {
+            case .running: 
+                return "Writing \(String(describing: path))"
+            case .completed:
+                return "Wrote \(String(describing: path))"
+            case .failed:
+                return "Failed to write \(String(describing: path))"
+            }
         case ToolNames.executeCommand:
             let command = arguments["command"]?.stringValue ?? "None"
-            return "Executing command \(String(describing: command))"
+            switch toolCallStatus {
+            case .running:
+                return "Running \(String(describing: command))"
+            case .completed:
+                return "Ran \(String(describing: command))"
+            case .failed:
+                return "Command failed: \(String(describing: command))"
+            }
         case ToolNames.searchMap:
             let query = arguments["query"]?.stringValue ?? ""
-            return "Searching for \(String(describing: query))"
+            switch toolCallStatus {
+            case .running:
+                return "Searching map for \(String(describing: query))"
+            case .completed:
+                return "Searched map for \(String(describing: query))"
+            case .failed:
+                return "Map search failed"
+            }
         case ToolNames.searchRelevantDocuments:
             let query = arguments["query"]?.stringValue ?? ""
-            return "Search for \(String(describing: query))"
+            switch toolCallStatus {
+            case .running:
+                return "Searching documents for \(String(describing: query))"
+            case .completed:
+                return "Searched documents for \(String(describing: query))"
+            case .failed:
+                return "Document search failed"
+            }
         case ToolNames.click:
             let x = arguments["x"]?.doubleValue ?? 0
             let y = arguments["y"]?.doubleValue ?? 0
-            return "Clicking (\(x),\(y))"
+            switch toolCallStatus {
+            case .running:
+                return "Clicking (\(x), \(y))"
+            case .completed:
+                return "Clicked (\(x), \(y))"
+            case .failed:
+                return "Click failed at (\(x), \(y))"
+            }
         case ToolNames.move:
             let x = arguments["x"]?.doubleValue ?? 0
             let y = arguments["y"]?.doubleValue ?? 0
-            return "Moving to (\(x), \(y))"
+            switch toolCallStatus {
+            case .running:
+                return "Moving pointer to (\(x), \(y))"
+            case .completed:
+                return "Moved to (\(x), \(y))"
+            case .failed:
+                return "Move failed"
+            }
         case ToolNames.captureScreen:
-            return "Taking Screenshot"
+            switch toolCallStatus {
+            case .running: 
+                return "Taking screenshot"
+            case .completed: 
+                return "Screenshot captured"
+            case .failed: 
+                return "Screenshot failed"
+            }
         case ToolNames.textToImage:
-            return "Creating Image"
+            switch toolCallStatus {
+            case .running: 
+                return "Creating image"
+            case .completed: 
+                return "Image created"
+            case .failed: 
+                return "Image creation failed"
+            }
         case ToolNames.textToVideo:
-            return "Creating Video"
+            switch toolCallStatus {
+            case .running: 
+                return "Creating video"
+            case .completed:
+                return "Video created"
+            case .failed:
+                return "Video creation failed"
+            }
+        case ToolNames.activateSkill:
+            let name = arguments["name"]?.stringValue ?? ""
+            switch toolCallStatus {
+            case .running:
+                return "Activating skill \(String(describing: name))"
+            case .completed:
+                return "Activated skill \(String(describing: name))"
+            case .failed:
+                return "Skill activation failed"
+            }
         default:
-            return "Unkown Tool Call"
+            return "Unknown Tool Call"
         }
     }
     

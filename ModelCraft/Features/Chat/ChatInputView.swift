@@ -25,9 +25,7 @@ struct ChatInputView<Content: View>: View {
     }
     
     var body: some View {
-        MessageEditor()
-            .safeAreaPadding()
-            .background(.ultraThinMaterial)
+        MainView()
             .onDrop(of: [.image, .movie], isTargeted: nil, perform: handleDrop)
             .fileImporter(isPresented: $fileImporterPresented,
                           allowedContentTypes: [.image, .movie],
@@ -45,7 +43,7 @@ struct ChatInputView<Content: View>: View {
 extension ChatInputView {
     
     @ViewBuilder
-    func MessageEditor() -> some View {
+    func MainView() -> some View {
         VStack(alignment: .leading) {
             
             if !userInput.attachments.isEmpty {
@@ -79,9 +77,6 @@ extension ChatInputView {
         .background(
             RoundedRectangle().fill(.background)
         )
-        .overlay {
-            RoundedRectangle().stroke(.separator.opacity(0.7), lineWidth: 0.5)
-        }
     }
     
     @ViewBuilder

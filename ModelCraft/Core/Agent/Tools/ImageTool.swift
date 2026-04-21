@@ -18,7 +18,7 @@ class ImageTool {
         textToImage.schema
     ]
     
-    static let textToImage = Tool<textToImageInput, textToImageOutput?>(
+    static let textToImage = Tool<textToImageInput, textToImageOutput>(
             name: "text_to_image",
             description: "Generate an image from text prompt",
             parameters: [

@@ -28,7 +28,6 @@ final class ToolTests: XCTestCase {
     }
     
     func testTakeScreenshot() async throws {
-        print(URL.picturesDirectory.appendingPathComponent(UUID().uuidString, conformingTo: .png).absoluteString)
         let result = await ScreenControlManager.shared.taskScreenshot()
         if let cgImage = result {
             print("cgImgae \(cgImage)")

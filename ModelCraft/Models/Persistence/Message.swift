@@ -74,7 +74,25 @@ class Message {
         self.toolCall = toolCall
         self.toolCallResult = toolCallResult
     }
-    
+        
+    /// UI state for the tool row when this message carries a `toolCall`; `nil` if there is no tool call.
+    var toolCallStatus: ToolCallStatus {
+        switch toolCallResult {
+        case nil:
+            return .running
+        case let result? where result.isError:
+            return .failed
+        case .some:
+            return .completed
+        }
+    }
+}
+
+/// Lifecycle of a tool call in the chat UI (labels, progress).
+enum ToolCallStatus: Codable {
+    case running
+    case completed
+    case failed
 }
 
 
@@ -95,3 +113,4 @@ enum MessageRole: Codable {
 enum MessageStatus: Codable {
     case new, generating, failed, generated
 }
+

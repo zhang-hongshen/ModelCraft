@@ -164,6 +164,14 @@
 		</dict>
 		<dict>
 			<key>File</key>
+			<string>com.mono0926.LicensePlist/Waveform</string>
+			<key>Title</key>
+			<string>Waveform</string>
+			<key>Type</key>
+			<string>PSChildPaneSpecifier</string>
+		</dict>
+		<dict>
+			<key>File</key>
 			<string>com.mono0926.LicensePlist/yyjson</string>
 			<key>Title</key>
 			<string>yyjson</string>

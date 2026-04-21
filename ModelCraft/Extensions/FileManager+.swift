@@ -10,13 +10,12 @@ import Foundation
 extension FileManager {
     
     func fileExists(at: URL) -> Bool {
-        return FileManager.default.fileExists(atPath: at.relativePath)
+        return self.fileExists(atPath: at.path())
     }
     
     func createDirectoryIfNotExists(at: URL) throws {
-        let fileManager = FileManager.default
-        if !fileManager.fileExists(at: at) {
-            try fileManager.createDirectory(at: at, withIntermediateDirectories: true)
+        if !fileExists(at: at) {
+            try createDirectory(at: at, withIntermediateDirectories: true)
         }
     }
     

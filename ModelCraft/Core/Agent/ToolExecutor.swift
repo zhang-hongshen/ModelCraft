@@ -47,11 +47,10 @@ class ToolExecutor {
                 toolCallResult.content.append(.text(TextContent(text: result.content)))
                 message.content = result.toolResult
             case ToolNames.textToImage:
-                if let result = try await toolCall.execute(with: ImageTool.textToImage) {
-                    toolCallResult.content.append(
-                        .resourceLink(ResourceLink(name: "", title: "", uri: result.imageURL.absoluteString, mimeType: result.mimeType)))
-                    message.images.append(.url(result.imageURL))
-                }
+                let result = try await toolCall.execute(with: ImageTool.textToImage)
+                toolCallResult.content.append(
+                    .resourceLink(ResourceLink(name: "", title: "", uri: result.imageURL.absoluteString, mimeType: result.mimeType)))
+                message.images.append(.url(result.imageURL))
             case ToolNames.textToVideo:
                 let result = try await toolCall.execute(with: VideoTool.textToVideo)
                 toolCallResult.content.append(
@@ -74,7 +73,7 @@ class ToolExecutor {
             toolCallResult.content.append(.text(TextContent(text: error.localizedDescription)))
             message.content = error.localizedDescription
         }
-        
+        print("ToolCall result \(toolCallResult)")
         return (toolCallResult, message)
     }
 }

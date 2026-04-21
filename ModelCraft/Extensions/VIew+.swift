@@ -27,21 +27,6 @@ struct SettingsModifier: ViewModifier {
     }
 }
 
-@available(iOS 13.4, macOS 10.15, *)
-struct HoverEffectModifier: ViewModifier {
-    
-    @State private var isHovering = false
-    
-    func body(content: Content) -> some View {
-        content.onHover { isHovering = $0 }
-            .background {
-                if isHovering {
-                    RoundedRectangle().fill(.selection)
-                }
-            }
-    }
-}
-
 extension View {
     func cornerRadius(_ radius: CGFloat = Layout.cornerRadius) -> some View {
         self.clipShape(RoundedRectangle(cornerRadius: radius))
@@ -49,11 +34,6 @@ extension View {
     
     func applyUserSettings() -> some View {
         self.modifier(SettingsModifier())
-    }
-    
-    @available(iOS 13.4, macOS 10.15, *)
-    func hoverEffect() -> some View {
-        self.modifier(HoverEffectModifier())
     }
 
 }

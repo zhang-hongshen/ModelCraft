@@ -228,9 +228,18 @@ extension MessageView {
             
             
             if let toolCall = message.toolCall {
-                DisclosureGroup(toolCall.localizedDescription, isExpanded: $toolCallPresented) {
+                DisclosureGroup(isExpanded: $toolCallPresented) {
                     if let toolCallResult = message.toolCallResult {
                         ToolCallView(toolCall: toolCall, toolCallResult: toolCallResult)
+                    } else {
+                        ProgressView()
+                    }
+                } label: {
+                    HStack(alignment: .center, spacing: 8) {
+                        if message.toolCallStatus == .running {
+                            ProgressView()
+                        }
+                        Text(toolCall.localizedDescription(toolCallStatus: message.toolCallStatus))
                     }
                 }
             }

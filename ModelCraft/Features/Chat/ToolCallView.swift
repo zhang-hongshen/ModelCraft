@@ -47,9 +47,8 @@ extension ToolCallView {
                 EmptyView()
             }
         case .image(let image):
-            if let data = Data(base64Encoded: image.data),
-               let platformImage = PlatformImage(data: data) {
-                Image(platformImage: platformImage)
+            if let data = Data(base64Encoded: image.data) {
+               Image(data: data)!
                     .resizable()
                     .scaledToFit()
             }
@@ -60,14 +59,16 @@ extension ToolCallView {
         case .embeddedResource(let resource):
             embeddedResourceView(resource)
             
-        case .audio:
-            Text("Audio not supported yet")
+        case .audio(let audio):
+            if let data = Data(base64Encoded: audio.data) {
+                WaveformView(data: data, mimeType: audio.mimeType)
+            }
         }
     }
         
     @ViewBuilder
     func resourceView(_ link: ResourceLink) -> some View {
-        let url = URL(fileURLWithPath: link.uri)
+        let url = URL(filePath: link.uri)
         
         if let mimeType = link.mimeType {
             if mimeType.hasPrefix("image") {

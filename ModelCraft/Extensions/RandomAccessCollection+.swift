@@ -9,7 +9,6 @@ import Foundation
 
 extension RandomAccessCollection where Element: Equatable {
     
-    /// 获取当前元素的前一个元素
     func element(before element: Element) -> Element? {
         guard let index = self.firstIndex(of: element),
               index > self.startIndex else { return nil }
@@ -17,7 +16,7 @@ extension RandomAccessCollection where Element: Equatable {
         return self[previousIndex]
     }
     
-    /// 获取当前元素的后一个元素
+    
     func element(after element: Element) -> Element? {
         guard let index = self.firstIndex(of: element) else { return nil }
         let nextIndex = self.index(after: index)
@@ -40,5 +39,4 @@ extension RandomAccessCollection where Element == Message {
             return "<\(roleTag)>\(msg.content)</\(roleTag)>"
         }.joined(separator: "\n")
     }
-    
 }

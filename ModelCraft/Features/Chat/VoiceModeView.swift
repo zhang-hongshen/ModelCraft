@@ -13,7 +13,6 @@ struct VoiceModeView: View {
     
     var body: some View {
         VStack(spacing: 40) {
-            WaveformView(level: service.audioLevel)
 
             Text(service.transcript)
                 .padding()
@@ -50,35 +49,6 @@ struct VoiceModeView: View {
         .onDisappear {
             service.stopRecording()
         }
-    }
-}
-
-struct WaveformView: View {
-    var level: Float
-    private let numberOfBars = 12
-
-    var body: some View {
-        HStack(alignment: .center, spacing: 5) {
-            ForEach(0..<numberOfBars, id: \.self) { i in
-                RoundedRectangle(cornerRadius: 10)
-                    .fill(Color.accentColor)
-                    .frame(width: 4, height: calculateHeight(for: i))
-                    .animation(.spring(response: 0.15, dampingFraction: 0.5), value: level)
-            }
-        }
-    }
-
-    private func calculateHeight(for index: Int) -> CGFloat {
-        let normalizedLevel = CGFloat(sqrt(max(0, level)))
-
-        let center = Double(numberOfBars - 1) / 2.0
-        let distFromCenter = abs(Double(index) - center)
-        let modifier = max(0.2, 1.0 - (distFromCenter / center))
-        
-        let minH: CGFloat = 10
-        let maxH: CGFloat = 80
-        
-        return minH + (maxH - minH) * normalizedLevel * CGFloat(modifier)
     }
 }
 

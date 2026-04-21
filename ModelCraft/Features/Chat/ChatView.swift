@@ -54,6 +54,8 @@ struct ChatView: View {
                         }
                     }
                 )
+                .safeAreaPadding()
+                .background(.clear)
             }
     }
 }
@@ -167,7 +169,7 @@ extension ChatView {
     
     @ViewBuilder
     func MainView() -> some View {
-        if let chat = chat, !chat.messages.isEmpty {
+        if let chat = chat {
             ScrollViewReader { proxy in
                 ScrollView {
                     MessagesView(chat.sortedMessages)
@@ -186,7 +188,8 @@ extension ChatView {
             .scrollDismissesKeyboard(.interactively)
             .scrollTargetBehavior(.paging)
         } else {
-            WelcomeView()
+            Text("How can I help you today?").font(.title.bold())
+                .multilineTextAlignment(.leading)
         }
     }
     

@@ -5,6 +5,7 @@
 
     },
     "%lld days ago" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -26,6 +27,12 @@
           }
         }
       }
+    },
+    "Activated skill %@" : {
+
+    },
+    "Activating skill %@" : {
+
     },
     "Add Files" : {
       "localizations" : {
@@ -87,9 +94,6 @@
         }
       }
     },
-    "Audio not supported yet" : {
-
-    },
     "Binary data (%@)" : {
 
     },
@@ -126,18 +130,48 @@
     "Chats" : {
 
     },
-    "Clicking (%lf,%lf)" : {
+    "Click failed at (%lf, %lf)" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "Clicking (%1$lf,%2$lf)"
+            "value" : "Click failed at (%1$lf, %2$lf)"
+          }
+        }
+      }
+    },
+    "Clicked (%lf, %lf)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Clicked (%1$lf, %2$lf)"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "点击 (%1$lf,%2$lf)"
+            "value" : "点击（%1$lf，%2$lf）"
+          }
+        }
+      }
+    },
+    "Clicking (%lf, %lf)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Clicking (%1$lf, %2$lf)"
+          }
+        }
+      }
+    },
+    "Command failed: %@" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "命令执行失败：%@"
           }
         }
       }
@@ -172,7 +206,7 @@
         }
       }
     },
-    "Creating Image" : {
+    "Creating image" : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -182,8 +216,15 @@
         }
       }
     },
-    "Creating Video" : {
-
+    "Creating video" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "生成视频中"
+          }
+        }
+      }
     },
     "Dark" : {
       "localizations" : {
@@ -214,6 +255,9 @@
           }
         }
       }
+    },
+    "Document search failed" : {
+
     },
     "Downloaded" : {
       "localizations" : {
@@ -255,16 +299,6 @@
         }
       }
     },
-    "Executing command %@" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "正在执行命令%@"
-          }
-        }
-      }
-    },
     "Failed" : {
       "localizations" : {
         "zh-Hans" : {
@@ -278,7 +312,16 @@
     "Failed to load map" : {
 
     },
+    "Failed to Load Waveform" : {
+
+    },
     "Failed to parse map data" : {
+
+    },
+    "Failed to read %@" : {
+
+    },
+    "Failed to write %@" : {
 
     },
     "Files" : {
@@ -305,6 +348,7 @@
       }
     },
     "How can I help you today ?" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -313,6 +357,15 @@
           }
         }
       }
+    },
+    "How can I help you today?" : {
+
+    },
+    "Image created" : {
+
+    },
+    "Image creation failed" : {
+
     },
     "Language" : {
       "localizations" : {
@@ -344,6 +397,9 @@
         }
       }
     },
+    "Map search failed" : {
+
+    },
     "Model" : {
       "localizations" : {
         "zh-Hans" : {
@@ -364,21 +420,28 @@
         }
       }
     },
+    "Move failed" : {
+
+    },
     "Move to project" : {
 
     },
-    "Moving to (%lf, %lf)" : {
+    "Moved to (%lf, %lf)" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "Moving to (%1$lf, %2$lf)"
+            "value" : "Moved to (%1$lf, %2$lf)"
           }
-        },
-        "zh-Hans" : {
+        }
+      }
+    },
+    "Moving pointer to (%lf, %lf)" : {
+      "localizations" : {
+        "en" : {
           "stringUnit" : {
-            "state" : "translated",
-            "value" : "移动到(%1$lf, %2$lf)"
+            "state" : "new",
+            "value" : "Moving pointer to (%1$lf, %2$lf)"
           }
         }
       }
@@ -422,15 +485,14 @@
     "Project Documentation" : {
 
     },
-    "Reading from file %@" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "正在读取文件 %@"
-          }
-        }
-      }
+    "Ran %@" : {
+
+    },
+    "Read %@" : {
+
+    },
+    "Reading %@" : {
+
     },
     "Refresh" : {
       "localizations" : {
@@ -462,6 +524,9 @@
         }
       }
     },
+    "Running %@" : {
+
+    },
     "Save" : {
       "localizations" : {
         "zh-Hans" : {
@@ -472,18 +537,26 @@
         }
       }
     },
-    "Search for %@" : {
+    "Screenshot captured" : {
 
     },
-    "Searching for %@" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "正在搜索 %@"
-          }
-        }
-      }
+    "Screenshot failed" : {
+
+    },
+    "Searched documents for %@" : {
+
+    },
+    "Searched map for %@" : {
+
+    },
+    "Searching documents for %@" : {
+
+    },
+    "Searching map for %@" : {
+
+    },
+    "Skill activation failed" : {
+
     },
     "Source Files" : {
 
@@ -528,12 +601,12 @@
         }
       }
     },
-    "Taking Screenshot" : {
+    "Taking screenshot" : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "截图中"
+            "value" : "正在截图"
           }
         }
       }
@@ -552,6 +625,7 @@
       }
     },
     "Today" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -590,7 +664,20 @@
     "Unable to open the image file." : {
 
     },
-    "Unkown Tool Call" : {
+    "Unknown Tool Call" : {
+
+    },
+    "Video created" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "视频已生成"
+          }
+        }
+      }
+    },
+    "Video creation failed" : {
 
     },
     "Vision" : {
@@ -623,17 +710,28 @@
         }
       }
     },
-    "Writing to file %@" : {
+    "Writing %@" : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "正在写入文件 %@"
+            "value" : "正在写入%@"
+          }
+        }
+      }
+    },
+    "Wrote %@" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已写入%@"
           }
         }
       }
     },
     "Yesterday" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {

@@ -27,11 +27,10 @@ class ScreenControlTool {
     ) { input in
         print("Capturing screen...")
         guard let image = await ScreenControlManager.shared.taskScreenshot() else { return nil }
-        let type = UTType.png
-        guard let data = image.data(type: type),let mimeType = type.preferredMIMEType else {
+        guard let data = image.data(type: .png) else {
             return nil
         }
-        return CaptureScreenOutput(imageData: data, mimeType: mimeType)
+        return CaptureScreenOutput(imageData: data, mimeType: UTType.png.preferredMIMEType!)
     }
     
     static let click = Tool<ClickInput, ClickOutput>(
