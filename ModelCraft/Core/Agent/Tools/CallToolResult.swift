@@ -159,18 +159,18 @@ struct ResourceLink: Codable {
     let type: ContentType
     let name: String
     let title: String
-    let uri: String
+    let url: URL
     let description: String?
     let mimeType: String?
     let annotations: Annotations?
     let size: Int?
     
-    init(name: String = "", title: String = "", uri: String, description: String? = nil,
+    init(name: String = "", title: String = "", url: URL, description: String? = nil,
          mimeType: String? = nil, annotations: Annotations? = nil, size: Int? = nil) {
         self.type = .resourceLink
         self.name = name
         self.title = title
-        self.uri = uri
+        self.url = url
         self.description = description
         self.mimeType = mimeType
         self.annotations = annotations
@@ -197,24 +197,24 @@ enum Resource: Codable {
 }
 
 struct TextResourceContent: Codable {
-    let uri: String
+    let url: URL
     let text: String
     let mimeType: String?
     
-    init(uri: String, text: String, mimeType: String? = nil) {
-        self.uri = uri
+    init(url: URL, text: String, mimeType: String? = nil) {
+        self.url = url
         self.text = text
         self.mimeType = mimeType
     }
 }
 
 struct BlobResourceContent: Codable {
-    let uri: String
+    let url: URL
     let blob: String
     let mimeType: String?
     
-    init(uri: String, blob: String, mimeType: String? = nil) {
-        self.uri = uri
+    init(url: URL, blob: String, mimeType: String? = nil) {
+        self.url = url
         self.blob = blob
         self.mimeType = mimeType
     }

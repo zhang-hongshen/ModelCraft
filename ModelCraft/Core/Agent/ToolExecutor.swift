@@ -49,12 +49,12 @@ class ToolExecutor {
             case ToolNames.textToImage:
                 let result = try await toolCall.execute(with: ImageTool.textToImage)
                 toolCallResult.content.append(
-                    .resourceLink(ResourceLink(name: "", title: "", uri: result.imageURL.absoluteString, mimeType: result.mimeType)))
+                    .resourceLink(ResourceLink(name: "", title: "", url: result.imageURL, mimeType: result.mimeType)))
                 message.images.append(.url(result.imageURL))
             case ToolNames.textToVideo:
                 let result = try await toolCall.execute(with: VideoTool.textToVideo)
                 toolCallResult.content.append(
-                    .resourceLink(ResourceLink(name: "", title: "", uri: result.videoURL.absoluteString, mimeType: result.mimeType)))
+                    .resourceLink(ResourceLink(name: "", title: "", url: result.videoURL, mimeType: result.mimeType)))
                 message.videos.append(.url(result.videoURL))
             #if os(macOS)
             case ToolNames.executeCommand:

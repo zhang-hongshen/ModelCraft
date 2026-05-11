@@ -24,7 +24,7 @@ struct ModelTaskView: View {
             
             switch task.status {
             case .new:
-                ProgressView().progressViewStyle(.scaled)
+                ProgressView()
             case .running:
                 DeleteTaskButton()
             case .stopped:

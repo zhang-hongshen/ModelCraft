@@ -14,7 +14,15 @@ private func lambda64(alpha: MLXArray, sigma: MLXArray) -> MLXArray {
     return (MLX.log(a) - MLX.log(s)).asType(.float32)
 }
 
-public struct FlowUniPCMultistepScheduler {
+
+protocol FlowScheduler {
+    var timesteps: MLXArray { get }
+    
+    mutating func step(modelOutput: MLXArray, timestep: MLXArray, sample: MLXArray) -> MLXArray
+    mutating func setTimesteps(_ steps: Int, shift: Float?)
+}
+
+public struct FlowUniPCMultistepScheduler: FlowScheduler {
     public let numTrainTimesteps: Int
     public let solverOrder: Int
     public let predictionType: String
@@ -40,42 +48,42 @@ public struct FlowUniPCMultistepScheduler {
     public var thisOrder: Int = 1
 
     public init(
-            numTrainTimesteps: Int = 1000,
-            solverOrder: Int = 2,
-            predictionType: String = "flow_prediction",
-            shift: Float = 1.0,
-            predictX0: Bool = true,
-            solverType: String = "bh2",
-            lowerOrderFinal: Bool = true,
-            disableCorrector: [Int] = [],
-            finalSigmasType: String = "zero"
-        ) {
-            self.numTrainTimesteps = numTrainTimesteps
-            self.solverOrder = solverOrder
-            self.predictionType = predictionType
-            self.shift = shift
-            self.predictX0 = predictX0
-            self.solverType = solverType
-            self.lowerOrderFinal = lowerOrderFinal
-            self.disableCorrector = disableCorrector
-            self.finalSigmasType = finalSigmasType
-            
-            
-            var sigmas = MLX.linspace(1.0 - Float(1.0 / Float(numTrainTimesteps)), Float(0) , count: numTrainTimesteps)
-            sigmas = (shift * sigmas) / (1.0 + (shift - 1.0) * sigmas)
-            
-            
-            self.sigmaMin = sigmas[sigmas.shape[0] - 1].item(Float.self)
-            self.sigmaMax = sigmas[0].item(Float.self)
-            
-            self.sigmas = MLXArray([Float32]())
-            self.timesteps = MLXArray([Float32]())
-            self.numInferenceSteps = 0
-            self.modelOutputs = Array(repeating: nil, count: solverOrder)
-            self.timestepList = Array(repeating: nil, count: solverOrder)
-            self.lastSample = nil
-            self.stepIndex = 0
-        }
+        numTrainTimesteps: Int = 1000,
+        solverOrder: Int = 2,
+        predictionType: String = "flow_prediction",
+        shift: Float = 1.0,
+        predictX0: Bool = true,
+        solverType: String = "bh2",
+        lowerOrderFinal: Bool = true,
+        disableCorrector: [Int] = [],
+        finalSigmasType: String = "zero"
+    ) {
+        self.numTrainTimesteps = numTrainTimesteps
+        self.solverOrder = solverOrder
+        self.predictionType = predictionType
+        self.shift = shift
+        self.predictX0 = predictX0
+        self.solverType = solverType
+        self.lowerOrderFinal = lowerOrderFinal
+        self.disableCorrector = disableCorrector
+        self.finalSigmasType = finalSigmasType
+        
+        
+        var sigmas = MLX.linspace(1.0 - Float(1.0 / Float(numTrainTimesteps)), Float(0) , count: numTrainTimesteps)
+        sigmas = (shift * sigmas) / (1.0 + (shift - 1.0) * sigmas)
+        
+        
+        self.sigmaMin = sigmas[sigmas.shape[0] - 1].item(Float.self)
+        self.sigmaMax = sigmas[0].item(Float.self)
+        
+        self.sigmas = MLXArray([Float32]())
+        self.timesteps = MLXArray([Float32]())
+        self.numInferenceSteps = 0
+        self.modelOutputs = Array(repeating: nil, count: solverOrder)
+        self.timestepList = Array(repeating: nil, count: solverOrder)
+        self.lastSample = nil
+        self.stepIndex = 0
+    }
 
     public mutating func setTimesteps(_ steps: Int, shift: Float? = nil) {
         
@@ -229,6 +237,7 @@ public struct FlowUniPCMultistepScheduler {
 
         return xT.asType(x.dtype)
     }
+    
     public mutating func step(modelOutput: MLXArray, timestep: MLXArray, sample: MLXArray) -> MLXArray {
         if stepIndex == nil { initStepIndex(timestep) }
 
@@ -258,17 +267,25 @@ public struct FlowUniPCMultistepScheduler {
     }
 }
 
-public struct FlowEulerDiscreteScheduler {
+public struct FlowEulerDiscreteScheduler: FlowScheduler {
+    
     public let numTrainTimesteps: Int
-    public private(set) var timesteps: MLXArray = MLXArray([Float32]())
-    public private(set) var sigmas: MLXArray = MLXArray([Float32]())
+    public private(set) var shift: Float
+    public private(set) var timesteps: MLXArray
+    public private(set) var sigmas: MLXArray
     public private(set) var numInferenceSteps: Int = 0
 
-    public init(numTrainTimesteps: Int = 1000) {
+    public init(numTrainTimesteps: Int = 1000,
+                shift: Float = 5.0) {
         self.numTrainTimesteps = numTrainTimesteps
+        self.shift = shift
+        self.timesteps = MLXArray([Float32]())
+        self.sigmas = MLXArray([Float32]())
     }
 
-    public mutating func setTimesteps(_ denoisingStepList: [Int], shift: Float = 5.0) {
+    public mutating func setTimesteps(_ steps: Int, shift: Float? = nil) {
+        var shift = shift ?? self.shift
+        var denoisingStepList = (1...steps).reversed().map { 1000 * $0 / steps }
         var sigmas = MLX.linspace(Float(1.0), Float(0.0), count: numTrainTimesteps + 1)[0..<numTrainTimesteps]
         sigmas = shift * sigmas / (1.0 + (shift - 1.0) * sigmas)
         let timesteps = sigmas * numTrainTimesteps
@@ -276,7 +293,7 @@ public struct FlowEulerDiscreteScheduler {
         let indices = denoisingStepList.map { numTrainTimesteps - $0 }
         self.sigmas = MLXArray(indices.map { Float32(sigmas[$0].item(Float.self)) })
         self.timesteps = MLXArray(indices.map { Float32(timesteps[$0].item(Float.self)) })
-        self.numInferenceSteps = denoisingStepList.count
+        self.numInferenceSteps = steps
     }
 
     public mutating func step(modelOutput: MLXArray, timestep: MLXArray, sample: MLXArray) -> MLXArray {

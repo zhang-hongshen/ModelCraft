@@ -327,7 +327,7 @@ class UNetBlock2D: Module {
     }
 }
 
-class UNetModel: Module {
+class StableDiffusionUNet: Module {
 
     @ModuleInfo(key: "conv_in") var convIn: Conv2d
     let timesteps: SinusoidalPositionalEncoding

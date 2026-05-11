@@ -20,4 +20,13 @@ class Pasteboard {
         UIPasteboard.general.string = string
 #endif
     }
+    
+    func setImage(_ image: PlatformImage) {
+#if canImport(AppKit)
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.writeObjects([image])
+#elseif canImport(UIKit)
+        UIPasteboard.general.image = image
+#endif
+    }
 }

@@ -16,15 +16,7 @@ class Project {
     @Relationship(deleteRule: .cascade, inverse: \Chat.project)
     var chats: [Chat]
     
-    var files: [URL] {
-        didSet {
-            let newFiles = files.filter { !oldValue.contains($0) }
-            if newFiles.isEmpty {
-                return
-            }
-            createIndex(newFiles)
-        }
-    }
+    var files: [URL]
     
     init(title: String = "", files: [URL] = [], chats: [Chat] = []) {
         self.title = title
@@ -92,6 +84,33 @@ extension Project {
         self.files.removeAll { urls.contains($0) }
         engine.removeIndex(paths: urls.compactMap{ $0.path() })
     }
+    
+    func addFiles<T>(_ urls: T) where T: Swift.Collection, T.Element == URL {
+        let newFiles = urls.filter { !files.contains($0) }
+        var movedFiles: [URL] = []
+        
+        let fileManager = FileManager.default
+        for url in newFiles {
+            let destinationURL = URL.documentsDirectory.appendingPathComponent(url.lastPathComponent)
+            
+            do {
+                if fileManager.fileExists(atPath: destinationURL.path) {
+                    try fileManager.removeItem(at: destinationURL)
+                }
+                try fileManager.moveItem(at: url, to: destinationURL)
+                movedFiles.append(destinationURL)
+            } catch {
+                print("Moving File failed \(url.lastPathComponent): \(error)")
+            }
+        }
+        
+        if movedFiles.isEmpty {
+            return
+        }
+        
+        createIndex(movedFiles)
+    }
+
 }
 
 

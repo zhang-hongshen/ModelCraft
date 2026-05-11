@@ -24,7 +24,7 @@ public final class T5Tokenizer {
         maxLength: Int = 512,
         padding: Bool = true,
         truncation: Bool = true
-    ) throws -> T5Tokenized {
+    ) throws -> (inputIDs: MLXArray, attentionMask: MLXArray) {
         var ids = self.tokenizer.encode(text: text)
         
         if truncation && ids.count > maxLength {
@@ -38,14 +38,9 @@ public final class T5Tokenizer {
             attentionMask.append(contentsOf: repeatElement(0, count: padLen))
         }
 
-        return T5Tokenized(
+        return (
             inputIDs: MLXArray(ids).expandedDimensions(axis: 0).asType(.int32),
             attentionMask: MLXArray(attentionMask).expandedDimensions(axis: 0).asType(.int32)
         )
     }
-}
-
-public struct T5Tokenized {
-    public let inputIDs: MLXArray
-    public let attentionMask: MLXArray
 }

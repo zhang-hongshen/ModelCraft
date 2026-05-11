@@ -86,7 +86,6 @@
 		708032EF2F93F26000E63074 /* Waveform in Frameworks */ = {isa = PBXBuildFile; productRef = 708032EE2F93F26000E63074 /* Waveform */; };
 		70823EC82F520F720011DF58 /* ModelService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70823EC72F520F6F0011DF58 /* ModelService.swift */; };
 		7082CD022F7E1A700080C2F5 /* ModelEntity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7082CD012F7E1A700080C2F5 /* ModelEntity.swift */; };
-		7082CD042F7E28350080C2F5 /* ScaledProgressViewStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7082CD032F7E282F0080C2F5 /* ScaledProgressViewStyle.swift */; };
 		70873F5F2F2562BB00C07EB3 /* Value.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70873F5E2F2562B800C07EB3 /* Value.swift */; };
 		70896C632BB727AB006FEF6A /* ModelContext+.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70896C622BB727AB006FEF6A /* ModelContext+.swift */; };
 		708C5EE72F0B9D6100127118 /* AgentExecutor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 708C5EE62F0B9D5900127118 /* AgentExecutor.swift */; };
@@ -251,7 +250,6 @@
 		708032EB2F93F11000E63074 /* WaveformView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WaveformView.swift; sourceTree = "<group>"; };
 		70823EC72F520F6F0011DF58 /* ModelService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelService.swift; sourceTree = "<group>"; };
 		7082CD012F7E1A700080C2F5 /* ModelEntity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelEntity.swift; sourceTree = "<group>"; };
-		7082CD032F7E282F0080C2F5 /* ScaledProgressViewStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScaledProgressViewStyle.swift; sourceTree = "<group>"; };
 		70873F5E2F2562B800C07EB3 /* Value.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Value.swift; sourceTree = "<group>"; };
 		70896C622BB727AB006FEF6A /* ModelContext+.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ModelContext+.swift"; sourceTree = "<group>"; };
 		708C5EE62F0B9D5900127118 /* AgentExecutor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentExecutor.swift; sourceTree = "<group>"; };
@@ -604,7 +602,6 @@
 				7008FD8E2E80413E00D62EF6 /* NLEmbedding+.swift */,
 				701954592BCB9A1400CD2ED3 /* RandomAccessCollection+.swift */,
 				70C22FD02BAF2C35002754C7 /* RoundedRectangle+.swift */,
-				7082CD032F7E282F0080C2F5 /* ScaledProgressViewStyle.swift */,
 				708EC0EA2F4A315A0055D765 /* String+.swift */,
 				70C22FEC2BAFDFE9002754C7 /* TabView+.swift */,
 				701954282BCA309300CD2ED3 /* Theme+.swift */,
@@ -909,7 +906,6 @@
 				70CE60C62BAD61F600A2D0B0 /* UserDefaults+.swift in Sources */,
 				70C22FD72BAFD1B6002754C7 /* PlatformImage.swift in Sources */,
 				7021D87C2F85604B00A2F684 /* CGImage+.swift in Sources */,
-				7082CD042F7E28350080C2F5 /* ScaledProgressViewStyle.swift in Sources */,
 				7078AB142F4EDE9900711940 /* ToolDefinitions.swift in Sources */,
 				70C22FCC2BAEE24C002754C7 /* Image+.swift in Sources */,
 				7071E3852F27C5B600CACB8B /* AppTool.swift in Sources */,
@@ -1153,9 +1149,6 @@
 				DEVELOPMENT_TEAM = "";
 				"DEVELOPMENT_TEAM[sdk=macosx*]" = DTZV6LDYD5;
 				ENABLE_APP_SANDBOX = YES;
-				ENABLE_FILE_ACCESS_DOWNLOADS_FOLDER = readonly;
-				ENABLE_FILE_ACCESS_MOVIES_FOLDER = readwrite;
-				ENABLE_FILE_ACCESS_MUSIC_FOLDER = readwrite;
 				ENABLE_FILE_ACCESS_PICTURE_FOLDER = readwrite;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_INCOMING_NETWORK_CONNECTIONS = YES;

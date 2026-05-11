@@ -60,7 +60,7 @@ class CLIPEncoderLayer: Module {
 }
 
 /// Implements the text encoder transformer from CLIP
-class CLIPTextModel: Module {
+class StableDiffusionTextEncoder: Module {
 
     @ModuleInfo(key: "token_embedding") var tokenEmbedding: Embedding
     @ModuleInfo(key: "position_embedding") var positionEmbedding: Embedding

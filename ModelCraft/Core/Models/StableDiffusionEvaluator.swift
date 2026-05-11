@@ -13,7 +13,7 @@ import MLX
 @MainActor
 class StableDiffusionEvaluator {
 
-    private let modelFactory = ModelFactory()
+    private let modelFactory = StableDiffusionModelFactory()
 
     nonisolated private func toCGImage(_ array: MLXArray) -> CGImage {
         let raster = (array * 255).asType(.uint8).squeezed()
@@ -99,7 +99,7 @@ class StableDiffusionEvaluator {
 
 
 /// Async model factory
-actor ModelFactory {
+actor StableDiffusionModelFactory {
 
     enum LoadState {
         case idle
@@ -167,6 +167,7 @@ actor ModelFactory {
                     {
                         // Internet connection appears to be offline -- fall back to loading from
                         // the local directory
+                        
                     } else {
                         throw error
                     }

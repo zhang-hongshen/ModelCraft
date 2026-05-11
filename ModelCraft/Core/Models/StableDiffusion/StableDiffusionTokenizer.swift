@@ -33,7 +33,7 @@ struct Bigram: Hashable {
 ///
 /// Ideally this would be a tokenizer from `swift-transformers` but this is too special purpose to be representable in
 /// what exists there (at time of writing).
-class CLIPTokenizer {
+class StableDiffusionTokenizer {
 
     let pattern =
         #/<\|startoftext\|>|<\|endoftext\|>|'s|'t|'re|'ve|'m|'ll|'d|[\p{L}]+|[\p{N}]|[^\s\p{L}\p{N}]+/#

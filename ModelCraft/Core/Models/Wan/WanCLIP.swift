@@ -234,9 +234,9 @@ public final class CLIPVisionEncoder: Module {
     }
 }
 
-public enum CLIPImagePreprocess {
-    public static func preprocess(imageURL: URL) throws -> MLXArray {
-        guard let source = CGImageSourceCreateWithURL(imageURL as CFURL, nil),
+public enum CLIPImage {
+    public static func preprocess(image: URL) throws -> MLXArray {
+        guard let source = CGImageSourceCreateWithURL(image as CFURL, nil),
               let image = CGImageSourceCreateImageAtIndex(source, 0, nil) else {
             throw NSError(domain: "WanCLIP", code: 1, userInfo: [NSLocalizedDescriptionKey: "Failed to load image"])
         }

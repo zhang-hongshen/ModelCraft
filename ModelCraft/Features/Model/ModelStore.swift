@@ -68,7 +68,6 @@ extension ModelStore {
             
             if isLoading {
                 ProgressView()
-                    .progressViewStyle(.scaled)
             } else {
                 Button("Refresh", systemImage: "arrow.triangle.2.circlepath") {
                     Task {
@@ -82,7 +81,6 @@ extension ModelStore {
     @ViewBuilder
     func LoadMoreView() -> some View {
         ProgressView()
-            .progressViewStyle(.scaled)
             .frame(maxWidth: .infinity)
             .onAppear {
                 Task { await loadMoreModels() }

@@ -10,7 +10,7 @@ import Foundation
 import Hub
 import MLX
 
-public enum WanLoader {
+public class WanLoader {
 
     private static func resolve(hub: HubApi = HubApi(), configuration: WanConfiguration, key: WanFileKey) throws -> URL {
         precondition(
@@ -60,7 +60,7 @@ public enum WanLoader {
         let ditParameters = configuration.ditParameters
         
         let dit = WanDiT(
-            modelType: ditParameters.modelType,
+            modelType: configuration.modelType,
             inDim: ditParameters.inDim ?? 16,
             dim: ditParameters.dim,
             ffnDim: ditParameters.ffnDim,

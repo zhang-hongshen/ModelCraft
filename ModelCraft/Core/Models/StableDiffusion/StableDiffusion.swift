@@ -1,250 +1,56 @@
 // Copyright © 2024 Apple Inc.
 
 import Foundation
+import CoreGraphics
+import ImageIO
 import Hub
 import MLX
 import MLXNN
 
-// port of https://github.com/ml-explore/mlx-examples/blob/main/stable_diffusion/stable_diffusion/__init__.py
-
-/// Iterator that produces latent images.
-///
-/// Created by:
-///
-/// - ``TextToImageGenerator/generateLatents(parameters:)``
-/// - ``ImageToImageGenerator/generateLatents(image:parameters:strength:)``
-public struct DenoiseIterator: Sequence, IteratorProtocol {
-
-    let sd: StableDiffusion
-
-    var xt: MLXArray
-
-    let conditioning: MLXArray
-    let cfgWeight: Float
-    let textTime: (MLXArray, MLXArray)?
-
-    var i: Int
-    let steps: [(MLXArray, MLXArray)]
-
-    init(
-        sd: StableDiffusion, xt: MLXArray, t: Int, conditioning: MLXArray, steps: Int,
-        cfgWeight: Float, textTime: (MLXArray, MLXArray)? = nil
-    ) {
-        self.sd = sd
-        self.steps = sd.sampler.timeSteps(steps: steps, start: t, dType: sd.dType)
-        self.i = 0
-        self.xt = xt
-        self.conditioning = conditioning
-        self.cfgWeight = cfgWeight
-        self.textTime = textTime
-    }
-
-    public var underestimatedCount: Int {
-        steps.count
-    }
-
-    mutating public func next() -> MLXArray? {
-        guard i < steps.count else {
-            return nil
-        }
-
-        let (t, tPrev) = steps[i]
-        i += 1
-
-        xt = sd.step(
-            xt: xt, t: t, tPrev: tPrev, conditioning: conditioning, cfgWeight: cfgWeight,
-            textTime: textTime)
-        return xt
-    }
-}
-
-/// Type for the _decoder_ step.
-public typealias ImageDecoder = (MLXArray) -> MLXArray
-
-public protocol ImageGenerator {
-    func ensureLoaded()
-
-    /// Return a detached decoder -- this is useful if trying to conserve memory.
-    ///
-    /// The decoder can be used independently of the ImageGenerator to transform
-    /// latents into raster images.
-    func detachedDecoder() -> ImageDecoder
-
-    /// the equivalent to the ``detachedDecoder()`` but without the detatching
-    func decode(xt: MLXArray) -> MLXArray
-}
-
-/// Public interface for transforming a text prompt into an image.
-///
-/// Steps:
-///
-/// - ``generateLatents(parameters:)``
-/// - evaluate each of the latents from the iterator
-/// - ``ImageGenerator/decode(xt:)`` or ``ImageGenerator/detachedDecoder()`` to convert the final latent into an image
-/// - use ``Image`` to save the image
-public protocol TextToImageGenerator: ImageGenerator {
-    func generateLatents(parameters: EvaluateParameters) -> DenoiseIterator
-}
-
-/// Public interface for transforming a text prompt into an image.
-///
-/// Steps:
-///
-/// - ``generateLatents(image:parameters:strength:)``
-/// - evaluate each of the latents from the iterator
-/// - ``ImageGenerator/decode(xt:)`` or ``ImageGenerator/detachedDecoder()`` to convert the final latent into an image
-/// - use ``Image`` to save the image
-public protocol ImageToImageGenerator: ImageGenerator {
-    func generateLatents(image: MLXArray, parameters: EvaluateParameters, strength: Float)
-        -> DenoiseIterator
-}
-
-enum ModelContainerError: LocalizedError {
-    /// Unable to create the particular type of model, e.g. it doesn't support image to image
-    case unableToCreate(String, String)
-    /// When operating in conserveMemory mode, it tried to use a model that had been discarded
-    case modelDiscarded
-
-    var errorDescription: String? {
-        switch self {
-        case .unableToCreate(let modelId, let generatorType):
-            return String(
-                localized:
-                    "Unable to create a \(generatorType) with model ID '\(modelId)'. The model may not support this operation type."
-            )
-        case .modelDiscarded:
-            return String(
-                localized:
-                    "The model has been discarded to conserve memory and is no longer available. Please recreate the model container."
-            )
-        }
-    }
-}
-
-/// Container for models that guarantees single threaded access.
-public actor StableDiffusionModelContainer<M> {
-
-    enum State {
-        case discarded
-        case loaded(M)
-    }
-
-    var state: State
-
-    /// if true this will discard the model in ``performTwoStage(first:second:)``
-    var conserveMemory = false
-
-    private init(model: M) {
-        self.state = .loaded(model)
-    }
-
-    /// create a ``ModelContainer`` that supports ``TextToImageGenerator``
-    static public func createTextToImageGenerator(
-        configuration: StableDiffusionConfiguration, loadConfiguration: LoadConfiguration = .init()
-    ) throws -> StableDiffusionModelContainer<TextToImageGenerator> {
-        if let model = try configuration.textToImageGenerator(configuration: loadConfiguration) {
-            return .init(model: model)
-        } else {
-            throw ModelContainerError.unableToCreate(configuration.id, "TextToImageGenerator")
-        }
-    }
-
-    /// create a ``ModelContainer`` that supports ``ImageToImageGenerator``
-    static public func createImageToImageGenerator(
-        configuration: StableDiffusionConfiguration, loadConfiguration: LoadConfiguration = .init()
-    ) throws -> StableDiffusionModelContainer<ImageToImageGenerator> {
-        if let model = try configuration.imageToImageGenerator(configuration: loadConfiguration) {
-            return .init(model: model)
-        } else {
-            throw ModelContainerError.unableToCreate(configuration.id, "ImageToImageGenerator")
-        }
-    }
-
-    public func setConserveMemory(_ conserveMemory: Bool) {
-        self.conserveMemory = conserveMemory
-    }
-
-    /// Perform an action on the model and/or tokenizer. Callers _must_ eval any `MLXArray` before returning as
-    /// `MLXArray` is not `Sendable`.
-    public func perform<R>(_ action: @Sendable (M) throws -> R) throws -> R {
-        switch state {
-        case .discarded:
-            throw ModelContainerError.modelDiscarded
-        case .loaded(let m):
-            try action(m)
-        }
-    }
-
-    /// Perform a two stage action where the first stage returns values passed to the second stage.
-    ///
-    /// If ``setConservativeMemory(_:)`` is `true` this will discard the model in between
-    /// the `first` and `second` blocks. The container will have to be recreated if a caller
-    /// wants to use it again.
-    ///
-    /// If `false` this will just run them in sequence and the container can be reused.
-    ///
-    /// Callers _must_ eval any `MLXArray` before returning as `MLXArray` is not `Sendable`.
-    public func performTwoStage<R1, R2>(
-        first: @Sendable (M) throws -> R1, second: @Sendable (R1) throws -> R2
-    ) throws -> R2 {
-        let r1 =
-            switch state {
-            case .discarded:
-                throw ModelContainerError.modelDiscarded
-            case .loaded(let m):
-                try first(m)
-            }
-        if conserveMemory {
-            self.state = .discarded
-        }
-        return try second(r1)
-    }
-
-}
 
 /// Base class for Stable Diffusion.
 open class StableDiffusion {
 
     let dType: DType
     let diffusionConfiguration: DiffusionConfiguration
-    let unet: UNetModel
-    let textEncoder: CLIPTextModel
+    let unet: StableDiffusionUNet
+    let textEncoder: StableDiffusionTextEncoder
     let autoencoder: Autoencoder
     let sampler: SimpleEulerSampler
-    let tokenizer: CLIPTokenizer
+    let tokenizer: StableDiffusionTokenizer
 
     internal init(
         hub: HubApi, configuration: StableDiffusionConfiguration, dType: DType,
-        diffusionConfiguration: DiffusionConfiguration? = nil, unet: UNetModel? = nil,
-        textEncoder: CLIPTextModel? = nil, autoencoder: Autoencoder? = nil,
-        sampler: SimpleEulerSampler? = nil, tokenizer: CLIPTokenizer? = nil
+        diffusionConfiguration: DiffusionConfiguration? = nil, unet: StableDiffusionUNet? = nil,
+        textEncoder: StableDiffusionTextEncoder? = nil, autoencoder: Autoencoder? = nil,
+        sampler: SimpleEulerSampler? = nil, tokenizer: StableDiffusionTokenizer? = nil
     ) throws {
         self.dType = dType
         self.diffusionConfiguration =
             try diffusionConfiguration
-            ?? loadDiffusionConfiguration(hub: hub, configuration: configuration)
-        self.unet = try unet ?? loadUnet(hub: hub, configuration: configuration, dType: dType)
+        ?? StableDiffusionLoader.loadDiffusionConfiguration(hub: hub, configuration: configuration)
+        self.unet = try unet ?? StableDiffusionLoader.loadUnet(hub: hub, configuration: configuration, dType: dType)
         self.textEncoder =
-            try textEncoder ?? loadTextEncoder(hub: hub, configuration: configuration, dType: dType)
+        try textEncoder ?? StableDiffusionLoader.loadTextEncoder(hub: hub, configuration: configuration, dType: dType)
 
         // note: autoencoder uses float32 weights
         self.autoencoder =
             try autoencoder
-            ?? loadAutoEncoder(hub: hub, configuration: configuration, dType: .float32)
+        ?? StableDiffusionLoader.loadAutoEncoder(hub: hub, configuration: configuration, dType: .float32)
 
         if let sampler {
             self.sampler = sampler
         } else {
             self.sampler = SimpleEulerSampler(configuration: self.diffusionConfiguration)
         }
-        self.tokenizer = try tokenizer ?? loadTokenizer(hub: hub, configuration: configuration)
+        self.tokenizer = try tokenizer ?? StableDiffusionLoader.loadTokenizer(hub: hub, configuration: configuration)
     }
 
     open func ensureLoaded() {
         eval(unet, textEncoder, autoencoder)
     }
 
-    func tokenize(tokenizer: CLIPTokenizer, text: String, negativeText: String?) -> MLXArray {
+    func tokenize(tokenizer: StableDiffusionTokenizer, text: String, negativeText: String?) -> MLXArray {
         var tokens = [tokenizer.tokenize(text: text)]
         if let negativeText {
             tokens.append(tokenizer.tokenize(text: negativeText))
@@ -321,7 +127,7 @@ open class StableDiffusionBase: StableDiffusion, TextToImageGenerator {
         return conditioning
     }
 
-    public func generateLatents(parameters: EvaluateParameters) -> DenoiseIterator {
+    public func generateLatents(parameters: StableDiffusionEvaluateParameters) -> DenoiseIterator {
         MLXRandom.seed(parameters.seed)
 
         let conditioning = conditionText(
@@ -342,20 +148,20 @@ open class StableDiffusionBase: StableDiffusion, TextToImageGenerator {
 /// Implementation of ``StableDiffusion`` for the `stabilityai/sdxl-turbo` model.
 open class StableDiffusionXL: StableDiffusion, TextToImageGenerator, ImageToImageGenerator {
 
-    let textEncoder2: CLIPTextModel
-    let tokenizer2: CLIPTokenizer
+    let textEncoder2: StableDiffusionTextEncoder
+    let tokenizer2: StableDiffusionTokenizer
 
     public init(hub: HubApi, configuration: StableDiffusionConfiguration, dType: DType) throws {
-        let diffusionConfiguration = try loadConfiguration(
+        let diffusionConfiguration = try StableDiffusionLoader.loadConfiguration(
             hub: hub, configuration: configuration, key: .diffusionConfig,
             type: DiffusionConfiguration.self)
         let sampler = SimpleEulerAncestralSampler(configuration: diffusionConfiguration)
 
-        self.textEncoder2 = try loadTextEncoder(
+        self.textEncoder2 = try StableDiffusionLoader.loadTextEncoder(
             hub: hub, configuration: configuration, configKey: .textEncoderConfig2,
             weightsKey: .textEncoderWeights2, dType: dType)
 
-        self.tokenizer2 = try loadTokenizer(
+        self.tokenizer2 = try StableDiffusionLoader.loadTokenizer(
             hub: hub, configuration: configuration, vocabulary: .tokenizerVocabulary2,
             merges: .tokenizerMerges2)
 
@@ -394,8 +200,66 @@ open class StableDiffusionXL: StableDiffusion, TextToImageGenerator, ImageToImag
 
         return (conditioning, pooledConditionng)
     }
+    
+    
+    func conditionImage(image: URL) -> MLXArray {
+        guard let imageSource = CGImageSourceCreateWithURL(image as CFURL, nil),
+              let cgImage = CGImageSourceCreateImageAtIndex(imageSource, 0, nil) else {
+            fatalError("Could not load image at \(image)")
+        }
 
-    public func generateLatents(parameters: EvaluateParameters) -> DenoiseIterator {
+        let originalWidth = cgImage.width
+        let originalHeight = cgImage.height
+
+        let width = originalWidth - (originalWidth % 64)
+        let height = originalHeight - (originalHeight % 64)
+        
+        var finalCGImage: CGImage = cgImage
+
+        if width != originalWidth || height != originalHeight {
+            let colorSpace = CGColorSpaceCreateDeviceRGB()
+            guard let context = CGContext(data: nil,
+                                          width: width,
+                                          height: height,
+                                          bitsPerComponent: 8,
+                                          bytesPerRow: 0,
+                                          space: colorSpace,
+                                          bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else {
+                fatalError("Could not create CGContext for resizing")
+            }
+            
+            context.interpolationQuality = .none
+            context.draw(cgImage, in: CGRect(x: 0, y: 0, width: width, height: height))
+            
+            guard let resizedImage = context.makeImage() else {
+                fatalError("Could not create resized CGImage")
+            }
+            finalCGImage = resizedImage
+        }
+
+        let bytesPerPixel = 4
+        var pixelData = [UInt8](repeating: 0, count: width * height * bytesPerPixel)
+        let colorSpace = CGColorSpaceCreateDeviceRGB()
+        
+        guard let context = CGContext(data: &pixelData,
+                                      width: width,
+                                      height: height,
+                                      bitsPerComponent: 8,
+                                      bytesPerRow: width * bytesPerPixel,
+                                      space: colorSpace,
+                                      bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else {
+            fatalError("Could not create CGContext for pixel extraction")
+        }
+        
+        context.draw(finalCGImage, in: CGRect(x: 0, y: 0, width: width, height: height))
+        
+        let rawArray = MLXArray(pixelData).reshaped([height, width, 4])
+        let img = (rawArray[0..., 0..., 0..<3].asType(.float32) / 255.0) * 2.0 - 1.0
+        
+        return img
+    }
+    
+    public func generateLatents(parameters: StableDiffusionEvaluateParameters) -> DenoiseIterator {
         MLXRandom.seed(parameters.seed)
 
         let (conditioning, pooledConditioning) = conditionText(
@@ -417,12 +281,14 @@ open class StableDiffusionXL: StableDiffusion, TextToImageGenerator, ImageToImag
             sd: self, xt: xt, t: sampler.maxTime, conditioning: conditioning,
             steps: parameters.steps, cfgWeight: parameters.cfgWeight, textTime: textTime)
     }
-
-    public func generateLatents(image: MLXArray, parameters: EvaluateParameters, strength: Float)
+    
+    
+    
+    public func generateLatents(image: URL, parameters: StableDiffusionEvaluateParameters, strength: Float)
         -> DenoiseIterator
     {
         MLXRandom.seed(parameters.seed)
-
+        let image = conditionImage(image: image)
         // Define the num steps and start step
         let startStep = Float(sampler.maxTime) * strength
         let numSteps = Int(Float(parameters.steps) * strength)

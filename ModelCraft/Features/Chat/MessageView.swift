@@ -171,7 +171,7 @@ extension MessageView {
             VStack(alignment: .leading) {
                 
                 if message.status == .new {
-                    ProgressView().progressViewStyle(.scaled)
+                    ProgressView()
                 } else {
                     MessageAttachmentsView(message.attachments)
                     AssistantMessageContentView(message)
@@ -228,20 +228,9 @@ extension MessageView {
             
             
             if let toolCall = message.toolCall {
-                DisclosureGroup(isExpanded: $toolCallPresented) {
-                    if let toolCallResult = message.toolCallResult {
-                        ToolCallView(toolCall: toolCall, toolCallResult: toolCallResult)
-                    } else {
-                        ProgressView()
-                    }
-                } label: {
-                    HStack(alignment: .center, spacing: 8) {
-                        if message.toolCallStatus == .running {
-                            ProgressView()
-                        }
-                        Text(toolCall.localizedDescription(toolCallStatus: message.toolCallStatus))
-                    }
-                }
+                ToolCallView(toolCall: toolCall, toolCallResult:
+                                message.toolCallResult,
+                             toolCallStatus: message.toolCallStatus)
             }
         }
         

@@ -132,7 +132,7 @@ public final class WanDiT: Module {
         context: MLXArray,
         blockResidual: MLXArray? = nil,
         precomputedTime: (MLXArray, MLXArray)? = nil,
-        clipFea: MLXArray? = nil,
+        clipFeatures: MLXArray? = nil,
         firstFrame: MLXArray? = nil
     ) -> (output: MLXArray, residual: MLXArray) {
         var x = xIn
@@ -149,8 +149,8 @@ public final class WanDiT: Module {
         x = x.reshaped([1, fp * hp * wp, dim])
 
         var ctx = textEmbedding(context.expandedDimensions(axis: 0))
-        if let clipFea {
-            let clipProj = embedImage(clipFea)
+        if let clipFeatures {
+            let clipProj = embedImage(clipFeatures)
             ctx = MLX.concatenated([clipProj, ctx], axis: 1)
         }
 

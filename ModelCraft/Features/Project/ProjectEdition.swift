@@ -78,7 +78,7 @@ struct ProjectEdition: View {
             allowsMultipleSelection: true
         ) { result in
             if case .success(let urls) = result {
-                project.files.append(contentsOf: urls)
+                project.addFiles(urls)
             }
         }
     }

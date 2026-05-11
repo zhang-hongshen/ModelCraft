@@ -34,10 +34,6 @@ public final class WanEvaluator {
         let model = try await modelFactory.load()
         var parameters = modelFactory.configuration.defaultParameters()
         parameters.prompt = prompt
-        if let sampeler = sampler, sampeler == "euler" {
-            let n = parameters.numSteps
-            parameters.denoisingStepList = (1...n).reversed().map { 1000 * $0 / n }
-        }
         return AsyncThrowingStream { continuation in
             Task {
                 let latents = try model.generateLatents(parameters)
@@ -88,7 +84,12 @@ actor WanModelFactory {
         case .idle:
             let task = Task {
                 try await configuration.download()
-                let model = try await Wan(configuration: configuration)
+                let model: Wan
+                if configuration.modelType == .textToVideo {
+                    model = try await WanT2V(configuration: configuration)
+                } else {
+                    model = try await WanI2V(configuration: configuration)
+                }
                 if !conserveMemory {
                     try model.ensureLoaded()
                 }
