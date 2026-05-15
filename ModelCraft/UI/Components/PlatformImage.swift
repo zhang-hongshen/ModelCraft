@@ -14,6 +14,7 @@ typealias PlatformImage = NSImage
 #endif
 
 extension PlatformImage {
+
     var aspectRatio: CGFloat {
         size.width / size.height
     }

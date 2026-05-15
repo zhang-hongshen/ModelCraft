@@ -16,58 +16,64 @@
 
 ## 💡 ModelCraft 是什么？
 
-**ModelCraft** 是专为 macOS 打造的个人智能助手应用。我们将强大的人工智能直接带到您的 Mac 上，让您可以轻松处理任务、与先进的 AI 模型对话，并建立专属的个人知识库。这一切都在您的本地设备上流畅运行，最大程度保护您的隐私与数据安全。
+**ModelCraft** 是一款**跨平台**的个人 AI 助手，支持 **Mac、iPhone 和 iPad**。同一款应用，多台设备随时使用——对话、整理项目、与 AI 协作。一切都在本地运行，对话与文件更安心。
+
+ModelCraft 主打**多模态**体验：文字或语音交流、发送图片、阅读文档与音频、检索项目资料、根据描述生成图片……多种方式，一个助手。
+
+## 💬 对话示例
+
+一句话就能完成多件事——生成图片、写入文件、给出说明，全在同一次对话里：
+
+> I'm designing a logo for a coding app. Generate an image of a glowing blue silicon chip with a futuristic vibe. Then, create a file named design_notes.md and write a description of this image inside it, including the style keywords you used.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="./assets/chat_dark.png">
+  <source media="(prefers-color-scheme: light)" srcset="./assets/chat_light.png">
+  <img src="./assets/chat_dark.png" alt="聊天界面 — 多模态助手生成图片并写入文件" width="100%">
+</picture>
 
 ## ✨ 为什么选择 ModelCraft？
 
-- **完全本地且隐私安全：** 您的数据始终留在您的 Mac 上，无需将敏感文档或私人对话上传到云端。
-- **开箱即用：** 不需要复杂的配置或任何编程基础，下载后即可立即体验！
-- **您的专属 AI 智库：** 轻松整理和构建属于您自己的知识库，让 AI 更懂您的需求。
-- **探索强大的模型：** 内置模型商店，一键即可下载并体验最前沿的 AI 模型。
+- **覆盖你的 Apple 设备：** Mac、iPhone、iPad 都能用，在不同设备间无缝衔接。
+- **真正的多模态：** 文字、语音、图片、文档与 AI 绘图，都能在同一次对话里完成。
+- **本地隐私：** 数据留在你的设备上，上手即可使用，无需复杂配置。
+- **开箱即用：** 下载、选模型、开聊，几步就能开始。
+- **专属智库：** 用你自己的文件搭建项目知识库，随时切换模型。
 
 ## 🚀 快速开始
 
-没有任何繁琐的前置操作，您只需要下载即可使用！
+1. **下载：** 前往 [发布页面](https://github.com/zhang-hongshen/ModelCraft/releases) 获取最新版本。
+2. **安装** 到你的 Mac、iPhone 或 iPad。
+3. **打开模型商店，** 下载一个模型，即可开始对话。
 
-1. **下载：** 请前往 [发布页面 (Releases)](https://github.com/zhang-hongshen/ModelCraft/releases) 下载最新版本。
-2. **安装：** 将应用拖入“应用程序”文件夹，就可以开始使用啦！
-
-*(注：通过 Homebrew 下载的功能正在努力开发中 QAQ )*
+*（Homebrew 安装方式正在开发中。）*
 
 ## 🌟 核心功能
 
-🍔 **智能对话体验：** 享受丝滑的聊天体验。您可以根据需要，随时在不同的 AI 模型和个人知识库之间切换。
+🍔 **多模态对话：** 打字、说话、发图、传文件——AI 不只会读文字。可切换模型，并查看助手一步步完成任务。
 
-🍞 **构建个人知识库：** 把您的文件交给 AI，让它成为您的专属智囊！目前支持 PDF、文本、Markdown、XML、图片和音频等丰富格式（未来还将支持更多类型哦）。
+🍞 **项目与知识库：** 把对话和资料收进项目。添加 PDF、笔记、图片、音频等，AI 能根据你放入的内容检索并回答。
 
-🍰 **内置模型商店：** 无需研究复杂的技术文档，只需一键点击，即可轻松下载并使用 Qwen (通义千问)、DeepSeek、Mistral 等强大的前沿模型。
+🍰 **模型商店：** 在任意支持的设备上一键浏览、下载模型，下载过程可随时暂停与继续。
 
-## 📸 界面截图
+🤖 **Mac 上更省心：** 在 Mac 上，助手还能帮你处理更多实操类任务——操作文件、系统与屏幕，需要时搭把手。
+
+## 📸 更多截图
 
 <table width="100%">
   <tr>
     <td width="50%">
       <picture>
-        <source media="(prefers-color-scheme: dark)" srcset="./assets/chat_dark.png">
-        <source media="(prefers-color-scheme: light)" srcset="./assets/chat_light.png">
-        <img src="./assets/chat_dark.png" alt="聊天界面" width="100%">
+        <source media="(prefers-color-scheme: dark)" srcset="./assets/project_dark.png">
+        <source media="(prefers-color-scheme: light)" srcset="./assets/project_light.png">
+        <img src="./assets/project_dark.png" alt="项目" width="100%">
       </picture>
     </td>
     <td width="50%">
       <picture>
-        <source media="(prefers-color-scheme: dark)" srcset="./assets/knowledge_base_dark.png">
-        <source media="(prefers-color-scheme: light)" srcset="./assets/knowledge_base_light.png">
-        <img src="./assets/knowledge_base_dark.png" alt="知识库界面" width="100%">
-      </picture>
-    </td>
-  </tr>
-  <tr>
-    <td colspan="2" align="center">
-      <br/>
-      <picture>
         <source media="(prefers-color-scheme: dark)" srcset="./assets/model_store_dark.png">
         <source media="(prefers-color-scheme: light)" srcset="./assets/model_store_light.png">
-        <img src="./assets/model_store_dark.png" alt="模型商店界面" width="50%">
+        <img src="./assets/model_store_dark.png" alt="模型商店" width="100%">
       </picture>
     </td>
   </tr>
@@ -75,8 +81,8 @@
 
 ## 📄 文档指南
 
-想了解更多玩法吗？欢迎查阅我们简单易懂的项目文档：[点击这里访问](https://deepwiki.com/zhang-hongshen/ModelCraft)。
+想了解更多？欢迎查阅 [项目文档](https://deepwiki.com/zhang-hongshen/ModelCraft)。
 
 ## 📜 许可证
 
-ModelCraft 采用 MIT 许可证开源。查阅 [LICENSE](./LICENSE) 文件了解更多细节。
+ModelCraft 采用 MIT 许可证开源。详见 [`LICENSE`](./LICENSE) 文件。

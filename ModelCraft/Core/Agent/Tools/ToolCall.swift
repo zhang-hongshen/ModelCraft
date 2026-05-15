@@ -28,13 +28,13 @@ struct ToolNames {
 
 extension ToolCall {
     
-    func localizedDescription(toolCallStatus: ToolCallStatus) -> LocalizedStringKey {
+    func localizedDescription(_ status: ToolCallStatus) -> String {
         let arguments = function.arguments
         switch function.name {
         case ToolNames.readFromFile:
             let path = arguments["path"]?.stringValue ?? "Unknown"
-            switch toolCallStatus {
-            case .running: 
+            switch status {
+            case .running:
                 return "Reading \(String(describing: path))"
             case .completed:
                 return "Read \(String(describing: path))"
@@ -43,8 +43,8 @@ extension ToolCall {
             }
         case ToolNames.writeToFile:
             let path = arguments["path"]?.stringValue ?? "Unknown"
-            switch toolCallStatus {
-            case .running: 
+            switch status {
+            case .running:
                 return "Writing \(String(describing: path))"
             case .completed:
                 return "Wrote \(String(describing: path))"
@@ -53,7 +53,7 @@ extension ToolCall {
             }
         case ToolNames.executeCommand:
             let command = arguments["command"]?.stringValue ?? "None"
-            switch toolCallStatus {
+            switch status {
             case .running:
                 return "Running \(String(describing: command))"
             case .completed:
@@ -63,7 +63,7 @@ extension ToolCall {
             }
         case ToolNames.searchMap:
             let query = arguments["query"]?.stringValue ?? ""
-            switch toolCallStatus {
+            switch status {
             case .running:
                 return "Searching map for \(String(describing: query))"
             case .completed:
@@ -73,7 +73,7 @@ extension ToolCall {
             }
         case ToolNames.searchRelevantDocuments:
             let query = arguments["query"]?.stringValue ?? ""
-            switch toolCallStatus {
+            switch status {
             case .running:
                 return "Searching documents for \(String(describing: query))"
             case .completed:
@@ -84,7 +84,7 @@ extension ToolCall {
         case ToolNames.click:
             let x = arguments["x"]?.doubleValue ?? 0
             let y = arguments["y"]?.doubleValue ?? 0
-            switch toolCallStatus {
+            switch status {
             case .running:
                 return "Clicking (\(x), \(y))"
             case .completed:
@@ -95,7 +95,7 @@ extension ToolCall {
         case ToolNames.move:
             let x = arguments["x"]?.doubleValue ?? 0
             let y = arguments["y"]?.doubleValue ?? 0
-            switch toolCallStatus {
+            switch status {
             case .running:
                 return "Moving pointer to (\(x), \(y))"
             case .completed:
@@ -104,8 +104,8 @@ extension ToolCall {
                 return "Move failed"
             }
         case ToolNames.captureScreen:
-            switch toolCallStatus {
-            case .running: 
+            switch status {
+            case .running:
                 return "Taking screenshot"
             case .completed: 
                 return "Screenshot captured"
@@ -113,8 +113,8 @@ extension ToolCall {
                 return "Screenshot failed"
             }
         case ToolNames.textToImage:
-            switch toolCallStatus {
-            case .running: 
+            switch status {
+            case .running:
                 return "Creating image"
             case .completed: 
                 return "Image created"
@@ -122,7 +122,7 @@ extension ToolCall {
                 return "Image creation failed"
             }
         case ToolNames.textToVideo:
-            switch toolCallStatus {
+            switch status {
             case .running: 
                 return "Creating video"
             case .completed:
@@ -132,7 +132,7 @@ extension ToolCall {
             }
         case ToolNames.activateSkill:
             let name = arguments["name"]?.stringValue ?? ""
-            switch toolCallStatus {
+            switch status {
             case .running:
                 return "Activating skill \(String(describing: name))"
             case .completed:

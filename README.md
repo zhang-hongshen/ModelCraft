@@ -16,58 +16,64 @@
 
 ## 💡 What is ModelCraft?
 
-**ModelCraft** is your personal, intelligent AI assistant designed exclusively for macOS. We bring the power of AI directly to your Mac, allowing you to seamlessly chat with advanced models, manage tasks, and organize your own knowledge base—all running locally on your device to keep your data completely private and secure.
+**ModelCraft** is a cross-platform personal AI assistant for **Mac, iPhone, and iPad**. One app, your devices—chat, organize projects, and work with AI wherever you are. Everything runs on your device, so your conversations and files stay private.
+
+ModelCraft is built for **multimodal** use: talk with text or voice, send photos, read documents and audio, let the AI search your project files, and even create images from a description. Different inputs, one assistant.
+
+## 💬 Chat in action
+
+One message can do many things—generate an image, write a file, and explain the result, all in the same conversation:
+
+> I'm designing a logo for a coding app. Generate an image of a glowing blue silicon chip with a futuristic vibe. Then, create a file named design_notes.md and write a description of this image inside it, including the style keywords you used.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="./assets/chat_dark.png">
+  <source media="(prefers-color-scheme: light)" srcset="./assets/chat_light.png">
+  <img src="./assets/chat_dark.png" alt="Chat — multimodal assistant generating an image and writing a file" width="100%">
+</picture>
 
 ## ✨ Why Choose ModelCraft?
 
-- **Completely Private & Local:** Your data stays on your Mac. No need to upload your sensitive files or private chats to the cloud.
-- **Ready to Use:** No complicated setup or coding required. Just download the app and start exploring!
-- **Your Personal AI Library:** Easily build a customized knowledge base by simply dragging and dropping your own files.
-- **Explore Powerful Models:** Discover and download top-tier AI models directly from the built-in Model Store.
+- **Works across your Apple devices:** The same experience on Mac, iPhone, and iPad—pick up where you left off on any device.
+- **Truly multimodal:** Text, voice, images, documents, and generated pictures—all in one conversation.
+- **Private & local:** Your data stays on your device. No cloud account required to get started.
+- **Ready to use:** Download, choose a model, and start chatting—no complicated setup.
+- **Your own AI library:** Build project knowledge bases from your files and switch models anytime.
 
 ## 🚀 Get Started
 
-No complex configuration needed! 
+1. **Download** the latest version from [Releases](https://github.com/zhang-hongshen/ModelCraft/releases).
+2. **Install** on your Mac, iPhone, or iPad.
+3. **Open the Model Store** and download a model, then start your first chat.
 
-1. **Download:** Get the latest version from our [Release Page](https://github.com/zhang-hongshen/ModelCraft/releases).
-2. **Install:** Drag and drop the app into your Applications folder, and you're good to go!
-
-*(Note: Homebrew installation is coming soon!)*
+*(Homebrew installation is coming soon.)*
 
 ## 🌟 Key Features
 
-🍔 **Smart Conversations:** Enjoy seamless chats tailored to your needs. Easily switch between different AI models and ask questions based on your personal knowledge bases.
+🍔 **Multimodal chat:** Type, speak, or share images and files—the AI understands more than plain text. Switch models and follow along as the assistant works through tasks.
 
-🍞 **Build Your Knowledge Base:** Make the AI understand *your* context. Just add your own files—we currently support PDFs, text files, Markdown, XML, images, and audio. (More formats are on the way!)
+🍞 **Projects & knowledge base:** Collect chats and files in one place. Add PDFs, notes, pictures, and audio—the AI can read and answer based on what you add.
 
-🍰 **Built-in Model Store:** Browse and download powerful AI models like Qwen, DeepSeek, Mistral, and more with just one click. No technical hassle involved!
+🍰 **Model store:** Browse and download models with one tap, on any supported device. Pause and resume downloads whenever you like.
 
-## 📸 Screenshots
+🤖 **Smarter help on Mac:** On Mac, the assistant can take on extra hands-on tasks—working with files, the system, and your screen when you need it.
+
+## 📸 More screenshots
 
 <table width="100%">
   <tr>
     <td width="50%">
       <picture>
-        <source media="(prefers-color-scheme: dark)" srcset="./assets/chat_dark.png">
-        <source media="(prefers-color-scheme: light)" srcset="./assets/chat_light.png">
-        <img src="./assets/chat_dark.png" alt="Chat Interface" width="100%">
+        <source media="(prefers-color-scheme: dark)" srcset="./assets/project_dark.png">
+        <source media="(prefers-color-scheme: light)" srcset="./assets/project_light.png">
+        <img src="./assets/project_dark.png" alt="Projects" width="100%">
       </picture>
     </td>
     <td width="50%">
       <picture>
-        <source media="(prefers-color-scheme: dark)" srcset="./assets/knowledge_base_dark.png">
-        <source media="(prefers-color-scheme: light)" srcset="./assets/knowledge_base_light.png">
-        <img src="./assets/knowledge_base_dark.png" alt="Knowledge Base Interface" width="100%">
-      </picture>
-    </td>
-  </tr>
-  <tr>
-    <td colspan="2" align="center">
-      <br/>
-      <picture>
         <source media="(prefers-color-scheme: dark)" srcset="./assets/model_store_dark.png">
         <source media="(prefers-color-scheme: light)" srcset="./assets/model_store_light.png">
-        <img src="./assets/model_store_dark.png" alt="Model Store Interface" width="50%">
+        <img src="./assets/model_store_dark.png" alt="Model Store" width="100%">
       </picture>
     </td>
   </tr>
@@ -75,8 +81,8 @@ No complex configuration needed!
 
 ## 📄 Documentation
 
-Want to learn more? Check out our user-friendly documentation [here](https://deepwiki.com/zhang-hongshen/ModelCraft).
+Want to learn more? See our [documentation](https://deepwiki.com/zhang-hongshen/ModelCraft).
 
 ## 📜 License
 
-ModelCraft is freely available under the MIT License. See the [`LICENSE`](./LICENSE) file for more details.
+ModelCraft is available under the MIT License. See [`LICENSE`](./LICENSE) for details.

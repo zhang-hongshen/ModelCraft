@@ -12,7 +12,7 @@ import MLX
 import MLXLLM
 import MLXLMCommon
 import MLXVLM
-
+import Hub
 import Tokenizers
 
 
@@ -38,15 +38,19 @@ class LMService {
         // Return cached model if available to avoid reloading
         if let container = modelCache.object(forKey: model.id as NSString) {
             return container
-        } else {
-            // Load model
-            let container = try await loadModelContainer(hub: .shared, configuration: ModelConfiguration(id: model.id))
-            
-            // Cache the loaded model for future use
-            modelCache.setObject(container, forKey: model.id as NSString)
-            
-            return container
         }
+        let container: ModelContainer
+        do {
+            // Load model from on-disk file
+            container = try await loadModelContainer(configuration: .init(directory: HubApi.shared.localRepoLocation(.init(id: model.id))))
+        } catch {
+            // Download model from remote repo
+            container = try await loadModelContainer(hub: .shared, configuration: .init(id: model.id))
+        }
+        
+        // Cache the loaded model for future use
+        modelCache.setObject(container, forKey: model.id as NSString)
+        return container
     }
     
     /// Generates text based on the provided messages using the specified model.

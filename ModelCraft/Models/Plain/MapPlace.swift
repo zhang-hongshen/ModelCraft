@@ -17,8 +17,8 @@ struct MapPlace: Codable, Sendable, Hashable, Identifiable {
     let phoneNumber: String?
     let website: String?
     
-    init(name: String, address: String, latitude: Double, longitude: Double, distanceInMeters: Double?,
-         phoneNumber: String?, website: String?) {
+    init(name: String, address: String, latitude: Double, longitude: Double, distanceInMeters: Double? = nil,
+         phoneNumber: String? = nil, website: String? = nil) {
         self.id = UUID()
         self.name = name
         self.address = address

@@ -18,6 +18,9 @@
     "%lld items" : {
 
     },
+    ">" : {
+
+    },
     "Acknowledgments" : {
       "localizations" : {
         "zh-Hans" : {
@@ -337,6 +340,9 @@
         }
       }
     },
+    "Generating image" : {
+      "comment" : "VoiceOver label for image generation placeholder"
+    },
     "Grid" : {
       "localizations" : {
         "zh-Hans" : {
@@ -555,6 +561,9 @@
     "Searching map for %@" : {
 
     },
+    "Show in Finder" : {
+
+    },
     "Skill activation failed" : {
 
     },
@@ -623,6 +632,9 @@
           }
         }
       }
+    },
+    "This may take a moment" : {
+
     },
     "Today" : {
       "extractionState" : "stale",

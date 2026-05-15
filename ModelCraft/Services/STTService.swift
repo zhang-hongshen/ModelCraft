@@ -53,7 +53,7 @@ class STTService {
 
     func reloadModel() async {
         model = nil
-//        Memory.clearCache()
+        Memory.clearCache()
         await loadModel()
     }
 

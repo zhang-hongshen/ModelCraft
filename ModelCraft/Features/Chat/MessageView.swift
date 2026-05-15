@@ -6,13 +6,10 @@
 //
 
 import SwiftUI
-import AVFoundation
-import NaturalLanguage
 import MapKit
 
 import MarkdownUI
 import Splash
-import MLXLMCommon
 
 struct MessageView: View {
     
@@ -171,7 +168,7 @@ extension MessageView {
             VStack(alignment: .leading) {
                 
                 if message.status == .new {
-                    ProgressView()
+                    ProgressView().controlSize(.small)
                 } else {
                     MessageAttachmentsView(message.attachments)
                     AssistantMessageContentView(message)
@@ -228,9 +225,9 @@ extension MessageView {
             
             
             if let toolCall = message.toolCall {
-                ToolCallView(toolCall: toolCall, toolCallResult:
-                                message.toolCallResult,
-                             toolCallStatus: message.toolCallStatus)
+                ToolCallView(toolCall: toolCall,
+                             result: message.toolCallResult,
+                             status: message.toolCallStatus)
             }
         }
         
@@ -269,25 +266,27 @@ extension MessageView {
     }
 }
 
-import SwiftData
 #Preview {
-    let config = ModelConfiguration(isStoredInMemoryOnly: true)
-    let container = try! ModelContainer(for: Chat.self, Message.self, configurations: config)
     let chat = Chat()
-    let message = Message(role: .assistant, chat: chat, content:
+    let userMessage = Message(role: .user, chat: chat, content:
         """
-        <thought>First...</thought>
-        <action>{"tool": "write_to_file", "parameters": {"path": "1.txt", "content": "test"}}</action>
-        <observation>...</observation>
-        <thought>Next,...</thought>
-        <action>{"tool": "execute_command", "parameters": {"command": "ls"}}</action>
-                <observation>...</observation>
-        <answer>answer</answer>
+        First...
         """)
-    MessageView(message: message)
-        .modelContainer(container)
-        .environment(SpeechManager())
-        .environment(GlobalStore())
-        .environment(UserSettings())
-        .environment(ChatService())
+    let aiMessage = Message(role: .assistant, chat: chat, content:
+        """
+        First...
+        """)
+    
+    ScrollView {
+        VStack {
+            MessageView(message: userMessage)
+            MessageView(message: aiMessage)
+        }
+        .padding()
+    }
+    .environment(SpeechManager())
+    .environment(GlobalStore())
+    .environment(UserSettings())
+    .environment(ChatService())
+    
 }

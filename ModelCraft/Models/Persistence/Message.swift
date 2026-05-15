@@ -30,14 +30,14 @@ class Message {
         
         set {
             guard let newValue else {
-                _toolCall = nil
+                _toolCallResult = nil
                 return
             }
             
             if let data = try? JSONEncoder().encode(newValue) {
-                _toolCall = String(data: data, encoding: .utf8)
+                _toolCallResult = String(data: data, encoding: .utf8)
             } else {
-                _toolCall = nil
+                _toolCallResult = nil
             }
         }
     }
@@ -77,14 +77,10 @@ class Message {
         
     /// UI state for the tool row when this message carries a `toolCall`; `nil` if there is no tool call.
     var toolCallStatus: ToolCallStatus {
-        switch toolCallResult {
-        case nil:
+        guard let result = toolCallResult else {
             return .running
-        case let result? where result.isError:
-            return .failed
-        case .some:
-            return .completed
         }
+        return result.isError ? .failed : .completed
     }
 }
 

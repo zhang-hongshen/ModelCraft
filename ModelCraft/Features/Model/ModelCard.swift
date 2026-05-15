@@ -160,7 +160,7 @@ extension ModelCard {
                             }
                         }
                 } else {
-                    ProgressView()
+                    ProgressView().controlSize(.small)
                 }
                 
             case .stopped:

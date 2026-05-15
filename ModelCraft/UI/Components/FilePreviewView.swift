@@ -131,3 +131,8 @@ struct QuickLookPreview: NSViewRepresentable {
 }
 
 #endif
+
+
+#Preview {
+    FilePreviewView(url: URL.documentsDirectory.appendingPathComponent("1", conformingTo: .pdf))
+}

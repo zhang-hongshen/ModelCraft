@@ -54,8 +54,9 @@ struct ChatView: View {
                         }
                     }
                 )
-                .safeAreaPadding()
                 .background(.clear)
+                .safeAreaPadding()
+                
             }
     }
 }
@@ -119,7 +120,7 @@ extension ChatView {
         } label: {
             switch voiceState {
             case .loading:
-                ProgressView()
+                ProgressView().controlSize(.small)
             case .recording:
                 Image(systemName: "stop.circle.fill")
 
