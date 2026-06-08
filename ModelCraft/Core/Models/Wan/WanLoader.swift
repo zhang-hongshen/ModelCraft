@@ -12,11 +12,10 @@ import MLX
 
 public class WanLoader {
 
-    private static func resolve(hub: HubApi = HubApi(), configuration: WanConfiguration, key: WanFileKey) throws -> URL {
+    private static func resolve(hub: HubApi = .default, configuration: WanConfiguration, key: WanFileKey) throws -> URL {
         precondition(
             configuration.files.keys.contains(key), "configuration \(configuration.id) missing key: \(key)")
-        let repo = Hub.Repo(id: configuration.id)
-        let directory = hub.localRepoLocation(repo)
+        let directory = hub.localRepoLocation(Hub.Repo(id: configuration.id))
         return directory.appending(component: configuration.files[key]!)
     }
     
@@ -55,7 +54,7 @@ public class WanLoader {
         return try MLX.loadArrays(url: url)
     }
     
-    public static func loadDiT(hub: HubApi = HubApi(),
+    public static func loadDiT(hub: HubApi = .default,
                                configuration: WanConfiguration) throws -> WanDiT {
         let ditParameters = configuration.ditParameters
         
@@ -73,7 +72,7 @@ public class WanLoader {
         return dit
     }
 
-    public static func loadVAE(hub: HubApi = HubApi(),
+    public static func loadVAE(hub: HubApi = .default,
                                configuration: WanConfiguration) throws -> WanVAE {
         let vae = WanVAE()
         let url = try resolve(configuration: configuration, key: .vaeWeights)
@@ -82,20 +81,32 @@ public class WanLoader {
         return vae
     }
 
-    public static func loadT5Encoder(hub: HubApi = HubApi(), configuration: WanConfiguration) throws -> T5Encoder{
-        let t5 = createUMT5XXLEncoder()
+    public static func loadT5Encoder(hub: HubApi = .default, configuration: WanConfiguration) throws -> WanT5Encoder{
+        let t5 = WanT5Encoder(
+            vocabSize: 256_384,
+            dim: 4096,
+            dimAttn: 4096,
+            dimFFN: 10_240,
+            numHeads: 64,
+            numLayers: 24,
+            numBuckets: 32,
+            sharedPos: false
+        )
         let url = try resolve(configuration: configuration, key: .t5Weihghts)
         let weights = WanVAE.sanitize(try loadWeights(from: url))
         try t5.update(parameters: .unflattened(weights), verify: .none)
         return t5
     }
 
-    public static func loadTokenizer(hub: HubApi = HubApi(), configuration: WanConfiguration) async throws -> T5Tokenizer {
-        let url = try resolve(configuration: configuration, key: .tokenizer)
-        return try await T5Tokenizer(tokenizerURL: url)
+    public static func loadTokenizer(hub: HubApi = .default, configuration: WanConfiguration) throws -> WanTokenizer {
+        let tokenizerDataURL = try resolve(configuration: configuration, key: .tokenizer)
+        let tokenizerConfigURL = try resolve(configuration: configuration, key: .tokenizerConfig)
+        let tokenizerData = try hub.configuration(fileURL: tokenizerDataURL)
+        let tokenizerConfig = try hub.configuration(fileURL: tokenizerConfigURL)
+        return try WanTokenizer(tokenizerData: tokenizerData, tokenizerConfig: tokenizerConfig)
     }
 
-    public static func loadCLIP(hub: HubApi = HubApi(), configuration: WanConfiguration) throws -> CLIPVisionEncoder {
+    public static func loadCLIP(hub: HubApi = .default, configuration: WanConfiguration) throws -> CLIPVisionEncoder {
         let clip = CLIPVisionEncoder()
         let url = try resolve(configuration: configuration, key: .clipWeights)
         let weights = CLIPVisionEncoder.sanitize(try loadWeights(from: url))

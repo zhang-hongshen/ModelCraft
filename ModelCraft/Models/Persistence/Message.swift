@@ -18,7 +18,8 @@ class Message {
     var chat: Chat?
     var role: MessageRole
     var content: String
-    var attachments: [URL]
+    var files: [URL]
+    
     private var _toolCall: String?
     private var _toolCallResult: String?
     
@@ -64,12 +65,12 @@ class Message {
     var status: MessageStatus
     
     init(role: MessageRole = .user, chat: Chat? = nil, content: String = "",
-         attachments: [URL] = [], toolCall: ToolCall? = nil, toolCallResult: CallToolResult? = nil,
+         files: [URL] = [], toolCall: ToolCall? = nil, toolCallResult: CallToolResult? = nil,
          status: MessageStatus = .generated) {
         self.chat = chat
         self.role = role
         self.content = content
-        self.attachments = attachments
+        self.files = files
         self.status = status
         self.toolCall = toolCall
         self.toolCallResult = toolCallResult
@@ -81,6 +82,44 @@ class Message {
             return .running
         }
         return result.isError ? .failed : .completed
+    }
+}
+
+extension Message {
+    
+    func addFiles<T>(_ urls: T) where T: Swift.Collection, T.Element == URL {
+        var addedFiles: [URL] = []
+        let fileManager = FileManager.default
+        for url in urls {
+            let destinationURL = URL.documentsDirectory.appendingPathComponent(url.lastPathComponent)
+            
+            do {
+                if fileManager.fileExists(atPath: destinationURL.path) {
+                    try fileManager.removeItem(at: destinationURL)
+                }
+                try fileManager.copyItem(at: url, to: destinationURL)
+                addedFiles.append(destinationURL)
+            } catch {
+                print("Moving File failed \(url.lastPathComponent): \(error)")
+            }
+        }
+        files.append(contentsOf: addedFiles)
+    }
+    
+    func removeFiles<T>(_ urls: T) where T: Swift.Collection, T.Element == URL {
+        var removedFiles: [URL] = []
+        let fileManager = FileManager.default
+        for url in urls {
+            if fileManager.fileExists(atPath: url.path) {
+                do {
+                    try fileManager.removeItem(at: url)
+                } catch {
+                    print("Removing File failed \(url.lastPathComponent): \(error)")
+                }
+                removedFiles.append(url)
+            }
+        }
+        files.removeAll { removedFiles.contains($0) }
     }
 }
 

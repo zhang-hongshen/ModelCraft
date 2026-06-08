@@ -11,26 +11,24 @@ import MLX
 
 @Observable
 @MainActor
-public final class WanEvaluator {
+class WanEvaluator {
     
     private let modelFactory = WanModelFactory()
 
     /// Generate a video and return a ``AsyncThrowingStream``
-    public func generate(prompt: String, sampler: String? = nil, outputPath: URL) async throws {
-        let stream = try await generate(prompt: prompt, sampler: sampler)
+    func generate(prompt: String, sampler: String? = nil) async throws -> MLXArray {
         var finalVideo: MLXArray?
-        for try await video in stream {
+        for try await video in try await generate(prompt: prompt, sampler: sampler) {
             finalVideo = video
         }
-        
-        guard let finalVideo else {
+        guard let finalVideo = finalVideo  else {
             throw NSError(domain: "WanEvaluator", code: -1)
         }
-        try WanIO.saveVideo(frames: finalVideo, outputPath: outputPath)
+        return finalVideo
     }
     
     /// Generate a video and return a ``AsyncThrowingStream``
-    public func generate(prompt: String, sampler: String? = nil) async throws -> AsyncThrowingStream<MLXArray, Error> {
+    func generate(prompt: String, sampler: String? = nil) async throws -> AsyncThrowingStream<MLXArray, Error> {
         let model = try await modelFactory.load()
         var parameters = modelFactory.configuration.defaultParameters()
         parameters.prompt = prompt
@@ -86,9 +84,9 @@ actor WanModelFactory {
                 try await configuration.download()
                 let model: Wan
                 if configuration.modelType == .textToVideo {
-                    model = try await WanT2V(configuration: configuration)
+                    model = try WanT2V(configuration: configuration)
                 } else {
-                    model = try await WanI2V(configuration: configuration)
+                    model = try WanI2V(configuration: configuration)
                 }
                 if !conserveMemory {
                     try model.ensureLoaded()

@@ -18,23 +18,30 @@ struct ProjectView: View {
     
     @State private var fileImporterPresented: Bool = false
     @State private var selectedTab: ProjectViewTab = .chat
+    @State private var projectEditionPresented: Bool = false
+    
     @Environment(GlobalStore.self)private var globalStore
+    @Environment(\.modelContext) private var modelContext
     
     var body: some View {
         ContentView()
+            .padding(.top)
             .toolbar(content: ToolbarItems)
             .fileImporter(isPresented: $fileImporterPresented,
                           allowedContentTypes: [.data, .folder],
                           allowsMultipleSelection: true) { result in
                 switch result {
                 case .success(let urls):
-                    urls.forEach { project.files.append($0) }
+                    project.addFiles(urls)
                 case .failure(let error):
                     print(error.localizedDescription)
                 }
             }
+            .sheet(isPresented: $projectEditionPresented){
+              ProjectEdition(project: project)
+            }
             .dropDestination(for: URL.self) { items, location in
-                project.files.append(contentsOf: items)
+                project.addFiles(items)
                 return true
             }
     }
@@ -44,10 +51,24 @@ extension ProjectView {
     
     @ToolbarContentBuilder
     func ToolbarItems() -> some ToolbarContent {
-        ToolbarItemGroup {
+        
+        ToolbarItemGroup(placement: .primaryAction){
             Button("Add Files", systemImage: "doc.badge.plus") {
                 fileImporterPresented = true
             }
+            Menu {
+                
+                Button("Edit") {
+                    projectEditionPresented = true
+                }
+                DeleteButton(style: .iconAndText) {
+                    modelContext.delete(project)
+                    globalStore.currentTab = nil
+                }
+            } label: {
+                Image(systemName: "ellipsis")
+            }
+            .menuIndicator(.hidden)
         }
     }
     
@@ -65,13 +86,17 @@ extension ProjectView {
                 .tag(ProjectViewTab.file)
                 .tabItem{
                     Text("Files")
+                }.toolbar {
+                    Button("Add Files", systemImage: "doc.badge.plus") {
+                        fileImporterPresented = true
+                    }
                 }
             
-        }
+        }.tabViewStyle(.grouped)
+        
     }
 }
 
-#Preview {
-    ProjectView(project: Project())
-        .environment(GlobalStore())
+#Preview(traits: .preview) {
+    ProjectView(project: .preview)
 }

@@ -14,9 +14,13 @@ struct ChatView: View {
     @State var chat: Chat?
     
     @Query private var availableModels: [LocalModel] = []
+    @Query(Project.fetch()) private var projects: [Project]
+    
+    @Query(ModelTask.fetchUnCompletedDownloadTask)
+    private var uncompletedDownloadTasks: [ModelTask] = []
+    
     @State private var draft = Message(role: .user)
     @State private var selectedImages = Set<Data>()
-    @State private var isVoiceModeActive = false
     @State var voiceState: VoiceState = .idle
     
     enum VoiceState {
@@ -26,38 +30,35 @@ struct ChatView: View {
     }
     
     @Environment(GlobalStore.self) private var globalStore
-    @Environment(\.horizontalSizeClass) private var sizeClass
     @Environment(STTService.self) private var sttService
     
     private let chatService = ChatService()
-    @Environment(STTService.self) private var service
     private static let minWidth: CGFloat = 270
     
     var body: some View {
         MainView()
             .frame(minWidth: ChatView.minWidth, minHeight: 250)
             .toolbar(content: ToolbarItems)
-            .safeAreaInset(edge: .bottom) {
-                ChatInputView(
-                    userInput: draft,
-                    trailing: {
-                        HStack {
-                            if let chat = chat, chat.isGenerating {
-                                StopGenerateMessageButton()
-                            } else {
-                                if draft.content.isEmpty {
-                                    voiceModeButton()
-                                } else {
-                                    SubmitMessageButton()
-                                }
-                            }
-                        }
-                    }
-                )
-                .background(.clear)
-                .safeAreaPadding()
-                
-            }
+//            .safeAreaInset(edge: .bottom) {
+//                ChatInputView(
+//                    userInput: draft,
+//                    trailing: {
+//                        HStack {
+//                            if let chat = chat, chat.isGenerating {
+//                                StopGeneratingMessageButton()
+//                            } else {
+//                                if draft.content.isEmpty {
+//                                    voiceModeButton()
+//                                } else {
+//                                    SubmitMessageButton()
+//                                }
+//                            }
+//                        }
+//                    }
+//                )
+//                .safeAreaPadding()
+//                .shadow(color: Color.primary.opacity(0.1), radius: 8, x: 0, y: -4)
+//            }
     }
 }
 
@@ -80,6 +81,9 @@ extension ChatView {
                 }
             }
         }
+        ForEach(uncompletedDownloadTasks) { task in
+            ModelTaskView(task: task).disabled(true)
+        }
     }
 
     @ToolbarContentBuilder
@@ -96,6 +100,34 @@ extension ChatView {
             }
             .menuStyle(.button)
         }
+        
+        if let chat = chat {
+            ToolbarItemGroup(placement: .primaryAction) {
+                Button {
+                    globalStore.currentTab = nil
+                } label: {
+                    Image(systemName: "square.and.pencil")
+                }
+                
+                Menu {
+                    Menu("Move to project") {
+                        ForEach(projects) { project in
+                            Button(project.title) {
+                                chat.project = project
+                            }
+                        }
+                    }
+                    DeleteButton(style: .iconAndText) {
+                        chatService.deleteChat(chat)
+                    }
+                } label: {
+                    Image(systemName: "ellipsis")
+                }
+                .menuIndicator(.hidden)
+                
+            }
+        }
+        
     }
     
     @ViewBuilder
@@ -107,10 +139,10 @@ extension ChatView {
                 case .idle:
                     voiceState = .loading
                     await sttService.loadModel()
-                    await service.startRecording()
+                    await sttService.startRecording()
                     voiceState = .recording
                 case .recording:
-                    service.stopRecording()
+                    sttService.stopRecording()
                     voiceState = .idle
 
                 case .loading:
@@ -122,37 +154,39 @@ extension ChatView {
             case .loading:
                 ProgressView().controlSize(.small)
             case .recording:
-                Image(systemName: "stop.circle.fill")
-
+                Image(systemName: "stop").font(.title3)
             case .idle:
-                Image(systemName: "waveform.circle.fill")
+                Image(systemName: "waveform").font(.title3)
             }
         }
-        .tint(voiceState == .recording
-              ? .accentColor
-              : (disabled ? .secondary : .primary))
+        .buttonStyle(.borderedProminent)
+        .buttonBorderShape(.circle)
         .disabled(disabled)
+        .help("Voice Mode")
     }
     
     
     @ViewBuilder
-    func StopGenerateMessageButton() -> some View {
+    func StopGeneratingMessageButton() -> some View {
         Button {
             if let chat = chat {
                 chatService.stopGenerating(chat: chat)
             }
         } label: {
-            Image(systemName: "stop.circle.fill")
+            Image(systemName: "stop.fill").font(.title3)
         }
+        .buttonStyle(.borderedProminent)
+        .buttonBorderShape(.circle)
     }
     
     @ViewBuilder
     func SubmitMessageButton() -> some View {
         let disabled = globalStore.selectedModel == nil || draft.content.isEmpty
         Button(action: submitDraft) {
-            Image(systemName: "arrow.up.circle.fill")
+            Image(systemName: "arrow.up").font(.title)
         }
-        .tint(disabled ? .secondary :  .primary)
+        .buttonStyle(.borderedProminent)
+        .buttonBorderShape(.circle)
         .disabled(disabled)
         .keyboardShortcut(.return, modifiers: .command)
     }
@@ -170,28 +204,54 @@ extension ChatView {
     
     @ViewBuilder
     func MainView() -> some View {
-        if let chat = chat {
-            ScrollViewReader { proxy in
-                ScrollView {
-                    MessagesView(chat.sortedMessages)
-                    .safeAreaPadding()
-                    
-                    Text(service.transcript)
-                        .padding()
-                        .animation(.easeInOut, value: service.transcript)
+        VStack {
+            if let chat = chat {
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        MessagesView(chat.sortedMessages)
+                        .safeAreaPadding()
+                        
+                        Text(sttService.transcript)
+                            .padding()
+                            .animation(.easeInOut, value: sttService.transcript)
+                    }
+                    .contentMargins(.leading, Layout.padding, for: .scrollContent)
+                    .contentMargins(0, for: .scrollIndicators)
+                    .onChange(of: chat.sortedMessages.last) {
+                        scrollToBottom(proxy)
+                    }
+                    .onAppear {
+                        scrollToBottom(proxy)
+                    }
                 }
-                .contentMargins(.leading, Layout.padding, for: .scrollContent)
-                .contentMargins(0, for: .scrollIndicators)
-                .onChange(of: chat.sortedMessages.last) {
-                    scrollToBottom(proxy)
-                }
+                .scrollDismissesKeyboard(.interactively)
+                .scrollTargetBehavior(.paging)
+            } else {
+                Text("How can I help you today?")
+                    .font(.title.bold())
+                    .multilineTextAlignment(.leading)
             }
-            .scrollDismissesKeyboard(.interactively)
-            .scrollTargetBehavior(.paging)
-        } else {
-            Text("How can I help you today?").font(.title.bold())
-                .multilineTextAlignment(.leading)
+            
+            ChatInputView(
+                userInput: draft,
+                trailing: {
+                    HStack {
+                        if let chat = chat, chat.isGenerating {
+                            StopGeneratingMessageButton()
+                        } else {
+                            if draft.content.isEmpty {
+                                voiceModeButton()
+                            } else {
+                                SubmitMessageButton()
+                            }
+                        }
+                    }
+                }
+            )
+            .safeAreaPadding()
+            .shadow(color: Color.primary.opacity(0.1), radius: 8, x: 0, y: -4)
         }
+        
     }
     
 }
@@ -208,7 +268,7 @@ extension ChatView {
             globalStore.currentTab = .chat(activeChat)
         }
         let message = Message(role: .user, chat: activeChat,
-                              content: draft.content, attachments: draft.attachments)
+                              content: draft.content, files: draft.files)
         clearDraft()
         Task {
             try await chatService.sendMessage(
@@ -221,7 +281,7 @@ extension ChatView {
     
     func clearDraft() {
         draft.content = ""
-        draft.attachments = []
+        draft.files = []
     }
     
     func scrollToBottom(_ proxy: ScrollViewProxy) {
@@ -233,11 +293,6 @@ extension ChatView {
 }
 
 
-#Preview {
-    ChatView(chat: Chat())
-        .environment(GlobalStore())
-        .environment(STTService())
-        .modelContainer(ModelContainer.shared)
+#Preview(traits: .preview){
+    ChatView(chat: .preview)
 }
-
-

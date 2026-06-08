@@ -4,17 +4,6 @@
     "" : {
 
     },
-    "%lld days ago" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld天前"
-          }
-        }
-      }
-    },
     "%lld items" : {
 
     },
@@ -120,7 +109,7 @@
         }
       }
     },
-    "Chat" : {
+    "Chats" : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -129,9 +118,6 @@
           }
         }
       }
-    },
-    "Chats" : {
-
     },
     "Click failed at (%lf, %lf)" : {
       "localizations" : {
@@ -313,22 +299,57 @@
       }
     },
     "Failed to load map" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "加载地图失败"
+          }
+        }
+      }
     },
     "Failed to Load Waveform" : {
 
     },
     "Failed to parse map data" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "解析地图数据失败"
+          }
+        }
+      }
     },
     "Failed to read %@" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "读取%@失败"
+          }
+        }
+      }
     },
     "Failed to write %@" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "写入%@失败"
+          }
+        }
+      }
     },
     "Files" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "文件"
+          }
+        }
+      }
     },
     "General" : {
       "localizations" : {
@@ -341,7 +362,14 @@
       }
     },
     "Generating image" : {
-      "comment" : "VoiceOver label for image generation placeholder"
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "生成图片中"
+          }
+        }
+      }
     },
     "Grid" : {
       "localizations" : {
@@ -353,25 +381,35 @@
         }
       }
     },
-    "How can I help you today ?" : {
-      "extractionState" : "stale",
+    "How can I help you today?" : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "我能帮您什么吗？"
+            "value" : "我今天能帮您什么吗？"
           }
         }
       }
     },
-    "How can I help you today?" : {
-
-    },
     "Image created" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "图像已生成"
+          }
+        }
+      }
     },
     "Image creation failed" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "图像生成失败"
+          }
+        }
+      }
     },
     "Language" : {
       "localizations" : {
@@ -404,14 +442,11 @@
       }
     },
     "Map search failed" : {
-
-    },
-    "Model" : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "模型"
+            "value" : "地图搜索失败"
           }
         }
       }
@@ -430,7 +465,14 @@
 
     },
     "Move to project" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "移动到项目"
+          }
+        }
+      }
     },
     "Moved to (%lf, %lf)" : {
       "localizations" : {
@@ -455,6 +497,26 @@
     "Name" : {
 
     },
+    "New Chat" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "新建对话"
+          }
+        }
+      }
+    },
+    "New Project" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "新建项目"
+          }
+        }
+      }
+    },
     "No files added yet" : {
 
     },
@@ -478,7 +540,27 @@
         }
       }
     },
-    "Project" : {
+    "Photos" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "照片"
+          }
+        }
+      }
+    },
+    "Project Documentation" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "项目文档"
+          }
+        }
+      }
+    },
+    "Projects" : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -488,9 +570,6 @@
         }
       }
     },
-    "Project Documentation" : {
-
-    },
     "Ran %@" : {
 
     },
@@ -498,6 +577,9 @@
 
     },
     "Reading %@" : {
+
+    },
+    "Recents" : {
 
     },
     "Refresh" : {
@@ -562,7 +644,14 @@
 
     },
     "Show in Finder" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在访达中显示"
+          }
+        }
+      }
     },
     "Skill activation failed" : {
 
@@ -636,17 +725,6 @@
     "This may take a moment" : {
 
     },
-    "Today" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "今天"
-          }
-        }
-      }
-    },
     "Tool" : {
 
     },
@@ -690,7 +768,14 @@
       }
     },
     "Video creation failed" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "视频生成失败"
+          }
+        }
+      }
     },
     "Vision" : {
       "localizations" : {
@@ -701,6 +786,9 @@
           }
         }
       }
+    },
+    "Voice Mode" : {
+
     },
     "Waiting to delete" : {
       "localizations" : {
@@ -738,17 +826,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "已写入%@"
-          }
-        }
-      }
-    },
-    "Yesterday" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "昨天"
           }
         }
       }

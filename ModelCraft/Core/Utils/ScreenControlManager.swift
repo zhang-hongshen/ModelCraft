@@ -7,10 +7,11 @@
 
 import Foundation
 import UniformTypeIdentifiers
+import CoreGraphics
 
 #if canImport(AppKit)
 import AppKit
-import CoreGraphics
+import ScreenCaptureKit
 #elseif canImport(UIKit)
 import UIKit
 #endif
@@ -34,19 +35,20 @@ class ScreenControlManager {
     }
 
     // MARK: - Screenshot
-    func taskScreenshot() -> CGImage? {
+    func taskScreenshot() async throws -> CGImage? {
         #if canImport(AppKit)
-        var displayCount: UInt32 = 0
-        CGGetActiveDisplayList(0, nil, &displayCount)
-
-        var displays = [CGDirectDisplayID](repeating: 0, count: Int(displayCount))
-        CGGetActiveDisplayList(displayCount, &displays, &displayCount)
 
         var images: [(CGImage, CGRect)] = []
-
-        for display in displays {
-            guard let image = CGDisplayCreateImage(display) else { continue }
-            images.append((image, CGDisplayBounds(display)))
+        let content = try await SCShareableContent.current
+        
+        for display in content.displays {
+            let config = SCStreamConfiguration()
+            config.width = display.width
+            config.height = display.height
+            config.showsCursor = false
+            let filter = SCContentFilter(display: display, excludingWindows: [])
+            let image = try await SCScreenshotManager.captureImage(contentFilter: filter, configuration: config)
+            images.append((image, display.frame))
         }
         
         guard let ctx = CGContext(

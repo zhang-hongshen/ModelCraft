@@ -67,29 +67,32 @@ extension ModelTask {
 
 extension ModelTask {
     
-    // Predicate by Status
-    static func predicateByStatus(_ status: TaskStatus) -> Predicate<ModelTask> {
+    static func fetchByStatus(_ status: TaskStatus) -> FetchDescriptor<ModelTask> {
         let _status = status.rawValue
-        return #Predicate<ModelTask> { $0._status == _status }
+        let predicate = #Predicate<ModelTask> { $0._status == _status }
+        var descriptor = FetchDescriptor<ModelTask>(predicate: predicate)
+        descriptor.sortBy = [.init(\.createdAt, order: .reverse)]
+        return descriptor
     }
     
-    // Predicate by Type
-    static func predicateByType(_ type: TaskType) -> Predicate<ModelTask> {
+    static func fetchByType(_ type: TaskType) -> FetchDescriptor<ModelTask> {
         let _type = type.rawValue
-        return #Predicate<ModelTask> { $0._type == _type}
+        let predicate = #Predicate<ModelTask> { $0._type == _type}
+        var descriptor = FetchDescriptor<ModelTask>(predicate: predicate)
+        descriptor.sortBy = [.init(\.createdAt, order: .reverse)]
+        return descriptor
     }
     
-    static var predicateUnCompletedDownloadTask: Predicate<ModelTask> {
+    static var fetchUnCompletedDownloadTask: FetchDescriptor<ModelTask> {
         let _status = TaskStatus.completed.rawValue
         let _type = TaskType.download.rawValue
-        return #Predicate<ModelTask> {
+        let predicate = #Predicate<ModelTask> {
             $0._type == _type && $0._status != _status }
+        var descriptor = FetchDescriptor<ModelTask>(predicate: predicate)
+        descriptor.sortBy = [.init(\.createdAt, order: .reverse)]
+        return descriptor
     }
     
-    static var predicateUnCompletedTask: Predicate<ModelTask> {
-        let _status = TaskStatus.completed.rawValue
-        return #Predicate<ModelTask> { $0._status != _status }
-    }
 }
 
 enum TaskType: Int, Codable {

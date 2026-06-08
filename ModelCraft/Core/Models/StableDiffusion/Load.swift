@@ -115,20 +115,20 @@ public struct StableDiffusionConfiguration: Sendable {
             StableDiffusion
 
     public func download(
-        hub: HubApi = HubApi(), progressHandler: @escaping (Progress) -> Void = { _ in }
+        hub: HubApi = .default, progressHandler: @escaping (Progress) -> Void = { _ in }
     ) async throws {
         let repo = Hub.Repo(id: self.id)
         try await hub.snapshot(
             from: repo, matching: Array(files.values), progressHandler: progressHandler)
     }
 
-    public func textToImageGenerator(hub: HubApi = HubApi(), configuration: LoadConfiguration)
+    public func textToImageGenerator(hub: HubApi = .default, configuration: LoadConfiguration)
         throws -> TextToImageGenerator?
     {
         try factory(hub, self, configuration) as? TextToImageGenerator
     }
 
-    public func imageToImageGenerator(hub: HubApi = HubApi(), configuration: LoadConfiguration)
+    public func imageToImageGenerator(hub: HubApi = .default, configuration: LoadConfiguration)
         throws -> ImageToImageGenerator?
     {
         try factory(hub, self, configuration) as? ImageToImageGenerator

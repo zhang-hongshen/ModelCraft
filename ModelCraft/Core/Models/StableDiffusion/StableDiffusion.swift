@@ -133,7 +133,7 @@ open class StableDiffusionBase: StableDiffusion, TextToImageGenerator {
         let conditioning = conditionText(
             text: parameters.prompt, imageCount: parameters.imageCount,
             cfgWeight: parameters.cfgWeight, negativeText: parameters.negativePrompt)
-
+        
         let xt = sampler.samplePrior(
             shape: [parameters.imageCount] + parameters.latentSize + [autoencoder.latentChannels],
             dType: dType)

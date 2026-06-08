@@ -65,7 +65,7 @@ struct ContentBlockView: View {
 
             if let data = Data(base64Encoded: audioContent.data) {
 
-                WaveformView(
+                AudioPlayer(
                     data: data,
                     mimeType: audioContent.mimeType
                 )
@@ -109,7 +109,7 @@ struct ResourceLinkBlock: View {
 
             } else if mimeType.hasPrefix("audio") {
 
-                WaveformView(url: link.url)
+                AudioPlayer(url: link.url)
             }
 
         } else {
@@ -126,15 +126,14 @@ struct EmbeddedResourceBlock: View {
     var body: some View {
 
         switch resource.resource {
+            
+        case .text(let textResource):
+                
+            Text(textResource.text)
 
-        case .text(let text):
-
-            Text(text.text)
-
-        case .blob(let blob):
-
+        case .blob(let blobResource):
             Text(
-                "Binary data (\(blob.mimeType ?? "unknown"))"
+                "Binary data (\(blobResource.mimeType ?? "unknown"))"
             )
         }
     }

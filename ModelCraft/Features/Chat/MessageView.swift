@@ -70,10 +70,10 @@ extension MessageView {
     }
     
     @ViewBuilder
-    func MessageAttachmentsView(_ attachments: [URL]) -> some View {
+    func MessageFilesView(_ attachments: [URL]) -> some View {
         LazyVGrid(columns: MessageView.columns){
             ForEach(attachments, id: \.self) { url in
-                AttachmentContentView(url: url).frame(height: 70)
+                MessageFileContentView(url: url).frame(height: 70)
             }
         }
     }
@@ -89,7 +89,7 @@ extension MessageView {
         HStack(alignment: .top) {
             Spacer()
             VStack(alignment: .trailing) {
-                MessageAttachmentsView(message.attachments)
+                MessageFilesView(message.files)
                     .frame(maxWidth: .infinity, alignment: .trailing)
                 if isEditing {
                     ChatInputView(
@@ -105,9 +105,10 @@ extension MessageView {
                                     submitMessage()
                                     isEditing = false
                                 } label: {
-                                    Image(systemName: "arrow.up.circle.fill")
-                                }
+                                    Image(systemName: "arrow.up")
+                                }.buttonBorderShape(.circle)
                             }
+                            
                             .buttonStyle(.borderless)
                             .imageScale(.large)
                         })
@@ -170,7 +171,7 @@ extension MessageView {
                 if message.status == .new {
                     ProgressView().controlSize(.small)
                 } else {
-                    MessageAttachmentsView(message.attachments)
+                    MessageFilesView(message.files)
                     AssistantMessageContentView(message)
                         .contextMenu {
                             AssistantButtons()
@@ -266,27 +267,13 @@ extension MessageView {
     }
 }
 
-#Preview {
-    let chat = Chat()
-    let userMessage = Message(role: .user, chat: chat, content:
-        """
-        First...
-        """)
-    let aiMessage = Message(role: .assistant, chat: chat, content:
-        """
-        First...
-        """)
-    
+#Preview(traits: .preview){
     ScrollView {
         VStack {
-            MessageView(message: userMessage)
-            MessageView(message: aiMessage)
+            ForEach(Message.previews) {
+                MessageView(message: $0)
+            }
         }
         .padding()
     }
-    .environment(SpeechManager())
-    .environment(GlobalStore())
-    .environment(UserSettings())
-    .environment(ChatService())
-    
 }

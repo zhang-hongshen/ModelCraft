@@ -21,7 +21,7 @@ final class ModelCraftTests: XCTestCase {
     
     func testReadAudioFile() async throws {
        let bundle = Bundle(for: type(of: self))
-        guard let url = bundle.url(forResource: "test", withExtension: "mp3") else {
+        guard let url = bundle.url(forResource: "example", withExtension: "mp3") else {
            XCTFail("File not found")
            return
        }

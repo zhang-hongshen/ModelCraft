@@ -33,7 +33,7 @@ class LMService {
     /// - Parameter modelID: The model configuration to load
     /// - Returns: A ModelContainer instance containing the loaded model
     /// - Throws: Errors that might occur during model loading
-    private func load(model: LocalModel) async throws -> ModelContainer {
+    private func load(hub: HubApi = .default, model: LocalModel) async throws -> ModelContainer {
         
         // Return cached model if available to avoid reloading
         if let container = modelCache.object(forKey: model.id as NSString) {
@@ -42,10 +42,10 @@ class LMService {
         let container: ModelContainer
         do {
             // Load model from on-disk file
-            container = try await loadModelContainer(configuration: .init(directory: HubApi.shared.localRepoLocation(.init(id: model.id))))
+            container = try await loadModelContainer(configuration: .init(directory: hub.localRepoLocation(.init(id: model.id))))
         } catch {
             // Download model from remote repo
-            container = try await loadModelContainer(hub: .shared, configuration: .init(id: model.id))
+            container = try await loadModelContainer(hub: hub, configuration: .init(id: model.id))
         }
         
         // Cache the loaded model for future use
@@ -143,7 +143,7 @@ extension LMService {
         
         var images: [UserInput.Image] = []
         var videos: [UserInput.Video] = []
-        for url in message.attachments {
+        for url in message.files {
             if let type = UTType(filenameExtension: url.pathExtension),
                 type.conforms(to: .image) {
                 images.append(.url(url))

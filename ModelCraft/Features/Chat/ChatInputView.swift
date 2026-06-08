@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import PhotosUI
 import UniformTypeIdentifiers
 
 struct ChatInputView<Content: View>: View {
@@ -14,7 +15,22 @@ struct ChatInputView<Content: View>: View {
     var trailing: () -> Content
     
     @State private var fileImporterPresented = false
+    @State private var photosPickerPresented = false
     @Environment(GlobalStore.self) private var globalStore
+    
+    @State private var selectedImages: [PhotosPickerItem] = [] {
+        didSet {
+            var newFiles: [URL] = []
+            for image in selectedImages {
+                Task {
+                    if let url = try await image.loadTransferable(type: URL.self) {
+                        newFiles.append(url)
+                    }
+                }
+            }
+            userInput.files.append(contentsOf: newFiles)
+        }
+    }
     
     init(
         userInput: Message,
@@ -26,17 +42,21 @@ struct ChatInputView<Content: View>: View {
     
     var body: some View {
         MainView()
-            .onDrop(of: [.image, .movie], isTargeted: nil, perform: handleDrop)
+            .dropDestination(for: URL.self){ items, location in
+                userInput.addFiles(items)
+                return true
+            }
             .fileImporter(isPresented: $fileImporterPresented,
                           allowedContentTypes: [.image, .movie],
                           allowsMultipleSelection: true) { result in
                 switch result {
                 case .success(let urls):
-                    userInput.attachments.append(contentsOf: urls)
+                    userInput.addFiles(urls)
                 case .failure(let error):
                     debugPrint(error.localizedDescription)
                 }
             }
+            .photosPicker(isPresented: $photosPickerPresented, selection: $selectedImages)
     }
 }
 
@@ -46,33 +66,44 @@ extension ChatInputView {
     func MainView() -> some View {
         VStack(alignment: .leading) {
             
-            if !userInput.attachments.isEmpty {
+            if !userInput.files.isEmpty {
                 ScrollView(.horizontal) {
                     HStack(alignment: .center) {
-                        ForEach(userInput.attachments, id: \.self) { url in
-                            AttachmentView(
+                        ForEach(userInput.files, id: \.self) { url in
+                            MessageFileView(
                                 url: url,
-                                onDelete: { userInput.attachments.removeAll { $0 == url }}
+                                onDelete: { userInput.removeFiles([url])}
                             ).frame(height: 70)
                         }
                     }
                 }
             }
             
+            ViewThatFits {
+                
+                HStack(alignment: .center) {
+                    UploadButton()
+                    TextField("Type Anything", text: $userInput.content, axis: .vertical)
+                        .lineLimit(1)
+                        .textFieldStyle(.plain)
+                    trailing()
+                }
+                
+                VStack {
+                    TextField("Type Anything", text: $userInput.content, axis: .vertical)
+                        .lineLimit(1...3)
+                        .textFieldStyle(.plain)
+                    
+                    HStack(alignment: .center) {
+                        UploadButton()
+                        Spacer()
+                        trailing()
+                    }
+                }
+            }
             
-            TextField("Type Anything", text: $userInput.content, axis: .vertical)
-                .lineLimit(1...5)
-                .textFieldStyle(.plain)
-                .onDrop(of: [.image, .movie], isTargeted: nil, perform: handleDrop)
             
-            HStack(alignment: .bottom) {
-                UploadButton()
-                Spacer()
-                trailing()
-            }.font(.title2)
         }
-        .buttonStyle(.borderless)
-        .imageScale(.large)
         .padding()
         .background(
             RoundedRectangle().fill(.background)
@@ -81,34 +112,29 @@ extension ChatInputView {
     
     @ViewBuilder
     func UploadButton() -> some View {
-        Button {
-            fileImporterPresented = true
+        Menu {
+            Button {
+                fileImporterPresented = true
+            } label: {
+                Label("Files", systemImage: "doc.badge.plus")
+            }
+            
+            Button {
+                photosPickerPresented = true
+            } label: {
+                Label("Photos", systemImage: "photo.on.rectangle.angled")
+            }
         } label: {
             Image(systemName: "plus")
         }
+        .menuIndicator(.hidden)
+        .menuStyle(.borderlessButton)
+        .help("Add Files")
     }
-    
-    func handleDrop(_ providers: [NSItemProvider]) -> Bool {
-        if providers.isEmpty {
-            return false
-        }
-        for provider in providers {
-            provider.loadObject(ofClass: URL.self) { url, error in
-                if let url = url {
-                    userInput.attachments.append(url)
-                } else if let error = error {
-                    print("Error: \(error.localizedDescription)")
-                }
-            }
-        }
-        return true
-    }
-    
 }
 
-#Preview {
+#Preview(traits: .preview) {
     ChatInputView(
-        userInput: Message(chat: Chat()),
+        userInput: Message(chat: .preview),
         trailing: {})
-    .environment(GlobalStore())
 }

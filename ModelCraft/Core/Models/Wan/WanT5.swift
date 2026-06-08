@@ -156,7 +156,7 @@ public final class T5SelfAttentionBlock: Module {
     }
 }
 
-public final class T5Encoder: Module {
+public final class WanT5Encoder: Module {
     let dim: Int
     let numLayers: Int
     let sharedPos: Bool
@@ -226,17 +226,4 @@ public final class T5Encoder: Module {
         }
         return remapped
     }
-}
-
-public func createUMT5XXLEncoder() -> T5Encoder {
-    T5Encoder(
-        vocabSize: 256_384,
-        dim: 4096,
-        dimAttn: 4096,
-        dimFFN: 10_240,
-        numHeads: 64,
-        numLayers: 24,
-        numBuckets: 32,
-        sharedPos: false
-    )
 }

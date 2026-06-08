@@ -26,7 +26,7 @@ class ScreenControlTool {
         parameters: []
     ) { input in
         print("Capturing screen...")
-        guard let image = await ScreenControlManager.shared.taskScreenshot() else { return nil }
+        guard let image = try await ScreenControlManager.shared.taskScreenshot() else { return nil }
         guard let data = image.data(type: .png) else {
             return nil
         }

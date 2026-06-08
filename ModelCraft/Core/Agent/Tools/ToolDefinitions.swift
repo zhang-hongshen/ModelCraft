@@ -14,6 +14,7 @@ struct ToolDefinition {
         CommandTool.allTools +
         ImageTool.allTools +
         VideoTool.allTools +
+        AudioTool.allTools +
         ScreenControlTool.allTools +
         SkillTool.allTools
 }

@@ -26,8 +26,9 @@ class Chat {
     @Relationship(deleteRule: .cascade, inverse: \Message.chat)
     var messages: [Message] = []
     
-    init(title: String? = nil) {
+    init(title: String? = nil, project: Project? = nil) {
         self.title = title
+        self.project = project
     }
     
 }
@@ -59,5 +60,16 @@ extension Chat {
             return createdAt.formatted(date: .omitted, time: .shortened)
         }
         return createdAt.formatted(date: .abbreviated, time: .omitted)
+    }
+    
+}
+
+extension Chat {
+    static func fetch(limit: Int? = nil, offset: Int? = nil) -> FetchDescriptor<Chat> {
+        var descriptor = FetchDescriptor<Chat>()
+        descriptor.fetchLimit = limit
+        descriptor.fetchOffset = offset
+        descriptor.sortBy = [.init(\.createdAt, order: .reverse)]
+        return descriptor
     }
 }

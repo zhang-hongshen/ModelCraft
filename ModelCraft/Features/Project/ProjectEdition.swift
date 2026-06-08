@@ -9,6 +9,7 @@ import SwiftUI
 import SwiftData
 
 struct ProjectEdition: View {
+    
     @Bindable var project: Project
     @State private var fileImporterPresented: Bool = false
     @State private var selectedFiles: Set<URL> = []
@@ -119,7 +120,7 @@ extension ProjectEdition {
             Button {
                 fileImporterPresented = true
             } label: {
-                Label("Add Files", systemImage: "plus.circle")
+                Label("Add Files", systemImage: "plus")
             }
             
             Button(role: .destructive, action: {
@@ -169,5 +170,5 @@ extension ProjectEdition {
 }
 
 #Preview {
-    ProjectEdition(project: Project())
+    ProjectEdition(project: .preview)
 }

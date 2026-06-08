@@ -8,36 +8,32 @@
 import SwiftUI
 
 struct ProjectChatView: View {
+    
     @State var chats: [Chat]
-    @State private var selectedChats: Set<Chat> = []
+    @State private var chat: Chat? = nil
     
     var body: some View {
-        NavigationStack {
-            List(selection: $selectedChats) {
+        VStack {
+            ChatView(chat: chat)
+            List(selection: $chat) {
                 ForEach(chats) { chat in
                     NavigationLink(value: chat) {
                         ChatCard(chat: chat)
                     }
                     .buttonStyle(.plain)
                     .listRowSeparator(.hidden)
-                    .listRowBackground(Color.clear)
-                    .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
                 }
-            }
-            .listStyle(.plain)
-            .navigationDestination(for: Chat.self) { chat in
-                ChatView(chat: chat)
             }
         }
     }
 }
 
 struct ChatCard: View {
-    let chat: Chat
+    @State var chat: Chat
     @State private var isHovered = false
     
     var body: some View {
-        HStack(spacing: 12) {
+        HStack {
             ZStack {
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
                     .fill(Color.accentColor.opacity(0.1))
@@ -70,16 +66,6 @@ struct ChatCard: View {
                     .truncationMode(.tail)
             }
         }
-        .padding(12)
-        .background {
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(.ultraThinMaterial)
-                .overlay {
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .stroke(.primary.opacity(isHovered ? 0.15 : 0.05), lineWidth: 1)
-                }
-        }
-        .shadow(color: .black.opacity(isHovered ? 0.05 : 0), radius: 10, x: 0, y: 5)
         .onHover { hovering in
             withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
                 isHovered = hovering
@@ -88,9 +74,6 @@ struct ChatCard: View {
     }
 }
 
-#Preview {
-    ProjectChatView(chats: [
-        Chat(title: "Make a plan"),
-        Chat(title: "Do a job")
-    ])
+#Preview(traits: .preview) {
+    ProjectChatView(chats: Chat.previews)
 }

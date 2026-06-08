@@ -16,14 +16,11 @@ struct DownloadedModelsView: View {
     @Environment(\.modelContext) private var modelContext
     
     @Query(sort: \LocalModel.createdAt, order: .reverse) private var models: [LocalModel]
-    @Query(filter: ModelTask.predicateByType(.delete),
-           sort: \ModelTask.createdAt,
-           order: .reverse)
+    
+    @Query(ModelTask.fetchByType(.delete))
     private var deleteTasks: [ModelTask] = []
     
-    @Query(filter: ModelTask.predicateUnCompletedDownloadTask,
-           sort: \ModelTask.createdAt,
-           order: .reverse)
+    @Query(ModelTask.fetchUnCompletedDownloadTask)
     private var uncompletedDownloadTasks: [ModelTask] = []
     
     var body: some View {
@@ -63,14 +60,12 @@ extension DownloadedModelsView {
         }
     }
     
-    @ViewBuilder
     func DownloadedModelListCell(_ model: LocalModel) -> some View {
         let formatter = ByteCountFormatter()
         formatter.allowedUnits = [.useGB, .useMB]
         formatter.countStyle = .file
         
-        return
-        HStack {
+        return HStack {
             Label(model.displayName, systemImage: "shippingbox")
             
             Spacer()
@@ -97,5 +92,5 @@ extension DownloadedModelsView {
 
 #Preview {
     DownloadedModelsView()
-        .modelContainer(for: [ModelTask.self], inMemory: true)
+        .modelContainer(.preview)
 }

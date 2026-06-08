@@ -18,6 +18,11 @@ class ChatService {
     private var currentTask: Task<Void, any Error>? = nil
     
     @MainActor
+    func deleteChat(_ chat: Chat) {
+        ModelContainer.shared.mainContext.delete(chat)
+    }
+    
+    @MainActor
     func createChat() -> Chat {
         let chat = Chat()
         ModelContainer.shared.mainContext.persist(chat)

@@ -52,4 +52,6 @@ extension URL {
         let (_, audioData) = try loadAudioArray(from: self)
         return sttModel.generate(audio: audioData).text
     }
+    
+    
 }

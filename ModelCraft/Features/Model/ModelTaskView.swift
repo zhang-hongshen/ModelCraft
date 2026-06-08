@@ -70,17 +70,10 @@ extension ModelTaskView {
     }
 }
 
-#Preview {
-    let runningTask = ModelTask(modelId: "",
-                         status: .running,
-                         type: .download)
-    let stoppedTask = ModelTask(modelId: "",
-                                status: .stopped,
-                                type: .download)
-    let failedTask = ModelTask(modelId: "",
-                                status: .failed,
-                                type: .download)
-    ModelTaskView(task: runningTask)
-    ModelTaskView(task: stoppedTask)
-    ModelTaskView(task: failedTask)
+#Preview(traits: .preview) {
+    ScrollView {
+        ForEach(ModelTask.previews) {
+            ModelTaskView(task: $0)
+        }
+    }
 }

@@ -4,6 +4,7 @@
 //
 //  Created by Hongshen on 31/3/2024.
 //
+
 import Foundation
 import SwiftData
 
@@ -14,14 +15,24 @@ class Project {
     var title: String
     
     @Relationship(deleteRule: .cascade, inverse: \Chat.project)
-    var chats: [Chat]
+    var chats: [Chat] = []
     
     var files: [URL]
     
-    init(title: String = "", files: [URL] = [], chats: [Chat] = []) {
+    init(title: String = "", files: [URL] = []) {
         self.title = title
         self.files = files
-        self.chats = chats
+    }
+}
+
+extension Project {
+    
+    static func fetch(limit: Int? = nil, offset: Int? = nil) -> FetchDescriptor<Project> {
+        var descriptor = FetchDescriptor<Project>()
+        descriptor.fetchLimit = limit
+        descriptor.fetchOffset = offset
+        descriptor.sortBy = [.init(\.createdAt, order: .reverse)]
+        return descriptor
     }
 }
 
@@ -78,39 +89,63 @@ extension Project {
         }
     }
     
-    
-    func removeFiles<T>(_ urls: T) where T: Swift.Collection, T.Element == URL {
+    func removeIndex<T>(_ urls: T) where T: Swift.Collection, T.Element == URL {
         let engine = KnowledgeIndexer(dbPath: dbPath)
-        self.files.removeAll { urls.contains($0) }
         engine.removeIndex(paths: urls.compactMap{ $0.path() })
     }
     
     func addFiles<T>(_ urls: T) where T: Swift.Collection, T.Element == URL {
-        let newFiles = urls.filter { !files.contains($0) }
-        var movedFiles: [URL] = []
-        
+        var addedFiles: [URL] = []
         let fileManager = FileManager.default
-        for url in newFiles {
-            let destinationURL = URL.documentsDirectory.appendingPathComponent(url.lastPathComponent)
+        for url in urls {
+            let destinationURL = URL.documentsDirectory
+                .appendingPathComponent(UUID().uuidString)
+                .appendingPathExtension(url.pathExtension)
             
             do {
                 if fileManager.fileExists(atPath: destinationURL.path) {
                     try fileManager.removeItem(at: destinationURL)
                 }
-                try fileManager.moveItem(at: url, to: destinationURL)
-                movedFiles.append(destinationURL)
+                try fileManager.copyItem(at: url, to: destinationURL)
+                addedFiles.append(destinationURL)
             } catch {
                 print("Moving File failed \(url.lastPathComponent): \(error)")
             }
         }
-        
-        if movedFiles.isEmpty {
-            return
+        files.append(contentsOf: addedFiles)
+        Task {
+            createIndex(addedFiles)
         }
-        
-        createIndex(movedFiles)
     }
+    
 
+    func removeFiles(atOffsets: IndexSet) {
+        let urlsToRemove = atOffsets.map { files[$0] }
+        
+        removeFiles(urlsToRemove)
+        
+        files.remove(atOffsets: atOffsets)
+    }
+    
+    func removeFiles<T>(_ urls: T) where T: Swift.Collection, T.Element == URL {
+        var removedFiles: [URL] = []
+        let fileManager = FileManager.default
+        for url in urls {
+            if fileManager.fileExists(atPath: url.path) {
+                do {
+                    try fileManager.removeItem(at: url)
+                } catch {
+                    print("Removing File failed \(url.lastPathComponent): \(error)")
+                }
+                removedFiles.append(url)
+            }
+        }
+        files.removeAll { removedFiles.contains($0) }
+        Task {
+            removeIndex(removedFiles)
+        }
+    }
+    
 }
 
 

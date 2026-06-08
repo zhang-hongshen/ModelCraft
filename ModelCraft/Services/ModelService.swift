@@ -60,14 +60,14 @@ class ModelService {
         }
     }
     
-    func  downloadModel(modelID: String) -> AsyncThrowingStream<Progress, Error> {
+    func downloadModel(hub: HubApi = .default, modelID: String) -> AsyncThrowingStream<Progress, Error> {
         
         let repo = Hub.Repo(id: modelID)
         return AsyncThrowingStream { continuation in
             let task = Task {
                 do {
                     
-                    _ = try await HubApi.shared.snapshot(from: repo) { progress in
+                    _ = try await hub.snapshot(from: repo) { progress in
                         print("\(modelID) \(progress.fractionCompleted)")
                         continuation.yield(progress)
                     }
@@ -83,9 +83,7 @@ class ModelService {
     }
     
     func deleteModel(modelID: String) throws {
-        let modelFolder = URL.applicationSupportDirectory
-            .appendingPathComponent("huggingface", conformingTo: .folder)
-            .appendingPathComponent(modelID, conformingTo: .folder)
+        let modelFolder = HubApi.default.localRepoLocation(.init(id: modelID))
         try FileManager.default.removeItem(at: modelFolder)
     }
     

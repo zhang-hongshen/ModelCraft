@@ -8,14 +8,15 @@
 import Foundation
 import MLX
 import Tokenizers
+import Hub
 
 /// T5 tokenizer for Wan2.1.
-public final class T5Tokenizer {
+public final class WanTokenizer {
     public let tokenizer: Tokenizer
     public let padTokenID: Int
 
-    public init(tokenizerURL: URL) async throws {
-        self.tokenizer = try await AutoTokenizer.from(modelFolder: tokenizerURL)
+    public init(tokenizerData: Config, tokenizerConfig: Config) throws {
+        self.tokenizer = try AutoTokenizer.from(tokenizerConfig: tokenizerConfig, tokenizerData: tokenizerData)
         self.padTokenID = tokenizer.convertTokenToId("<pad>") ?? 0
     }
 
@@ -25,7 +26,7 @@ public final class T5Tokenizer {
         padding: Bool = true,
         truncation: Bool = true
     ) throws -> (inputIDs: MLXArray, attentionMask: MLXArray) {
-        var ids = self.tokenizer.encode(text: text)
+        var ids = tokenizer.encode(text: text)
         
         if truncation && ids.count > maxLength {
             ids = Array(ids.prefix(maxLength))

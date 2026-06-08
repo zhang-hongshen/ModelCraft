@@ -18,7 +18,7 @@ struct ProjectFileView: View {
                 ListCell(url).tag(url)
             }
             .onDelete {
-                project.files.remove(atOffsets: $0)
+                project.removeFiles(atOffsets: $0)
             }
         }
         .listStyle(.inset)
@@ -47,5 +47,5 @@ struct ProjectFileView: View {
 }
 
 #Preview {
-    ProjectFileView(project: Project())
+    ProjectFileView(project: .preview)
 }

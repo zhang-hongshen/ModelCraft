@@ -15,6 +15,7 @@ struct ModelStore: View {
     @State private var models: [ModelStoreModel] = []
     
     @State private var isLoading = false
+    @State private var canLoadMore = true
     @State private var selectedModelName : String? = nil
     @State private var searchText = ""
     @State private var page = 0
@@ -80,11 +81,14 @@ extension ModelStore {
     
     @ViewBuilder
     func LoadMoreView() -> some View {
-        ProgressView()
-            .frame(maxWidth: .infinity)
-            .onAppear {
-                Task { await loadMoreModels() }
-            }
+        if canLoadMore {
+            ProgressView()
+                .frame(maxWidth: .infinity)
+                .onAppear {
+                    Task { await loadMoreModels() }
+                }
+        }
+        
     }
     
     @ViewBuilder
@@ -157,12 +161,17 @@ extension ModelStore {
 extension ModelStore {
     
     func fetchModels() async throws -> [ModelStoreModel] {
-        return try await ModelService.shared.searchModel(keyword: searchText, page: page, pageSize: ModelStore.pageSize)
+        let models = try await ModelService.shared.searchModel(keyword: searchText, page: page, pageSize: ModelStore.pageSize)
+        if models.count < ModelStore.pageSize {
+            canLoadMore = false
+        }
+        return models
     }
     
     func reloadModels() async {
         page = 0
         isLoading = true
+        canLoadMore = true
         defer { isLoading = false }
         do {
             models = try await fetchModels()
@@ -183,8 +192,6 @@ extension ModelStore {
 
 }
 
-#Preview {
+#Preview(traits: .preview) {
     ModelStore()
-        .modelContainer(for: [ModelTask.self], inMemory: true)
-        .environment(GlobalStore())
 }

@@ -21,12 +21,12 @@ open class Wan {
     
     public var dit: WanDiT?
     public var vae: WanVAE?
-    public var encoder: T5Encoder?
-    public var tokenizer: T5Tokenizer
+    public var encoder: WanT5Encoder?
+    public var tokenizer: WanTokenizer
 
     public var nullContext: MLXArray? = nil
     
-    public init(hub: HubApi = HubApi(), configuration: WanConfiguration, dtype: DType = .bfloat16, dit: WanDiT? = nil, vae: WanVAE? = nil, encoder: T5Encoder? = nil, tokenizer: T5Tokenizer? = nil) async throws {
+    public init(hub: HubApi = .default, configuration: WanConfiguration, dtype: DType = .bfloat16, dit: WanDiT? = nil, vae: WanVAE? = nil, encoder: WanT5Encoder? = nil, tokenizer: WanTokenizer? = nil)  throws {
         self.dtype = dtype
         self.configuration = configuration
         self.dit = dit
@@ -35,7 +35,7 @@ open class Wan {
         if let tokenizer = tokenizer {
             self.tokenizer = tokenizer
         } else {
-            self.tokenizer = try await WanLoader.loadTokenizer(configuration: configuration)
+            self.tokenizer = try WanLoader.loadTokenizer(hub: hub, configuration: configuration)
         }
     }
     
@@ -61,7 +61,7 @@ open class Wan {
                 return vae
             }
         }
-        var encoder: T5Encoder {
+        var encoder: WanT5Encoder {
             get throws {
                 if let existing = self.encoder {
                     return existing
@@ -87,7 +87,7 @@ open class Wan {
     
     func encodeText(_ text: String) throws -> MLXArray {
         let tokens = try tokenizer.encode(text, maxLength: 512, padding: true, truncation: true)
-        var encoder: T5Encoder {
+        var encoder: WanT5Encoder {
             get throws {
                 if let existing = self.encoder {
                     return existing
@@ -214,7 +214,6 @@ open class WanT2V: Wan {
         return AsyncStream { continuation in
             guard let dit = self.dit else { return continuation.finish() }
             
-
             if [4, 8].contains(req.quantizeBits) { MLXNN.quantize(model: dit, bits: req.quantizeBits) }
 
             let task = Task {
@@ -271,10 +270,10 @@ open class WanI2V: Wan {
     
     public var clip: CLIPVisionEncoder?
     
-    public init(hub: HubApi = HubApi(), configuration: WanConfiguration, dtype: DType = .bfloat16,
-                dit: WanDiT? = nil, vae: WanVAE? = nil, encoder: T5Encoder? = nil,
-                tokenizer: T5Tokenizer? = nil, clip: CLIPVisionEncoder? = nil) async throws {
-        try await super.init(hub: hub, configuration: configuration, dtype: dtype,
+    public init(hub: HubApi = .default, configuration: WanConfiguration, dtype: DType = .bfloat16,
+                dit: WanDiT? = nil, vae: WanVAE? = nil, encoder: WanT5Encoder? = nil,
+                tokenizer: WanTokenizer? = nil, clip: CLIPVisionEncoder? = nil) throws {
+        try super.init(hub: hub, configuration: configuration, dtype: dtype,
         dit: dit, vae: vae, encoder: encoder, tokenizer: tokenizer)
         self.clip = clip
     }
@@ -494,6 +493,7 @@ struct TeaCacheConfig {
 
 enum WanFileKey {
     case tokenizer
+    case tokenizerConfig
     case vaeWeights
     case ditWeights
     case t5Weihghts
@@ -520,7 +520,7 @@ public struct WanConfiguration: Sendable {
     public let defaultParameters: @Sendable () -> WanEvaluateParameters
 
     public func download(
-        hub: HubApi = HubApi(), progressHandler: @escaping (Progress) -> Void = { _ in }
+        hub: HubApi = .default, progressHandler: @escaping (Progress) -> Void = { _ in }
     ) async throws {
         let repo = Hub.Repo(id: self.id)
         try await hub.snapshot(
@@ -534,6 +534,7 @@ public struct WanConfiguration: Sendable {
             .vaeWeights: "Wan2.1_VAE.pth",
             .t5Weihghts: "models_t5_umt5-xxl-enc-bf16.pth",
             .tokenizer: "google/umt5-xxl/tokenizer.json",
+            .tokenizerConfig: "google/umt5-xxl/tokenizer_config.json"
         ],
         ditParameters: WanDitParameters(dim: 1536, ffnDim: 8960, numHeads: 12,
                                         numLayers: 30),
@@ -553,6 +554,7 @@ public struct WanConfiguration: Sendable {
             .vaeWeights: "Wan2.1_VAE.pth",
             .t5Weihghts: "models_t5_umt5-xxl-enc-bf16.pth",
             .tokenizer: "google/umt5-xxl/tokenizer.json",
+            .tokenizerConfig: "google/umt5-xxl/tokenizer_config.json"
         ],
         ditParameters: WanDitParameters(dim: 5120, ffnDim: 13824, numHeads: 40,
                                         numLayers: 40),
@@ -572,6 +574,7 @@ public struct WanConfiguration: Sendable {
             .vaeWeights: "Wan2.1_VAE.pth",
             .t5Weihghts: "models_t5_umt5-xxl-enc-bf16.pth",
             .tokenizer: "google/umt5-xxl/tokenizer.json",
+            .tokenizerConfig: "google/umt5-xxl/tokenizer_config.json",
             .clipWeights: "models_clip_open-clip-xlm-roberta-large-vit-huge-14.pth"
         ],
         ditParameters: WanDitParameters(dim: 5120, ffnDim: 13824, numHeads: 40, numLayers: 40, inDim: 36),

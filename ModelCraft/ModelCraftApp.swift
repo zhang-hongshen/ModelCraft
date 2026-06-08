@@ -19,9 +19,6 @@ struct ModelCraftApp: App {
     @Environment(\.openWindow) private var openWindow
     
     private let globalStore = GlobalStore()
-    private let userSettings = UserSettings()
-    private let speechManager = SpeechManager()
-    private let sttService = STTService()
     
     init() {}
     
@@ -55,10 +52,10 @@ struct ModelCraftApp: App {
 #endif
         }
         .modelContainer(.shared)
-        .environment(speechManager)
+        .environment(SpeechManager())
         .environment(globalStore)
-        .environment(userSettings)
-        .environment(sttService)
+        .environment(UserSettings())
+        .environment(STTService())
         .windowResizability(.contentSize)
         .commands {
             SidebarCommands()
@@ -72,12 +69,8 @@ struct ModelCraftApp: App {
 extension ModelCraftApp {
     
     private func handleModelTask() throws {
-        let descriptor = FetchDescriptor<ModelTask>(
-            predicate: ModelTask.predicateUnCompletedTask
-        )
-
-        let modelTasks = try ModelContainer.shared.mainContext.fetch(descriptor)
-        for task in modelTasks.filter({ $0.status == .new}) {
+        let tasks = try ModelContainer.shared.mainContext.fetch(ModelTask.fetchByStatus(.new))
+        for task in tasks {
             switch task.type {
             case .download: handleDownloadTask(task)
             case .delete: handleDeleteTask(task)

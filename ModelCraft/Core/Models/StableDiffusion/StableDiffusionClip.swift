@@ -23,24 +23,19 @@ class CLIPEncoderLayer: Module {
 
     @ModuleInfo(key: "layer_norm1") var layerNorm1: LayerNorm
     @ModuleInfo(key: "layer_norm2") var layerNorm2: LayerNorm
-
-    let attention: MultiHeadAttention
-
     @ModuleInfo var linear1: Linear
     @ModuleInfo var linear2: Linear
 
+    let attention: MultiHeadAttention
     let activation: (MLXArray) -> MLXArray
 
     init(modelDimensions: Int, numHeads: Int, activation: @escaping (MLXArray) -> MLXArray) {
         self._layerNorm1.wrappedValue = LayerNorm(dimensions: modelDimensions)
         self._layerNorm2.wrappedValue = LayerNorm(dimensions: modelDimensions)
-
+        self._linear1.wrappedValue = Linear(modelDimensions, 4 * modelDimensions)
+        self._linear2.wrappedValue = Linear(4 * modelDimensions, modelDimensions)
         self.attention = MultiHeadAttention(
             dimensions: modelDimensions, numHeads: numHeads, bias: true)
-
-        self.linear1 = Linear(modelDimensions, 4 * modelDimensions)
-        self.linear2 = Linear(4 * modelDimensions, modelDimensions)
-
         self.activation = activation
     }
 
@@ -64,21 +59,17 @@ class StableDiffusionTextEncoder: Module {
 
     @ModuleInfo(key: "token_embedding") var tokenEmbedding: Embedding
     @ModuleInfo(key: "position_embedding") var positionEmbedding: Embedding
-
-    let layers: [CLIPEncoderLayer]
-
     @ModuleInfo(key: "final_layer_norm") var finalLayerNorm: LayerNorm
-
     @ModuleInfo(key: "text_projection") var textProjection: Linear?
+    
+    let layers: [CLIPEncoderLayer]
 
     init(configuration: CLIPTextModelConfiguration) {
         self._tokenEmbedding.wrappedValue = Embedding(
             embeddingCount: configuration.vocabularySize, dimensions: configuration.modelDimensions)
         self._positionEmbedding.wrappedValue = Embedding(
             embeddingCount: configuration.maxLength, dimensions: configuration.modelDimensions)
-
-        self.layers = (0 ..< configuration.numLayers)
-            .map { _ in
+        self.layers = Array(repeating: (), count: configuration.numLayers).map { _ in
                 CLIPEncoderLayer(
                     modelDimensions: configuration.modelDimensions,
                     numHeads: configuration.numHeads,

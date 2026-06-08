@@ -28,7 +28,7 @@ class VideoTool {
             let evaluator = await WanEvaluator()
             let type = UTType.mpeg4Movie
             let url = URL.moviesDirectory.appendingPathComponent(UUID().uuidString, conformingTo: type)
-            try await evaluator.generate(prompt: input.prompt, outputPath: url)
+            try WanIO.saveVideo(frames: try await evaluator.generate(prompt: input.prompt), outputPath: url)
             return textToVideoOutput(
                 videoURL: url,
                 mimeType: type.preferredMIMEType!

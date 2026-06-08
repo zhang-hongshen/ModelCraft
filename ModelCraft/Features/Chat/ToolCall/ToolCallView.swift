@@ -73,11 +73,10 @@ struct ToolCallView: View {
     }
 }
 
-#Preview {
+#Preview(traits: .preview) {
 
     ScrollView {
         VStack {
-
             GroupBox("Text to Audio") {
                 let toolCall = ToolCall(function: .init(name: ToolNames.textToVideo, arguments: [:]))
                 let audio = URL.musicDirectory.appendingPathComponent("Piano", conformingTo: .mp3)
