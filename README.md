@@ -1,3 +1,5 @@
+
+
 <div align="center"><img alt="ModelCraft" height="200px" src="./logo.png" /></div>
 
 <div align="center" style="line-height: 1;">
@@ -43,7 +45,7 @@ One message can do many things—generate an image, write a file, and explain th
 ## 🚀 Get Started
 
 1. **Download** the latest version from [Releases](https://github.com/zhang-hongshen/ModelCraft/releases).
-2. **Install** on your Mac, iPhone, or iPad.
+2. **Install** on your Mac (macOS 14+) or iPhone/iPad (iOS 17+).
 3. **Open the Model Store** and download a model, then start your first chat.
 
 *(Homebrew installation is coming soon.)*
