@@ -9,8 +9,6 @@ import Foundation
 import MLX
 
 
-@Observable
-@MainActor
 class MusicGenEvaluator {
     
     private let modelFactory = MusicGenModelFactory()

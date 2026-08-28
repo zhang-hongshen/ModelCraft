@@ -237,3 +237,43 @@ extension Value: ExpressibleByStringInterpolation {
         self = .string(stringInterpolation.stringValue)
     }
 }
+
+extension Value: CustomStringConvertible {
+    public var description: String {
+        switch self {
+        case .null:
+            return "null"
+
+        case .bool(let value):
+            return String(value)
+
+        case .int(let value):
+            return String(value)
+
+        case .double(let value):
+            return String(value)
+
+        case .string(let value):
+            return value
+
+        case let .data(mimeType, data):
+            if let mimeType {
+                return "Data(\(mimeType), \(data.count) bytes)"
+            } else {
+                return "Data(\(data.count) bytes)"
+            }
+
+        case .array(let values):
+            
+            return "[" + values.map(\.description).joined(separator: ", ") + "]"
+
+        case .object(let object):
+            let pairs = object
+                .map { "\($0): \($1.description)" }
+                .sorted()
+                .joined(separator: ", ")
+
+            return "{\(pairs)}"
+        }
+    }
+}

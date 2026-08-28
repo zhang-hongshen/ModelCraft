@@ -8,6 +8,7 @@
 import SwiftUI
 import SwiftData
 
+
 @Observable
 class ChatService {
     

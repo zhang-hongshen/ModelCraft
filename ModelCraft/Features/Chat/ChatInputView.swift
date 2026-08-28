@@ -18,19 +18,7 @@ struct ChatInputView<Content: View>: View {
     @State private var photosPickerPresented = false
     @Environment(GlobalStore.self) private var globalStore
     
-    @State private var selectedImages: [PhotosPickerItem] = [] {
-        didSet {
-            var newFiles: [URL] = []
-            for image in selectedImages {
-                Task {
-                    if let url = try await image.loadTransferable(type: URL.self) {
-                        newFiles.append(url)
-                    }
-                }
-            }
-            userInput.files.append(contentsOf: newFiles)
-        }
-    }
+    @State private var selectedImages: [PhotosPickerItem] = []
     
     init(
         userInput: Message,
@@ -57,6 +45,17 @@ struct ChatInputView<Content: View>: View {
                 }
             }
             .photosPicker(isPresented: $photosPickerPresented, selection: $selectedImages)
+            .onChange(of: selectedImages) { _, newValue in
+                Task {
+                    var newFiles: [URL] = []
+                    for image in newValue {
+                        if let url = try await image.loadTransferable(type: URL.self) {
+                            newFiles.append(url)
+                        }
+                    }
+                    userInput.addFiles(newFiles)
+                }
+            }
     }
 }
 

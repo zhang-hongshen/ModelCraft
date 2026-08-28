@@ -14,6 +14,7 @@ class ToolExecutor {
     static let shared = ToolExecutor()
     
     func dispath(_ toolCall: ToolCall) async throws -> (CallToolResult, MLXLMCommon.Chat.Message) {
+        
         var toolCallResult = CallToolResult()
         var message = MLXLMCommon.Chat.Message(role: .tool, content: "")
         do  {
@@ -29,23 +30,6 @@ class ToolExecutor {
                 let result = try await toolCall.execute(with: SearchTool.searchMap)
                 toolCallResult.content.append(.text(TextContent(text: result.toolResult)))
                 message.content = result.toolResult
-            case ToolNames.captureScreen:
-                if let result = try await toolCall.execute(with: ScreenControlTool.captureScreen) {
-                    toolCallResult.content.append(.image(ImageContent(data: result.imageData.base64EncodedString(), mimeType: result.mimeType)))
-                    if let ciImage = CIImage(data: result.imageData){
-                        message.images.append(.ciImage(ciImage))
-                    }
-                }
-            case ToolNames.click:
-                let result = try await toolCall.execute(with: ScreenControlTool.click)
-                message.content = result.toolResult
-            case ToolNames.move:
-                let result = try await toolCall.execute(with: ScreenControlTool.move)
-                message.content = result.toolResult
-            case ToolNames.activateSkill:
-                let result = try await toolCall.execute(with: SkillTool.activateSkill)
-                toolCallResult.content.append(.text(TextContent(text: result.content)))
-                message.content = result.toolResult
             case ToolNames.textToImage:
                 let result = try await toolCall.execute(with: ImageTool.textToImage)
                 toolCallResult.content.append(
@@ -56,6 +40,51 @@ class ToolExecutor {
                 toolCallResult.content.append(
                     .resourceLink(ResourceLink(name: "", title: "", url: result.videoURL, mimeType: result.mimeType)))
                 message.videos.append(.url(result.videoURL))
+            case ToolNames.textToAudio:
+                let result = try await toolCall.execute(with: AudioTool.textToAudio)
+                toolCallResult.content.append(
+                    .resourceLink(ResourceLink(name: "", title: "", url: result.audioURL, mimeType: result.mimeType)))
+                message.videos.append(.url(result.audioURL))
+            case ToolNames.activateSkill:
+                let result = try await toolCall.execute(with: SkillTool.activateSkill)
+                toolCallResult.content.append(.text(TextContent(text: result.content)))
+                message.content = result.toolResult
+            case ToolNames.captureFullScreen:
+                if let result = try await toolCall.execute(with: ScreenControlTool.captureFullScreen) {
+                    toolCallResult.content.append(.image(ImageContent(data: result.imageData.base64EncodedString(), mimeType: result.mimeType)))
+                    if let ciImage = CIImage(data: result.imageData){
+                        message.images.append(.ciImage(ciImage))
+                    }
+                }
+            case ToolNames.captureAppWindow:
+                let screenshots = try await toolCall.execute(with: ScreenControlTool.captureAppWindow)
+                for screenshot in screenshots {
+                    toolCallResult.content.append(.image(ImageContent(data: screenshot.imageData.base64EncodedString(), mimeType: screenshot.mimeType)))
+                    if let ciImage = CIImage(data: screenshot.imageData){
+                        message.images.append(.ciImage(ciImage))
+                    }
+                }
+            case ToolNames.click:
+                let result = try await toolCall.execute(with: ScreenControlTool.click)
+                message.content = result.toolResult
+            case ToolNames.move:
+                let result = try await toolCall.execute(with: ScreenControlTool.move)
+                message.content = result.toolResult
+            case ToolNames.scroll:
+                let result = try await toolCall.execute(with: ScreenControlTool.scroll)
+                message.content = result.toolResult
+            case ToolNames.getUIHierarchy:
+                let result = try await toolCall.execute(with: ComputerUseTool.getUIHierarchy)
+                message.content = result.toolResult
+            case ToolNames.clickElement:
+                let result = try await toolCall.execute(with: ComputerUseTool.clickElement)
+                message.content = result.toolResult
+            case ToolNames.typeText:
+                let result = try await toolCall.execute(with: ComputerUseTool.typeText)
+                message.content = result.toolResult
+            case ToolNames.pressKey:
+                let result = try await toolCall.execute(with: ComputerUseTool.pressKey)
+                message.content = result.toolResult
             #if os(macOS)
             case ToolNames.executeCommand:
                 let result = try await toolCall.execute(with: CommandTool.executeCommand)

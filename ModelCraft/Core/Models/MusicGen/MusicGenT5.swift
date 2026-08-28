@@ -43,7 +43,7 @@ public class MusicGenT5: Module {
     func decode(
         _ inputs: MLXArray,
         memory: MLXArray,
-        cache: [(MLXArray, MLXArray)]? = nil
+        cache: [(MLXArray, MLXArray)?]? = nil
     ) -> (MLXArray, [(MLXArray, MLXArray)]) {
         let x = wte(inputs)
         let T = x.dim(1)
@@ -437,7 +437,7 @@ class T5Decoder: Module {
         memory: MLXArray,
         mask: MLXArray?,
         memoryMask: MLXArray?,
-        cache: [((MLXArray, MLXArray))]? = nil
+        cache: [(MLXArray, MLXArray)?]? = nil
     ) -> (MLXArray, [(MLXArray, MLXArray)]) {
         let cache = cache ?? Array(repeating: nil as (MLXArray, MLXArray)?, count: layers.count)
         let offset: Int

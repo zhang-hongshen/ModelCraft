@@ -9,41 +9,39 @@ import Foundation
 import CoreImage
 import MLX
 
-@Observable
-@MainActor
+
 class StableDiffusionEvaluator {
 
     private let modelFactory = StableDiffusionModelFactory()
 
     nonisolated private func toCGImage(_ array: MLXArray) -> CGImage {
         let raster = (array * 255).asType(.uint8).squeezed()
-        return MLXImage(raster).asCGImage()
+        return StableDiffusionImage(raster).asCGImage()
     }
     
     
-    func generate(prompt: String, negativePrompt: String = "") async throws -> CGImage {
+    func generate(prompt: String) async throws -> CGImage {
         
         let stream = try await generate(
             prompt: prompt,
-            negativePrompt: negativePrompt,
             showProgress: false
         )
         
-        var finalImage: CGImage?
+        var finalImage: MLXArray?
         
         for try await image in stream {
             finalImage = image
         }
         
         guard let finalImage else {
-            throw NSError(domain: "StableDiffusion", code: -1)
+            throw NSError(domain: "StableDiffusionEvaluator", code: -1)
         }
         
-        return finalImage
+        return toCGImage(finalImage)
     }
     
-    func generate(prompt: String, negativePrompt: String, showProgress: Bool) async throws
-        -> AsyncThrowingStream<CGImage, Error> {
+    func generate(prompt: String, showProgress: Bool) async throws
+        -> AsyncThrowingStream<MLXArray, Error> {
         let container = try await modelFactory.load()
         return AsyncThrowingStream { continuation in
             Task {
@@ -55,7 +53,7 @@ class StableDiffusionEvaluator {
                     // images at the same time.
                     var parameters = modelFactory.configuration.defaultParameters()
                     parameters.prompt = prompt
-                    parameters.negativePrompt = negativePrompt
+                    
                     // Per measurement each step consumes memory that we want to conserve. Trade
                     // off steps (quality) for memory.
                     if modelFactory.conserveMemory {
@@ -81,13 +79,13 @@ class StableDiffusionEvaluator {
                         lastXt = xt
                         
                         if showProgress, i % 10 == 0 {
-                            continuation.yield(toCGImage(decoder(xt)))
+                            continuation.yield(decoder(xt))
                         }
                         
                     }
                     
                     if let lastXt {
-                        continuation.yield(toCGImage(decoder(lastXt)))
+                        continuation.yield(decoder(lastXt))
                     }
                     continuation.finish()
                 }

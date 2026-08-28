@@ -61,7 +61,6 @@ class ModelService {
     }
     
     func downloadModel(hub: HubApi = .default, modelID: String) -> AsyncThrowingStream<Progress, Error> {
-        
         let repo = Hub.Repo(id: modelID)
         return AsyncThrowingStream { continuation in
             let task = Task {

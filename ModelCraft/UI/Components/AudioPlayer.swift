@@ -33,25 +33,51 @@ struct AudioPlayer: View {
     }
     
     var body: some View {
-        VStack {
+        VStack(spacing: 0) {
             switch model.state {
             case .loading:
                 ProgressView()
             case .loaded, .idle:
+                Waveform(samples: SampleBuffer(samples: model.samples),
+                         start: model.currentSampleTime,
+                         length: Int(model.sampleRate  * windowDuration))
+                    .foregroundColor(.accentColor)
+                    .animation(.linear, value: model.samples.count)
+        
+                
                 HStack(alignment: .center) {
+                    
                     Button {
                         model.togglePlay()
                     } label: {
                         Image(systemName: model.isPlaying ? "pause.fill" : "play.fill")
                     }
                     .buttonStyle(.plain)
+                    .imageScale(.large)
                     
-                    Waveform(samples: SampleBuffer(samples: model.samples),
-                             start: model.currentSampleTime,
-                             length: Int(model.sampleRate  * windowDuration))
-                        .foregroundColor(.accentColor)
-                        .animation(.linear, value: model.samples.count)
+                    
+                    VStack(spacing: 0) {
+                        Slider(
+                            value: Binding(
+                                get: {
+                                    model.currentTime
+                                },
+                                set: { newTime in
+                                    model.seek(to: newTime)
+                                }
+                            ),
+                            in: 0...model.totalDuration
+                        )
+                        
+                        HStack {
+                            Text(Duration.seconds(model.currentTime).formatted())
+                            Spacer()
+                            Text(Duration.seconds(model.totalDuration).formatted())
+                        }
+                    }
+                    
                 }
+                
                 
             case .failed(let error):
                 ContentUnavailableView {
@@ -61,6 +87,7 @@ struct AudioPlayer: View {
                 }
             }
         }
+        .padding()
         .task(id: source) {
             switch source {
             case .url(let url):
@@ -74,7 +101,7 @@ struct AudioPlayer: View {
 }
 
 @Observable
-final class WaveformModel {
+fileprivate final class WaveformModel: NSObject, AVAudioPlayerDelegate {
     
     enum LoadingState {
         case idle
@@ -86,14 +113,14 @@ final class WaveformModel {
     var state: LoadingState = .idle
     var isPlaying = false
     var sampleRate: Double = 200
-    private var rawSampleRate: Double = 44_100
-    
     var samples: [Float] = []
-    
+    var currentTime: TimeInterval = 0
+    var totalDuration: TimeInterval = 0
     var currentSampleTime: Int = 0
     
-    private var totalDuration: TimeInterval = 0
+    private var rawSampleRate: Double = 44_100
     
+
     private var timer: Timer?
     
     private var task: Task<Void, Error>?
@@ -101,7 +128,15 @@ final class WaveformModel {
     private var file: AVAudioFile? = nil
     
     deinit {
+        player?.delegate = self
         stop()
+    }
+    
+    func audioPlayerDidFinishPlaying(
+        _ player: AVAudioPlayer,
+        successfully flag: Bool
+    ) {
+        isPlaying = false
     }
     
     func loadSamples(url: URL, maxDuration: TimeInterval = 10) async {
@@ -147,14 +182,20 @@ final class WaveformModel {
         totalDuration = player.duration
         rawSampleRate = player.format.sampleRate
         self.startTimer()
-        self.startSmaplingTask()
+        self.startSamplingTask()
     }
     
-    func startSmaplingTask() {
+    func seek(to: TimeInterval) {
+        player?.currentTime = to
+        self.currentTime = to
+        self.currentSampleTime = Int((to / self.totalDuration) * Double(self.samples.count))
+    }
+    
+    func startSamplingTask() {
         guard let file = self.file else { return }
         let format = file.processingFormat
         let frameCount = AVAudioFrameCount(file.length)
-        let bufferSize = AVAudioFrameCount(format.sampleRate * 0.5)
+        let bufferSize = AVAudioFrameCount(rawSampleRate * 0.5)
         self.task = Task {
             while file.framePosition < frameCount || !Task.isCancelled {
                 try Task.checkCancellation()
@@ -165,7 +206,7 @@ final class WaveformModel {
                 
                 let frameData = Array(UnsafeBufferPointer(start: channelData, count: Int(buffer.frameLength)))
                 
-                self.samples.append(contentsOf: self.downsample(frameData))
+                self.samples.append(contentsOf: self.downsample(frameData, fromSampleRate: rawSampleRate, toSampleRate: sampleRate))
                 self.state = .loaded
             }
         }
@@ -195,7 +236,7 @@ final class WaveformModel {
     }
     
     func play() {
-        startSmaplingTask()
+        startSamplingTask()
         player?.play()
         isPlaying = true
         startTimer()
@@ -214,8 +255,8 @@ final class WaveformModel {
         timer?.invalidate()
         timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { _ in
             guard let player = self.player else { return }
+            self.currentTime = player.currentTime
             self.currentSampleTime = Int((player.currentTime / self.totalDuration) * Double(self.samples.count))
-            
         }
     }
     
@@ -225,10 +266,12 @@ final class WaveformModel {
     }
     
     func downsample(
-        _ input: [Float]
+        _ input: [Float],
+        fromSampleRate: Double,
+        toSampleRate: Double
     ) -> [Float] {
-        
-        let ratio = rawSampleRate / sampleRate
+        assert(fromSampleRate >= toSampleRate)
+        let ratio = fromSampleRate / toSampleRate
         let chunkSize = max(1, Int(ratio))
         
         var result: [Float] = []
@@ -251,5 +294,5 @@ final class WaveformModel {
 
 #Preview {
     AudioPlayer(url: PreviewResources.wav.url)
-        .frame(width: 350, height: 150)
+        .frame(width: 350, height: 100)
 }

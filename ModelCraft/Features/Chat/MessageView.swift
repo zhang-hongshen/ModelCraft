@@ -226,9 +226,17 @@ extension MessageView {
             
             
             if let toolCall = message.toolCall {
-                ToolCallView(toolCall: toolCall,
-                             result: message.toolCallResult,
-                             status: message.toolCallStatus)
+                if toolCall.function.name == ToolNames.textToImage {
+                    ImageGenerationToolRenderer(
+                        toolCall: toolCall,
+                        result: message.toolCallResult,
+                        status: message.toolCallStatus
+                    )
+                } else {
+                    ToolCallView(toolCall: toolCall,
+                                 result: message.toolCallResult,
+                                 status: message.toolCallStatus)
+                }
             }
         }
         

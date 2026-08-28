@@ -8,16 +8,15 @@
 import Foundation
 
 import MLXLMCommon
-import Tokenizers
 
 class CommandTool {
     
     #if os(macOS)
-    static let allTools: [ToolSpec] = [
-        executeCommand.schema
+    static let allTools: [any ToolProtocol] = [
+        executeCommand
     ]
     #else
-    static let allTools: [ToolSpec] = []
+    static let allTools: [any ToolProtocol] = []
     #endif
     
 #if os(macOS)

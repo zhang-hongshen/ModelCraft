@@ -11,8 +11,8 @@ import MLXLMCommon
 
 class AudioTool {
     
-    static let allTools = [
-        textToAudio.schema
+    static let allTools: [any ToolProtocol] = [
+        textToAudio
     ]
     
     static let textToAudio = Tool<textToAudioInput, textToAudioOutput>(

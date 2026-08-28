@@ -10,7 +10,7 @@ import SwiftData
 
 
 struct ChatView: View {
-    
+
     @State var chat: Chat?
     
     @Query private var availableModels: [LocalModel] = []
@@ -39,26 +39,17 @@ struct ChatView: View {
         MainView()
             .frame(minWidth: ChatView.minWidth, minHeight: 250)
             .toolbar(content: ToolbarItems)
-//            .safeAreaInset(edge: .bottom) {
-//                ChatInputView(
-//                    userInput: draft,
-//                    trailing: {
-//                        HStack {
-//                            if let chat = chat, chat.isGenerating {
-//                                StopGeneratingMessageButton()
-//                            } else {
-//                                if draft.content.isEmpty {
-//                                    voiceModeButton()
-//                                } else {
-//                                    SubmitMessageButton()
-//                                }
-//                            }
-//                        }
-//                    }
-//                )
-//                .safeAreaPadding()
-//                .shadow(color: Color.primary.opacity(0.1), radius: 8, x: 0, y: -4)
-//            }
+            .onChange(of: sttService.audioLevel) { oldValue, newValue in
+                if oldValue <= 0.1 && newValue > 0.1 {
+                    Task {
+                        await sttService.startRecording()
+                    }
+                }
+                if newValue > 0.1 && oldValue <= 0.1 {
+                    sttService.stopRecording()
+                    submitMessage(content: sttService.transcript, files: [])
+                }
+            }
     }
 }
 
@@ -144,7 +135,6 @@ extension ChatView {
                 case .recording:
                     sttService.stopRecording()
                     voiceState = .idle
-
                 case .loading:
                     break
                 }
@@ -154,9 +144,9 @@ extension ChatView {
             case .loading:
                 ProgressView().controlSize(.small)
             case .recording:
-                Image(systemName: "stop").font(.title3)
+                Image(systemName: "stop.fill")
             case .idle:
-                Image(systemName: "waveform").font(.title3)
+                Image(systemName: "waveform")
             }
         }
         .buttonStyle(.borderedProminent)
@@ -173,7 +163,7 @@ extension ChatView {
                 chatService.stopGenerating(chat: chat)
             }
         } label: {
-            Image(systemName: "stop.fill").font(.title3)
+            Image(systemName: "stop.fill")
         }
         .buttonStyle(.borderedProminent)
         .buttonBorderShape(.circle)
@@ -183,7 +173,7 @@ extension ChatView {
     func SubmitMessageButton() -> some View {
         let disabled = globalStore.selectedModel == nil || draft.content.isEmpty
         Button(action: submitDraft) {
-            Image(systemName: "arrow.up").font(.title)
+            Image(systemName: "arrow.up")
         }
         .buttonStyle(.borderedProminent)
         .buttonBorderShape(.circle)
@@ -194,10 +184,17 @@ extension ChatView {
     @ViewBuilder
     func MessagesView(_ messages: [Message]) -> some View {
         LazyVStack(alignment: .leading, spacing: 10) {
-            ForEach(messages) { message in
-                MessageView(message: message)
-                    .scrollTargetLayout()
-                    .environment(chatService)
+            ForEach(ChatContentBuilder.items(from: messages)) { item in
+                switch item {
+                case .message(let message):
+                    MessageView(message: message)
+                        .scrollTargetLayout()
+                        .environment(chatService)
+                case .toolCallGroup(let messages):
+                    ToolCallGroupView(messages: messages)
+                        .scrollTargetLayout()
+                        .environment(chatService)
+                }
             }
         }
     }
@@ -258,8 +255,8 @@ extension ChatView {
 
 extension ChatView {
     
-    func submitDraft() {
-        guard let model = globalStore.selectedModel else { return }
+    func submitMessage(content: String, files: [URL]) -> Bool {
+        guard let model = globalStore.selectedModel else { return false }
         let activeChat: Chat
         if let chat = chat {
             activeChat = chat
@@ -268,8 +265,7 @@ extension ChatView {
             globalStore.currentTab = .chat(activeChat)
         }
         let message = Message(role: .user, chat: activeChat,
-                              content: draft.content, files: draft.files)
-        clearDraft()
+                              content: content, files: files)
         Task {
             try await chatService.sendMessage(
                 model: model,
@@ -277,6 +273,14 @@ extension ChatView {
                 message: message
             )
         }
+        return true
+    }
+
+    func submitDraft() {
+        if !submitMessage(content: draft.content, files: draft.files) {
+            return
+        }
+        clearDraft()
     }
     
     func clearDraft() {
@@ -293,6 +297,7 @@ extension ChatView {
 }
 
 
-#Preview(traits: .preview){
+#Preview(traits: .preview) {
     ChatView(chat: .preview)
+        .frame(width: 760, height: 900)
 }

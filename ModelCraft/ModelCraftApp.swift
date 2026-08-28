@@ -42,7 +42,6 @@ struct ModelCraftApp: App {
                     }
                 }
             }
-            
 #if os(macOS)
             Settings {
                 SettingsView().background(.ultraThinMaterial)

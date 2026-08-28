@@ -49,7 +49,7 @@ class AgentExecutor {
         if toolCallDisabled {
             promptMessages = messages + [Self.toolCallDisabledPrompt]
         } else {
-            availableTools = ToolDefinition.allTools
+            availableTools = ToolDefinition.allToolSchema
             if let projectID = projectID {
                 availableTools.append(SearchTool.searchRelevantDocuments(projectID: projectID).schema)
             }

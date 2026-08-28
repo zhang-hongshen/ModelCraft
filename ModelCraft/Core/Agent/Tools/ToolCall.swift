@@ -11,20 +11,47 @@ import SwiftUI
 
 
 struct ToolNames {
+    // MARK: File Tool
     static let readFromFile = "read_from_file"
     static let writeToFile = "write_to_file"
+
+    // MARK: Command Tool
     static let executeCommand = "execute_command"
+
+    // MARK: Search Tool
     static let searchMap = "search_map"
     static let searchRelevantDocuments = "search_relevant_documents"
-    static let captureScreen = "capture_screen"
+
+    // MARK: Screen Control Tool
+    static let captureFullScreen = "capture_full_screen"
+    static let captureAppWindow = "capture_app_window"
     static let move = "move"
     static let click = "click"
     static let drag = "drag"
     static let scroll = "scroll"
+
+    // MARK: Skill Tool
     static let activateSkill = "activate_skill"
+
+    // MARK: Image Tool
     static let textToImage = "text_to_image"
+
+    // MARK: Video Tool
     static let textToVideo = "text_to_video"
+
+    // MARK: Audio Tool
+    static let textToAudio = "text_to_audio"
+
+    // MARK: Computer Use Tool
+    static let listRunningApps = "list_running_apps"
+    static let getUIHierarchy = "get_ui_hierarchy"
+    static let clickElement = "click_element"
+    static let typeText = "type_text"
+    static let pressKey = "press_key"
 }
+
+
+
 
 extension ToolCall {
     
@@ -35,31 +62,31 @@ extension ToolCall {
             let path = arguments["path"]?.stringValue ?? "Unknown"
             switch status {
             case .running:
-                return "Reading \(String(describing: path))"
+                return String(format: String(localized: "Reading %@"), path)
             case .completed:
-                return "Read \(String(describing: path))"
+                return String(format: String(localized: "Read %@"), path)
             case .failed:
-                return "Failed to read \(String(describing: path))"
+                return String(format: String(localized: "Failed to read %@"), path)
             }
         case ToolNames.writeToFile:
             let path = arguments["path"]?.stringValue ?? "Unknown"
             switch status {
             case .running:
-                return "Writing \(String(describing: path))"
+                return String(format: String(localized: "Writing %@"), path)
             case .completed:
-                return "Wrote \(String(describing: path))"
+                return String(format: String(localized: "Wrote %@"), path)
             case .failed:
-                return "Failed to write \(String(describing: path))"
+                return String(format: String(localized: "Failed to write %@"), path)
             }
         case ToolNames.executeCommand:
             let command = arguments["command"]?.stringValue ?? "None"
             switch status {
             case .running:
-                return "Running \(String(describing: command))"
+                return String(format: String(localized: "Running %@"), command)
             case .completed:
-                return "Ran \(String(describing: command))"
+                return String(format: String(localized: "Ran %@"), command)
             case .failed:
-                return "Command failed: \(String(describing: command))"
+                return String(format: String(localized: "Command failed: %@"), command)
             }
         case ToolNames.searchMap:
             let query = arguments["query"]?.stringValue ?? ""
@@ -103,14 +130,14 @@ extension ToolCall {
             case .failed:
                 return "Move failed"
             }
-        case ToolNames.captureScreen:
+        case ToolNames.captureFullScreen:
             switch status {
             case .running:
-                return "Taking screenshot"
-            case .completed: 
-                return "Screenshot captured"
-            case .failed: 
-                return "Screenshot failed"
+                return "Taking full screenshot"
+            case .completed:
+                return "Full screenshot captured"
+            case .failed:
+                return "Full screenshot failed"
             }
         case ToolNames.textToImage:
             switch status {
@@ -152,10 +179,13 @@ extension ToolCall {
         case ToolNames.executeCommand : "apple.terminal"
         case ToolNames.searchMap: "map"
         case ToolNames.searchRelevantDocuments: "magnifyingglass"
-        case ToolNames.click, ToolNames.move: "pointer.arrow"
-        case ToolNames.captureScreen: "camera"
         case ToolNames.textToImage: "photo"
         case ToolNames.textToVideo: "video"
+        case ToolNames.textToAudio: "waveform"
+        case ToolNames.click, ToolNames.clickElement, ToolNames.move: "pointer.arrow"
+        case ToolNames.captureFullScreen: "display.2"
+        case ToolNames.captureAppWindow: "macwindow"
+        case ToolNames.typeText, ToolNames.pressKey: "keyboard"
         default: "error"
         }
     }

@@ -12,38 +12,55 @@ import MLXLMCommon
 
 class ScreenControlTool {
     
-    static let allTools = [
-        captureScreen.schema,
-        click.schema,
-        move.schema,
-        drag.schema,
-        scroll.schema,
+    static let allTools: [any ToolProtocol] = [
+        captureFullScreen,
+        captureAppWindow,
+        click,
+        move,
+        drag,
+        scroll,
     ]
     
-    static let captureScreen = Tool<CaptureScreenInput, CaptureScreenOutput?>(
-        name: "capture_screen",
-        description: "Takes a high-resolution screenshot of the current screen to analyze the UI layout and identify element coordinates.",
+    static let captureFullScreen = Tool<CaptureFullScreenInput, CaptureFullScreenOutput?>(
+        name: "capture_full_screen",
+        description: "Capture full screenshot of all displays.",
         parameters: []
     ) { input in
-        print("Capturing screen...")
-        guard let image = try await ScreenControlManager.shared.taskScreenshot() else { return nil }
-        guard let data = image.data(type: .png) else {
+        guard let screenshot = try await ScreenControlManager.shared.takeFullScreenshot() else { return nil }
+        guard let data = screenshot.image.data(type: .png) else {
             return nil
         }
-        return CaptureScreenOutput(imageData: data, mimeType: UTType.png.preferredMIMEType!)
+        return CaptureFullScreenOutput(
+            imageData: data,
+            mimeType: UTType.png.preferredMIMEType!,
+            size: screenshot.size)
     }
     
-    static let click = Tool<ClickInput, ClickOutput>(
-        name: "click",
-        description: "Performs a mouse click at the specified (x, y) coordinates. Coordinates should be based on the screenshot provided.",
+    static let captureAppWindow = Tool<CaptureAppWindowInput, [AppWindow]>(
+        name: "capture_app_window",
+        description: "Capture all windows of a specific application.",
         parameters: [
-            .required("x", type: .double, description: "The target x coordinate."),
-            .required("y", type: .double, description: "The target y coordinate.")
+            .required("appID", type: .string, description: "The bundle identifier of the target app (e.g., com.apple.Finder)")
         ]
     ) { input in
-        await ScreenControlManager.shared.click(x: input.x, y: input.y)
-        return ClickOutput()
+        
+        let windows = try await ScreenControlManager.shared.takeAppWindowScreenshot(appID: input.appID)
+        
+        var results: [AppWindow] = []
+        for window in windows {
+            guard let data = window.image.data(type: .png) else {
+                continue
+            }
+            results.append(
+                AppWindow(
+                    imageData: data,
+                    mimeType: UTType.png.preferredMIMEType!,
+                    windowFrame: window.windowFrame,
+                    windowID: window.windowID))
+        }
+        return results
     }
+    
     
     static let move = Tool<MoveInput, MoveOutput>(
         name: "move",
@@ -53,7 +70,7 @@ class ScreenControlTool {
             .required("y", type: .double, description: "The target y coordinate.")
         ]
     ) { input in
-        await ScreenControlManager.shared.move(x: input.x, y: input.y)
+        ScreenControlManager.shared.move(x: input.x, y: input.y)
         return MoveOutput()
     }
     
@@ -67,7 +84,7 @@ class ScreenControlTool {
             .required("endY", type: .double, description: "The destination y coordinate.")
         ]
     ) { input in
-        await ScreenControlManager.shared.drag(
+        ScreenControlManager.shared.drag(
             from: CGPoint(x: input.startX, y: input.startY),
             to: CGPoint(x: input.endX, y: input.endY)
         )
@@ -81,24 +98,46 @@ class ScreenControlTool {
             .required("deltaY", type: .int, description: "Scroll amount in pixels. Negative scrolls down, positive scrolls up.")
         ]
     ) { input in
-        await ScreenControlManager.shared.scroll(deltaY: input.deltaY)
+        ScreenControlManager.shared.scroll(deltaY: input.deltaY)
         return ScrollOutput()
+    }
+    
+    
+    static let click = Tool<ClickInput, ClickOutput>(
+        name: "click",
+        description: "click at a specific (x, y) location.",
+        parameters: [
+            .required("x", type: .double, description: "The target x coordinate."),
+            .required("y", type: .double, description: "The target y coordinate.")
+        ]
+    ) { input in
+        ScreenControlManager.shared.click(x: input.x, y: input.y)
+        return ClickOutput()
     }
 }
 
-struct CaptureScreenInput: Codable {}
+struct CaptureFullScreenInput: Codable {}
 
-struct CaptureScreenOutput: Codable {
+struct CaptureFullScreenOutput: Codable {
     let imageData: Data
     let mimeType: String
+    let size: CGSize
 }
 
-struct MoveInput: Codable {
-    let x: Double
-    let y: Double
+struct CaptureAppWindowInput: Codable {
+    let appID: String
 }
 
-struct MoveOutput: Codable {}
+struct CaptureAppWindowOutput: Codable {
+    
+}
+
+struct AppWindow: Codable {
+    let imageData: Data
+    let mimeType: String
+    let windowFrame: CGRect
+    let windowID: Int
+}
 
 struct ClickInput: Codable {
     let x: Double
@@ -106,6 +145,13 @@ struct ClickInput: Codable {
 }
 
 struct ClickOutput: Codable {}
+
+struct MoveInput: Codable {
+    let x: Double
+    let y: Double
+}
+
+struct MoveOutput: Codable {}
 
 struct DragInput: Codable {
     let startX: Double

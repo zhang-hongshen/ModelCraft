@@ -8,7 +8,7 @@
 import Foundation
 import SwiftData
 import SwiftUI
-
+import MLXLMCommon
 
 enum PreviewResources: String, CaseIterable, Identifiable {
     
@@ -42,12 +42,62 @@ extension Message {
 
 extension Chat {
     
-    static let preview = Chat(title: "Introduce ModelCraft", project: .preview)
-    
     static let previews = [
         preview,
         Chat(title: "Tech Stack of ModelCraft", project: .preview)
     ]
+
+    static let preview: Chat = {
+        let chat = Chat(title: "Tool Call Workflow", project: .preview)
+        let messages = [
+            Message(
+                role: .user,
+                chat: chat,
+                content: "Please update the project and generate a preview image."
+            ),
+            Message(
+                role: .assistant,
+                chat: chat,
+                content: "I’ll inspect the relevant files first."
+            ),
+            Message(
+                role: .tool,
+                chat: chat,
+                toolCall: ToolCall(function: .init(
+                    name: ToolNames.readFromFile,
+                    arguments: ["path": "Sources/App.swift"]
+                )),
+                toolCallResult: .success(content: [.text(TextContent(text: "import SwiftUI"))])
+            ),
+            Message(
+                role: .tool,
+                chat: chat,
+                toolCall: ToolCall(function: .init(
+                    name: ToolNames.writeToFile,
+                    arguments: ["path": "Sources/App.swift"]
+                )),
+                toolCallResult: .success()
+            ),
+            Message(
+                role: .assistant,
+                chat: chat,
+                content: "The source file has been updated."
+            ),
+            Message(
+                role: .tool,
+                chat: chat,
+                toolCall: ToolCall(function: .init(
+                    name: ToolNames.textToImage,
+                    arguments: ["prompt": "A quiet mountain landscape"]
+                )),
+                toolCallResult: CallToolResult(content: [
+                    .resourceLink(ResourceLink(url: PreviewResources.png.url, mimeType: "image/png"))
+                ])
+            )
+        ]
+        chat.messages = messages
+        return chat
+    }()
 }
 
 extension Project {
@@ -87,33 +137,27 @@ extension LocalModel {
 }
 
 
-extension ModelContainer {
-    
-//    @MainActor
-    static var preview: ModelContainer = {
+extension SwiftData.ModelContainer {
+    static var preview: SwiftData.ModelContainer = {
         let schema = Schema([
             Message.self, Chat.self, ModelTask.self,
             Project.self, LocalModel.self,
         ])
-
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
-        
+
         do {
-            let container = try ModelContainer(for: schema, configurations: [modelConfiguration])
-            return container
+            return try SwiftData.ModelContainer(for: schema, configurations: [modelConfiguration])
         } catch {
-            fatalError("Could not create ModelContainer: \(error)")
+            fatalError("Could not create preview model container: \(error)")
         }
     }()
-
-    
 }
 
 
 struct PreviewEnvironment: PreviewModifier {
     
-    static func makeSharedContext() async throws -> ModelContainer {
-        let container = try ModelContainer(for:
+    static func makeSharedContext() async throws -> SwiftData.ModelContainer {
+        let container = try SwiftData.ModelContainer(for:
                                             Message.self, Chat.self, ModelTask.self,
                                            Project.self, LocalModel.self,
                                            configurations: .init(isStoredInMemoryOnly: true))
@@ -131,7 +175,7 @@ struct PreviewEnvironment: PreviewModifier {
     }
     
     
-    func body(content: Content, context: ModelContainer) -> some View {
+    func body(content: Content, context: SwiftData.ModelContainer) -> some View {
         content
             .modelContainer(context)
             .environment(SpeechManager())

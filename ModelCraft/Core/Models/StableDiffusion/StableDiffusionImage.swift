@@ -7,7 +7,7 @@ import ImageIO
 import MLX
 import UniformTypeIdentifiers
 
-enum MLXImageError: LocalizedError {
+enum StableDiffusionImageError: LocalizedError {
     case unableToOpen
 
     var errorDescription: String? {
@@ -19,7 +19,7 @@ enum MLXImageError: LocalizedError {
 }
 
 /// Conversion utilities for moving between `MLXArray`, `CGImage` and files.
-public struct MLXImage {
+public struct StableDiffusionImage {
 
     public let data: MLXArray
 
@@ -34,7 +34,7 @@ public struct MLXImage {
         guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
             let image = CGImageSourceCreateImageAtIndex(source, 0, nil)
         else {
-            throw MLXImageError.unableToOpen
+            throw StableDiffusionImageError.unableToOpen
         }
 
         

@@ -90,7 +90,6 @@ extension DownloadedModelsView {
     }
 }
 
-#Preview {
+#Preview(traits: .preview) {
     DownloadedModelsView()
-        .modelContainer(.preview)
 }

@@ -35,7 +35,8 @@ class AudioRecorder {
         try session.setCategory(.playAndRecord, mode: .measurement, options: [.defaultToSpeaker])
         try session.setActive(true)
         #endif
-
+        
+        
         try capture.start()
 
         isRecording = true

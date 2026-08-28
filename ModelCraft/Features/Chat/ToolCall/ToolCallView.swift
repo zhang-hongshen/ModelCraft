@@ -72,20 +72,3 @@ struct ToolCallView: View {
         }
     }
 }
-
-#Preview(traits: .preview) {
-
-    ScrollView {
-        VStack {
-            GroupBox("Text to Audio") {
-                let toolCall = ToolCall(function: .init(name: ToolNames.textToVideo, arguments: [:]))
-                let audio = URL.musicDirectory.appendingPathComponent("Piano", conformingTo: .mp3)
-
-                let result = CallToolResult(content: [.resourceLink(ResourceLink(url: audio, mimeType: "audio/mpeg"))])
-                ToolCallView(toolCall: toolCall, result: result, status: .completed)
-            }
-
-        }
-        .padding()
-    }
-}

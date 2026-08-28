@@ -40,7 +40,7 @@ class ModelTask {
         self.completedUnitCount = completedUnitCount
         self.fractionCompleted = fractionCompleted
         self._type = type.rawValue
-        self._status = type.rawValue
+        self._status = status.rawValue
     }
 }
 

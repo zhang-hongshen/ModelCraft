@@ -6,20 +6,81 @@
 //
 
 
-import XCTest
+import Testing
 @testable import ModelCraft
+import MLXLMCommon
 
-final class TagStreamParserTests: XCTestCase {
+final class TagStreamParserTests {
 
-    override func setUpWithError() throws {
-        // Put setup code here. This method is called before the invocation of each test method in the class.
+    @Test func toolCallsAreGroupedOnlyWhenTheyAreContiguousAndMultiple() {
+        let messages = [
+            Self.toolMessage(ToolNames.readFromFile),
+            Self.toolMessage(ToolNames.writeToFile),
+            ModelCraft.Message(role: .assistant, content: "The files are ready."),
+            Self.toolMessage(ToolNames.executeCommand)
+        ]
+
+        let items = ChatContentBuilder.items(from: messages)
+
+        #expect(items.count == 3)
+        guard case .toolCallGroup(let firstGroup) = items[0] else {
+            Issue.record("Expected the first two contiguous tool calls to be grouped")
+            return
+        }
+        #expect(firstGroup.count == 2)
+        guard case .message(let message) = items[1] else {
+            Issue.record("Expected the normal assistant message to remain separate")
+            return
+        }
+        #expect(message.content == "The files are ready.")
+        guard case .message(let lastMessage) = items[2] else {
+            Issue.record("Expected a single tool call to remain ungrouped")
+            return
+        }
+        #expect(lastMessage.toolCall?.function.name == ToolNames.executeCommand)
     }
 
-    override func tearDownWithError() throws {
-        // Put teardown code here. This method is called after the invocation of each test method in the class.
+    @Test func imageGenerationRemainsOutsideToolCallGroups() {
+        let messages = [
+            Self.toolMessage(ToolNames.readFromFile),
+            Self.toolMessage(ToolNames.textToImage),
+            Self.toolMessage(ToolNames.executeCommand)
+        ]
+
+        let items = ChatContentBuilder.items(from: messages)
+
+        #expect(items.count == 3)
+        guard case .message(let imageMessage) = items[1] else {
+            Issue.record("Image generation should be rendered as a standalone message")
+            return
+        }
+        #expect(imageMessage.toolCall?.function.name == ToolNames.textToImage)
     }
-    
-    func testFullInputSingleChunk() {
+
+    @Test func completedToolGroupSummaryUsesSpecificToolCounts() {
+        let messages = [
+            Self.toolMessage(ToolNames.readFromFile),
+            Self.toolMessage(ToolNames.writeToFile),
+            Self.toolMessage(ToolNames.executeCommand)
+        ]
+
+        let summary = ToolCallGroupSummary(messages: messages)
+
+        #expect(summary.fileReadCount == 1)
+        #expect(summary.fileWriteCount == 1)
+        #expect(summary.commandCount == 1)
+        #expect(summary.isRunning == false)
+    }
+
+    private static func toolMessage(_ name: String) -> ModelCraft.Message {
+        ModelCraft.Message(
+            role: .assistant,
+            toolCall: ToolCall(function: .init(name: name, arguments: [:])),
+            toolCallResult: .success()
+        )
+    }
+
+    @Test func testFullInputSingleChunk() {
             let parser = TagStreamParser()
 
             let input = """
@@ -42,11 +103,11 @@ final class TagStreamParserTests: XCTestCase {
                 }
             }
 
-            XCTAssertEqual(thought, "reasoning")
-            XCTAssertEqual(answer, "final answer")
-        }
+        #expect(thought == "reasoning")
+        #expect(answer == "final answer")
+    }
 
-        func testSplitChunks() {
+    @Test func testSplitChunks() {
             let parser = TagStreamParser()
 
             let chunks = [
@@ -71,7 +132,7 @@ final class TagStreamParserTests: XCTestCase {
                 }
             }
 
-            XCTAssertEqual(thought, "resoning")
-            XCTAssertEqual(answer, "hello")
+            #expect(thought == "reasoning")
+            #expect(answer == "hello")
         }
     }

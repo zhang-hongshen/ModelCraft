@@ -39,9 +39,11 @@ struct ThinkView: View {
     ]
     
     init(_ think: String) {
-        self.think = think
-        self.isExpanded = false
-        self._thinkingPhrase = State(initialValue: Self.thinkingPhrases.randomElement() ?? "Thinking")
+        self._think = State(initialValue: think)
+        self._isExpanded = State(initialValue: false)
+        self._thinkingPhrase = State(
+            initialValue: ThinkView.thinkingPhrases.randomElement() ?? "Thinking"
+        )
     }
     
     var body: some View {

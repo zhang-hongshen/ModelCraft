@@ -64,6 +64,130 @@ extension Chat {
     
 }
 
+/// The chat presentation keeps normal messages and contiguous tool work separate.
+/// Image generation is intentionally kept as a standalone message so its long-running
+/// visual state can occupy the conversation directly.
+enum ChatContentItem: Identifiable {
+    case message(Message)
+    case toolCallGroup([Message])
+
+    var id: String {
+        switch self {
+        case .message(let message):
+            return message.id.uuidString
+        case .toolCallGroup(let messages):
+            return messages.first?.id.uuidString ?? UUID().uuidString
+        }
+    }
+}
+
+enum ChatContentBuilder {
+    static func items(from messages: [Message]) -> [ChatContentItem] {
+        var items: [ChatContentItem] = []
+        var pendingToolCalls: [Message] = []
+
+        func flushToolCalls() {
+            guard !pendingToolCalls.isEmpty else { return }
+            if pendingToolCalls.count == 1 {
+                items.append(.message(pendingToolCalls[0]))
+            } else {
+                items.append(.toolCallGroup(pendingToolCalls))
+            }
+            pendingToolCalls.removeAll(keepingCapacity: true)
+        }
+
+        for message in messages {
+            guard let toolCall = message.toolCall else {
+                flushToolCalls()
+                items.append(.message(message))
+                continue
+            }
+
+            if toolCall.function.name == ToolNames.textToImage {
+                flushToolCalls()
+                items.append(.message(message))
+            } else {
+                pendingToolCalls.append(message)
+            }
+        }
+
+        flushToolCalls()
+        return items
+    }
+}
+
+struct ToolCallGroupSummary {
+    let messages: [Message]
+
+    var isRunning: Bool {
+        messages.contains { $0.toolCallStatus == .running }
+    }
+
+    var activeToolDescription: String? {
+        messages.last(where: { $0.toolCallStatus == .running })?.toolCall?.localizedDescription(.running)
+    }
+
+    var fileReadCount: Int {
+        count(named: ToolNames.readFromFile)
+    }
+
+    var fileWriteCount: Int {
+        count(named: ToolNames.writeToFile)
+    }
+
+    var commandCount: Int {
+        count(named: ToolNames.executeCommand)
+    }
+
+    var completedDescription: String {
+        var descriptions: [String] = []
+        if fileWriteCount > 0 {
+            descriptions.append(countDescription(
+                fileWriteCount,
+                singular: "Edited one file",
+                plural: "Edited %lld files"
+            ))
+        }
+        if fileReadCount > 0 {
+            descriptions.append(countDescription(
+                fileReadCount,
+                singular: "Read one file",
+                plural: "Read %lld files"
+            ))
+        }
+        if commandCount > 0 {
+            descriptions.append(countDescription(
+                commandCount,
+                singular: "Executed one command",
+                plural: "Executed %lld commands"
+            ))
+        }
+
+        guard !descriptions.isEmpty else {
+            return String(localized: "Completed")
+        }
+        return ListFormatter.localizedString(byJoining: descriptions)
+    }
+
+    private func count(named name: String) -> Int {
+        messages.reduce(into: 0) { count, message in
+            if message.toolCall?.function.name == name {
+                count += 1
+            }
+        }
+    }
+
+    private func countDescription(_ count: Int, singular: String, plural: String) -> String {
+        if count == 1 {
+            return String(localized: String.LocalizationValue(singular))
+        }
+        return String(
+            format: String(localized: String.LocalizationValue(plural)),
+            Int64(count)
+        )
+    }
+}
+
 extension Chat {
     static func fetch(limit: Int? = nil, offset: Int? = nil) -> FetchDescriptor<Chat> {
         var descriptor = FetchDescriptor<Chat>()

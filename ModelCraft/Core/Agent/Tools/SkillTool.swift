@@ -11,8 +11,8 @@ import MLXLMCommon
 
 class SkillTool {
     
-    static let allTools = [
-        activateSkill.schema
+    static let allTools: [any ToolProtocol] = [
+        activateSkill
     ]
     
     static var activateSkill: Tool<ActivateSkillInput, ActivateSkillOutput> {

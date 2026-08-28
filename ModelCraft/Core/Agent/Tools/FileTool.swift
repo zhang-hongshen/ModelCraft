@@ -11,9 +11,9 @@ import MLXLMCommon
 
 class FileTool {
 
-    static let allTools = [
-        writeToFile.schema,
-        readFromFile.schema
+    static let allTools: [any ToolProtocol] = [
+        writeToFile,
+        readFromFile
     ]
     
     static func writeToFile(_ path: String, content: String) throws {

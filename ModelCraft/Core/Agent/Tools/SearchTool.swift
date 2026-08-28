@@ -13,8 +13,8 @@ import MLXLMCommon
 
 class SearchTool {
     
-    static let allTools = [
-        searchMap.schema
+    static let allTools: [any ToolProtocol] = [
+        searchMap
     ]
     
     static func searchMap(query: String, useCurrentLocation: Bool = false, numOfResults: Int) async throws -> [MapPlace] {

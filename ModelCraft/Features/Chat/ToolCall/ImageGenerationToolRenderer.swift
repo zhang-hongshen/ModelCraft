@@ -95,20 +95,6 @@ struct ImageGeneratingView: View {
                             .frame(width: badge * 0.62, height: badge * 0.62)
                     }
 
-                    VStack(spacing: spacingSub) {
-                        Text("Generating image")
-                            .font(.headline)
-                            .fontWeight(.semibold)
-                            .foregroundStyle(.primary)
-
-                        ProgressView()
-                            .tint(.secondary)
-
-                        Text("This may take a moment")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    }
-                    .multilineTextAlignment(.center)
                 }
                 .padding(pad)
             }
@@ -117,6 +103,17 @@ struct ImageGeneratingView: View {
             .overlay {
                 RoundedRectangle(cornerRadius: corner, style: .continuous)
                     .strokeBorder(.quaternary, lineWidth: hairline)
+            }
+            .overlay(alignment: .top) {
+                HStack(spacing: spacingSub) {
+                    Text("Generating image")
+                        .font(.headline)
+                        .fontWeight(.semibold)
+                    ProgressView()
+                        .controlSize(.small)
+                }
+                .foregroundStyle(.primary)
+                .padding(.top, pad)
             }
         }
         .aspectRatio(contentMode: .fit)
@@ -198,25 +195,21 @@ struct ImageGeneratingView: View {
     }
 }
 
-#Preview {
+#Preview("Image generation", traits: .preview) {
+    let toolCall = ToolCall(function: .init(
+        name: ToolNames.textToImage,
+        arguments: ["prompt": "A horse"]
+    ))
+    let image = PreviewResources.png.url
+    let result = CallToolResult(content: [
+        .resourceLink(ResourceLink(url: image, mimeType: "image/png"))
+    ])
+
     ScrollView {
-        
-        let toolCall = ToolCall(function: .init(name: ToolNames.textToImage, arguments: ["prompt": "A horse"]))
-        
-        
         VStack {
             ImageGenerationToolRenderer(toolCall: toolCall, result: nil, status: .running)
-            
-            let image = URL.picturesDirectory.appendingPathComponent("1F74F501-B5DF-48FE-B3EB-882269A21495", conformingTo: .png)
-
-            let result = CallToolResult(content: [.resourceLink(ResourceLink(url: image, mimeType: "image/png"))])
-            
             ImageGenerationToolRenderer(toolCall: toolCall, result: result, status: .completed)
-            
-            ImageGenerationToolRenderer(toolCall: toolCall, result: nil, status: .failed)
         }
-        
         .padding()
-        
     }
 }

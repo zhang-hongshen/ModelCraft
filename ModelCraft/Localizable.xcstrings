@@ -288,6 +288,46 @@
         }
       }
     },
+    "Edited %lld files" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "编辑了%1$lld个文件"
+          }
+        }
+      }
+    },
+    "Edited one file" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "编辑了 1 个文件"
+          }
+        }
+      }
+    },
+    "Executed %lld commands" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "执行了%1$lld个命令"
+          }
+        }
+      }
+    },
+    "Executed one command" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "执行了 1 个命令"
+          }
+        }
+      }
+    },
     "Failed" : {
       "localizations" : {
         "zh-Hans" : {
@@ -576,6 +616,26 @@
     "Read %@" : {
 
     },
+    "Read %lld files" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "读取了%1$lld个文件"
+          }
+        }
+      }
+    },
+    "Read one file" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "读取了 1 个文件"
+          }
+        }
+      }
+    },
     "Reading %@" : {
 
     },
@@ -624,12 +684,6 @@
           }
         }
       }
-    },
-    "Screenshot captured" : {
-
-    },
-    "Screenshot failed" : {
-
     },
     "Searched documents for %@" : {
 
@@ -700,6 +754,7 @@
       }
     },
     "Taking screenshot" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -721,9 +776,6 @@
           }
         }
       }
-    },
-    "This may take a moment" : {
-
     },
     "Tool" : {
 

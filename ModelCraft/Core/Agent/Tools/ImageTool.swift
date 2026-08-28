@@ -14,8 +14,8 @@ import MLXLMCommon
 
 class ImageTool {
     
-    static let allTools = [
-        textToImage.schema
+    static let allTools: [any ToolProtocol] = [
+        textToImage
     ]
     
     static let textToImage = Tool<textToImageInput, textToImageOutput>(
@@ -25,7 +25,7 @@ class ImageTool {
                 .required("prompt", type: .string, description: "Description of the image")
             ]
         ) { input in
-            let evaluator = await StableDiffusionEvaluator()
+            let evaluator = StableDiffusionEvaluator()
             let image = try await evaluator.generate(prompt: input.prompt)
             let type = UTType.png
             let url = URL.picturesDirectory.appendingPathComponent(UUID().uuidString, conformingTo: type)
