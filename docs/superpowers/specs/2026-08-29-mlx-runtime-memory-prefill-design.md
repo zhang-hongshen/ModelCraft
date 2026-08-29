@@ -1,7 +1,9 @@
 # MLX 运行时内存与 Prefill 优化设计
 
 日期：2026-08-29  
-状态：设计已确认，待拆分实施计划
+状态：设计已确认；本轮实施范围为第 1–5、9–11 节
+
+本轮明确延期第 6、7、8 节（MusicGen、Stable Diffusion、MiniMax H3 的模型专属优化）。这些模型的 attention、采样、模型结构和阶段驻留逻辑在本轮不修改；只处理公共基础设施和文本 LLM 路径。
 
 ## 1. 目标与边界
 
@@ -91,7 +93,9 @@ Stable Diffusion、MusicGen、LTX 和 H3 目前分别修改全局 MLX 内存限�
 
 prefill、读取 cache 和生成被取消时，临时 cache 不写入共享存储。工具调用、模板改变或模型切换时使用新的 key，避免跨会话污染。
 
-## 6. MusicGen 设计
+## 6. MusicGen 设计（延期）
+
+本节保留为后续阶段设计，本轮不实施。
 
 - 保留 decoder self-attention 的增量 cache，但改为明确的请求级工作状态，不跨请求共享可变实例。
 - 对每个 decoder layer 缓存 cross-attention 的文本 K/V 投影；同一请求的每个音频 token 复用它们。
@@ -99,7 +103,9 @@ prefill、读取 cache 和生成被取消时，临时 cache 不写入共享存�
 - 文本 conditioner 完成后，在进入长音频生成阶段释放不再需要的对象。
 - 不改变 codebook 数量、采样策略或音频输出接口。
 
-## 7. Stable Diffusion 设计
+## 7. Stable Diffusion 设计（延期）
+
+本节保留为后续阶段设计，本轮不实施。
 
 - 不引入自回归 KVCache；保留当前 UNet denoise 语义。
 - 文本 embedding 在一次请求内复用。
@@ -107,7 +113,9 @@ prefill、读取 cache 和生成被取消时，临时 cache 不写入共享存�
 - 用阶段性释放替代 `steps = 1` 的质量破坏策略；默认 steps 保持调用方设置。
 - 保留 decoder detach/低内存入口，但让它由 coordinator 管理，避免与其他工厂的全局设置冲突。
 
-## 8. MiniMax H3 设计
+## 8. MiniMax H3 设计（延期）
+
+本节保留为后续阶段设计，本轮不实施；当前 H3 工作区的编译阻断仍属于第 1 节的“先跑起来”范围，可以修复，但不改 H3 推理算法或内存策略。
 
 - 不将传统自回归 KVCache 用于完整 H3 扩散 self-attention，因为 latent 在每个采样步变化且 attention 不是因果的。
 - 缓存 `prepareRender` 产生的静态文本/条件投影和位置相关数据。
@@ -121,9 +129,9 @@ prefill、读取 cache 和生成被取消时，临时 cache 不写入共享存�
 2. 实现 coordinator 和统一内存 profile，迁移各模型工厂的全局内存设置。
 3. 重写 `KVCacheManager`，接入 MLX prompt-cache 序列化和精确前缀复用。
 4. 优化文本 LLM prefill，并加入兼容性探测的可选 KV 量化/滑动窗口。
-5. 优化 MusicGen cross-attention cache 和请求内预分配。
-6. 优化 Stable Diffusion/H3 的阶段性驻留和释放。
-7. 做构建、cache 正确性、取消/失败回退和四个 backend 的手动 smoke 验证；不加入运行时指标记录。
+5. 做构建、cache 正确性、取消/失败回退和文本 LLM 的手动 smoke 验证；不加入运行时指标记录。
+
+MusicGen、Stable Diffusion、MiniMax H3 的模型专属优化留待后续阶段，不作为本轮验收项。
 
 ## 10. 验收标准
 
