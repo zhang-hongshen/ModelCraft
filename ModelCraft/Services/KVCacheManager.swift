@@ -13,6 +13,11 @@ final class KVCacheManager {
 
     static let shared = KVCacheManager()
 
+    struct CachedSnapshot {
+        let cache: [any KVCache]
+        let metadata: [String: String]
+    }
+
     private final class Entry {
         let cache: [any KVCache]
         let metadata: [String: String]
@@ -52,6 +57,7 @@ final class KVCacheManager {
 
         var diskMetadata = metadata
         diskMetadata["cache_format_version"] = "1"
+        diskMetadata["cache_state_signature"] = Self.stateSignature(for: snapshot)
         insert(snapshot, for: key, metadata: diskMetadata, cost: cost)
 
         do {
@@ -62,8 +68,12 @@ final class KVCacheManager {
     }
 
     func cachedCopy(for key: String) -> [any KVCache]? {
-        if let memoryCopy = copyFromMemory(for: key) {
-            return memoryCopy
+        cachedSnapshot(for: key)?.cache
+    }
+
+    func cachedSnapshot(for key: String) -> CachedSnapshot? {
+        if let memorySnapshot = snapshotFromMemory(for: key) {
+            return memorySnapshot
         }
 
         let url = fileURL(for: key)
@@ -84,11 +94,24 @@ final class KVCacheManager {
             let cost = state.reduce(0) { $0 + $1.nbytes }
             insert(snapshot, for: key, metadata: metadata, cost: cost)
 
-            return snapshot.map { $0.copy() }
+            return CachedSnapshot(
+                cache: snapshot.map { $0.copy() },
+                metadata: metadata)
         } catch {
             try? FileManager.default.removeItem(at: url)
             return nil
         }
+    }
+
+    static func stateSignature(for cache: [any KVCache]) -> String {
+        cache.map { cache in
+            let state = cache.state
+            let tensors = state.map { tensor in
+                let shape = tensor.shape.map(String.init).joined(separator: ",")
+                return "\(tensor.dtype)[\(shape)]"
+            }.joined(separator: ";")
+            return "\(state.count):\(tensors)"
+        }.joined(separator: "|")
     }
 
     func load(for key: String, into cache: inout [any KVCache]) -> Bool {
@@ -145,7 +168,7 @@ final class KVCacheManager {
             .appendingPathExtension("safetensors")
     }
 
-    private func copyFromMemory(for key: String) -> [any KVCache]? {
+    private func snapshotFromMemory(for key: String) -> CachedSnapshot? {
         lock.lock()
         defer { lock.unlock() }
 
@@ -154,7 +177,9 @@ final class KVCacheManager {
         }
 
         entry.lastAccess = nextClockValue()
-        return entry.cache.map { $0.copy() }
+        return CachedSnapshot(
+            cache: entry.cache.map { $0.copy() },
+            metadata: entry.metadata)
     }
 
     private func persist(

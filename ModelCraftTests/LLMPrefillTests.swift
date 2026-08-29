@@ -1,5 +1,6 @@
 import Testing
 @testable import ModelCraft
+import Foundation
 import MLX
 import MLXLMCommon
 
@@ -8,6 +9,90 @@ private struct UnsupportedToolValue: Sendable, CustomStringConvertible {
 }
 
 struct LLMPrefillTests {
+    @Test func prefixCacheMetadataRequiresMatchingIdentityAndStateSignature() {
+        let metadata = [
+            "cache_format_version": "1",
+            "prompt_cache_format_version": PromptCacheKeyBuilder.formatVersion,
+            "model_id": "model-id",
+            "prefix_token_count": "2",
+            "cache_state_signature": "state-signature",
+        ]
+
+        #expect(PromptCacheMetadata.matches(
+            metadata,
+            modelID: "model-id",
+            prefixCount: 2,
+            stateSignature: "state-signature"))
+        #expect(!PromptCacheMetadata.matches(
+            metadata,
+            modelID: "other-model",
+            prefixCount: 2,
+            stateSignature: "state-signature"))
+        #expect(!PromptCacheMetadata.matches(
+            metadata,
+            modelID: "model-id",
+            prefixCount: 3,
+            stateSignature: "state-signature"))
+        #expect(!PromptCacheMetadata.matches(
+            metadata,
+            modelID: "model-id",
+            prefixCount: 2,
+            stateSignature: "other-signature"))
+
+        var unsupportedManagerFormat = metadata
+        unsupportedManagerFormat["cache_format_version"] = "0"
+        #expect(!PromptCacheMetadata.matches(
+            unsupportedManagerFormat,
+            modelID: "model-id",
+            prefixCount: 2,
+            stateSignature: "state-signature"))
+
+        var unsupportedPromptFormat = metadata
+        unsupportedPromptFormat["prompt_cache_format_version"] = "prompt-cache-v0"
+        #expect(!PromptCacheMetadata.matches(
+            unsupportedPromptFormat,
+            modelID: "model-id",
+            prefixCount: 2,
+            stateSignature: "state-signature"))
+    }
+
+    @Test func cacheStateSignatureChangesWithSavedTensorShape() {
+        let first: [any KVCache] = [KVCacheSimple()]
+        _ = first[0].update(
+            keys: MLXArray.ones([1, 1, 2, 4]),
+            values: MLXArray.ones([1, 1, 2, 4]))
+        let second: [any KVCache] = [KVCacheSimple()]
+        _ = second[0].update(
+            keys: MLXArray.ones([1, 1, 3, 4]),
+            values: MLXArray.ones([1, 1, 3, 4]))
+
+        eval(first, second)
+        #expect(KVCacheManager.stateSignature(for: first) != KVCacheManager.stateSignature(for: second))
+    }
+
+    @Test func cachedSnapshotCarriesSavedMetadataWithItsCacheCopy() {
+        let directory = URL.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let manager = KVCacheManager(cacheDirectory: directory)
+        defer {
+            manager.clearAll()
+            try? FileManager.default.removeItem(at: directory)
+        }
+
+        let cache: [any KVCache] = [KVCacheSimple()]
+        _ = cache[0].update(
+            keys: MLXArray.ones([1, 1, 2, 4]),
+            values: MLXArray.ones([1, 1, 2, 4]))
+        eval(cache)
+        manager.save(cache: cache, for: "record", metadata: ["model_id": "model-id"])
+
+        let snapshot = manager.cachedSnapshot(for: "record")
+        #expect(snapshot != nil)
+        guard let snapshot else { return }
+        #expect(snapshot.metadata["cache_format_version"] == "1")
+        #expect(snapshot.metadata["model_id"] == "model-id")
+        #expect(snapshot.metadata["cache_state_signature"] == KVCacheManager.stateSignature(for: snapshot.cache))
+    }
+
     @Test func suffixTokensSliceTheFlattenedTokenSequence() {
         let fullTokens = MLXArray([1, 2, 3, 4]).reshaped(1, -1)
         let suffix = makeSuffixTokens(fullTokens: fullTokens, prefixCount: 2)

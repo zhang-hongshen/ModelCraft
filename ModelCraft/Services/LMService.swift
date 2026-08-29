@@ -21,6 +21,21 @@ func makeSuffixTokens(fullTokens: MLXArray, prefixCount: Int) -> MLXArray {
     return MLXArray(Array(suffix[prefixCount...])).reshaped(1, -1)
 }
 
+enum PromptCacheMetadata {
+    static func matches(
+        _ metadata: [String: String],
+        modelID: String,
+        prefixCount: Int,
+        stateSignature: String
+    ) -> Bool {
+        metadata["cache_format_version"] == "1"
+            && metadata["prompt_cache_format_version"] == PromptCacheKeyBuilder.formatVersion
+            && metadata["model_id"] == modelID
+            && metadata["prefix_token_count"] == String(prefixCount)
+            && metadata["cache_state_signature"] == stateSignature
+    }
+}
+
 /// A service class that manages machine learning models for text and vision-language tasks.
 /// This class handles model loading, caching, and text generation using various LLM and VLM models.
 class LMService {
@@ -83,77 +98,103 @@ class LMService {
                 let fullInput = try await context.processor.prepare(input: userInput)
                 var generationInput = fullInput
                 var generationCache: [KVCache]?
+                var generationCacheKey: String?
 
                 let canUsePrefixCache = fullInput.image == nil && fullInput.video == nil && messages.count > 1
                 if canUsePrefixCache {
-                    let history = Array(messages.dropLast())
-                    let historyInput = try await context.processor.prepare(
-                        input: UserInput(chat: history, tools: tools))
-                    if historyInput.image == nil && historyInput.video == nil {
-                        let fullTokens = fullInput.text.tokens.flattened().asArray(Int.self)
-                        let prefixTokens = historyInput.text.tokens.flattened().asArray(Int.self)
-                        if let prefixCount = PromptPrefixPlanner.prefixCount(
-                            full: fullTokens, prefix: prefixTokens)
-                        {
-                            let key = PromptCacheKeyBuilder.make(
-                                modelID: model.id,
-                                prefixTokens: prefixTokens,
-                                tools: tools)
+                    do {
+                        let history = Array(messages.dropLast())
+                        let historyInput = try await context.processor.prepare(
+                            input: UserInput(chat: history, tools: tools))
+                        if historyInput.image == nil && historyInput.video == nil {
+                            let fullTokens = fullInput.text.tokens.flattened().asArray(Int.self)
+                            let prefixTokens = historyInput.text.tokens.flattened().asArray(Int.self)
+                            if let prefixCount = PromptPrefixPlanner.prefixCount(
+                                full: fullTokens, prefix: prefixTokens)
+                            {
+                                let key = PromptCacheKeyBuilder.make(
+                                    modelID: model.id,
+                                    prefixTokens: prefixTokens,
+                                    tools: tools)
 
-                            let cached = KVCacheManager.shared.cachedCopy(for: key)
-                            if let cached {
-                                let freshCache = context.model.newCache(parameters: parameters)
-                                let hasCompatibleLayout = cached.count == freshCache.count
-                                    && zip(cached, freshCache).allSatisfy {
-                                        type(of: $0) == type(of: $1)
-                                            && $0.maxSize == $1.maxSize
-                                            && $0.offset == prefixCount
+                                if let snapshot = KVCacheManager.shared.cachedSnapshot(for: key) {
+                                    let cached = snapshot.cache
+                                    let stateSignature = KVCacheManager.stateSignature(for: cached)
+                                    let freshCache = context.model.newCache(parameters: parameters)
+                                    let hasCompatibleLayout = cached.count == freshCache.count
+                                        && zip(cached, freshCache).allSatisfy {
+                                            type(of: $0) == type(of: $1)
+                                                && $0.maxSize == $1.maxSize
+                                                && $0.offset == prefixCount
+                                        }
+                                    let hasCompatibleMetadata = PromptCacheMetadata.matches(
+                                        snapshot.metadata,
+                                        modelID: model.id,
+                                        prefixCount: prefixCount,
+                                        stateSignature: stateSignature)
+                                    if hasCompatibleLayout && hasCompatibleMetadata {
+                                        let suffixTokens = makeSuffixTokens(
+                                            fullTokens: fullInput.text.tokens, prefixCount: prefixCount)
+                                        generationInput = LMInput(
+                                            text: .init(tokens: suffixTokens),
+                                            image: nil,
+                                            video: nil)
+                                        generationCache = cached
+                                        generationCacheKey = key
+                                    } else {
+                                        KVCacheManager.shared.clear(for: key)
                                     }
-                                if hasCompatibleLayout {
+                                } else {
+                                    let built = context.model.newCache(parameters: parameters)
+                                    _ = try TokenIterator(
+                                        input: historyInput,
+                                        model: context.model,
+                                        cache: built,
+                                        parameters: parameters)
+                                    eval(built)
+                                    KVCacheManager.shared.save(
+                                        cache: built,
+                                        for: key,
+                                        metadata: [
+                                            "prompt_cache_format_version": PromptCacheKeyBuilder.formatVersion,
+                                            "model_id": model.id,
+                                            "prefix_token_count": String(prefixCount),
+                                        ])
+
                                     let suffixTokens = makeSuffixTokens(
                                         fullTokens: fullInput.text.tokens, prefixCount: prefixCount)
                                     generationInput = LMInput(
                                         text: .init(tokens: suffixTokens),
                                         image: nil,
                                         video: nil)
-                                    generationCache = cached
-                                } else {
-                                    KVCacheManager.shared.clear(for: key)
+                                    generationCache = built.map { $0.copy() }
+                                    generationCacheKey = key
                                 }
-                            } else {
-                                let built = context.model.newCache(parameters: parameters)
-                                _ = try TokenIterator(
-                                    input: historyInput,
-                                    model: context.model,
-                                    cache: built,
-                                    parameters: parameters)
-                                eval(built)
-                                KVCacheManager.shared.save(
-                                    cache: built,
-                                    for: key,
-                                    metadata: [
-                                        "cache_format_version": PromptCacheKeyBuilder.formatVersion,
-                                        "model_id": model.id,
-                                        "prefix_token_count": String(prefixCount),
-                                    ])
-
-                                let suffixTokens = makeSuffixTokens(
-                                    fullTokens: fullInput.text.tokens, prefixCount: prefixCount)
-                                generationInput = LMInput(
-                                    text: .init(tokens: suffixTokens),
-                                    image: nil,
-                                    video: nil)
-                                generationCache = built.map { $0.copy() }
                             }
                         }
+                    } catch {
+                        generationInput = fullInput
+                        generationCache = nil
+                        generationCacheKey = nil
                     }
                 }
 
-                return try MLXLMCommon.generate(
-                    input: generationInput,
-                    cache: generationCache,
-                    parameters: parameters,
-                    context: context)
+                do {
+                    return try MLXLMCommon.generate(
+                        input: generationInput,
+                        cache: generationCache,
+                        parameters: parameters,
+                        context: context)
+                } catch where generationCache != nil {
+                    if let generationCacheKey {
+                        KVCacheManager.shared.clear(for: generationCacheKey)
+                    }
+                    return try MLXLMCommon.generate(
+                        input: fullInput,
+                        cache: nil,
+                        parameters: parameters,
+                        context: context)
+                }
             }
 
             return AsyncStream { continuation in
