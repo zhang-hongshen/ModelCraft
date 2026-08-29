@@ -1,4 +1,7 @@
 import Testing
+import Foundation
+import MLX
+import MLXLMCommon
 @testable import ModelCraft
 
 struct RuntimeFoundationTests {
@@ -60,6 +63,42 @@ struct RuntimeFoundationTests {
         #expect(await events.values() == [
             "first-enter", "first-exit", "second-enter", "second-exit"
         ])
+    }
+
+    @Test func promptCacheRoundTripPreservesTypesAndMetadata() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let manager = KVCacheManager(cacheDirectory: directory, memoryBudget: 8 * 1024 * 1024)
+        let keys = MLXArray.ones([1, 2, 3, 4], dtype: .float32)
+        let values = MLXArray.zeros([1, 2, 3, 4], dtype: .float32)
+        let cache: [any KVCache] = [KVCacheSimple(), RotatingKVCache(maxSize: 16)]
+        for item in cache { _ = item.update(keys: keys, values: values) }
+
+        manager.save(cache: cache, for: "unsafe/key", metadata: ["model": "test"])
+        manager.removeMemoryCopy(for: "unsafe/key")
+
+        let loaded = try #require(manager.cachedCopy(for: "unsafe/key"))
+        #expect(loaded.count == 2)
+        #expect(loaded[0] is KVCacheSimple)
+        #expect(loaded[1] is RotatingKVCache)
+        #expect(loaded[0].offset == 3)
+        #expect(loaded[1].offset == 3)
+    }
+
+    @Test func promptCacheStoresAnImmutableSnapshot() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let manager = KVCacheManager(cacheDirectory: directory, memoryBudget: 8 * 1024 * 1024)
+        let cache: [any KVCache] = [KVCacheSimple()]
+        _ = cache[0].update(
+            keys: MLXArray.ones([1, 2, 2, 4]), values: MLXArray.zeros([1, 2, 2, 4]))
+
+        manager.save(cache: cache, for: "snapshot")
+        _ = cache[0].update(
+            keys: MLXArray.ones([1, 2, 2, 4]), values: MLXArray.zeros([1, 2, 2, 4]))
+
+        let loaded = try #require(manager.cachedCopy(for: "snapshot"))
+        #expect(loaded[0].offset == 2)
     }
 }
 
