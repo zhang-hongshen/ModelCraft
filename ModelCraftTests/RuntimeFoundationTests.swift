@@ -33,4 +33,38 @@ struct RuntimeFoundationTests {
         #expect(large.numCodebooks == 4)
         #expect(large.numHiddenLayers == 48)
     }
+
+    @Test func coordinatorRunsOnlyOneHeavyLeaseAtATime() async {
+        let coordinator = InferenceRuntimeCoordinator(
+            profile: .init(cacheLimit: 4 * 1024 * 1024))
+        let events = EventRecorder()
+
+        let first = Task {
+            try await coordinator.withExclusiveAccess(.languageModel) {
+                await events.append("first-enter")
+                try await Task.sleep(nanoseconds: 20_000_000)
+                await events.append("first-exit")
+            }
+        }
+
+        try? await Task.sleep(nanoseconds: 1_000_000)
+        let second = Task {
+            try await coordinator.withExclusiveAccess(.stableDiffusion) {
+                await events.append("second-enter")
+                await events.append("second-exit")
+            }
+        }
+
+        _ = try? await first.value
+        _ = try? await second.value
+        #expect(await events.values() == [
+            "first-enter", "first-exit", "second-enter", "second-exit"
+        ])
+    }
+}
+
+private actor EventRecorder {
+    private var storage: [String] = []
+    func append(_ value: String) { storage.append(value) }
+    func values() -> [String] { storage }
 }

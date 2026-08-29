@@ -42,10 +42,18 @@ class StableDiffusionEvaluator {
     
     func generate(prompt: String, showProgress: Bool) async throws
         -> AsyncThrowingStream<MLXArray, Error> {
+        let lease = await InferenceRuntimeCoordinator.shared.acquire(.stableDiffusion)
+
+        do {
         let container = try await modelFactory.load()
         return AsyncThrowingStream { continuation in
-            Task {
-                try await container.performTwoStage { generator in
+            let task = Task {
+                defer {
+                    Task { await lease.release() }
+                }
+
+                do {
+                    try await container.performTwoStage { generator in
                     // The parameters that control the generation of the image. See
                     // EvaluateParameters for more information. For example, adjusting
                     // the latentSize parameter will change the size of the generated
@@ -89,7 +97,17 @@ class StableDiffusionEvaluator {
                     }
                     continuation.finish()
                 }
+                } catch {
+                    continuation.finish(throwing: error)
+                }
             }
+            continuation.onTermination = { @Sendable _ in
+                task.cancel()
+            }
+        }
+        } catch {
+            await lease.release()
+            throw error
         }
                 
     }
@@ -143,10 +161,6 @@ actor StableDiffusionModelFactory {
         if conserveMemory {
             print("conserving memory")
             loadConfiguration.quantize = true
-            Memory.cacheLimit = 1 * 1024 * 1024
-            Memory.memoryLimit = 3 * 1024 * 1024 * 1024
-        } else {
-            Memory.cacheLimit = 256 * 1024 * 1024
         }
     }
 

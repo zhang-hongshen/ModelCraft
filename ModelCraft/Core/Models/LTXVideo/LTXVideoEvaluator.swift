@@ -11,9 +11,17 @@ actor LTXVideoEvaluator {
     private let modelFactory = LTXVideoModelFactory()
 
     public func generate(prompt: String) async throws -> MLXArray {
-        let model = try await modelFactory.load()
-        let parameters = model.configuration.defaultParameters(prompt)
-        return try await model.generate(parameters)
+        let lease = await InferenceRuntimeCoordinator.shared.acquire(.ltxVideo)
+        do {
+            let model = try await modelFactory.load()
+            let parameters = model.configuration.defaultParameters(prompt)
+            let result = try await model.generate(parameters)
+            await lease.release()
+            return result
+        } catch {
+            await lease.release()
+            throw error
+        }
     }
 }
 
@@ -31,12 +39,6 @@ actor LTXVideoModelFactory {
     init(configuration: LTXVideoConfiguration = .ltxv2BDistilled) {
         self.configuration = configuration
         self.conserveMemory = Memory.memoryLimit < 12 * 1024 * 1024 * 1024
-        if conserveMemory {
-            Memory.cacheLimit = 1 * 1024 * 1024
-            Memory.memoryLimit = 6 * 1024 * 1024 * 1024
-        } else {
-            Memory.cacheLimit = 256 * 1024 * 1024
-        }
     }
 
     func load() async throws -> LTXVideo {
@@ -69,4 +71,3 @@ actor LTXVideoModelFactory {
         Memory.clearCache()
     }
 }
-

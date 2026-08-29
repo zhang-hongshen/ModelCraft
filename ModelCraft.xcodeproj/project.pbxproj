@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		70008A2D2F6725B7006593CA /* KVCacheManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70008A2C2F6725B3006593CA /* KVCacheManager.swift */; };
+		70A1F0032F00000100000001 /* InferenceRuntimeCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70A1F0022F00000100000001 /* InferenceRuntimeCoordinator.swift */; };
 		7001D9B02EC10DEB00047F6B /* ChatInputView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7001D9AF2EC10DEB00047F6B /* ChatInputView.swift */; };
 		7008FD8F2E80414200D62EF6 /* NLEmbedding+.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7008FD8E2E80413E00D62EF6 /* NLEmbedding+.swift */; };
 		70097F7F2D6C04BB00DDDEDF /* MessageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70097F7E2D6C04BB00DDDEDF /* MessageView.swift */; };
@@ -200,6 +201,7 @@
 
 /* Begin PBXFileReference section */
 		70008A2C2F6725B3006593CA /* KVCacheManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KVCacheManager.swift; sourceTree = "<group>"; };
+		70A1F0022F00000100000001 /* InferenceRuntimeCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InferenceRuntimeCoordinator.swift; sourceTree = "<group>"; };
 		7001D9AF2EC10DEB00047F6B /* ChatInputView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatInputView.swift; sourceTree = "<group>"; };
 		7008FD8E2E80413E00D62EF6 /* NLEmbedding+.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NLEmbedding+.swift"; sourceTree = "<group>"; };
 		70097F7E2D6C04BB00DDDEDF /* MessageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageView.swift; sourceTree = "<group>"; };
@@ -432,6 +434,7 @@
 			children = (
 				70E0BA8E2F8371980095DED1 /* STTService.swift */,
 				70008A2C2F6725B3006593CA /* KVCacheManager.swift */,
+				70A1F0022F00000100000001 /* InferenceRuntimeCoordinator.swift */,
 				70823EC72F520F6F0011DF58 /* ModelService.swift */,
 				7078AA112F4B79DF00711940 /* LMService.swift */,
 				70FE039E2F13EF9D0061CCEB /* ChatService.swift */,
@@ -994,6 +997,7 @@
 				7078AB142F4EDE9900711940 /* ToolDefinitions.swift in Sources */,
 				70C22FCC2BAEE24C002754C7 /* Image+.swift in Sources */,
 				70008A2D2F6725B7006593CA /* KVCacheManager.swift in Sources */,
+				70A1F0032F00000100000001 /* InferenceRuntimeCoordinator.swift in Sources */,
 				705483F82BBE992800256094 /* DeleteButton.swift in Sources */,
 				70E2017B2BAE825A00CFE1D7 /* ChatView.swift in Sources */,
 				70E0BA8F2F83719C0095DED1 /* STTService.swift in Sources */,

@@ -14,10 +14,18 @@ class MusicGenEvaluator {
     private let modelFactory = MusicGenModelFactory()
     
     func generate(prompt: String) async throws -> MLXArray {
-        let model = try await modelFactory.load()
-        var parameters = modelFactory.configuration.defaultParameters()
-        parameters.prompt = prompt
-        return model.generate(parameters)
+        let lease = await InferenceRuntimeCoordinator.shared.acquire(.musicGen)
+        do {
+            let model = try await modelFactory.load()
+            var parameters = modelFactory.configuration.defaultParameters()
+            parameters.prompt = prompt
+            let result = model.generate(parameters)
+            await lease.release()
+            return result
+        } catch {
+            await lease.release()
+            throw error
+        }
     }
     
     func saveAudio(to url: URL, audio: MLXArray) throws {
@@ -45,10 +53,6 @@ actor MusicGenModelFactory {
 
         if conserveMemory {
             print("conserving memory")
-            Memory.cacheLimit = 1 * 1024 * 1024
-            Memory.memoryLimit = 3 * 1024 * 1024 * 1024
-        } else {
-            Memory.cacheLimit = 256 * 1024 * 1024
         }
     }
     

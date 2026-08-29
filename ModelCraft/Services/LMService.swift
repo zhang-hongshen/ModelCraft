@@ -61,6 +61,9 @@ class LMService {
     /// - Returns: An AsyncStream of generated text tokens
     /// - Throws: Errors that might occur during generation
     func generate(model: LocalModel, messages: [MLXLMCommon.Chat.Message], tools: [ToolSpec] = []) async throws -> AsyncStream<Generation> {
+        let lease = await InferenceRuntimeCoordinator.shared.acquire(.languageModel)
+
+        do {
         // Load or retrieve model from cache
         let modelContainer = try await load(model: model)
         
@@ -79,7 +82,7 @@ class LMService {
 //        )
         
         // Generate response using the model
-        return try await modelContainer.perform { (context: ModelContext) in
+        let stream = try await modelContainer.perform { (context: ModelContext) in
             let userLMInput = try await context.processor.prepare(input: userInput)
             
             let parameters = GenerateParameters(temperature: 0.7)
@@ -102,6 +105,26 @@ class LMService {
 //            return try MLXLMCommon.generate(
 //                input: userLMInput, cache: cache,
 //                parameters: parameters, context: context)
+        }
+
+        return AsyncStream { continuation in
+            let task = Task {
+                defer {
+                    Task { await lease.release() }
+                }
+
+                for await generation in stream {
+                    continuation.yield(generation)
+                }
+                continuation.finish()
+            }
+            continuation.onTermination = { @Sendable _ in
+                task.cancel()
+            }
+        }
+        } catch {
+            await lease.release()
+            throw error
         }
     }
     
