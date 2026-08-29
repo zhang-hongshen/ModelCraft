@@ -14,7 +14,7 @@ class MusicGenEvaluator {
     private let modelFactory = MusicGenModelFactory()
     
     func generate(prompt: String) async throws -> MLXArray {
-        let lease = await InferenceRuntimeCoordinator.shared.acquire(.musicGen)
+        let lease = try await InferenceRuntimeCoordinator.shared.acquire(.musicGen)
         do {
             let model = try await modelFactory.load()
             var parameters = modelFactory.configuration.defaultParameters()

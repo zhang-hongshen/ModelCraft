@@ -11,7 +11,7 @@ actor LTXVideoEvaluator {
     private let modelFactory = LTXVideoModelFactory()
 
     public func generate(prompt: String) async throws -> MLXArray {
-        let lease = await InferenceRuntimeCoordinator.shared.acquire(.ltxVideo)
+        let lease = try await InferenceRuntimeCoordinator.shared.acquire(.ltxVideo)
         do {
             let model = try await modelFactory.load()
             let parameters = model.configuration.defaultParameters(prompt)

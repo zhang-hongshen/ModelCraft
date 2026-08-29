@@ -42,7 +42,7 @@ class StableDiffusionEvaluator {
     
     func generate(prompt: String, showProgress: Bool) async throws
         -> AsyncThrowingStream<MLXArray, Error> {
-        let lease = await InferenceRuntimeCoordinator.shared.acquire(.stableDiffusion)
+        let lease = try await InferenceRuntimeCoordinator.shared.acquire(.stableDiffusion)
 
         do {
         let container = try await modelFactory.load()
