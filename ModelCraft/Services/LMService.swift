@@ -36,7 +36,11 @@ enum PromptCacheMetadata {
         modelID: String,
         prefixCount: Int,
         stateSignature: String,
-        layoutSignature: String
+        layoutSignature: String,
+        modelRevision: String,
+        tokenizerRevision: String,
+        templateRevision: String,
+        modelContainerIdentity: String
     ) -> Bool {
         metadata["cache_format_version"] == "1"
             && metadata["prompt_cache_format_version"] == PromptCacheKeyBuilder.formatVersion
@@ -44,6 +48,10 @@ enum PromptCacheMetadata {
             && metadata["prefix_token_count"] == String(prefixCount)
             && metadata["cache_state_signature"] == stateSignature
             && metadata["cache_layout_signature"] == layoutSignature
+            && metadata["model_revision"] == modelRevision
+            && metadata["tokenizer_revision"] == tokenizerRevision
+            && metadata["template_revision"] == templateRevision
+            && metadata["model_container_identity"] == modelContainerIdentity
     }
 }
 
@@ -92,7 +100,7 @@ class LMService {
     /// - Returns: An AsyncStream of generated text tokens
     /// - Throws: Errors that might occur during generation
     func generate(model: LocalModel, messages: [MLXLMCommon.Chat.Message], tools: [ToolSpec] = []) async throws -> AsyncStream<Generation> {
-        let lease = await InferenceRuntimeCoordinator.shared.acquire(.languageModel)
+        let lease = try await InferenceRuntimeCoordinator.shared.acquire(.languageModel)
 
         do {
             let modelContainer = try await load(model: model)
@@ -107,6 +115,12 @@ class LMService {
                     temperature: 0.7,
                     prefillStepSize: 256)
                 let modelIdentity = ObjectIdentifier(context.model)
+                let modelContainerIdentity = String(describing: modelIdentity)
+                let modelRevision = PromptCacheKeyBuilder.modelRevision(
+                    for: context.configuration)
+                let tokenizerRevision = PromptCacheKeyBuilder.tokenizerRevision(
+                    for: context.configuration)
+                let templateRevision = PromptCacheKeyBuilder.templateRevision
                 let fullInput = try await context.processor.prepare(input: userInput)
                 var generationInput = fullInput
                 var generationCache: [KVCache]?
@@ -127,7 +141,10 @@ class LMService {
                                 let key = PromptCacheKeyBuilder.make(
                                     modelID: model.id,
                                     prefixTokens: prefixTokens,
-                                    tools: tools)
+                                    tools: tools,
+                                    modelRevision: modelRevision,
+                                    tokenizerRevision: tokenizerRevision,
+                                    templateRevision: templateRevision)
 
                                 if let snapshot = KVCacheManager.shared.cachedSnapshot(for: key) {
                                     let cached = snapshot.cache
@@ -179,7 +196,11 @@ class LMService {
                                         modelID: model.id,
                                         prefixCount: prefixCount,
                                         stateSignature: stateSignature,
-                                        layoutSignature: KVCacheManager.layoutSignature(for: cached))
+                                        layoutSignature: KVCacheManager.layoutSignature(for: cached),
+                                        modelRevision: modelRevision,
+                                        tokenizerRevision: tokenizerRevision,
+                                        templateRevision: templateRevision,
+                                        modelContainerIdentity: modelContainerIdentity)
                                     if hasCompatibleLayout && hasCompatibleMetadata {
                                         let suffixTokens = makeSuffixTokens(
                                             fullTokens: fullInput.text.tokens, prefixCount: prefixCount)
@@ -211,6 +232,10 @@ class LMService {
                                             "prompt_cache_format_version": PromptCacheKeyBuilder.formatVersion,
                                             "model_id": model.id,
                                             "prefix_token_count": String(prefixCount),
+                                            "model_revision": modelRevision,
+                                            "tokenizer_revision": tokenizerRevision,
+                                            "template_revision": templateRevision,
+                                            "model_container_identity": modelContainerIdentity,
                                         ])
 
                                     let suffixTokens = makeSuffixTokens(
@@ -232,34 +257,53 @@ class LMService {
                 }
 
                 do {
-                    return try MLXLMCommon.generate(
+                    let iterator = try TokenIterator(
                         input: generationInput,
+                        model: context.model,
                         cache: generationCache,
-                        parameters: parameters,
-                        context: context)
+                        parameters: parameters)
+                    return MLXLMCommon.generateTask(
+                        promptTokenCount: generationInput.text.tokens.size,
+                        modelConfiguration: context.configuration,
+                        tokenizer: context.tokenizer,
+                        iterator: iterator)
                 } catch where generationCache != nil {
                     if let generationCacheKey {
                         KVCacheManager.shared.clear(for: generationCacheKey)
                     }
-                    return try MLXLMCommon.generate(
+                    let iterator = try TokenIterator(
                         input: fullInput,
+                        model: context.model,
                         cache: nil,
-                        parameters: parameters,
-                        context: context)
+                        parameters: parameters)
+                    return MLXLMCommon.generateTask(
+                        promptTokenCount: fullInput.text.tokens.size,
+                        modelConfiguration: context.configuration,
+                        tokenizer: context.tokenizer,
+                        iterator: iterator)
                 }
             }
 
             return AsyncStream { continuation in
                 let task = Task {
-                    defer { Task { await lease.release() } }
-
-                    for await item in inner {
+                    for await item in inner.0 {
                         if Task.isCancelled { break }
                         continuation.yield(item)
                     }
                     continuation.finish()
+
+                    // `AsyncStream` can finish before the producer task has
+                    // released its iterator/cache. Cancel on early stop and
+                    // wait for the producer before making the global lease
+                    // available to another model.
+                    inner.1.cancel()
+                    await inner.1.value
+                    await lease.release()
                 }
-                continuation.onTermination = { _ in task.cancel() }
+                continuation.onTermination = { _ in
+                    task.cancel()
+                    inner.1.cancel()
+                }
             }
         } catch {
             await lease.release()

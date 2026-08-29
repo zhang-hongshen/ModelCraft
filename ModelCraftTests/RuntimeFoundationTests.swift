@@ -65,6 +65,32 @@ struct RuntimeFoundationTests {
         ])
     }
 
+    @Test func cancelledCoordinatorWaiterIsRemovedBeforeNextLease() async throws {
+        let coordinator = InferenceRuntimeCoordinator(
+            profile: .init(cacheLimit: 4 * 1024 * 1024))
+        let first = try await coordinator.acquire(.languageModel)
+        let waiting = Task {
+            try await coordinator.acquire(.musicGen)
+        }
+
+        for _ in 0..<100 {
+            if await coordinator.pendingWaiterCount() == 1 { break }
+            await Task.yield()
+        }
+        waiting.cancel()
+
+        do {
+            _ = try await waiting.value
+            Issue.record("a cancelled waiter must not receive a lease")
+        } catch is CancellationError {
+            // Expected: cancellation removes the continuation from the queue.
+        }
+
+        await first.release()
+        let next = try await coordinator.acquire(.stableDiffusion)
+        await next.release()
+    }
+
     @Test func promptCacheRoundTripPreservesTypesAndMetadata() throws {
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
@@ -193,6 +219,27 @@ struct RuntimeFoundationTests {
         #expect(manager.cachedCopy(for: "lru-second") == nil)
         #expect(try #require(manager.cachedCopy(for: "lru-first")).count == 1)
         #expect(try #require(manager.cachedCopy(for: "lru-third")).count == 1)
+    }
+
+    @Test func promptCacheSaveAfterClearWinsTheDiskOrdering() throws {
+        let directory = URL.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let manager = KVCacheManager(cacheDirectory: directory, memoryBudget: 8 * 1024 * 1024)
+
+        let first = [KVCacheSimple() as any KVCache]
+        _ = first[0].update(
+            keys: MLXArray.ones([1, 1, 1, 1]), values: MLXArray.zeros([1, 1, 1, 1]))
+        manager.save(cache: first, for: "ordered")
+        manager.clear(for: "ordered")
+
+        let second = [KVCacheSimple() as any KVCache]
+        _ = second[0].update(
+            keys: MLXArray.ones([1, 1, 2, 1]), values: MLXArray.zeros([1, 1, 2, 1]))
+        manager.save(cache: second, for: "ordered")
+        manager.removeMemoryCopy(for: "ordered")
+
+        #expect(try #require(manager.cachedCopy(for: "ordered"))[0].offset == 2)
     }
 
     @Test func promptCacheUsesDigestOnlyDiskPath() {

@@ -123,8 +123,9 @@ final class KVCacheManager {
         diskMetadata["cache_format_version"] = "1"
         diskMetadata["cache_state_signature"] = Self.stateSignature(for: snapshot)
         diskMetadata["cache_layout_signature"] = Self.layoutSignature(for: snapshot)
-        insert(snapshot, for: key, metadata: diskMetadata, cost: cost)
-
+        lock.lock()
+        defer { lock.unlock() }
+        insertLocked(snapshot, for: key, metadata: diskMetadata, cost: cost)
         do {
             try persist(snapshot, for: key, metadata: diskMetadata)
         } catch {
@@ -137,7 +138,10 @@ final class KVCacheManager {
     }
 
     func cachedSnapshot(for key: String) -> CachedSnapshot? {
-        if let memorySnapshot = snapshotFromMemory(for: key) {
+        lock.lock()
+        defer { lock.unlock() }
+
+        if let memorySnapshot = snapshotFromMemoryLocked(for: key) {
             return memorySnapshot
         }
 
@@ -157,7 +161,7 @@ final class KVCacheManager {
             let state = snapshot.flatMap { $0.state }
             eval(state)
             let cost = state.reduce(0) { $0 + $1.nbytes }
-            insert(snapshot, for: key, metadata: metadata, cost: cost)
+            insertLocked(snapshot, for: key, metadata: metadata, cost: cost)
 
             return CachedSnapshot(
                 cache: snapshot.map { $0.copy() },
@@ -247,18 +251,18 @@ final class KVCacheManager {
 
     func clear(for key: String) {
         lock.lock()
+        defer { lock.unlock() }
         removeEntry(for: key)
-        lock.unlock()
-
         try? FileManager.default.removeItem(at: fileURL(for: key))
     }
 
     func clearAll() {
         lock.lock()
+        defer { lock.unlock() }
         entries.removeAll()
+        registeredLayouts.removeAll()
         memoryCost = 0
         clock = 0
-        lock.unlock()
 
         guard let contents = try? FileManager.default.contentsOfDirectory(
             at: cacheDirectory,
@@ -280,8 +284,8 @@ final class KVCacheManager {
 
     func removeMemoryCopy(for key: String) {
         lock.lock()
+        defer { lock.unlock() }
         removeEntry(for: key)
-        lock.unlock()
     }
 
     func fileURL(for key: String) -> URL {
@@ -290,10 +294,8 @@ final class KVCacheManager {
             .appendingPathExtension("safetensors")
     }
 
-    private func snapshotFromMemory(for key: String) -> CachedSnapshot? {
-        lock.lock()
-        defer { lock.unlock() }
-
+    /// Caller must hold `lock`.
+    private func snapshotFromMemoryLocked(for key: String) -> CachedSnapshot? {
         guard let entry = entries[key] else {
             return nil
         }
@@ -333,15 +335,13 @@ final class KVCacheManager {
         }
     }
 
-    private func insert(
+    /// Caller must hold `lock`.
+    private func insertLocked(
         _ cache: [any KVCache],
         for key: String,
         metadata: [String: String],
         cost: Int
     ) {
-        lock.lock()
-        defer { lock.unlock() }
-
         removeEntry(for: key)
         entries[key] = Entry(
             cache: cache,

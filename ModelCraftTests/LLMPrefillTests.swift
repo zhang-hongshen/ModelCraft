@@ -138,6 +138,11 @@ struct LLMPrefillTests {
         #expect(manager.registeredLayout(
             for: "model-id",
             modelIdentity: ObjectIdentifier(replacementModel)) == nil)
+
+        manager.clearAll()
+        #expect(manager.registeredLayout(
+            for: "model-id",
+            modelIdentity: ObjectIdentifier(firstModel)) == nil)
     }
 
     @Test func prefixCacheMetadataRequiresMatchingIdentityAndStateSignature() {
@@ -148,6 +153,10 @@ struct LLMPrefillTests {
             "prefix_token_count": "2",
             "cache_state_signature": "state-signature",
             "cache_layout_signature": "layout-signature",
+            "model_revision": "hub:main",
+            "tokenizer_revision": "tokenizer:default|override:default",
+            "template_revision": PromptCacheKeyBuilder.templateRevision,
+            "model_container_identity": "ObjectIdentifier(0x1)",
         ]
 
         #expect(PromptCacheMetadata.matches(
@@ -155,31 +164,51 @@ struct LLMPrefillTests {
             modelID: "model-id",
             prefixCount: 2,
             stateSignature: "state-signature",
-            layoutSignature: "layout-signature"))
+            layoutSignature: "layout-signature",
+            modelRevision: "hub:main",
+            tokenizerRevision: "tokenizer:default|override:default",
+            templateRevision: PromptCacheKeyBuilder.templateRevision,
+            modelContainerIdentity: "ObjectIdentifier(0x1)"))
         #expect(!PromptCacheMetadata.matches(
             metadata,
             modelID: "other-model",
             prefixCount: 2,
             stateSignature: "state-signature",
-            layoutSignature: "layout-signature"))
+            layoutSignature: "layout-signature",
+            modelRevision: "hub:main",
+            tokenizerRevision: "tokenizer:default|override:default",
+            templateRevision: PromptCacheKeyBuilder.templateRevision,
+            modelContainerIdentity: "ObjectIdentifier(0x1)"))
         #expect(!PromptCacheMetadata.matches(
             metadata,
             modelID: "model-id",
             prefixCount: 3,
             stateSignature: "state-signature",
-            layoutSignature: "layout-signature"))
+            layoutSignature: "layout-signature",
+            modelRevision: "hub:main",
+            tokenizerRevision: "tokenizer:default|override:default",
+            templateRevision: PromptCacheKeyBuilder.templateRevision,
+            modelContainerIdentity: "ObjectIdentifier(0x1)"))
         #expect(!PromptCacheMetadata.matches(
             metadata,
             modelID: "model-id",
             prefixCount: 2,
             stateSignature: "other-signature",
-            layoutSignature: "layout-signature"))
+            layoutSignature: "layout-signature",
+            modelRevision: "hub:main",
+            tokenizerRevision: "tokenizer:default|override:default",
+            templateRevision: PromptCacheKeyBuilder.templateRevision,
+            modelContainerIdentity: "ObjectIdentifier(0x1)"))
         #expect(!PromptCacheMetadata.matches(
             metadata,
             modelID: "model-id",
             prefixCount: 2,
             stateSignature: "state-signature",
-            layoutSignature: "other-layout"))
+            layoutSignature: "other-layout",
+            modelRevision: "hub:main",
+            tokenizerRevision: "tokenizer:default|override:default",
+            templateRevision: PromptCacheKeyBuilder.templateRevision,
+            modelContainerIdentity: "ObjectIdentifier(0x1)"))
 
         var unsupportedManagerFormat = metadata
         unsupportedManagerFormat["cache_format_version"] = "0"
@@ -188,7 +217,11 @@ struct LLMPrefillTests {
             modelID: "model-id",
             prefixCount: 2,
             stateSignature: "state-signature",
-            layoutSignature: "layout-signature"))
+            layoutSignature: "layout-signature",
+            modelRevision: "hub:main",
+            tokenizerRevision: "tokenizer:default|override:default",
+            templateRevision: PromptCacheKeyBuilder.templateRevision,
+            modelContainerIdentity: "ObjectIdentifier(0x1)"))
 
         var unsupportedPromptFormat = metadata
         unsupportedPromptFormat["prompt_cache_format_version"] = "prompt-cache-v0"
@@ -197,7 +230,11 @@ struct LLMPrefillTests {
             modelID: "model-id",
             prefixCount: 2,
             stateSignature: "state-signature",
-            layoutSignature: "layout-signature"))
+            layoutSignature: "layout-signature",
+            modelRevision: "hub:main",
+            tokenizerRevision: "tokenizer:default|override:default",
+            templateRevision: PromptCacheKeyBuilder.templateRevision,
+            modelContainerIdentity: "ObjectIdentifier(0x1)"))
     }
 
     @Test func cacheStateSignatureChangesWithSavedTensorShape() {
@@ -288,6 +325,57 @@ struct LLMPrefillTests {
             modelID: "model-a", prefixTokens: [1, 3], tools: [])
         #expect(base != otherModel)
         #expect(base != otherPrefix)
+    }
+
+    @Test func promptKeySeparatesModelTokenizerAndTemplateRevisions() {
+        let base = PromptCacheKeyBuilder.make(
+            modelID: "model",
+            prefixTokens: [1, 2],
+            tools: [],
+            modelRevision: "hub:main",
+            tokenizerRevision: "tokenizer:v1",
+            templateRevision: "template:v1")
+        let otherModelRevision = PromptCacheKeyBuilder.make(
+            modelID: "model",
+            prefixTokens: [1, 2],
+            tools: [],
+            modelRevision: "hub:next",
+            tokenizerRevision: "tokenizer:v1",
+            templateRevision: "template:v1")
+        let otherTokenizerRevision = PromptCacheKeyBuilder.make(
+            modelID: "model",
+            prefixTokens: [1, 2],
+            tools: [],
+            modelRevision: "hub:main",
+            tokenizerRevision: "tokenizer:v2",
+            templateRevision: "template:v1")
+        let otherTemplateRevision = PromptCacheKeyBuilder.make(
+            modelID: "model",
+            prefixTokens: [1, 2],
+            tools: [],
+            modelRevision: "hub:main",
+            tokenizerRevision: "tokenizer:v1",
+            templateRevision: "template:v2")
+
+        #expect(base != otherModelRevision)
+        #expect(base != otherTokenizerRevision)
+        #expect(base != otherTemplateRevision)
+    }
+
+    @Test func modelRevisionChangesWhenLocalModelMetadataChanges() throws {
+        let directory = URL.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let weights = directory.appendingPathComponent("weights.safetensors")
+        try Data(repeating: 1, count: 4).write(to: weights)
+        let first = PromptCacheKeyBuilder.modelRevision(
+            for: ModelConfiguration(directory: directory))
+        try Data(repeating: 2, count: 8).write(to: weights)
+        let second = PromptCacheKeyBuilder.modelRevision(
+            for: ModelConfiguration(directory: directory))
+
+        #expect(first != second)
     }
 
     @Test func promptKeySeparatesDelimiterAndQuoteContent() {
