@@ -21,6 +21,15 @@ func makeSuffixTokens(fullTokens: MLXArray, prefixCount: Int) -> MLXArray {
     return MLXArray(Array(suffix[prefixCount...])).reshaped(1, -1)
 }
 
+@inline(__always)
+func prefixProbeToken(from prefixTokens: [Int]) -> Int? {
+    prefixTokens.first
+}
+
+private enum PrefixCacheProbeError: Error {
+    case emptyPrefix
+}
+
 enum PromptCacheMetadata {
     static func matches(
         _ metadata: [String: String],
@@ -135,7 +144,10 @@ class LMService {
                                             // Empty caches do not expose tensor structure. A single-token
                                             // current-model prefill establishes the stable layout while
                                             // the layout descriptor ignores the growing sequence axis.
-                                            let probeTokens = MLXArray([prefixTokens[0]]).reshaped(1, -1)
+                                            guard let probeToken = prefixProbeToken(from: prefixTokens) else {
+                                                throw PrefixCacheProbeError.emptyPrefix
+                                            }
+                                            let probeTokens = MLXArray([probeToken]).reshaped(1, -1)
                                             let probeInput = LMInput(
                                                 text: .init(tokens: probeTokens),
                                                 image: nil,

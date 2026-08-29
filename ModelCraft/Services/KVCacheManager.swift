@@ -25,8 +25,7 @@ final class KVCacheManager {
         struct Layer: Equatable, Sendable {
             let cacheType: String
             let maxSize: Int?
-            let isTrimmable: Bool
-            let stableParameters: [String]
+            let stableMetaState: [String]
             let tensors: [Tensor]
         }
 
@@ -55,6 +54,45 @@ final class KVCacheManager {
     private struct RegisteredLayout {
         let modelIdentity: ObjectIdentifier
         let layout: CacheLayout
+    }
+
+    /// Defines exactly which cache state is structural rather than part of a
+    /// prompt's evolving sequence position. Unknown caches remain conservative.
+    private enum CacheLayoutContract {
+        static func normalizesSequenceAxis(for cache: any KVCache) -> Bool {
+            switch cache {
+            case is ChunkedKVCache, is RotatingKVCache, is QuantizedKVCache, is KVCacheSimple:
+                return true
+            default:
+                return false
+            }
+        }
+
+        static func stableMetaState(for cache: any KVCache) -> [String] {
+            let metadata = cache.metaState
+            switch cache {
+            case is ChunkedKVCache:
+                // [chunkSize, startPosition]
+                return Array(metadata.prefix(1))
+            case is RotatingKVCache:
+                // [keep, maxCacheSize, step, offset, idx]
+                return Array(metadata.prefix(3))
+            case let quantized as QuantizedKVCache:
+                // [step, offset, groupSize, bits]; mode is not in metaState.
+                return [
+                    metadata.indices.contains(0) ? metadata[0] : "",
+                    metadata.indices.contains(2) ? metadata[2] : "",
+                    metadata.indices.contains(3) ? metadata[3] : "",
+                    "mode=\(quantized.mode)",
+                ]
+            case is KVCacheSimple:
+                return metadata
+            default:
+                // Unknown caches have no verified sequence-axis or dynamic-meta
+                // contract, so retain every detail and reject differences.
+                return metadata
+            }
+        }
     }
 
     private let lock = NSLock()
@@ -143,27 +181,17 @@ final class KVCacheManager {
 
     static func layout(for cache: [any KVCache]) -> CacheLayout {
         CacheLayout(layers: cache.map { cache in
-            let stableParameters: [String]
-            if let quantized = cache as? any QuantizedKVCacheProtocol {
-                stableParameters = [
-                    "quantization.groupSize=\(quantized.groupSize)",
-                    "quantization.bits=\(quantized.bits)",
-                    "quantization.mode=\(quantized.mode)",
-                ]
-            } else {
-                stableParameters = []
-            }
+            let normalizesSequenceAxis = CacheLayoutContract.normalizesSequenceAxis(for: cache)
             return CacheLayout.Layer(
                 cacheType: String(reflecting: type(of: cache)),
                 maxSize: cache.maxSize,
-                isTrimmable: cache.isTrimmable,
-                stableParameters: stableParameters,
+                stableMetaState: CacheLayoutContract.stableMetaState(for: cache),
                 tensors: cache.state.map { tensor in
                     CacheLayout.Tensor(
                         dtype: String(describing: tensor.dtype),
                         rank: tensor.shape.count,
                         staticShape: tensor.shape.enumerated().map {
-                            $0.offset == 2 ? nil : $0.element
+                            normalizesSequenceAxis && $0.offset == 2 ? nil : $0.element
                         })
                 })
         })
@@ -177,7 +205,7 @@ final class KVCacheManager {
                 return "\(tensor.dtype):\(tensor.rank)[\(shape)]"
             }.joined(separator: ";")
             return "\(layer.cacheType)|\(layer.maxSize.map(String.init) ?? "nil")|"
-                + "\(layer.isTrimmable)|\(layer.stableParameters.joined(separator: ","))|\(tensors)"
+                + "\(layer.stableMetaState.joined(separator: ","))|\(tensors)"
         }.joined(separator: "||")
     }
 

@@ -8,6 +8,20 @@ private struct UnsupportedToolValue: Sendable, CustomStringConvertible {
     let description: String
 }
 
+private final class UnknownKVCache: BaseKVCache {
+    private var storedState: [MLXArray]
+
+    init(state: [MLXArray]) {
+        storedState = state
+        super.init()
+    }
+
+    override var state: [MLXArray] {
+        get { storedState }
+        set { storedState = newValue }
+    }
+}
+
 struct LLMPrefillTests {
     @Test func prefixCacheLayoutRequiresMatchingStateStructure() {
         let expected = KVCacheManager.CacheLayout(
@@ -15,8 +29,7 @@ struct LLMPrefillTests {
                 .init(
                     cacheType: "KVCacheSimple",
                     maxSize: nil,
-                    isTrimmable: true,
-                    stableParameters: [],
+                    stableMetaState: [""],
                     tensors: [
                         .init(dtype: "float32", rank: 4, staticShape: [1, 2, nil, 4]),
                         .init(dtype: "float32", rank: 4, staticShape: [1, 2, nil, 4]),
@@ -28,8 +41,7 @@ struct LLMPrefillTests {
                 .init(
                     cacheType: "RotatingKVCache",
                     maxSize: nil,
-                    isTrimmable: true,
-                    stableParameters: [],
+                    stableMetaState: [""],
                     tensors: [
                         .init(dtype: "float32", rank: 4, staticShape: [1, 2, nil, 4]),
                         .init(dtype: "float32", rank: 4, staticShape: [1, 2, nil, 4]),
@@ -40,8 +52,7 @@ struct LLMPrefillTests {
                 .init(
                     cacheType: "KVCacheSimple",
                     maxSize: nil,
-                    isTrimmable: true,
-                    stableParameters: [],
+                    stableMetaState: [""],
                     tensors: [
                         .init(dtype: "float32", rank: 4, staticShape: [1, 2, nil, 8]),
                         .init(dtype: "float32", rank: 4, staticShape: [1, 2, nil, 8]),
@@ -52,8 +63,7 @@ struct LLMPrefillTests {
                 .init(
                     cacheType: "KVCacheSimple",
                     maxSize: nil,
-                    isTrimmable: true,
-                    stableParameters: [],
+                    stableMetaState: [""],
                     tensors: [
                         .init(dtype: "float16", rank: 4, staticShape: [1, 2, nil, 4]),
                         .init(dtype: "float16", rank: 4, staticShape: [1, 2, nil, 4]),
@@ -64,8 +74,7 @@ struct LLMPrefillTests {
                 .init(
                     cacheType: "KVCacheSimple",
                     maxSize: nil,
-                    isTrimmable: true,
-                    stableParameters: [],
+                    stableMetaState: [""],
                     tensors: [
                         .init(dtype: "float32", rank: 4, staticShape: [1, 2, nil, 4]),
                     ])
@@ -76,6 +85,38 @@ struct LLMPrefillTests {
         #expect(!KVCacheManager.layoutsCompatible(cached: differentShape, expected: expected))
         #expect(!KVCacheManager.layoutsCompatible(cached: differentDType, expected: expected))
         #expect(!KVCacheManager.layoutsCompatible(cached: differentTensorCount, expected: expected))
+
+        let differentStableMetaState = KVCacheManager.CacheLayout(
+            layers: [
+                .init(
+                    cacheType: "KVCacheSimple",
+                    maxSize: nil,
+                    stableMetaState: ["other"],
+                    tensors: [
+                        .init(dtype: "float32", rank: 4, staticShape: [1, 2, nil, 4]),
+                        .init(dtype: "float32", rank: 4, staticShape: [1, 2, nil, 4]),
+                    ])
+            ])
+        #expect(!KVCacheManager.layoutsCompatible(
+            cached: differentStableMetaState,
+            expected: expected))
+    }
+
+    @Test func unknownCacheKeepsSequenceAxisInLayout() {
+        let short: [any KVCache] = [UnknownKVCache(
+            state: [MLXArray.zeros([1, 1, 2, 4])])]
+        let long: [any KVCache] = [UnknownKVCache(
+            state: [MLXArray.zeros([1, 1, 3, 4])])]
+
+        eval(short, long)
+        #expect(!KVCacheManager.layoutsCompatible(
+            cached: KVCacheManager.layout(for: short),
+            expected: KVCacheManager.layout(for: long)))
+    }
+
+    @Test func prefixProbeTokenRejectsAnEmptyPrefix() {
+        #expect(prefixProbeToken(from: []) == nil)
+        #expect(prefixProbeToken(from: [42]) == 42)
     }
 
     @Test func registeredLayoutRequiresCurrentModelIdentity() {
