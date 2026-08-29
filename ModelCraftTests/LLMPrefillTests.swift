@@ -83,6 +83,14 @@ struct LLMPrefillTests {
         #expect(firstKey != secondKey)
     }
 
+    @Test func promptKeyFramesTopLevelTupleBoundaries() {
+        let first = PromptCacheKeyBuilder.make(
+            modelID: "model|with|delimiters", prefixTokens: [1, 23], tools: [])
+        let second = PromptCacheKeyBuilder.make(
+            modelID: "model", prefixTokens: [1, 2, 3], tools: [["name": "with|delimiters"]])
+        #expect(first != second)
+    }
+
     @Test func prefixPlannerGuardsEmptyAndOverlongPrefixes() {
         #expect(PromptPrefixPlanner.prefixCount(full: [1, 2], prefix: []) == nil)
         #expect(PromptPrefixPlanner.prefixCount(full: [1, 2], prefix: [1, 2, 3]) == nil)

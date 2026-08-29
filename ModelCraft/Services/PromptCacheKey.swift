@@ -23,12 +23,10 @@ enum PromptCacheKeyBuilder {
         tools: [ToolSpec]
     ) -> String {
         let canonicalTools = canonical(tools)
-        let material = [
-            formatVersion,
-            modelID,
-            canonicalTools,
-            prefixTokens.map(String.init).joined(separator: ","),
-        ].joined(separator: "|")
+        let canonicalTokens = "a\(frame(prefixTokens.map(String.init).joined(separator: ",")))"
+        let material = "q" + [formatVersion, modelID, canonicalTools, canonicalTokens]
+            .map(frame)
+            .joined()
         return material.sha256String
     }
 
