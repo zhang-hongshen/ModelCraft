@@ -26,13 +26,15 @@ enum PromptCacheMetadata {
         _ metadata: [String: String],
         modelID: String,
         prefixCount: Int,
-        stateSignature: String
+        stateSignature: String,
+        layoutSignature: String
     ) -> Bool {
         metadata["cache_format_version"] == "1"
             && metadata["prompt_cache_format_version"] == PromptCacheKeyBuilder.formatVersion
             && metadata["model_id"] == modelID
             && metadata["prefix_token_count"] == String(prefixCount)
             && metadata["cache_state_signature"] == stateSignature
+            && metadata["cache_layout_signature"] == layoutSignature
     }
 }
 
@@ -95,6 +97,7 @@ class LMService {
                 let parameters = GenerateParameters(
                     temperature: 0.7,
                     prefillStepSize: 256)
+                let modelIdentity = ObjectIdentifier(context.model)
                 let fullInput = try await context.processor.prepare(input: userInput)
                 var generationInput = fullInput
                 var generationCache: [KVCache]?
@@ -120,18 +123,51 @@ class LMService {
                                 if let snapshot = KVCacheManager.shared.cachedSnapshot(for: key) {
                                     let cached = snapshot.cache
                                     let stateSignature = KVCacheManager.stateSignature(for: cached)
-                                    let freshCache = context.model.newCache(parameters: parameters)
-                                    let hasCompatibleLayout = cached.count == freshCache.count
-                                        && zip(cached, freshCache).allSatisfy {
-                                            type(of: $0) == type(of: $1)
-                                                && $0.maxSize == $1.maxSize
-                                                && $0.offset == prefixCount
+                                    let cachedLayout = KVCacheManager.layout(for: cached)
+                                    let expectedLayout: KVCacheManager.CacheLayout
+                                    if let registered = KVCacheManager.shared.registeredLayout(
+                                        for: model.id,
+                                        modelIdentity: modelIdentity
+                                    ) {
+                                        expectedLayout = registered
+                                    } else {
+                                        do {
+                                            // Empty caches do not expose tensor structure. A single-token
+                                            // current-model prefill establishes the stable layout while
+                                            // the layout descriptor ignores the growing sequence axis.
+                                            let probeTokens = MLXArray([prefixTokens[0]]).reshaped(1, -1)
+                                            let probeInput = LMInput(
+                                                text: .init(tokens: probeTokens),
+                                                image: nil,
+                                                video: nil)
+                                            let probeCache = context.model.newCache(parameters: parameters)
+                                            _ = try TokenIterator(
+                                                input: probeInput,
+                                                model: context.model,
+                                                cache: probeCache,
+                                                parameters: parameters)
+                                            eval(probeCache)
+                                            expectedLayout = KVCacheManager.layout(for: probeCache)
+                                            KVCacheManager.shared.registerLayout(
+                                                expectedLayout,
+                                                for: model.id,
+                                                modelIdentity: modelIdentity)
+                                        } catch {
+                                            KVCacheManager.shared.clear(for: key)
+                                            throw error
                                         }
+                                    }
+                                    let hasCompatibleLayout = cached.allSatisfy {
+                                        $0.offset == prefixCount
+                                    } && KVCacheManager.layoutsCompatible(
+                                        cached: cachedLayout,
+                                        expected: expectedLayout)
                                     let hasCompatibleMetadata = PromptCacheMetadata.matches(
                                         snapshot.metadata,
                                         modelID: model.id,
                                         prefixCount: prefixCount,
-                                        stateSignature: stateSignature)
+                                        stateSignature: stateSignature,
+                                        layoutSignature: KVCacheManager.layoutSignature(for: cached))
                                     if hasCompatibleLayout && hasCompatibleMetadata {
                                         let suffixTokens = makeSuffixTokens(
                                             fullTokens: fullInput.text.tokens, prefixCount: prefixCount)
@@ -152,6 +188,10 @@ class LMService {
                                         cache: built,
                                         parameters: parameters)
                                     eval(built)
+                                    KVCacheManager.shared.registerLayout(
+                                        KVCacheManager.layout(for: built),
+                                        for: model.id,
+                                        modelIdentity: modelIdentity)
                                     KVCacheManager.shared.save(
                                         cache: built,
                                         for: key,

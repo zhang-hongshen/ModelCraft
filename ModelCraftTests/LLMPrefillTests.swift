@@ -9,6 +9,96 @@ private struct UnsupportedToolValue: Sendable, CustomStringConvertible {
 }
 
 struct LLMPrefillTests {
+    @Test func prefixCacheLayoutRequiresMatchingStateStructure() {
+        let expected = KVCacheManager.CacheLayout(
+            layers: [
+                .init(
+                    cacheType: "KVCacheSimple",
+                    maxSize: nil,
+                    isTrimmable: true,
+                    stableParameters: [],
+                    tensors: [
+                        .init(dtype: "float32", rank: 4, staticShape: [1, 2, nil, 4]),
+                        .init(dtype: "float32", rank: 4, staticShape: [1, 2, nil, 4]),
+                    ])
+            ])
+        let matching = expected
+        let differentType = KVCacheManager.CacheLayout(
+            layers: [
+                .init(
+                    cacheType: "RotatingKVCache",
+                    maxSize: nil,
+                    isTrimmable: true,
+                    stableParameters: [],
+                    tensors: [
+                        .init(dtype: "float32", rank: 4, staticShape: [1, 2, nil, 4]),
+                        .init(dtype: "float32", rank: 4, staticShape: [1, 2, nil, 4]),
+                    ])
+            ])
+        let differentShape = KVCacheManager.CacheLayout(
+            layers: [
+                .init(
+                    cacheType: "KVCacheSimple",
+                    maxSize: nil,
+                    isTrimmable: true,
+                    stableParameters: [],
+                    tensors: [
+                        .init(dtype: "float32", rank: 4, staticShape: [1, 2, nil, 8]),
+                        .init(dtype: "float32", rank: 4, staticShape: [1, 2, nil, 8]),
+                    ])
+            ])
+        let differentDType = KVCacheManager.CacheLayout(
+            layers: [
+                .init(
+                    cacheType: "KVCacheSimple",
+                    maxSize: nil,
+                    isTrimmable: true,
+                    stableParameters: [],
+                    tensors: [
+                        .init(dtype: "float16", rank: 4, staticShape: [1, 2, nil, 4]),
+                        .init(dtype: "float16", rank: 4, staticShape: [1, 2, nil, 4]),
+                    ])
+            ])
+        let differentTensorCount = KVCacheManager.CacheLayout(
+            layers: [
+                .init(
+                    cacheType: "KVCacheSimple",
+                    maxSize: nil,
+                    isTrimmable: true,
+                    stableParameters: [],
+                    tensors: [
+                        .init(dtype: "float32", rank: 4, staticShape: [1, 2, nil, 4]),
+                    ])
+            ])
+
+        #expect(KVCacheManager.layoutsCompatible(cached: matching, expected: expected))
+        #expect(!KVCacheManager.layoutsCompatible(cached: differentType, expected: expected))
+        #expect(!KVCacheManager.layoutsCompatible(cached: differentShape, expected: expected))
+        #expect(!KVCacheManager.layoutsCompatible(cached: differentDType, expected: expected))
+        #expect(!KVCacheManager.layoutsCompatible(cached: differentTensorCount, expected: expected))
+    }
+
+    @Test func registeredLayoutRequiresCurrentModelIdentity() {
+        let directory = URL.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let manager = KVCacheManager(cacheDirectory: directory)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let layout = KVCacheManager.CacheLayout(layers: [])
+        let firstModel = NSObject()
+        let replacementModel = NSObject()
+
+        manager.registerLayout(
+            layout,
+            for: "model-id",
+            modelIdentity: ObjectIdentifier(firstModel))
+
+        #expect(manager.registeredLayout(
+            for: "model-id",
+            modelIdentity: ObjectIdentifier(firstModel)) == layout)
+        #expect(manager.registeredLayout(
+            for: "model-id",
+            modelIdentity: ObjectIdentifier(replacementModel)) == nil)
+    }
+
     @Test func prefixCacheMetadataRequiresMatchingIdentityAndStateSignature() {
         let metadata = [
             "cache_format_version": "1",
@@ -16,28 +106,39 @@ struct LLMPrefillTests {
             "model_id": "model-id",
             "prefix_token_count": "2",
             "cache_state_signature": "state-signature",
+            "cache_layout_signature": "layout-signature",
         ]
 
         #expect(PromptCacheMetadata.matches(
             metadata,
             modelID: "model-id",
             prefixCount: 2,
-            stateSignature: "state-signature"))
+            stateSignature: "state-signature",
+            layoutSignature: "layout-signature"))
         #expect(!PromptCacheMetadata.matches(
             metadata,
             modelID: "other-model",
             prefixCount: 2,
-            stateSignature: "state-signature"))
+            stateSignature: "state-signature",
+            layoutSignature: "layout-signature"))
         #expect(!PromptCacheMetadata.matches(
             metadata,
             modelID: "model-id",
             prefixCount: 3,
-            stateSignature: "state-signature"))
+            stateSignature: "state-signature",
+            layoutSignature: "layout-signature"))
         #expect(!PromptCacheMetadata.matches(
             metadata,
             modelID: "model-id",
             prefixCount: 2,
-            stateSignature: "other-signature"))
+            stateSignature: "other-signature",
+            layoutSignature: "layout-signature"))
+        #expect(!PromptCacheMetadata.matches(
+            metadata,
+            modelID: "model-id",
+            prefixCount: 2,
+            stateSignature: "state-signature",
+            layoutSignature: "other-layout"))
 
         var unsupportedManagerFormat = metadata
         unsupportedManagerFormat["cache_format_version"] = "0"
@@ -45,7 +146,8 @@ struct LLMPrefillTests {
             unsupportedManagerFormat,
             modelID: "model-id",
             prefixCount: 2,
-            stateSignature: "state-signature"))
+            stateSignature: "state-signature",
+            layoutSignature: "layout-signature"))
 
         var unsupportedPromptFormat = metadata
         unsupportedPromptFormat["prompt_cache_format_version"] = "prompt-cache-v0"
@@ -53,7 +155,8 @@ struct LLMPrefillTests {
             unsupportedPromptFormat,
             modelID: "model-id",
             prefixCount: 2,
-            stateSignature: "state-signature"))
+            stateSignature: "state-signature",
+            layoutSignature: "layout-signature"))
     }
 
     @Test func cacheStateSignatureChangesWithSavedTensorShape() {
@@ -68,6 +171,9 @@ struct LLMPrefillTests {
 
         eval(first, second)
         #expect(KVCacheManager.stateSignature(for: first) != KVCacheManager.stateSignature(for: second))
+        #expect(KVCacheManager.layoutsCompatible(
+            cached: KVCacheManager.layout(for: first),
+            expected: KVCacheManager.layout(for: second)))
     }
 
     @Test func cachedSnapshotCarriesSavedMetadataWithItsCacheCopy() {
@@ -91,6 +197,7 @@ struct LLMPrefillTests {
         #expect(snapshot.metadata["cache_format_version"] == "1")
         #expect(snapshot.metadata["model_id"] == "model-id")
         #expect(snapshot.metadata["cache_state_signature"] == KVCacheManager.stateSignature(for: snapshot.cache))
+        #expect(snapshot.metadata["cache_layout_signature"] == KVCacheManager.layoutSignature(for: snapshot.cache))
     }
 
     @Test func suffixTokensSliceTheFlattenedTokenSequence() {

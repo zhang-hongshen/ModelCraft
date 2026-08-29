@@ -13,6 +13,26 @@ final class KVCacheManager {
 
     static let shared = KVCacheManager()
 
+    /// A value-only cache layout that intentionally ignores the growing KV
+    /// sequence axis (axis 2), while retaining all other tensor structure.
+    struct CacheLayout: Equatable, Sendable {
+        struct Tensor: Equatable, Sendable {
+            let dtype: String
+            let rank: Int
+            let staticShape: [Int?]
+        }
+
+        struct Layer: Equatable, Sendable {
+            let cacheType: String
+            let maxSize: Int?
+            let isTrimmable: Bool
+            let stableParameters: [String]
+            let tensors: [Tensor]
+        }
+
+        let layers: [Layer]
+    }
+
     struct CachedSnapshot {
         let cache: [any KVCache]
         let metadata: [String: String]
@@ -32,10 +52,16 @@ final class KVCacheManager {
         }
     }
 
+    private struct RegisteredLayout {
+        let modelIdentity: ObjectIdentifier
+        let layout: CacheLayout
+    }
+
     private let lock = NSLock()
     private let cacheDirectory: URL
     private let memoryBudget: Int
     private var entries: [String: Entry] = [:]
+    private var registeredLayouts: [String: RegisteredLayout] = [:]
     private var memoryCost = 0
     private var clock: UInt64 = 0
 
@@ -58,6 +84,7 @@ final class KVCacheManager {
         var diskMetadata = metadata
         diskMetadata["cache_format_version"] = "1"
         diskMetadata["cache_state_signature"] = Self.stateSignature(for: snapshot)
+        diskMetadata["cache_layout_signature"] = Self.layoutSignature(for: snapshot)
         insert(snapshot, for: key, metadata: diskMetadata, cost: cost)
 
         do {
@@ -112,6 +139,73 @@ final class KVCacheManager {
             }.joined(separator: ";")
             return "\(state.count):\(tensors)"
         }.joined(separator: "|")
+    }
+
+    static func layout(for cache: [any KVCache]) -> CacheLayout {
+        CacheLayout(layers: cache.map { cache in
+            let stableParameters: [String]
+            if let quantized = cache as? any QuantizedKVCacheProtocol {
+                stableParameters = [
+                    "quantization.groupSize=\(quantized.groupSize)",
+                    "quantization.bits=\(quantized.bits)",
+                    "quantization.mode=\(quantized.mode)",
+                ]
+            } else {
+                stableParameters = []
+            }
+            return CacheLayout.Layer(
+                cacheType: String(reflecting: type(of: cache)),
+                maxSize: cache.maxSize,
+                isTrimmable: cache.isTrimmable,
+                stableParameters: stableParameters,
+                tensors: cache.state.map { tensor in
+                    CacheLayout.Tensor(
+                        dtype: String(describing: tensor.dtype),
+                        rank: tensor.shape.count,
+                        staticShape: tensor.shape.enumerated().map {
+                            $0.offset == 2 ? nil : $0.element
+                        })
+                })
+        })
+    }
+
+    static func layoutSignature(for cache: [any KVCache]) -> String {
+        layout(for: cache).layers.map { layer in
+            let tensors = layer.tensors.map { tensor in
+                let shape = tensor.staticShape.map { $0.map(String.init) ?? "*" }
+                    .joined(separator: ",")
+                return "\(tensor.dtype):\(tensor.rank)[\(shape)]"
+            }.joined(separator: ";")
+            return "\(layer.cacheType)|\(layer.maxSize.map(String.init) ?? "nil")|"
+                + "\(layer.isTrimmable)|\(layer.stableParameters.joined(separator: ","))|\(tensors)"
+        }.joined(separator: "||")
+    }
+
+    static func layoutsCompatible(cached: CacheLayout, expected: CacheLayout) -> Bool {
+        cached == expected
+    }
+
+    func registeredLayout(for modelID: String, modelIdentity: ObjectIdentifier) -> CacheLayout? {
+        lock.lock()
+        defer { lock.unlock() }
+        guard let registered = registeredLayouts[modelID],
+              registered.modelIdentity == modelIdentity
+        else {
+            return nil
+        }
+        return registered.layout
+    }
+
+    func registerLayout(
+        _ layout: CacheLayout,
+        for modelID: String,
+        modelIdentity: ObjectIdentifier
+    ) {
+        lock.lock()
+        registeredLayouts[modelID] = RegisteredLayout(
+            modelIdentity: modelIdentity,
+            layout: layout)
+        lock.unlock()
     }
 
     func load(for key: String, into cache: inout [any KVCache]) -> Bool {
