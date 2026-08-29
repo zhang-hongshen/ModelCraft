@@ -35,7 +35,7 @@ Stable Diffusion、MusicGen、LTX 和 H3 目前分别修改全局 MLX 内存限�
 
 ## 3. 总体架构
 
-新增一个进程内的 `InferenceRuntimeCoordinator`（actor），负责重模型任务的准入、阶段切换和释放；将 `KVCacheManager` 改成独立的、并发安全的 prompt cache 存储层。
+新增一个进程内的 `InferenceRuntimeCoordinator`（actor），负责重模型任务的准入、阶段切换和释放；将 `KVCacheManager` 改成独立的、并发安全的 prompt cache 存储层。由于 `MLXArray`/`KVCache` 不是可跨 actor 传递的值，KV cache 存储本身使用锁保护的同步 API，调用点仍在 `ModelContainer.perform` 的模型隔离范围内。
 
 ### 3.1 运行时协调器
 
@@ -61,7 +61,7 @@ Stable Diffusion、MusicGen、LTX 和 H3 目前分别修改全局 MLX 内存限�
 - meta state
 - MLX 需要的元数据
 
-写入前对传入 cache 做 `copy()`，绝不把生成过程中的可变实例直接放入内存缓存。读取后再复制到本次请求的工作 cache，避免请求之间共享可变状态。
+写入前对传入 cache 做 `copy()`，绝不把生成过程中的可变实例直接放入内存缓存。读取后再复制到本次请求的工作 cache，避免请求之间共享可变状态。存储层以 `NSLock` 保护内存 LRU 和磁盘操作，避免把非 `Sendable` 的 MLX 对象穿过 actor 边界。
 
 ### 4.2 Key 与兼容性
 
