@@ -55,7 +55,7 @@ final class KVCacheManager {
         insert(snapshot, for: key, metadata: diskMetadata, cost: cost)
 
         do {
-            try savePromptCache(url: fileURL(for: key), cache: snapshot, metadata: diskMetadata)
+            try persist(snapshot, for: key, metadata: diskMetadata)
         } catch {
             // The in-memory snapshot remains available when disk persistence fails.
         }
@@ -122,7 +122,13 @@ final class KVCacheManager {
             return
         }
 
-        for url in contents {
+        for url in contents where isManagedCacheFile(url) {
+            guard let resourceValues = try? url.resourceValues(forKeys: [.isDirectoryKey]),
+                  resourceValues.isDirectory != true
+            else {
+                continue
+            }
+
             try? FileManager.default.removeItem(at: url)
         }
     }
@@ -149,6 +155,35 @@ final class KVCacheManager {
 
         entry.lastAccess = nextClockValue()
         return entry.cache.map { $0.copy() }
+    }
+
+    private func persist(
+        _ cache: [any KVCache],
+        for key: String,
+        metadata: [String: String]
+    ) throws {
+        let fileManager = FileManager.default
+        let destinationURL = fileURL(for: key)
+        let temporaryURL = cacheDirectory
+            .appendingPathComponent(UUID().uuidString)
+            .appendingPathExtension("safetensors")
+
+        do {
+            try fileManager.createDirectory(
+                at: cacheDirectory,
+                withIntermediateDirectories: true
+            )
+            try savePromptCache(url: temporaryURL, cache: cache, metadata: metadata)
+
+            if fileManager.fileExists(atPath: destinationURL.path) {
+                _ = try fileManager.replaceItemAt(destinationURL, withItemAt: temporaryURL)
+            } else {
+                try fileManager.moveItem(at: temporaryURL, to: destinationURL)
+            }
+        } catch {
+            try? fileManager.removeItem(at: temporaryURL)
+            throw error
+        }
     }
 
     private func insert(
@@ -186,5 +221,16 @@ final class KVCacheManager {
     private func nextClockValue() -> UInt64 {
         clock &+= 1
         return clock
+    }
+
+    private func isManagedCacheFile(_ url: URL) -> Bool {
+        let digest = url.deletingPathExtension().lastPathComponent
+        guard url.pathExtension == "safetensors", digest.count == 64 else {
+            return false
+        }
+
+        return digest.unicodeScalars.allSatisfy { scalar in
+            (48...57).contains(scalar.value) || (97...102).contains(scalar.value)
+        }
     }
 }

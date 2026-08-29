@@ -100,6 +100,112 @@ struct RuntimeFoundationTests {
         let loaded = try #require(manager.cachedCopy(for: "snapshot"))
         #expect(loaded[0].offset == 2)
     }
+
+    @Test func promptCacheReturnsIndependentCopies() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let manager = KVCacheManager(cacheDirectory: directory, memoryBudget: 8 * 1024 * 1024)
+        let cache: [any KVCache] = [KVCacheSimple()]
+        _ = cache[0].update(
+            keys: MLXArray.ones([1, 1, 2, 1]), values: MLXArray.zeros([1, 1, 2, 1]))
+        manager.save(cache: cache, for: "returned-copy")
+
+        let returned = try #require(manager.cachedCopy(for: "returned-copy"))
+        _ = returned[0].update(
+            keys: MLXArray.ones([1, 1, 2, 1]), values: MLXArray.zeros([1, 1, 2, 1]))
+
+        let reloaded = try #require(manager.cachedCopy(for: "returned-copy"))
+        #expect(reloaded[0].offset == 2)
+    }
+
+    @Test func promptCacheRejectsAndDeletesIncompatibleOrCorruptFiles() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let manager = KVCacheManager(cacheDirectory: directory, memoryBudget: 8 * 1024 * 1024)
+        let cache: [any KVCache] = [KVCacheSimple()]
+        _ = cache[0].update(
+            keys: MLXArray.ones([1, 1, 2, 1]), values: MLXArray.zeros([1, 1, 2, 1]))
+
+        let incompatibleURL = manager.fileURL(for: "incompatible")
+        try savePromptCache(
+            url: incompatibleURL,
+            cache: cache,
+            metadata: ["cache_format_version": "0"]
+        )
+        #expect(manager.cachedCopy(for: "incompatible") == nil)
+        #expect(!FileManager.default.fileExists(atPath: incompatibleURL.path))
+
+        let corruptURL = manager.fileURL(for: "corrupt")
+        try Data("not a safetensors file".utf8).write(to: corruptURL)
+        #expect(manager.cachedCopy(for: "corrupt") == nil)
+        #expect(!FileManager.default.fileExists(atPath: corruptURL.path))
+    }
+
+    @Test func promptCacheClearRemovesOnlyManagedCacheFiles() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let manager = KVCacheManager(cacheDirectory: directory, memoryBudget: 8 * 1024 * 1024)
+        let cache: [any KVCache] = [KVCacheSimple()]
+        _ = cache[0].update(
+            keys: MLXArray.ones([1, 1, 2, 1]), values: MLXArray.zeros([1, 1, 2, 1]))
+        manager.save(cache: cache, for: "first")
+        manager.save(cache: cache, for: "second")
+
+        let firstURL = manager.fileURL(for: "first")
+        let secondURL = manager.fileURL(for: "second")
+        let unrelatedURL = directory.appendingPathComponent("keep.txt")
+        let unrelatedDirectory = directory.appendingPathComponent("keep.safetensors", isDirectory: true)
+        try Data("keep".utf8).write(to: unrelatedURL)
+        try FileManager.default.createDirectory(at: unrelatedDirectory, withIntermediateDirectories: true)
+        try Data("keep".utf8).write(to: unrelatedDirectory.appendingPathComponent("nested.txt"))
+
+        manager.clear(for: "first")
+        #expect(!FileManager.default.fileExists(atPath: firstURL.path))
+        #expect(manager.cachedCopy(for: "first") == nil)
+
+        manager.clearAll()
+        #expect(!FileManager.default.fileExists(atPath: secondURL.path))
+        #expect(FileManager.default.fileExists(atPath: unrelatedURL.path))
+        #expect(FileManager.default.fileExists(atPath: unrelatedDirectory.path))
+        #expect(FileManager.default.fileExists(
+            atPath: unrelatedDirectory.appendingPathComponent("nested.txt").path))
+    }
+
+    @Test func promptCacheEvictsLeastRecentlyUsedEntryAtByteBudget() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let manager = KVCacheManager(cacheDirectory: directory, memoryBudget: 32)
+        let cache: [any KVCache] = [KVCacheSimple()]
+        _ = cache[0].update(
+            keys: MLXArray.ones([1, 1, 2, 1]), values: MLXArray.zeros([1, 1, 2, 1]))
+
+        manager.save(cache: cache, for: "lru-first")
+        manager.save(cache: cache, for: "lru-second")
+        _ = try #require(manager.cachedCopy(for: "lru-first"))
+        try FileManager.default.removeItem(at: manager.fileURL(for: "lru-second"))
+
+        manager.save(cache: cache, for: "lru-third")
+
+        #expect(manager.cachedCopy(for: "lru-second") == nil)
+        #expect(try #require(manager.cachedCopy(for: "lru-first")).count == 1)
+        #expect(try #require(manager.cachedCopy(for: "lru-third")).count == 1)
+    }
+
+    @Test func promptCacheUsesDigestOnlyDiskPath() {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let manager = KVCacheManager(cacheDirectory: directory)
+
+        let url = manager.fileURL(for: "unsafe/key")
+        #expect(url.deletingLastPathComponent() == directory)
+        #expect(url.lastPathComponent ==
+            "6c0df4a253bf45be17e6f86655a16bd208e2fb0d026d2204caaf2be6bcd0addc.safetensors")
+    }
 }
 
 private actor EventRecorder {
