@@ -81,7 +81,7 @@ public struct MusicGenConfiguration: Sendable {
             vocabSize: 32128
         ),
         decoderParameters: MusicGenDecoderParameters(
-            bosTokenId: 4, ffnDim: 2048, hiddenSize: 16, numAttentionHeads: 24, numCodebooks: 4096, numHiddenLayers: 2048),
+            bosTokenId: 2048, ffnDim: 4096, hiddenSize: 1024, numAttentionHeads: 16, numCodebooks: 4, numHiddenLayers: 24),
         defaultParameters: { MusicGenEvaluateParameters() },
     )
     
@@ -129,7 +129,7 @@ public struct MusicGenConfiguration: Sendable {
             tieWordEmbeddings: true,
             vocabSize: 32128),
         decoderParameters: MusicGenDecoderParameters(
-            bosTokenId: 4, ffnDim: 2048, hiddenSize: 24, numAttentionHeads: 48, numCodebooks: 6144, numHiddenLayers: 2048),
+            bosTokenId: 2048, ffnDim: 6144, hiddenSize: 1536, numAttentionHeads: 24, numCodebooks: 4, numHiddenLayers: 48),
         defaultParameters: { MusicGenEvaluateParameters() },
     )
     
@@ -177,7 +177,7 @@ public struct MusicGenConfiguration: Sendable {
             tieWordEmbeddings: true,
             vocabSize: 32128),
         decoderParameters: MusicGenDecoderParameters(
-            bosTokenId: 4, ffnDim: 2048, hiddenSize: 32, numAttentionHeads: 48, numCodebooks: 8192, numHiddenLayers: 2048),
+            bosTokenId: 2048, ffnDim: 8192, hiddenSize: 2048, numAttentionHeads: 32, numCodebooks: 4, numHiddenLayers: 48),
         defaultParameters: { MusicGenEvaluateParameters() },
     )
 }
@@ -263,7 +263,6 @@ public struct MusicGenDecoderParameters: Codable, Sendable {
     public let numCodebooks: Int
     public let numHiddenLayers: Int
 }
-
 
 
 
