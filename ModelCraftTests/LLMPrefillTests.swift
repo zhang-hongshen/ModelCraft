@@ -1,5 +1,6 @@
 import Testing
 @testable import ModelCraft
+import MLX
 import MLXLMCommon
 
 private struct UnsupportedToolValue: Sendable, CustomStringConvertible {
@@ -7,6 +8,14 @@ private struct UnsupportedToolValue: Sendable, CustomStringConvertible {
 }
 
 struct LLMPrefillTests {
+    @Test func suffixTokensSliceTheFlattenedTokenSequence() {
+        let fullTokens = MLXArray([1, 2, 3, 4]).reshaped(1, -1)
+        let suffix = makeSuffixTokens(fullTokens: fullTokens, prefixCount: 2)
+
+        eval(suffix)
+        #expect(suffix.flattened().asArray(Int32.self) == [3, 4])
+    }
+
     @Test func prefixPlannerOnlyAcceptsAnExactPrefix() {
         #expect(PromptPrefixPlanner.prefixCount(full: [1, 2, 3, 4], prefix: [1, 2]) == 2)
         #expect(PromptPrefixPlanner.prefixCount(full: [1, 2, 3], prefix: [1, 3]) == nil)

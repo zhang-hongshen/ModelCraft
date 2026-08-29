@@ -15,6 +15,11 @@ import MLXVLM
 import Hub
 import Tokenizers
 
+@inline(__always)
+func makeSuffixTokens(fullTokens: MLXArray, prefixCount: Int) -> MLXArray {
+    let suffix = fullTokens.flattened().asArray(Int32.self)
+    return MLXArray(Array(suffix[prefixCount...])).reshaped(1, -1)
+}
 
 /// A service class that manages machine learning models for text and vision-language tasks.
 /// This class handles model loading, caching, and text generation using various LLM and VLM models.
@@ -64,64 +69,105 @@ class LMService {
         let lease = await InferenceRuntimeCoordinator.shared.acquire(.languageModel)
 
         do {
-        // Load or retrieve model from cache
-        let modelContainer = try await load(model: model)
-        
-        // Prepare input for model processing
-        
-        let userInput = UserInput(
-            chat: messages,
-            processing: .init(resize: .init(width: 1024, height: 1024)),
-            tools: tools,
-        )
-        
-//        let userInput = UserInput(
-//            chat: [messages.last!],
-//            processing: .init(resize: .init(width: 1024, height: 1024)),
-//            tools: tools,
-//        )
-        
-        // Generate response using the model
-        let stream = try await modelContainer.perform { (context: ModelContext) in
-            let userLMInput = try await context.processor.prepare(input: userInput)
-            
-            let parameters = GenerateParameters(temperature: 0.7)
-            
-//            var cache = context.model.newCache(parameters: parameters)
-//            print("cache count \(cache.count)")
-//            if messages.count > 1 {
-//                let historyInput = UserInput(chat: Array(messages.dropLast()), tools: tools)
-//                let key = "\(model.id)_\(historyInput.prompt.description)".sha256String
-//                
-//                if !KVCacheManager.shared.load(for: key, into: &cache) {
-//                    let historyTokens = try await context.processor.prepare(input: historyInput).text.tokens
-//
-//                    _ = context.model(historyTokens.reshaped([1, -1]), cache: cache)
-//                    
-//                    KVCacheManager.shared.save(cache: cache, for: key)
-//                }
-//            }
-            return try MLXLMCommon.generate(input: userLMInput, parameters: parameters, context: context)
-//            return try MLXLMCommon.generate(
-//                input: userLMInput, cache: cache,
-//                parameters: parameters, context: context)
-        }
+            let modelContainer = try await load(model: model)
+            let userInput = UserInput(
+                chat: messages,
+                processing: .init(resize: .init(width: 1024, height: 1024)),
+                tools: tools,
+            )
 
-        return AsyncStream { continuation in
-            let task = Task {
-                defer {
-                    Task { await lease.release() }
+            let inner = try await modelContainer.perform { (context: ModelContext) in
+                let parameters = GenerateParameters(
+                    temperature: 0.7,
+                    prefillStepSize: 256)
+                let fullInput = try await context.processor.prepare(input: userInput)
+                var generationInput = fullInput
+                var generationCache: [KVCache]?
+
+                let canUsePrefixCache = fullInput.image == nil && fullInput.video == nil && messages.count > 1
+                if canUsePrefixCache {
+                    let history = Array(messages.dropLast())
+                    let historyInput = try await context.processor.prepare(
+                        input: UserInput(chat: history, tools: tools))
+                    if historyInput.image == nil && historyInput.video == nil {
+                        let fullTokens = fullInput.text.tokens.flattened().asArray(Int.self)
+                        let prefixTokens = historyInput.text.tokens.flattened().asArray(Int.self)
+                        if let prefixCount = PromptPrefixPlanner.prefixCount(
+                            full: fullTokens, prefix: prefixTokens)
+                        {
+                            let key = PromptCacheKeyBuilder.make(
+                                modelID: model.id,
+                                prefixTokens: prefixTokens,
+                                tools: tools)
+
+                            let cached = KVCacheManager.shared.cachedCopy(for: key)
+                            if let cached {
+                                let freshCache = context.model.newCache(parameters: parameters)
+                                let hasCompatibleLayout = cached.count == freshCache.count
+                                    && zip(cached, freshCache).allSatisfy {
+                                        type(of: $0) == type(of: $1)
+                                            && $0.maxSize == $1.maxSize
+                                            && $0.offset == prefixCount
+                                    }
+                                if hasCompatibleLayout {
+                                    let suffixTokens = makeSuffixTokens(
+                                        fullTokens: fullInput.text.tokens, prefixCount: prefixCount)
+                                    generationInput = LMInput(
+                                        text: .init(tokens: suffixTokens),
+                                        image: nil,
+                                        video: nil)
+                                    generationCache = cached
+                                } else {
+                                    KVCacheManager.shared.clear(for: key)
+                                }
+                            } else {
+                                let built = context.model.newCache(parameters: parameters)
+                                _ = try TokenIterator(
+                                    input: historyInput,
+                                    model: context.model,
+                                    cache: built,
+                                    parameters: parameters)
+                                eval(built)
+                                KVCacheManager.shared.save(
+                                    cache: built,
+                                    for: key,
+                                    metadata: [
+                                        "cache_format_version": PromptCacheKeyBuilder.formatVersion,
+                                        "model_id": model.id,
+                                        "prefix_token_count": String(prefixCount),
+                                    ])
+
+                                let suffixTokens = makeSuffixTokens(
+                                    fullTokens: fullInput.text.tokens, prefixCount: prefixCount)
+                                generationInput = LMInput(
+                                    text: .init(tokens: suffixTokens),
+                                    image: nil,
+                                    video: nil)
+                                generationCache = built.map { $0.copy() }
+                            }
+                        }
+                    }
                 }
 
-                for await generation in stream {
-                    continuation.yield(generation)
+                return try MLXLMCommon.generate(
+                    input: generationInput,
+                    cache: generationCache,
+                    parameters: parameters,
+                    context: context)
+            }
+
+            return AsyncStream { continuation in
+                let task = Task {
+                    defer { Task { await lease.release() } }
+
+                    for await item in inner {
+                        if Task.isCancelled { break }
+                        continuation.yield(item)
+                    }
+                    continuation.finish()
                 }
-                continuation.finish()
+                continuation.onTermination = { _ in task.cancel() }
             }
-            continuation.onTermination = { @Sendable _ in
-                task.cancel()
-            }
-        }
         } catch {
             await lease.release()
             throw error
