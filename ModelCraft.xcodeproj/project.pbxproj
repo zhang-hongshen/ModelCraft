@@ -17,6 +17,7 @@
 		70097F8B2D6EB11800DDDEDF /* UserSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70097F8A2D6EB11800DDDEDF /* UserSettings.swift */; };
 		700C702A2E52FE830008EF5B /* TagStreamParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 700C70292E52FE820008EF5B /* TagStreamParser.swift */; };
 		700C702C2E52FF730008EF5B /* TagStreamParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 700C702B2E52FF710008EF5B /* TagStreamParserTests.swift */; };
+		70A1F0092F00000100000001 /* StableDiffusionRuntimeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70A1F0082F00000100000001 /* StableDiffusionRuntimeTests.swift */; };
 		70A1F0012F00000100000001 /* RuntimeFoundationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70A1F0002F00000100000001 /* RuntimeFoundationTests.swift */; };
 		70A1F0052F00000100000001 /* PromptCacheKey.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70A1F0042F00000100000001 /* PromptCacheKey.swift */; };
 		70A1F0072F00000100000001 /* LLMPrefillTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70A1F0062F00000100000001 /* LLMPrefillTests.swift */; };
@@ -318,6 +319,7 @@
 		70CE60852BAD2D4700A2D0B0 /* ModelCraftUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelCraftUITests.swift; sourceTree = "<group>"; };
 		70CE60872BAD2D4700A2D0B0 /* ModelCraftUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelCraftUITestsLaunchTests.swift; sourceTree = "<group>"; };
 		70A1F0002F00000100000001 /* RuntimeFoundationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RuntimeFoundationTests.swift; sourceTree = "<group>"; };
+		70A1F0082F00000100000001 /* StableDiffusionRuntimeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StableDiffusionRuntimeTests.swift; sourceTree = "<group>"; };
 		70A1F0042F00000100000001 /* PromptCacheKey.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptCacheKey.swift; sourceTree = "<group>"; };
 		70A1F0062F00000100000001 /* LLMPrefillTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LLMPrefillTests.swift; sourceTree = "<group>"; };
 		70CE60982BAD302000A2D0B0 /* URL+.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "URL+.swift"; sourceTree = "<group>"; };
@@ -631,6 +633,7 @@
 			children = (
 				70A1F0062F00000100000001 /* LLMPrefillTests.swift */,
 				70A1F0002F00000100000001 /* RuntimeFoundationTests.swift */,
+				70A1F0082F00000100000001 /* StableDiffusionRuntimeTests.swift */,
 				700C702B2E52FF710008EF5B /* TagStreamParserTests.swift */,
 				7027C4172D63384100D37D14 /* TestResources */,
 				70F78FF02FDD2AF1003C8737 /* ComputerUseToolTests.swift */,
@@ -1083,6 +1086,7 @@
 			files = (
 				70A1F0072F00000100000001 /* LLMPrefillTests.swift in Sources */,
 				70A1F0012F00000100000001 /* RuntimeFoundationTests.swift in Sources */,
+				70A1F0092F00000100000001 /* StableDiffusionRuntimeTests.swift in Sources */,
 				700C702C2E52FF730008EF5B /* TagStreamParserTests.swift in Sources */,
 				70F78FF12FDD2AF1003C8737 /* ComputerUseToolTests.swift in Sources */,
 			);
