@@ -282,8 +282,20 @@ public struct LoadConfiguration: Sendable {
     /// convert weights to float16
     public var float16 = true
 
-    /// quantize weights
-    public var quantize = false
+    /// Quantization settings for the text encoder weights.
+    public var textEncoderQuantization: WeightQuantization?
+
+    /// Quantization settings for the UNet weights.
+    public var unetQuantization: WeightQuantization?
+
+    /// Compatibility switch for callers using the original all-components option.
+    public var quantize: Bool {
+        get { textEncoderQuantization != nil || unetQuantization != nil }
+        set {
+            textEncoderQuantization = newValue ? WeightQuantization(groupSize: 64, bits: 4) : nil
+            unetQuantization = newValue ? WeightQuantization(groupSize: 32, bits: 8) : nil
+        }
+    }
 
     public var dType: DType {
         float16 ? .float16 : .float32
@@ -291,7 +303,20 @@ public struct LoadConfiguration: Sendable {
 
     public init(float16: Bool = true, quantize: Bool = false) {
         self.float16 = float16
-        self.quantize = quantize
+        self.textEncoderQuantization = quantize
+            ? WeightQuantization(groupSize: 64, bits: 4) : nil
+        self.unetQuantization = quantize
+            ? WeightQuantization(groupSize: 32, bits: 8) : nil
+    }
+
+    public init(
+        float16: Bool = true,
+        textEncoderQuantization: WeightQuantization? = nil,
+        unetQuantization: WeightQuantization? = nil
+    ) {
+        self.float16 = float16
+        self.textEncoderQuantization = textEncoderQuantization
+        self.unetQuantization = unetQuantization
     }
 }
 
@@ -332,7 +357,7 @@ public struct StableDiffusionEvaluateParameters: Sendable {
 
 /// File types for ``StableDiffusionConfiguration/files``. Used by the presets to provide
 /// relative file paths for different types of files.
-enum FileKey {
+enum StableDiffusionFileKey {
     case unetConfig
     case unetWeights
     case textEncoderConfig
@@ -375,7 +400,7 @@ enum FileKey {
 /// Finally use ``StableDiffusionImage`` to save it to a file or convert to a CGImage for display.
 public struct StableDiffusionConfiguration: Sendable {
     public let id: String
-    let files: [FileKey: String]
+    let files: [StableDiffusionFileKey: String]
     public let defaultParameters: @Sendable () -> StableDiffusionEvaluateParameters
     let factory:
         @Sendable (HubApi, StableDiffusionConfiguration, LoadConfiguration) throws ->
@@ -435,10 +460,12 @@ public struct StableDiffusionConfiguration: Sendable {
         factory: { hub, sdConfiguration, loadConfiguration in
             let sd = try StableDiffusionXL(
                 hub: hub, configuration: sdConfiguration, dType: loadConfiguration.dType)
-            if loadConfiguration.quantize {
-                quantize(model: sd.textEncoder, filter: { k, m in m is Linear })
-                quantize(model: sd.textEncoder2, filter: { k, m in m is Linear })
-                quantize(model: sd.unet, groupSize: 32, bits: 8)
+            if let quantization = loadConfiguration.textEncoderQuantization {
+                quantize(model: sd.textEncoder, groupSize: quantization.groupSize, bits: quantization.bits, filter: { _, m in m is Linear })
+                quantize(model: sd.textEncoder2, groupSize: quantization.groupSize, bits: quantization.bits, filter: { _, m in m is Linear })
+            }
+            if let quantization = loadConfiguration.unetQuantization {
+                quantize(model: sd.unet, groupSize: quantization.groupSize, bits: quantization.bits)
             }
             return sd
         }
@@ -462,9 +489,11 @@ public struct StableDiffusionConfiguration: Sendable {
         factory: { hub, sdConfiguration, loadConfiguration in
             let sd = try StableDiffusionBase(
                 hub: hub, configuration: sdConfiguration, dType: loadConfiguration.dType)
-            if loadConfiguration.quantize {
-                quantize(model: sd.textEncoder, filter: { k, m in m is Linear })
-                quantize(model: sd.unet, groupSize: 32, bits: 8)
+            if let quantization = loadConfiguration.textEncoderQuantization {
+                quantize(model: sd.textEncoder, groupSize: quantization.groupSize, bits: quantization.bits, filter: { _, m in m is Linear })
+            }
+            if let quantization = loadConfiguration.unetQuantization {
+                quantize(model: sd.unet, groupSize: quantization.groupSize, bits: quantization.bits)
             }
             return sd
         }
