@@ -25,8 +25,7 @@ class ImageTool {
                 .required("prompt", type: .string, description: "Description of the image")
             ]
         ) { input in
-            let evaluator = StableDiffusionEvaluator()
-            let image = try await evaluator.generate(prompt: input.prompt)
+            let image = try await StableDiffusionEvaluator.shared.generate(prompt: input.prompt)
             let type = UTType.png
             let url = URL.picturesDirectory.appendingPathComponent(UUID().uuidString, conformingTo: type)
             image.save(to: url)

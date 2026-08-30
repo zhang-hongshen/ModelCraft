@@ -10,7 +10,9 @@ import CoreImage
 import MLX
 
 
-class StableDiffusionEvaluator {
+final class StableDiffusionEvaluator: @unchecked Sendable {
+
+    static let shared = StableDiffusionEvaluator()
 
     private let modelFactory = StableDiffusionModelFactory()
 
@@ -114,14 +116,72 @@ class StableDiffusionEvaluator {
 }
 
 
+actor StableDiffusionLoadState<Value: Sendable> {
+
+    private enum State {
+        case idle
+        case loading(id: UUID, task: Task<Value, Error>)
+        case loaded(Value)
+    }
+
+    private let loader: @Sendable () async throws -> Value
+    private var state = State.idle
+
+    init(loader: @escaping @Sendable () async throws -> Value) {
+        self.loader = loader
+    }
+
+    func load() async throws -> Value {
+        switch state {
+        case .idle:
+            let id = UUID()
+            let task = Task {
+                try await loader()
+            }
+            state = .loading(id: id, task: task)
+            return try await waitForLoad(id: id, task: task)
+
+        case .loading(let id, let task):
+            return try await waitForLoad(id: id, task: task)
+
+        case .loaded(let value):
+            return value
+        }
+    }
+
+    private func waitForLoad(id: UUID, task: Task<Value, Error>) async throws -> Value {
+        try await withTaskCancellationHandler {
+            do {
+                let value = try await task.value
+                completeLoad(id: id, value: value)
+                return value
+            } catch {
+                failLoad(id: id)
+                throw error
+            }
+        } onCancel: {
+            task.cancel()
+        }
+    }
+
+    private func completeLoad(id: UUID, value: Value) {
+        guard case let .loading(currentID, _) = state, currentID == id else {
+            return
+        }
+        state = .loaded(value)
+    }
+
+    private func failLoad(id: UUID) {
+        guard case let .loading(currentID, _) = state, currentID == id else {
+            return
+        }
+        state = .idle
+    }
+}
+
+
 /// Async model factory
 actor StableDiffusionModelFactory {
-
-    enum LoadState {
-        case idle
-        case loading(Task<StableDiffusionModelContainer<TextToImageGenerator>, Error>)
-        case loaded(StableDiffusionModelContainer<TextToImageGenerator>)
-    }
 
     enum SDError: LocalizedError {
         case unableToLoad
@@ -145,80 +205,55 @@ actor StableDiffusionModelFactory {
     /// if true we show UI to give negative text
     public nonisolated let canUseNegativeText: Bool
 
-    private var loadState = LoadState.idle
-    private var loadConfiguration = LoadConfiguration(float16: true, quantize: false)
+    private let loadState: StableDiffusionLoadState<StableDiffusionModelContainer<TextToImageGenerator>>
 
     public nonisolated let conserveMemory: Bool
 
     init(configuration: StableDiffusionConfiguration = .presetSDXLTurbo) {
         let defaultParameters = configuration.defaultParameters()
+        let profile = StableDiffusionRuntimeProfile.recommended(
+            physicalMemory: ProcessInfo.processInfo.physicalMemory)
+        let conserveMemory = Memory.memoryLimit < 8 * 1024 * 1024 * 1024
         self.canShowProgress = defaultParameters.steps > 4
         self.canUseNegativeText = defaultParameters.cfgWeight > 1
         self.configuration = configuration
-        // this will be true e.g. if the computer has 8G of memory or less
-        self.conserveMemory = Memory.memoryLimit < 8 * 1024 * 1024 * 1024
+        self.conserveMemory = conserveMemory
+        self.loadState = StableDiffusionLoadState {
+            try Task.checkCancellation()
 
-        if conserveMemory {
-            print("conserving memory")
-            loadConfiguration.quantize = true
+            do {
+                try await configuration.download()
+            } catch {
+                let nserror = error as NSError
+                if nserror.domain == NSURLErrorDomain
+                    && nserror.code == NSURLErrorNotConnectedToInternet
+                {
+                    // Internet connection appears to be offline -- fall back to loading from
+                    // the local directory
+                } else {
+                    throw error
+                }
+            }
+
+            try Task.checkCancellation()
+            let container = try StableDiffusionModelContainer<TextToImageGenerator>.createTextToImageGenerator(
+                configuration: configuration, loadConfiguration: profile.loadConfiguration)
+            try Task.checkCancellation()
+
+            try await container.perform { model in
+                if !conserveMemory {
+                    model.ensureLoaded()
+                }
+            }
+
+            return container
         }
     }
 
     public func load() async throws
         -> StableDiffusionModelContainer<TextToImageGenerator>
     {
-        switch loadState {
-        case .idle:
-            let task = Task {
-                do {
-                    try await configuration.download()
-                } catch {
-                    let nserror = error as NSError
-                    if nserror.domain == NSURLErrorDomain
-                        && nserror.code == NSURLErrorNotConnectedToInternet
-                    {
-                        // Internet connection appears to be offline -- fall back to loading from
-                        // the local directory
-                        
-                    } else {
-                        throw error
-                    }
-                }
-
-                let container = try StableDiffusionModelContainer<TextToImageGenerator>.createTextToImageGenerator(
-                    configuration: configuration, loadConfiguration: loadConfiguration)
-
-                await container.setConserveMemory(conserveMemory)
-
-                try await container.perform { model in
-                    if !conserveMemory {
-                        model.ensureLoaded()
-                    }
-                }
-
-                return container
-            }
-            self.loadState = .loading(task)
-
-            let container = try await task.value
-
-            if conserveMemory {
-                // if conserving memory return the model but do not keep it in memory
-                self.loadState = .idle
-            } else {
-                // cache the model in memory to make it faster to run with new prompts
-                self.loadState = .loaded(container)
-            }
-
-            return container
-
-        case .loading(let task):
-            let generator = try await task.value
-            return generator
-
-        case .loaded(let generator):
-            return generator
-        }
+        try await loadState.load()
     }
 
 }
