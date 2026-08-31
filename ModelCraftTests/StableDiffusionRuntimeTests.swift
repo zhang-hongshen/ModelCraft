@@ -30,6 +30,25 @@ private enum TestLoadError: Error {
 
 private final class LifetimeProbe {}
 
+private actor TestGate {
+    private var continuation: CheckedContinuation<Void, Never>?
+
+    var isWaiting: Bool {
+        continuation != nil
+    }
+
+    func wait() async {
+        await withCheckedContinuation { continuation in
+            self.continuation = continuation
+        }
+    }
+
+    func open() {
+        continuation?.resume()
+        continuation = nil
+    }
+}
+
 @Test
 func conditioningKeyIncludesEverySemanticInput() {
     let base = StableDiffusionConditioningKey(
@@ -189,4 +208,25 @@ func cancelledLoadCanRetry() async throws {
         try await retry.value
     }
     #expect(counter.value == 2)
+}
+
+@Test
+func cancelledCachedLoadDoesNotReturnTheCachedValue() async throws {
+    let state = StableDiffusionLoadState<Int> { 7 }
+    #expect(try await state.load() == 7)
+
+    let gate = TestGate()
+    let cancelled = Task {
+        await gate.wait()
+        return try await state.load()
+    }
+    while !(await gate.isWaiting) {
+        await Task.yield()
+    }
+    cancelled.cancel()
+    await gate.open()
+
+    await #expect(throws: CancellationError.self) {
+        try await cancelled.value
+    }
 }

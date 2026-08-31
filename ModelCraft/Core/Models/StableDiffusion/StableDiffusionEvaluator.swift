@@ -29,7 +29,7 @@ final class StableDiffusionEvaluator: @unchecked Sendable {
             showProgress: false
         )
         
-        var finalImage: MLXArray?
+        var finalImage: CGImage?
         
         for try await image in stream {
             finalImage = image
@@ -39,11 +39,11 @@ final class StableDiffusionEvaluator: @unchecked Sendable {
             throw NSError(domain: "StableDiffusionEvaluator", code: -1)
         }
         
-        return toCGImage(finalImage)
+        return finalImage
     }
     
     func generate(prompt: String, showProgress: Bool) async throws
-        -> AsyncThrowingStream<MLXArray, Error> {
+        -> AsyncThrowingStream<CGImage, Error> {
         let lease = try await InferenceRuntimeCoordinator.shared.acquire(.stableDiffusion)
 
         do {
@@ -73,7 +73,7 @@ final class StableDiffusionEvaluator: @unchecked Sendable {
                                 {
                                     let preview = try generator.decode(xt: latent)
                                     eval(preview)
-                                    continuation.yield(preview)
+                                    continuation.yield(self.toCGImage(preview))
                                 }
                                 index += 1
                             }
@@ -87,7 +87,7 @@ final class StableDiffusionEvaluator: @unchecked Sendable {
                             let raster = try generator.decode(xt: finalLatent)
                             eval(raster)
                             try Task.checkCancellation()
-                            continuation.yield(raster)
+                            continuation.yield(self.toCGImage(raster))
                         }
                         await lease.release()
                         continuation.finish()
@@ -124,6 +124,7 @@ actor StableDiffusionLoadState<Value: Sendable> {
     }
 
     func load() async throws -> Value {
+        try Task.checkCancellation()
         switch state {
         case .idle:
             let id = UUID()
@@ -137,6 +138,7 @@ actor StableDiffusionLoadState<Value: Sendable> {
             return try await waitForLoad(id: id, task: task)
 
         case .loaded(let value):
+            try Task.checkCancellation()
             return value
         }
     }
@@ -146,6 +148,7 @@ actor StableDiffusionLoadState<Value: Sendable> {
             do {
                 let value = try await task.value
                 completeLoad(id: id, value: value)
+                try Task.checkCancellation()
                 return value
             } catch {
                 failLoad(id: id)
@@ -240,6 +243,7 @@ actor StableDiffusionModelFactory {
                     try model.ensureLoaded()
                 }
             }
+            try Task.checkCancellation()
 
             return container
         }
