@@ -28,6 +28,77 @@ private enum TestLoadError: Error {
     case failed
 }
 
+private final class LifetimeProbe {}
+
+@Test
+func conditioningKeyIncludesEverySemanticInput() {
+    let base = StableDiffusionConditioningKey(
+        modelID: "sdxl", prompt: "cat", negativePrompt: "", cfgWeight: 0, imageCount: 1)
+    #expect(
+        base
+            != .init(
+                modelID: "other", prompt: "cat", negativePrompt: "", cfgWeight: 0,
+                imageCount: 1))
+    #expect(
+        base
+            != .init(
+                modelID: "sdxl", prompt: "dog", negativePrompt: "", cfgWeight: 0,
+                imageCount: 1))
+    #expect(
+        base
+            != .init(
+                modelID: "sdxl", prompt: "cat", negativePrompt: "bad", cfgWeight: 0,
+                imageCount: 1))
+    #expect(
+        base
+            != .init(
+                modelID: "sdxl", prompt: "cat", negativePrompt: "", cfgWeight: 1,
+                imageCount: 1))
+    #expect(
+        base
+            != .init(
+                modelID: "sdxl", prompt: "cat", negativePrompt: "", cfgWeight: 0,
+                imageCount: 2))
+}
+
+@Test
+func conditioningCacheKeepsOnlyNewestExactEntry() {
+    var cache = StableDiffusionConditioningCache<Int>()
+    let first = StableDiffusionConditioningKey(
+        modelID: "sdxl", prompt: "cat", negativePrompt: "", cfgWeight: 0, imageCount: 1)
+    let second = StableDiffusionConditioningKey(
+        modelID: "sdxl", prompt: "dog", negativePrompt: "", cfgWeight: 0, imageCount: 1)
+    cache.insert(1, for: first)
+    cache.insert(2, for: second)
+    #expect(cache.value(for: first) == nil)
+    #expect(cache.value(for: second) == 2)
+}
+
+@Test
+func denoiserRetainsItsDependencyWithoutRetainingTheOwningModel() {
+    weak var model: LifetimeProbe?
+    weak var dependency: LifetimeProbe?
+    var denoiser: StableDiffusionDenoiser?
+
+    do {
+        let owningModel = LifetimeProbe()
+        let denoiseDependency = LifetimeProbe()
+        model = owningModel
+        dependency = denoiseDependency
+        denoiser = StableDiffusionDenoiser { _, _, _, _, _, _ in
+            _ = denoiseDependency
+            fatalError("The lifetime probe never invokes denoising")
+        }
+        withExtendedLifetime(owningModel) {}
+    }
+
+    #expect(model == nil)
+    #expect(denoiser != nil)
+    #expect(dependency != nil)
+    denoiser = nil
+    #expect(dependency == nil)
+}
+
 @Test
 func sixteenGiBProfileUsesMixedQuantizationWithoutChangingSamplingDefaults() {
     let profile = StableDiffusionRuntimeProfile.recommended(

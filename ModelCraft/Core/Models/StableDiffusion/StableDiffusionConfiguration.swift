@@ -288,6 +288,8 @@ public struct LoadConfiguration: Sendable {
     /// Quantization settings for the UNet weights.
     public var unetQuantization: WeightQuantization?
 
+    var releasesComponentsBetweenStages = false
+
     /// Compatibility switch for callers using the original all-components option.
     public var quantize: Bool {
         get { textEncoderQuantization != nil || unetQuantization != nil }
@@ -458,16 +460,9 @@ public struct StableDiffusionConfiguration: Sendable {
         ],
         defaultParameters: { StableDiffusionEvaluateParameters(cfgWeight: 0, steps: 2) },
         factory: { hub, sdConfiguration, loadConfiguration in
-            let sd = try StableDiffusionXL(
-                hub: hub, configuration: sdConfiguration, dType: loadConfiguration.dType)
-            if let quantization = loadConfiguration.textEncoderQuantization {
-                quantize(model: sd.textEncoder, groupSize: quantization.groupSize, bits: quantization.bits, filter: { _, m in m is Linear })
-                quantize(model: sd.textEncoder2, groupSize: quantization.groupSize, bits: quantization.bits, filter: { _, m in m is Linear })
-            }
-            if let quantization = loadConfiguration.unetQuantization {
-                quantize(model: sd.unet, groupSize: quantization.groupSize, bits: quantization.bits)
-            }
-            return sd
+            try StableDiffusionXL(
+                hub: hub, configuration: sdConfiguration,
+                loadConfiguration: loadConfiguration)
         }
     )
 
@@ -487,15 +482,9 @@ public struct StableDiffusionConfiguration: Sendable {
         ],
         defaultParameters: { StableDiffusionEvaluateParameters(cfgWeight: 7.5, steps: 50) },
         factory: { hub, sdConfiguration, loadConfiguration in
-            let sd = try StableDiffusionBase(
-                hub: hub, configuration: sdConfiguration, dType: loadConfiguration.dType)
-            if let quantization = loadConfiguration.textEncoderQuantization {
-                quantize(model: sd.textEncoder, groupSize: quantization.groupSize, bits: quantization.bits, filter: { _, m in m is Linear })
-            }
-            if let quantization = loadConfiguration.unetQuantization {
-                quantize(model: sd.unet, groupSize: quantization.groupSize, bits: quantization.bits)
-            }
-            return sd
+            try StableDiffusionBase(
+                hub: hub, configuration: sdConfiguration,
+                loadConfiguration: loadConfiguration)
         }
     )
 

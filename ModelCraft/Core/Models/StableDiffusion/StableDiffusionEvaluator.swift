@@ -47,71 +47,63 @@ final class StableDiffusionEvaluator: @unchecked Sendable {
         let lease = try await InferenceRuntimeCoordinator.shared.acquire(.stableDiffusion)
 
         do {
-        let container = try await modelFactory.load()
-        return AsyncThrowingStream { continuation in
-            let task = Task {
-                defer {
-                    Task { await lease.release() }
-                }
+            let container = try await modelFactory.load()
+            let configuration = modelFactory.configuration
+            let releasesComponentsBetweenStages =
+                modelFactory.releasesComponentsBetweenStages
+            return AsyncThrowingStream { continuation in
+                let task = Task {
+                    do {
+                        try await container.perform { generator in
+                            try Task.checkCancellation()
+                            var parameters = configuration.defaultParameters()
+                            parameters.prompt = prompt
 
-                do {
-                    try await container.performTwoStage { generator in
-                    // The parameters that control the generation of the image. See
-                    // EvaluateParameters for more information. For example, adjusting
-                    // the latentSize parameter will change the size of the generated
-                    // image. `imageCount` could be used to generate a gallery of
-                    // images at the same time.
-                    var parameters = modelFactory.configuration.defaultParameters()
-                    parameters.prompt = prompt
-                    
-                    // Per measurement each step consumes memory that we want to conserve. Trade
-                    // off steps (quality) for memory.
-                    if modelFactory.conserveMemory {
-                        parameters.steps = 1
-                    }
-                    // Note: The optionals are used to discard parts of the model
-                    // as it runs. This is used to conserve memory in devices
-                    // with less memory.
-                    
-                    // Generate the latent images. This is fast as it is just generating
-                    // the graphs that will be evaluated below.
-                    let latents: DenoiseIterator? = generator.generateLatents(parameters: parameters)
-                    
-                    // When conserveMemory is true this will discard the first part of
-                    // the model and just evaluate the decode portion.
-                    return (generator.detachedDecoder(), latents)
-                    
-                } second: { decoder, latents in
-                    var lastXt: MLXArray?
-                    for (i, xt) in latents!.enumerated() {
-                        lastXt = nil
-                        eval(xt)
-                        lastXt = xt
-                        
-                        if showProgress, i % 10 == 0 {
-                            continuation.yield(decoder(xt))
+                            var latents: DenoiseIterator? = try generator.generateLatents(
+                                parameters: parameters)
+                            var finalLatent: MLXArray?
+                            var index = 0
+                            while let latent = latents?.next() {
+                                try Task.checkCancellation()
+                                eval(latent)
+                                finalLatent = latent
+
+                                if showProgress && !releasesComponentsBetweenStages
+                                    && index % 10 == 0
+                                {
+                                    let preview = try generator.decode(xt: latent)
+                                    eval(preview)
+                                    continuation.yield(preview)
+                                }
+                                index += 1
+                            }
+                            latents = nil
+                            Memory.clearCache()
+                            try Task.checkCancellation()
+
+                            guard let finalLatent else {
+                                throw NSError(domain: "StableDiffusionEvaluator", code: -1)
+                            }
+                            let raster = try generator.decode(xt: finalLatent)
+                            eval(raster)
+                            try Task.checkCancellation()
+                            continuation.yield(raster)
                         }
-                        
+                        await lease.release()
+                        continuation.finish()
+                    } catch {
+                        await lease.release()
+                        continuation.finish(throwing: error)
                     }
-                    
-                    if let lastXt {
-                        continuation.yield(decoder(lastXt))
-                    }
-                    continuation.finish()
                 }
-                } catch {
-                    continuation.finish(throwing: error)
+                continuation.onTermination = { @Sendable _ in
+                    task.cancel()
                 }
             }
-            continuation.onTermination = { @Sendable _ in
-                task.cancel()
-            }
-        }
         } catch {
             await lease.release()
             throw error
         }
-                
     }
 }
 
@@ -207,17 +199,20 @@ actor StableDiffusionModelFactory {
 
     private let loadState: StableDiffusionLoadState<StableDiffusionModelContainer<TextToImageGenerator>>
 
-    public nonisolated let conserveMemory: Bool
+    public nonisolated let releasesComponentsBetweenStages: Bool
 
     init(configuration: StableDiffusionConfiguration = .presetSDXLTurbo) {
         let defaultParameters = configuration.defaultParameters()
         let profile = StableDiffusionRuntimeProfile.recommended(
             physicalMemory: ProcessInfo.processInfo.physicalMemory)
-        let conserveMemory = Memory.memoryLimit < 8 * 1024 * 1024 * 1024
+        var configuredLoad = profile.loadConfiguration
+        configuredLoad.releasesComponentsBetweenStages =
+            profile.releasesComponentsBetweenStages
+        let loadConfiguration = configuredLoad
         self.canShowProgress = defaultParameters.steps > 4
         self.canUseNegativeText = defaultParameters.cfgWeight > 1
         self.configuration = configuration
-        self.conserveMemory = conserveMemory
+        self.releasesComponentsBetweenStages = profile.releasesComponentsBetweenStages
         self.loadState = StableDiffusionLoadState {
             try Task.checkCancellation()
 
@@ -237,12 +232,12 @@ actor StableDiffusionModelFactory {
 
             try Task.checkCancellation()
             let container = try StableDiffusionModelContainer<TextToImageGenerator>.createTextToImageGenerator(
-                configuration: configuration, loadConfiguration: profile.loadConfiguration)
+                configuration: configuration, loadConfiguration: loadConfiguration)
             try Task.checkCancellation()
 
             try await container.perform { model in
-                if !conserveMemory {
-                    model.ensureLoaded()
+                if !profile.releasesComponentsBetweenStages {
+                    try model.ensureLoaded()
                 }
             }
 
