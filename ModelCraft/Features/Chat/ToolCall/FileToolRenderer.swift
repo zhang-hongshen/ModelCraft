@@ -7,6 +7,7 @@
 
 
 import SwiftUI
+import QuickLook
 import MLXLMCommon
 
 struct FileToolRenderer: View {
@@ -24,36 +25,46 @@ struct FileToolRenderer: View {
         return PathResolver.resolve(path)
     }
 
+    private var actionDescription: String {
+        switch (toolCall.function.name, status) {
+        case (ToolNames.writeToFile, .running):
+            return String(localized: "Writing into")
+        case (ToolNames.writeToFile, .completed):
+            return String(localized: "Wrote into")
+        case (ToolNames.writeToFile, .failed):
+            return String(localized: "Failed to write into")
+        case (ToolNames.readFromFile, .running):
+            return String(localized: "Reading")
+        case (ToolNames.readFromFile, .completed):
+            return String(localized: "Read")
+        default:
+            return String(localized: "Failed to read")
+        }
+    }
+
     @State private var previewURL: URL? = nil
     
     var body: some View {
 
-        if let url {
-
-            Button {
-                self.previewURL = url
-            } label: {
-                HStack(spacing: 8) {
-                    Image(systemName: "doc.text.magnifyingglass")
-                        .font(.title2)
-                        .fontWeight(.semibold)
-                    
-                    Text(toolCall.localizedDescription(status))
-                        .font(.subheadline)
-                        .fontWeight(.medium)
-                    
-                    Spacer()
-                    
-                    Image(systemName: "chevron.right")
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
+        if let url, let fileName = toolCall.fileDisplayName {
+            HStack(spacing: 4) {
+                Image(systemName: toolCall.icon)
+                if status == .running {
+                    ProgressView()
+                        .controlSize(.small)
                 }
-                .padding(.vertical, 8)
-                .padding(.horizontal, 12)
-                .background(Color.primary.opacity(0.05))
-                .cornerRadius()
+
+                Text(actionDescription)
+
+                Button {
+                    previewURL = url
+                } label: {
+                    Text(fileName)
+                        .underline()
+                }
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
+            .foregroundStyle(.secondary)
             .quickLookPreview($previewURL)
         }
     }

@@ -1,14 +1,17 @@
-// SPDX-License-Identifier: Apache-2.0
+//
+//  H3Loader.swift
+//  ModelCraft
+//
+//  Created by Hongshen on 27/8/26.
+//
 
 import Foundation
 import Hub
 import MLX
 
-// SPDX-License-Identifier: Apache-2.0
-
 
 public enum H3LoaderError: Error, LocalizedError {
-    case missingFileKey(String)
+    case missingFileKey(H3FileKey)
     case fileNotFound(URL)
     case invalidIndex(URL)
     case missingShard(URL)
@@ -18,7 +21,7 @@ public enum H3LoaderError: Error, LocalizedError {
     public var errorDescription: String? {
         switch self {
         case .missingFileKey(let key):
-            return "MiniMax H3 configuration is missing file key: \(key)"
+            return "MiniMax H3 configuration is missing file key: \(key.rawValue)"
         case .fileNotFound(let url):
             return "MiniMax H3 file is not available at: \(url.path)"
         case .invalidIndex(let url):
@@ -41,7 +44,7 @@ public enum H3Loader {
     static func resolve(
         hub: HubApi,
         configuration: H3Configuration,
-        key: String
+        key: H3FileKey
     ) throws -> URL {
         guard let path = configuration.files[key] else {
             throw H3LoaderError.missingFileKey(key)
@@ -59,19 +62,19 @@ public enum H3Loader {
     static func loadWeights(
         hub: HubApi,
         configuration: H3Configuration,
-        key: String
+        key: H3FileKey
     ) throws -> [String: MLXArray] {
         try loadWeights(from: try resolve(hub: hub, configuration: configuration, key: key))
     }
 
-    /// Decodes a JSON configuration selected by a string key in H3Configuration.
+    /// Decodes a JSON configuration selected by an ``H3FileKey`` in H3Configuration.
     /// Concrete modules may use this when a future checkpoint exposes a
     /// variant-specific architecture field; the preset remains the source of
     /// truth for which file is downloaded.
     static func loadConfiguration<T: Decodable>(
         hub: HubApi,
         configuration: H3Configuration,
-        key: String,
+        key: H3FileKey,
         type: T.Type
     ) throws -> T {
         let url = try resolve(hub: hub, configuration: configuration, key: key)
@@ -95,6 +98,32 @@ public enum H3Loader {
             throw H3LoaderError.emptyWeights(url)
         }
         return output
+    }
+
+    static func loadAudioVAEEncoder(hub: HubApi, configuration: H3Configuration) throws -> H3AudioVAEEncoder {
+        let audioVAEWeights = try loadWeights(
+            hub: hub,
+            configuration: configuration,
+            key: .audioVAEWeights)
+        return try H3AudioVAEEncoder(weights: audioVAEWeights)
+    }
+
+    /// Loads and constructs the H3 Omni Transformer from its configured
+    /// SafeTensors file or shard index. The indexed weight accessor remains an
+    /// implementation detail of the loader.
+    static func loadOmniTransformer(
+        hub: HubApi,
+        configuration: H3Configuration,
+        computeDType: DType = .bfloat16,
+        backend: any H3AttentionBackend = SDPABackend()
+    ) throws -> H3OmniTransformer {
+        try H3OmniTransformer(
+            weights: try H3BaseWeights(
+                hub: hub,
+                configuration: configuration,
+                key: .transformerWeights),
+            computeDType: computeDType,
+            backend: backend)
     }
 
     private static func shardURLs(for url: URL) throws -> [URL] {
@@ -256,9 +285,6 @@ public enum H3Loader {
     }
 }
 
-// SPDX-License-Identifier: Apache-2.0
-// Copyright 2026 Sean Kammerich
-
 
 /// SafeTensors-backed weight access for the H3 Base transformer.
 ///
@@ -308,7 +334,7 @@ final class H3BaseWeights {
     convenience init(
         hub: HubApi,
         configuration: H3Configuration,
-        key: String,
+        key: H3FileKey,
         strict: Bool = true
     ) throws {
         try self.init(
@@ -369,7 +395,7 @@ final class H3BaseWeights {
             return highest + 1
         }
 
-        var config = H3Configuration(files: [:])
+        var config = H3Configuration(id: "derived")
         config.numLayers = try countBlocks(prefix: "blocks.")
         config.tokenRefinerLayers = try countBlocks(prefix: "token_refiner.blocks.")
         if let s = shape("video_patch_proj.weight"), !s.isEmpty { config.hiddenSize = s[0] }
@@ -391,7 +417,7 @@ final class H3BaseWeights {
         if let s = shape("time_embedder.proj_out.weight"), !s.isEmpty { config.timeEmbedDim = s[0] }
 
         if strict {
-            let expected = H3Configuration(files: [:])
+            let expected = H3Configuration(id: "expected", files: [:])
             let checks: [(String, Int, Int)] = [
                 ("numLayers", config.numLayers, expected.numLayers),
                 ("tokenRefinerLayers", config.tokenRefinerLayers, expected.tokenRefinerLayers),

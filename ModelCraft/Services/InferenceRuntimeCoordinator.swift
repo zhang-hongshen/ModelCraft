@@ -64,7 +64,7 @@ actor InferenceRuntimeCoordinator {
             return InferenceLease(id: id, coordinator: self)
         }
 
-        let lease = try await withTaskCancellationHandler(operation: {
+        let lease: InferenceLease = try await withTaskCancellationHandler(operation: {
             try await withCheckedThrowingContinuation { continuation in
                 if Task.isCancelled {
                     continuation.resume(throwing: CancellationError())

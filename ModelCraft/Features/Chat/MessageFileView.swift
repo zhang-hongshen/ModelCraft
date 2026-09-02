@@ -10,7 +10,7 @@ import AVKit
 
 struct MessageFileView: View {
     
-    @State var url: URL
+    let url: URL
     
     @State private var isHovering: Bool = false
     let onDelete: () -> Void

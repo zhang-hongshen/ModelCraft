@@ -8,7 +8,7 @@ import SwiftUI
 struct ToolCallGroupView: View {
     let messages: [Message]
 
-    @State private var isExpanded = true
+    @State private var isExpanded = false
 
     private var summary: ToolCallGroupSummary {
         ToolCallGroupSummary(messages: messages)
@@ -28,9 +28,10 @@ struct ToolCallGroupView: View {
                 }
             }
             .padding(.top, 8)
+            .frame(maxWidth: .infinity, alignment: .leading)
         } label: {
             Text(summary.activeToolDescription ?? summary.completedDescription)
-                .font(.subheadline)
+                .foregroundStyle(.secondary)
                 .fontWeight(.medium)
                 .multilineTextAlignment(.leading)
         }

@@ -15,12 +15,13 @@ struct ToolStatusView: View {
     var body: some View {
 
         HStack {
+            Image(systemName: toolCall.icon)
             if status == .running {
                 ProgressView().controlSize(.small)
             }
             Text(toolCall.localizedDescription(status))
         }
-        .font(.subheadline)
+        .foregroundStyle(.secondary)
     }
 }
 

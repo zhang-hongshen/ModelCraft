@@ -43,6 +43,7 @@ class UIManager {
             role: element.role ?? kAXUnknownRole,
             identifier: element.identifier,
             actions: element.actions,
+            parent: parent,
             attributes: getAttributes(element),
             uiElment: element
         )
@@ -56,14 +57,14 @@ class UIManager {
             for: element,
             role: node.role
         )
-        node.children = children.compactMap { describeElement(
+        node.attach(children: children.compactMap { describeElement(
             appID: appID,
             element: $0,
             parent: node,
             depth: depth + 1,
             maxDepth: maxDepth,
             cache: &cache
-        )}
+        )})
         return node
     }
     
@@ -79,7 +80,10 @@ class UIManager {
             let windows: [AXUIElement] =
                 element.getAttribute(kAXWindowsAttribute) ?? []
 
-            return windows.filter { window in
+            let visibleWindows = windows.filter { window in
+
+                let minimized: Bool = window.getAttribute(kAXMinimizedAttribute) ?? false
+                guard !minimized else { return false }
 
                 var size = CGSize.zero
 
@@ -91,24 +95,34 @@ class UIManager {
                     return true
                 }
 
-                return size.width > 1 || size.height > 1
+                return size.width > 1 && size.height > 1
             }
+
+            let menuBar: AXUIElement? = element.getAttribute(kAXMenuBarAttribute)
+            return uniqueElements(visibleWindows + [menuBar].compactMap { $0 })
 
         case kAXTableRole,
              kAXOutlineRole,
              kAXGridRole:
 
-            return element.getAttribute(kAXVisibleRowsAttribute)
+            let rows: [AXUIElement] = element.getAttribute(kAXVisibleRowsAttribute)
                 ?? element.getAttribute(kAXRowsAttribute)
                 ?? []
 
+            let structuralChildren = element.children.filter {
+                $0.role != kAXRowRole
+            }
+
+            return uniqueElements(structuralChildren + rows)
+
         case kAXRowRole:
-            return element.getAttribute(kAXVisibleCellsAttribute)
-                ?? []
+            let visibleCells: [AXUIElement] =
+                element.getAttribute(kAXVisibleCellsAttribute) ?? []
+            return uniqueElements(visibleCells + element.children)
 
         case kAXTabGroupRole:
-            return element.getAttribute(kAXTabsAttribute)
-                ?? element.children
+            let tabs: [AXUIElement] = element.getAttribute(kAXTabsAttribute) ?? []
+            return uniqueElements(tabs + element.children)
 
         case kAXListRole:
             return
@@ -118,6 +132,14 @@ class UIManager {
         default:
             return element.children
         }
+    }
+
+    private func uniqueElements(_ elements: [AXUIElement]) -> [AXUIElement] {
+        var result: [AXUIElement] = []
+        for element in elements where !result.contains(where: { CFEqual($0, element) }) {
+            result.append(element)
+        }
+        return result
     }
     
     // MARK: - Element Search
@@ -136,11 +158,15 @@ class UIManager {
     private func getAttributes(_ element: AXUIElement) -> [String:Value] {
         var attributes: [String:Value] = [:]
         
-        if (element.title == nil || element.title!.isEmpty),
-           [kAXButtonRole, kAXImageRole, kAXMenuButtonRole, kAXCheckBoxRole, kAXRadioButtonRole].contains(element.role ?? ""),
-            let title = [ element.description, element.help].compactMap ({ $0 })
-            .first (where: { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }) {
+        if let title = Element.displayTitle(
+            title: element.title,
+            description: element.description,
+            help: element.help
+        ) {
             attributes["title"] = .string(title)
+        }
+        if let identifier = element.identifier, !identifier.isEmpty {
+            attributes["identifier"] = .string(identifier)
         }
         if let value = element.value {
             attributes["value"] = value
@@ -150,6 +176,16 @@ class UIManager {
             attributes["enabled"] = .bool(enabled)
         }
         switch element.role {
+        case kAXTableRole, kAXOutlineRole, kAXGridRole:
+            if let visibleRows: [AXUIElement] = element.getAttribute(kAXVisibleRowsAttribute) {
+                attributes["children_scope"] = .string("visible_rows")
+                attributes["visible_row_count"] = .int(visibleRows.count)
+            }
+        case kAXListRole:
+            if let visibleChildren: [AXUIElement] = element.getAttribute(kAXVisibleChildrenAttribute) {
+                attributes["children_scope"] = .string("visible_children")
+                attributes["visible_child_count"] = .int(visibleChildren.count)
+            }
         case kAXColumnRole:
             if let index: Int = element.getAttribute(kAXIndexAttribute) {
                 attributes["column_index"] = .int(index)
@@ -251,7 +287,7 @@ class Element {
     var identifier: String?
     var actions: [String]
     var children: [Element]
-    var parent: Element?
+    weak var parent: Element?
     var attributes: [String:Value]
     var uiElment: AXUIElement
     
@@ -267,6 +303,19 @@ class Element {
         self.attributes = attributes
         self.uiElment = uiElment
     }
+
+    static func displayTitle(title: String?, description: String?, help: String?) -> String? {
+        [title, description, help]
+            .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .first { !$0.isEmpty }
+    }
+
+    func attach(children: [Element]) {
+        self.children = children
+        for child in children {
+            child.parent = self
+        }
+    }
     
     var accessibilityPath: String {
         var pathComponents: [String] = []
@@ -275,8 +324,11 @@ class Element {
         while let currentNode = current, let parent = currentNode.parent {
             let role = currentNode.role
             var identifiers: [String] = []
-            
-            if let titleVal = currentNode.attributes["title"], case .string(let titleStr) = titleVal {
+
+            if let identifierVal = currentNode.attributes["identifier"],
+               case .string(let identifier) = identifierVal {
+                identifiers.append("identifier=\(identifier)")
+            } else if let titleVal = currentNode.attributes["title"], case .string(let titleStr) = titleVal {
                 identifiers.append("title=\(titleStr)")
             }
             
@@ -309,23 +361,25 @@ class Element {
     private func getActionableElmenets(_ element: Element) -> [String] {
         
         var attributesText = ""
-        for (key, value) in element.attributes {
+        for key in element.attributes.keys.sorted() {
+            guard let value = element.attributes[key] else { continue }
             attributesText += " \(key)=\(value.description)"
         }
         
         if !element.actions.isEmpty {
-            attributesText += " actions=\(element.actions.joined(separator: ", "))"
+            attributesText += " actions=\(element.actions.sorted().joined(separator: ", "))"
         }
         
         var result: [String] = []
         if let index = element.index {
-            result.append("\(index)[:]<\(element.role)\(attributesText)>[interactive]")
+            result.append("\(index)[:]<\(element.role)\(attributesText) path=\(element.accessibilityPath)>[interactive]")
         }
-        else if (element.role == kAXStaticTextRole || element.role == kAXTextFieldRole) {
-            if !element.interactive {
-                if element.parent == nil || element.parent?.role == kAXRowRole || element.parent?.interactive == true {
-                    result.append("_[:]<\(element.role)\(attributesText)>[context]")
-                }
+        else if element.attributes["children_scope"] != nil {
+            result.append("_[:]<\(element.role)\(attributesText) path=\(element.accessibilityPath)>[context]")
+        }
+        else if [kAXStaticTextRole, kAXTextFieldRole, kAXTextAreaRole].contains(element.role) {
+            if !element.interactive && element.hasContextValue && element.providesActionContext {
+                result.append("_[:]<\(element.role)\(attributesText) path=\(element.accessibilityPath)>[context]")
             }
         }
         
@@ -334,9 +388,56 @@ class Element {
         }
         return result
     }
+
+    private var hasContextValue: Bool {
+        ["title", "value", "placeholder", "selected_text"]
+            .contains { attributes[$0] != nil }
+    }
+
+    private var providesActionContext: Bool {
+        guard let parent else { return true }
+        if parent.role == kAXRowRole || parent.interactive {
+            return true
+        }
+
+        return parent.children.contains { sibling in
+            sibling !== self && (
+                sibling.interactive || sibling.hasInteractiveDescendant(maxDepth: 1)
+            )
+        }
+    }
+
+    private func hasInteractiveDescendant(maxDepth: Int) -> Bool {
+        guard maxDepth >= 0 else { return false }
+        return children.contains { child in
+            child.interactive || child.hasInteractiveDescendant(maxDepth: maxDepth - 1)
+        }
+    }
     
     
     var interactive : Bool {
+        var enabled: Bool {
+            guard let attribute = attributes["enabled"], case .bool(let enabled) = attribute else {
+                return true
+            }
+            return enabled
+        }
+
+        guard enabled else { return false }
+
+        if [kAXTextFieldRole, kAXTextAreaRole].contains(role) {
+            if let editable = attributes["editable"]?.boolValue {
+                return editable
+            }
+
+            var settable = DarwinBoolean(false)
+            return AXUIElementIsAttributeSettable(
+                uiElment,
+                kAXValueAttribute as CFString,
+                &settable
+            ) == .success && settable.boolValue
+        }
+
         if actions.isEmpty {
             return false
         }
@@ -356,19 +457,8 @@ class Element {
         
         let hasInteractive = actions.contains(where: interactiveActions.contains)
         
-        var enabled: Bool {
-            guard let attribute = self.attributes["enabled"], case .bool(let enabled) = attribute else {
-                return false
-            }
-            return enabled
-        }
-        
-        if actions.contains("AXSetValue") && role == kAXTextFieldRole {
-            return enabled == true
-        }
-        
         if actions.contains(kAXPressAction), [kAXButtonRole, "AXLink"].contains(role) {
-            return enabled == true
+            return true
         }
         
         return hasInteractive

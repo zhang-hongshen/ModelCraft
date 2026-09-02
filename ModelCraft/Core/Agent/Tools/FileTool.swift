@@ -53,7 +53,7 @@ class FileTool {
         ]
     ) { input in
         try FileTool.writeToFile(input.path, content: input.content)
-        return WriteToFileOutput()
+        return WriteToFileOutput(success: true, path: input.path)
     }
 }
 
@@ -71,4 +71,7 @@ struct WriteToFileInput: Codable {
     let content: String
 }
 
-struct WriteToFileOutput: Codable {}
+struct WriteToFileOutput: Codable {
+    let success: Bool
+    let path: String
+}

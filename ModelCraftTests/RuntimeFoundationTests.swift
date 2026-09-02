@@ -11,6 +11,39 @@ struct RuntimeFoundationTests {
         #expect(configuration.task == .fl2va)
     }
 
+    @Test func h3BasePresetsCarryTheFixed768PCanvas() throws {
+        let request = H3EvaluatorRequest(
+            prompt: "test",
+            videoOutput: URL(fileURLWithPath: "/tmp/h3-test.mp4"))
+        for configuration in [
+            H3Configuration.presetH3BaseFL2VA,
+            H3Configuration.presetH3BaseRef2VA
+        ] {
+            #expect(configuration.outputWidth == 1344)
+            #expect(configuration.outputHeight == 768)
+            let dimensions = try request.dimensions(for: configuration)
+            #expect(dimensions.width == 1344)
+            #expect(dimensions.height == 768)
+        }
+
+        let parameterLabels = Set(Mirror(reflecting: H3GenerationParameters())
+            .children
+            .compactMap(\.label))
+        #expect(!parameterLabels.contains("width"))
+        #expect(!parameterLabels.contains("height"))
+    }
+
+    @Test func textToVideoSchemaDoesNotExposeResolutionOverrides() throws {
+        let function = try #require(
+            VideoTool.textToVideo.schema["function"] as? [String: any Sendable])
+        let parameters = try #require(
+            function["parameters"] as? [String: any Sendable])
+        let properties = try #require(
+            parameters["properties"] as? [String: any Sendable])
+        #expect(properties["width"] == nil)
+        #expect(properties["height"] == nil)
+    }
+
     @Test func musicGenPresetsMatchCheckpointDecoderGeometry() {
         let small = MusicGenConfiguration.small.decoderParameters
         #expect(small.bosTokenId == 2048)

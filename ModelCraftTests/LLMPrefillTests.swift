@@ -8,6 +8,8 @@ private struct UnsupportedToolValue: Sendable, CustomStringConvertible {
     let description: String
 }
 
+private struct TestTimeoutError: Error {}
+
 private final class UnknownKVCache: BaseKVCache {
     private var storedState: [MLXArray]
 
@@ -23,6 +25,62 @@ private final class UnknownKVCache: BaseKVCache {
 }
 
 struct LLMPrefillTests {
+    @Test @MainActor
+    func toolTurnReleasesGenerationBeforeNextRound() async throws {
+        let coordinator = InferenceRuntimeCoordinator(
+            profile: .init(cacheLimit: 4 * 1024 * 1024))
+        let model = LocalModel(id: "test-agent", size: 0)
+        let chat = Chat()
+        let toolCall = ToolCall(
+            function: .init(name: "test_tool", arguments: [:]))
+        var invocationCount = 0
+
+        let executor = AgentExecutor(
+            generationProvider: { _, _, _ in
+                invocationCount += 1
+                let lease = try await coordinator.acquire(.languageModel)
+                let (stream, continuation) = AsyncStream<Generation>.makeStream()
+                continuation.onTermination = { _ in
+                    Task { await lease.release() }
+                }
+
+                if invocationCount == 1 {
+                    continuation.yield(.toolCall(toolCall))
+                } else {
+                    continuation.yield(.chunk("done"))
+                    continuation.finish()
+                }
+                return stream
+            },
+            toolDispatcher: { _ in
+                let lease = try await coordinator.acquire(.stableDiffusion)
+                await lease.release()
+                return (CallToolResult.success(), MLXLMCommon.Chat.Message.tool("ok"))
+            })
+
+        let run = Task { @MainActor in
+            try await executor.run(
+                model: model,
+                projectID: nil,
+                chat: chat,
+                messages: [.user("call the test tool")])
+        }
+
+        try await withThrowingTaskGroup(of: Void.self) { group in
+            group.addTask {
+                try await run.value
+            }
+            group.addTask {
+                try await Task.sleep(nanoseconds: 250_000_000)
+                throw TestTimeoutError()
+            }
+            try await group.next()
+            group.cancelAll()
+        }
+
+        #expect(invocationCount == 2)
+    }
+
     @Test func prefixCacheLayoutRequiresMatchingStateStructure() {
         let expected = KVCacheManager.CacheLayout(
             layers: [
@@ -291,6 +349,15 @@ struct LLMPrefillTests {
         #expect(PromptPrefixPlanner.prefixCount(full: [1, 2, 3], prefix: [1, 3]) == nil)
         #expect(PromptPrefixPlanner.prefixCount(full: [1, 2], prefix: [1, 2]) == nil)
         #expect(PromptPrefixPlanner.suffix(full: [1, 2, 3, 4], prefixCount: 2) == [3, 4])
+    }
+
+    @Test func prefixPlannerFindsSharedPrefixBeforeGenerationMarker() {
+        #expect(PromptPrefixPlanner.commonPrefixCount(
+            full: [1, 2, 3, 4], candidate: [1, 2, 99]) == 2)
+        #expect(PromptPrefixPlanner.commonPrefixCount(
+            full: [1, 2, 3], candidate: [1, 2, 3]) == nil)
+        #expect(PromptPrefixPlanner.commonPrefixCount(
+            full: [1, 2, 3], candidate: [9, 2, 3]) == nil)
     }
 
     @Test func promptKeyCanonicalizesToolDictionaryOrder() {

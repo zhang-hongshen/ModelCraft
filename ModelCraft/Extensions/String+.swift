@@ -24,4 +24,12 @@ extension String {
         
         return digest.compactMap { String(format: "%02x", $0) }.joined()
     }
+
+    /// Keeps model-produced HTML-like tags visible when the surrounding text
+    /// is rendered as Markdown.
+    var markdownEscapingHTML: String {
+        replacingOccurrences(of: "&", with: "&amp;")
+            .replacingOccurrences(of: "<", with: "&lt;")
+            .replacingOccurrences(of: ">", with: "&gt;")
+    }
 }

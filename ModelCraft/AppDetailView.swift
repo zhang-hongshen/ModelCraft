@@ -14,7 +14,8 @@ struct AppDetailView: View {
     var body: some View {
         switch tab {
         case .chat(let chat):
-            ChatView(chat: chat).navigationTitle(chat.title ?? "New Chat")
+            ChatView(chat: chat)
+                .navigationTitle(chat.title ?? String(localized: "New Chat"))
         case .modelStore:
             ModelStore().navigationTitle("Model Store")
         case .project(let project):

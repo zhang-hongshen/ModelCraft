@@ -10,15 +10,22 @@ import MLX
 actor LTXVideoEvaluator {
     private let modelFactory = LTXVideoModelFactory()
 
-    public func generate(prompt: String) async throws -> MLXArray {
+    public func generate(
+        prompt: String,
+        ratio: LTXVideoAspectRatio,
+        resolution: LTXVideoResolution,
+        durationSeconds: Int
+    ) async throws -> MLXArray {
         let lease = try await InferenceRuntimeCoordinator.shared.acquire(.ltxVideo)
         do {
             let model = try await modelFactory.load()
-            let parameters = model.configuration.defaultParameters(prompt)
+            let parameters = model.configuration.makeParameters(
+                prompt, ratio, resolution, durationSeconds)
             let result = try await model.generate(parameters)
             await lease.release()
             return result
         } catch {
+            await modelFactory.cleanup()
             await lease.release()
             throw error
         }
@@ -33,12 +40,15 @@ actor LTXVideoModelFactory {
     }
 
     public nonisolated let configuration: LTXVideoConfiguration
-    public nonisolated let conserveMemory: Bool
+    nonisolated let runtimeProfile: LTXVideoRuntimeProfile
     private var state: State = .unloaded
 
-    init(configuration: LTXVideoConfiguration = .ltxv2BDistilled) {
+    init(
+        configuration: LTXVideoConfiguration = .ltxv2BDistilled,
+        runtimeProfile: LTXVideoRuntimeProfile = .deviceDefault
+    ) {
         self.configuration = configuration
-        self.conserveMemory = Memory.memoryLimit < 12 * 1024 * 1024 * 1024
+        self.runtimeProfile = runtimeProfile
     }
 
     func load() async throws -> LTXVideo {
@@ -49,12 +59,13 @@ actor LTXVideoModelFactory {
             return try await task.value
         case .unloaded:
             let task = Task<LTXVideo, Error> {
-                LTXVideo(configuration: configuration)
+                try await configuration.download()
+                return LTXVideo(configuration: configuration, runtimeProfile: runtimeProfile)
             }
             state = .loading(task)
             do {
                 let model = try await task.value
-                state = conserveMemory ? .unloaded : .loaded(model)
+                state = .loaded(model)
                 return model
             } catch {
                 state = .unloaded

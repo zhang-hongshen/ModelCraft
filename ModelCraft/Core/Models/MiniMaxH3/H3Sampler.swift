@@ -1,4 +1,9 @@
-// SPDX-License-Identifier: Apache-2.0
+//
+//  H3Sampler.swift
+//  ModelCraft
+//
+//  Created by Hongshen on 27/8/26.
+//
 
 import Foundation
 import MLX
@@ -118,18 +123,91 @@ struct TimestepPlan: Sendable, Equatable {
     var audioRow: Int { row(for: .audio) }
 }
 
-// SPDX-License-Identifier: Apache-2.0
-// Copyright 2026 Sean Kammerich
-
 
 final class H3Sampler {
     private var oldSigmaDown: Float? = nil
     private var oldDenoised: MLXArray? = nil
 
+    struct Output {
+        let video: MLXArray
+        let audio: MLXArray
+    }
+
     init() {}
 
+    /// Runs the complete H3 flow-matching loop for the video and audio streams.
+    /// Each stream gets its own step history because the multistep integrator
+    /// must not mix denoised values from different latent spaces.
+    func sample(
+        model: H3OmniTransformer,
+        steps: Int,
+        seed: UInt64,
+        geometry: H3LatentGeometry,
+        conditioning: H3TextConditioningData,
+        conditions: H3Conditions,
+        scheduler: H3Scheduler
+    ) throws -> Output {
+        MLXRandom.seed(seed)
+        var currentVideo = MLXRandom.normal(geometry.videoLatentShape())
+        var currentAudio = MLXRandom.normal(geometry.audioLatentShape())
+
+        let sigmas = scheduler.sigmas(steps: steps)
+        let layout: H3Sequence
+        if conditions.references.isEmpty {
+            layout = try H3Sequence(
+                textTokens: conditioning.textEmbeddings.dim(1),
+                geometry: geometry,
+                keyframes: conditions.keyframes)
+        } else {
+            layout = try H3Sequence(
+                textTokens: conditioning.textEmbeddings.dim(1),
+                geometry: geometry,
+                references: conditions.references)
+        }
+        let renderState = try model.prepareRender(
+            textEmbeddings: conditioning.textEmbeddings,
+            layout: layout)
+        let videoSampler = H3Sampler()
+        let audioSampler = H3Sampler()
+
+        for index in 0 ..< steps {
+            if Task.isCancelled { throw CancellationError() }
+            let sigma = Float(sigmas[index])
+            let sigmaNext = Float(sigmas[index + 1])
+            let previousSigma = index > 0 ? Float(sigmas[index - 1]) : nil
+            let velocity = try model.velocity(
+                videoLatent: currentVideo,
+                audioLatent: currentAudio,
+                textEmbeddings: conditioning.textEmbeddings,
+                sigmaVideo: Double(sigma),
+                geometry: geometry,
+                textTags: conditioning.tags,
+                condVideo: conditions.videoRows,
+                condAudio: conditions.audioRows,
+                renderState: renderState)
+
+            let videoDenoised = currentVideo - velocity.video * MLXArray(sigma)
+            let audioDenoised = currentAudio - velocity.audio * MLXArray(sigma)
+            currentVideo = videoSampler.step(
+                x: currentVideo,
+                denoised: videoDenoised,
+                sigma: sigma,
+                sigmaNext: sigmaNext,
+                prevSigma: previousSigma)
+            currentAudio = audioSampler.step(
+                x: currentAudio,
+                denoised: audioDenoised,
+                sigma: sigma,
+                sigmaNext: sigmaNext,
+                prevSigma: previousSigma)
+            eval(currentVideo, currentAudio)
+        }
+
+        return Output(video: currentVideo, audio: currentAudio)
+    }
+
     /// Advance one step of the res_multistep ODE integration.
-    func step(
+    private func step(
         x: MLXArray,
         denoised: MLXArray,
         sigma: Float,
@@ -187,107 +265,3 @@ final class H3Sampler {
         return nextX
     }
 }
-
-// SPDX-License-Identifier: Apache-2.0
-// Copyright 2026 Sean Kammerich
-
-
-/// The H3 Base flow-matching sampler.
-enum H3Sampling {
-    struct Output {
-        let video: MLXArray
-        let audio: MLXArray
-    }
-
-    static func run(
-        model: H3OmniTransformer,
-        request: H3EvaluatorRequest,
-        geometry: H3LatentGeometry,
-        conditioning: H3TextConditioningData,
-        conditions: H3Conditions,
-        cancellation: H3EvaluatorCancellation?,
-        onStep: (Int, Int) -> Void = { _, _ in }
-    ) throws -> Output {
-        MLXRandom.seed(request.seed)
-        var currentVideo = MLXRandom.normal(geometry.videoLatentShape())
-        var currentAudio = MLXRandom.normal(geometry.audioLatentShape())
-
-        let schedule = H3Scheduler(shift: geometry.configuration.videoSigmaShift)
-        let sigmas = schedule.sigmas(steps: request.steps)
-        let layout: H3Sequence
-        if conditions.references.isEmpty {
-            layout = try H3Sequence(
-                textTokens: conditioning.tokenCount,
-                geometry: geometry,
-                keyframes: conditions.keyframes)
-        } else {
-            layout = try H3Sequence(
-                textTokens: conditioning.tokenCount,
-                geometry: geometry,
-                references: conditions.references)
-        }
-        let renderState = try model.prepareRender(
-            textEmbeddings: conditioning.textEmbeddings,
-            layout: layout)
-        let videoSampler = H3Sampler()
-        let audioSampler = H3Sampler()
-
-        for index in 0 ..< request.steps {
-            if Task.isCancelled || cancellation?.isCancelled == true {
-                throw H3EvaluatorCancelled(
-                    phase: .sampling,
-                    detail: "after \(index) of \(request.steps) step(s)")
-            }
-
-            let sigma = Float(sigmas[index])
-            let sigmaNext = Float(sigmas[index + 1])
-            let previousSigma = index > 0 ? Float(sigmas[index - 1]) : nil
-            let velocity = try model.velocity(
-                videoLatent: currentVideo,
-                audioLatent: currentAudio,
-                textEmbeddings: conditioning.textEmbeddings,
-                sigmaVideo: Double(sigma),
-                geometry: geometry,
-                textTags: conditioning.tags,
-                condVideo: conditions.videoRows,
-                condAudio: conditions.audioRows,
-                renderState: renderState)
-
-            let videoDenoised = currentVideo - velocity.video * MLXArray(sigma)
-            let audioDenoised = currentAudio - velocity.audio * MLXArray(sigma)
-            currentVideo = videoSampler.step(
-                x: currentVideo,
-                denoised: videoDenoised,
-                sigma: sigma,
-                sigmaNext: sigmaNext,
-                prevSigma: previousSigma)
-            currentAudio = audioSampler.step(
-                x: currentAudio,
-                denoised: audioDenoised,
-                sigma: sigma,
-                sigmaNext: sigmaNext,
-                prevSigma: previousSigma)
-            eval(currentVideo, currentAudio)
-            onStep(index + 1, request.steps)
-        }
-
-        return Output(video: currentVideo, audio: currentAudio)
-    }
-}
-
-// SPDX-License-Identifier: Apache-2.0
-// Copyright 2026 Sean Kammerich
-
-
-/// Packed-sequence modulation.
-///
-/// The reference walks a list of `(start, stop, row)` segments and mutates
-/// slices in place. That is a memory optimisation, not semantics: every token
-/// in `[start, stop)` uses AdaLN row `row`. We flatten that to a per-token row
-/// index once and gather, which is the same arithmetic and vectorises.
-///
-/// Row layout is `timestepRow * 3 + modalityTag`, with the modality tags fixed
-/// by the reference as **video 0, text 1, audio 2** (`seg_tag` in
-/// `comfy/ldm/minimax/model.py`). Video and audio carry *different* timesteps,
-/// which is why there is a timestep row at all — get this wrong and the model
-/// modulates the audio branch with the video schedule.

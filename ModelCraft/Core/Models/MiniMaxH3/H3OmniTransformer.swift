@@ -1,13 +1,16 @@
-// SPDX-License-Identifier: Apache-2.0
+//
+//  H3OmniTransformer.swift
+//  ModelCraft
+//
+//  Created by Hongshen on 27/8/26.
+//
+
 
 import Foundation
 import Hub
 import MLX
 import MLXFast
 import MLXNN
-
-// SPDX-License-Identifier: Apache-2.0
-// Copyright 2026 Sean Kammerich
 
 
 /// Optional context reserved for future attention implementations.
@@ -59,9 +62,6 @@ struct SDPABackend: H3AttentionBackend {
             .squeezed(axis: 0)
     }
 }
-
-// SPDX-License-Identifier: Apache-2.0
-// Copyright 2026 Sean Kammerich
 
 
 
@@ -158,9 +158,6 @@ struct H3RMSNorm {
         return (n * weight.asType(.float32)).asType(x.dtype)
     }
 }
-
-// SPDX-License-Identifier: Apache-2.0
-// Copyright 2026 Sean Kammerich
 
 
 /// AdaLN projection: `chunk(linear(silu(t_emb)), expand)`.
@@ -402,9 +399,6 @@ struct H3TransformerBlock {
     }
 }
 
-// SPDX-License-Identifier: Apache-2.0
-// Copyright 2026 Sean Kammerich
-
 
 // Construction from the indexed SafeTensors checkpoint lives beside the
 // Transformer implementation. This keeps the paper-facing component a single
@@ -576,7 +570,7 @@ struct FinalLayer {
 }
 
 /// The assembled H3 Base Omni Transformer. The tokenizer, text encoder and two
-/// VAEs remain separate paper components and are connected by H3BaseModel.
+/// VAEs remain separate paper components and are connected by H3Base.
 struct H3OmniTransformer {
     /// Immutable tensors shared by every denoise step of one render.
     ///
@@ -965,18 +959,3 @@ extension H3OmniTransformer {
             computeDType: computeDType)
     }
 }
-
-// SPDX-License-Identifier: Apache-2.0
-// Copyright 2026 Sean Kammerich
-
-
-/// Qwen2 byte-level BPE — the tokenizer H3's conditioning encoder expects.
-///
-/// MiniMax-H3 uses it in its plainest form. `MiniMaxH3Tokenizer` in the
-/// reference calls `tok(text, add_special_tokens=False)` and adds **nothing**:
-/// no chat template, no BOS, no EOS. The `<|im_start|>user\n…` wrapper that
-/// other Qwen3-VL consumers apply is not used here, and adding it would shift
-/// every position and change the conditioning.
-///
-/// Empty input is the one special case: the reference substitutes a single pad
-/// token (151643) rather than an empty sequence.

@@ -1,4 +1,10 @@
-// SPDX-License-Identifier: Apache-2.0
+//
+//  H3Encoder.swift
+//  ModelCraft
+//
+//  Created by Hongshen on 27/8/26.
+//
+
 
 import Foundation
 import Hub
@@ -113,8 +119,28 @@ enum H3VisionPreprocess {
     }
 }
 
-// SPDX-License-Identifier: Apache-2.0
-// Copyright 2026 Sean Kammerich
+/// The composed H3 Encoder component.
+///
+/// MiniMax packages the Qwen3-VL language stack and vision tower in the same
+/// `text_encoder` checkpoint. Keeping them together here lets ``H3Base`` own
+/// one paper-level encoder while both paths share one loaded SafeTensors map.
+final class H3Encoder: @unchecked Sendable {
+    let textEncoder: H3TextEncoder
+    let visionEncoder: H3VisionEncoder
+
+    init(weights: [String: MLXArray]) throws {
+        self.textEncoder = try H3TextEncoder(weights: weights)
+        self.visionEncoder = try H3VisionEncoder(weights: weights)
+    }
+
+    convenience init(hub: HubApi, configuration: H3Configuration) throws {
+        try self.init(
+            weights: H3Loader.loadWeights(
+                hub: hub,
+                configuration: configuration,
+                key: .textEncoderWeights))
+    }
+}
 
 
 /// The Qwen3-VL vision tower, as shipped inside the H3 conditioning weights.
@@ -258,7 +284,7 @@ final class H3VisionEncoder {
             weights: H3Loader.loadWeights(
                 hub: hub,
                 configuration: configuration,
-                key: "textEncoderWeights"),
+                key: .textEncoderWeights),
             config: config)
     }
 
@@ -439,9 +465,6 @@ final class H3VisionEncoder {
     }
 }
 
-// SPDX-License-Identifier: Apache-2.0
-// Copyright 2026 Sean Kammerich
-
 
 /// Qwen3-VL-32B, the conditioning encoder — language path only.
 ///
@@ -476,7 +499,7 @@ struct H3TextEncoderConfiguration: Sendable, Equatable {
 
 final class H3TextEncoder {
     let config: H3TextEncoderConfiguration
-    let url: URL
+    let url: URL?
     /// Number of language layers present in the downloaded checkpoint.
     let checkpointLayerCount: Int
 
@@ -521,10 +544,14 @@ final class H3TextEncoder {
                               + "is this a Qwen3-VL conditioning export?")
     }
 
-    init(url: URL, config: H3TextEncoderConfiguration = H3TextEncoderConfiguration()) throws {
-        self.url = url
+    private init(
+        weights: [String: MLXArray],
+        sourceURL: URL?,
+        config: H3TextEncoderConfiguration = H3TextEncoderConfiguration()
+    ) throws {
+        self.url = sourceURL
         self.config = config
-        let all = try H3Loader.loadWeights(from: url)
+        let all = weights
         let p = try Self.languagePrefix(all.keys)
 
         func w(_ n: String) throws -> MLXArray {
@@ -573,6 +600,23 @@ final class H3TextEncoder {
     }
 
     convenience init(
+        weights: [String: MLXArray],
+        config: H3TextEncoderConfiguration = H3TextEncoderConfiguration()
+    ) throws {
+        try self.init(weights: weights, sourceURL: nil, config: config)
+    }
+
+    convenience init(
+        url: URL,
+        config: H3TextEncoderConfiguration = H3TextEncoderConfiguration()
+    ) throws {
+        try self.init(
+            weights: H3Loader.loadWeights(from: url),
+            sourceURL: url,
+            config: config)
+    }
+
+    convenience init(
         hub: HubApi,
         configuration: H3Configuration,
         config: H3TextEncoderConfiguration = H3TextEncoderConfiguration()
@@ -581,7 +625,7 @@ final class H3TextEncoder {
             url: H3Loader.resolve(
                 hub: hub,
                 configuration: configuration,
-                key: "textEncoderWeights"),
+                key: .textEncoderWeights),
             config: config)
     }
 
@@ -667,15 +711,15 @@ final class H3TextEncoder {
 
     /// Text in, conditioning out — the whole encode span.
     ///
-    /// Returns the tags alongside, because the packed layout needs a modality
-    /// per text token and a pure-text prompt is not the only possible case.
+    /// Returns modality tags alongside the tensor because the packed layout
+    /// needs to distinguish visual semantic tokens from ordinary text.
     func encode(_ text: String, tokenizer: H3Tokenizer,
                        computeDType: DType = .float32)
-        -> (cond: MLXArray, ids: [Int], tags: [Int]) {
+        -> (cond: MLXArray, tags: [Int]) {
         let ids = tokenizer.encodePrompt(text)
         let cond = callAsFunction(embeds: embed(ids: ids),
                                   computeDType: computeDType)
-        return (cond, ids, tokenizer.textTags(count: ids.count))
+        return (cond, tokenizer.textTags(count: ids.count))
     }
 
     /// Runs the language stack over pre-computed token embeddings.
@@ -974,14 +1018,10 @@ enum H3Presentation {
     }
 }
 
-// SPDX-License-Identifier: Apache-2.0
-// Copyright 2026 Sean Kammerich
-
 
 struct H3TextConditioningData {
     let textEmbeddings: MLXArray
     let tags: [Int]
-    let tokenCount: Int
 }
 
 /// Encodes the text prompt and optional FL2VA images for H3 Base.
@@ -990,54 +1030,41 @@ struct H3TextConditioningData {
 /// `text_encoder` component. A keyframe is represented twice, as required by
 /// H3 Base: semantic vision tokens enter this text stream and the same image's
 /// Visual VAE latent enters the visual condition stream.
-enum H3TextConditioning {
+extension H3Conditioning {
     static func encodeFL2VA(
         prompt: String,
-        request: H3EvaluatorRequest,
-        hub: HubApi,
-        configuration: H3Configuration,
-        log: (String) -> Void = { _ in }
+        keyframes: [H3EvaluatorKeyframe],
+        encoder: H3Encoder,
+        tokenizer: H3Tokenizer
     ) throws -> H3TextConditioningData {
-        let encoder = try H3TextEncoder(hub: hub, configuration: configuration)
-        let tokenizer = try H3Tokenizer(hub: hub, configuration: configuration)
-        let presented = request
-            .resolvedKeyframes(frameCount: request.alignedFrameCount)
-            .map(\.image)
+        let presented = keyframes.map(\.image)
 
-        let positive: (cond: MLXArray, count: Int, tags: [Int])
+        let positive: (cond: MLXArray, tags: [Int])
         if presented.isEmpty {
-            let encoded = encoder.encode(prompt, tokenizer: tokenizer)
-            positive = (encoded.cond, encoded.ids.count, encoded.tags)
+            let encoded = encoder.textEncoder.encode(prompt, tokenizer: tokenizer)
+            positive = (encoded.cond, encoded.tags)
         } else {
             positive = try presentedConditioning(
                 prompt: prompt,
                 images: presented,
-                hub: hub,
-                configuration: configuration,
-                encoder: encoder,
-                tokenizer: tokenizer,
-                log: log)
+                encoder: encoder.textEncoder,
+                visionEncoder: encoder.visionEncoder,
+                tokenizer: tokenizer)
         }
 
         eval(positive.cond)
-        log("  prompt -> \(positive.count) text tokens")
         return H3TextConditioningData(
             textEmbeddings: positive.cond,
-            tags: positive.tags,
-            tokenCount: positive.count)
+            tags: positive.tags)
     }
 
     private static func presentedConditioning(
         prompt: String,
         images: [URL],
-        hub: HubApi,
-        configuration: H3Configuration,
         encoder: H3TextEncoder,
-        tokenizer: H3Tokenizer,
-        log: (String) -> Void
-    ) throws -> (cond: MLXArray, count: Int, tags: [Int]) {
-        let tower = try H3VisionEncoder(hub: hub, configuration: configuration)
-
+        visionEncoder: H3VisionEncoder,
+        tokenizer: H3Tokenizer
+    ) throws -> (cond: MLXArray, tags: [Int]) {
         func block(_ pixels: MLXArray) throws -> (H3Presentation.VisionBlock, H3VisionGrid) {
             let (gridWidth, gridHeight, grid) = H3VisionPreprocess.grid(
                 width: pixels.dim(2),
@@ -1049,7 +1076,7 @@ enum H3TextConditioning {
                     remedy: "use an image whose dimensions are supported by H3's vision grid.")
             }
             let patches = try H3VisionPreprocess.patches(image: pixels, grid: grid)
-            let encoded = tower(patches: patches, grid: grid)
+            let encoded = visionEncoder(patches: patches, grid: grid)
             return (
                 H3Presentation.VisionBlock(
                     merged: encoded.merged,
@@ -1071,8 +1098,6 @@ enum H3TextConditioning {
             let (vision, grid) = try block(pixels)
             blocks.append(vision)
             grids.append(grid)
-            log("    \(image.lastPathComponent): \(gridWidth)x\(gridHeight) -> "
-                + "\(vision.merged.dim(0)) vision tokens")
         }
 
         let assembled = H3Presentation.assemble(
@@ -1087,12 +1112,6 @@ enum H3TextConditioning {
             positionIds: assembled.positionIds,
             visualSpans: assembled.spans.map { (start: $0.start, count: $0.size) },
             deepstack: assembled.deepstack)
-        return (encoded, assembled.embeds.dim(1), assembled.tags)
+        return (encoded, assembled.tags)
     }
 }
-
-// SPDX-License-Identifier: Apache-2.0
-// Copyright 2026 Sean Kammerich
-
-
-/// Encoded visual and audio conditions consumed by the H3 Omni Transformer.

@@ -10,13 +10,19 @@ import MLX
 
 public final class LTXVideo {
     public let configuration: LTXVideoConfiguration
+    let runtimeProfile: LTXVideoRuntimeProfile
     public var transformer: LTXVideoTransformer3DModel?
     public var textEncoder: LTXVideoTextEncoder?
     public var tokenizer: LTXVideoTokenizer?
     public var vae: LTXVideoVAE?
 
-    public init(configuration: LTXVideoConfiguration = .ltxv2BDistilled) {
+    public convenience init(configuration: LTXVideoConfiguration = .ltxv2BDistilled) {
+        self.init(configuration: configuration, runtimeProfile: .deviceDefault)
+    }
+
+    init(configuration: LTXVideoConfiguration, runtimeProfile: LTXVideoRuntimeProfile) {
         self.configuration = configuration
+        self.runtimeProfile = runtimeProfile
     }
 
     public func encodePrompt(_ parameters: LTXVideoEvaluateParameters) async throws -> LTXVideoPromptEncoding {
@@ -24,36 +30,45 @@ public final class LTXVideo {
             tokenizer = LTXVideoTokenizer(tokenizer: try await LTXVideoLoader.loadTokenizer(configuration: configuration))
         }
         if textEncoder == nil {
-            textEncoder = try LTXVideoLoader.loadTextEncoder(configuration: configuration)
+            textEncoder = try LTXVideoLoader.loadTextEncoder(
+                configuration: configuration,
+                quantization: runtimeProfile.textEncoderQuantization)
         }
         guard let tokenizer, let textEncoder else {
             throw LTXVideoLoaderError.unsupportedWeightLayout("Unable to load LTX text encoder.")
         }
 
-        let (ids, mask) = tokenizer.encode(parameters.prompt, maxLength: parameters.maxTokenCount)
+        let (ids, mask) = tokenizer.encode(
+            parameters.prompt,
+            maxLength: LTXVideoEvaluateParameters.maxTokenCount)
         let embeddings = textEncoder.encode(inputIDs: ids).asType(.bfloat16)
+        MLX.eval(embeddings)
         return LTXVideoPromptEncoding(embeddings: embeddings, attentionMask: mask)
     }
 
     public func generateLatents(_ parameters: LTXVideoEvaluateParameters) async throws -> MLXArray {
         let promptEncoding = try await encodePrompt(parameters)
 
-        // Keep T5 out of memory during the DiT pass.
-        textEncoder = nil
-        tokenizer = nil
-        Memory.clearCache()
+        if runtimeProfile.releasesComponentsBetweenStages {
+            textEncoder = nil
+            tokenizer = nil
+            Memory.clearCache()
+        }
 
         if transformer == nil {
-            transformer = try LTXVideoLoader.loadTransformer(configuration: configuration)
+            transformer = try LTXVideoLoader.loadTransformer(
+                configuration: configuration,
+                quantization: runtimeProfile.transformerQuantization)
         }
         guard let transformer else {
             throw LTXVideoLoaderError.unsupportedWeightLayout("Unable to load LTX transformer.")
         }
 
         let vaeConfig = configuration.vae
-        let latentFrames = (parameters.frameCount - 1) / vaeConfig.temporalCompressionRatio + 1
-        let latentHeight = parameters.height / vaeConfig.spatialCompressionRatio
-        let latentWidth = parameters.width / vaeConfig.spatialCompressionRatio
+        let latentFrames =
+            (parameters.frameCount - 1) / vaeConfig.temporalCompressionRatio + 1
+        let latentHeight = parameters.paddedHeight / vaeConfig.spatialCompressionRatio
+        let latentWidth = parameters.paddedWidth / vaeConfig.spatialCompressionRatio
         let latentShape = [
             1,
             latentFrames,
@@ -70,12 +85,12 @@ public final class LTXVideo {
 
         var scheduler = LTXVideoFlowMatchEulerScheduler()
         scheduler.setTimesteps(
-            stepCount: parameters.steps,
+            stepCount: LTXVideoEvaluateParameters.steps,
             sequenceLength: latentFrames * latentHeight * latentWidth
         )
 
         let ropeScale = (
-            Float(vaeConfig.temporalCompressionRatio) / Float(parameters.frameRate),
+            Float(vaeConfig.temporalCompressionRatio) / Float(LTXVideoEvaluateParameters.frameRate),
             Float(vaeConfig.spatialCompressionRatio),
             Float(vaeConfig.spatialCompressionRatio)
         )
@@ -102,8 +117,10 @@ public final class LTXVideo {
     public func generate(_ parameters: LTXVideoEvaluateParameters) async throws -> MLXArray {
         var latents = try await generateLatents(parameters)
 
-        transformer = nil
-        Memory.clearCache()
+        if runtimeProfile.releasesComponentsBetweenStages {
+            transformer = nil
+            Memory.clearCache()
+        }
 
         if vae == nil {
             vae = try LTXVideoLoader.loadVAE(configuration: configuration)
@@ -113,9 +130,10 @@ public final class LTXVideo {
         }
 
         let vaeConfig = configuration.vae
-        let latentFrames = (parameters.frameCount - 1) / vaeConfig.temporalCompressionRatio + 1
-        let latentHeight = parameters.height / vaeConfig.spatialCompressionRatio
-        let latentWidth = parameters.width / vaeConfig.spatialCompressionRatio
+        let latentFrames =
+            (parameters.frameCount - 1) / vaeConfig.temporalCompressionRatio + 1
+        let latentHeight = parameters.paddedHeight / vaeConfig.spatialCompressionRatio
+        let latentWidth = parameters.paddedWidth / vaeConfig.spatialCompressionRatio
 
         latents = LTXVideoLatentPacker.unpack(
             latents,
@@ -127,14 +145,29 @@ public final class LTXVideo {
         )
         latents = vae.denormalize(latents).asType(.bfloat16)
 
-        if parameters.decodeNoiseScale > 0 {
+        if LTXVideoEvaluateParameters.decodeNoiseScale > 0 {
             let noise = MLXRandom.normal(latents.shape).asType(latents.dtype)
-            latents = (1 - parameters.decodeNoiseScale) * latents + parameters.decodeNoiseScale * noise
+            let noiseScale = LTXVideoEvaluateParameters.decodeNoiseScale
+            latents = (1 - noiseScale) * latents + noiseScale * noise
         }
 
         var video = vae.decode(latents)
-        if Int(video.shape[1]) > parameters.frameCount {
-            video = video[0..., 0..<parameters.frameCount, 0..., 0..., 0...]
+        if Int(video.shape[1]) > parameters.frameCount
+            || Int(video.shape[2]) > parameters.height
+            || Int(video.shape[3]) > parameters.width
+        {
+            video = video[
+                0...,
+                0..<parameters.frameCount,
+                0..<parameters.height,
+                0..<parameters.width,
+                0...
+            ]
+        }
+        MLX.eval(video)
+        if runtimeProfile.releasesComponentsBetweenStages {
+            self.vae = nil
+            Memory.clearCache()
         }
         return video
     }
@@ -147,4 +180,3 @@ public final class LTXVideo {
         Memory.clearCache()
     }
 }
-

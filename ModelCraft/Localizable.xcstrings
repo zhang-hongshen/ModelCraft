@@ -4,6 +4,12 @@
     "" : {
 
     },
+    "%@ tokens/s" : {
+
+    },
+    "%@s" : {
+
+    },
     "%lld items" : {
 
     },
@@ -46,6 +52,9 @@
         }
       }
     },
+    "Application window capture failed" : {
+
+    },
     "Are you sure to delete these models" : {
       "localizations" : {
         "zh-Hans" : {
@@ -86,6 +95,12 @@
         }
       }
     },
+    "Audio created" : {
+
+    },
+    "Audio creation failed" : {
+
+    },
     "Binary data (%@)" : {
 
     },
@@ -108,6 +123,12 @@
           }
         }
       }
+    },
+    "Captured application windows" : {
+
+    },
+    "Capturing application windows" : {
+
     },
     "Chats" : {
       "localizations" : {
@@ -145,6 +166,9 @@
         }
       }
     },
+    "Clicked an element" : {
+
+    },
     "Clicking (%lf, %lf)" : {
       "localizations" : {
         "en" : {
@@ -155,7 +179,21 @@
         }
       }
     },
+    "Clicking an element" : {
+
+    },
+    "Command failed" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "命令执行失败"
+          }
+        }
+      }
+    },
     "Command failed: %@" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -174,6 +212,9 @@
           }
         }
       }
+    },
+    "Confirm" : {
+
     },
     "Copied" : {
       "localizations" : {
@@ -195,6 +236,9 @@
         }
       }
     },
+    "Creating audio" : {
+
+    },
     "Creating image" : {
       "localizations" : {
         "zh-Hans" : {
@@ -215,6 +259,9 @@
         }
       }
     },
+    "Custom" : {
+
+    },
     "Dark" : {
       "localizations" : {
         "zh-Hans" : {
@@ -224,6 +271,12 @@
           }
         }
       }
+    },
+    "Decision cancelled" : {
+
+    },
+    "Decision received" : {
+
     },
     "Delete" : {
       "localizations" : {
@@ -278,6 +331,15 @@
         }
       }
     },
+    "Drag failed" : {
+
+    },
+    "Dragged pointer" : {
+
+    },
+    "Dragging pointer" : {
+
+    },
     "Edit" : {
       "localizations" : {
         "zh-Hans" : {
@@ -307,6 +369,12 @@
           }
         }
       }
+    },
+    "Element click failed" : {
+
+    },
+    "Enter your answer" : {
+
     },
     "Executed %lld commands" : {
       "localizations" : {
@@ -338,6 +406,9 @@
         }
       }
     },
+    "Failed to list running applications" : {
+
+    },
     "Failed to load map" : {
       "localizations" : {
         "zh-Hans" : {
@@ -361,6 +432,16 @@
         }
       }
     },
+    "Failed to read" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "读取失败"
+          }
+        }
+      }
+    },
     "Failed to read %@" : {
       "localizations" : {
         "zh-Hans" : {
@@ -372,6 +453,27 @@
       }
     },
     "Failed to write %@" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "写入%@失败"
+          }
+        }
+      }
+    },
+    "Failed to write into" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "写入失败"
+          }
+        }
+      }
+    },
+    "Failed to write into %@" : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -390,6 +492,12 @@
           }
         }
       }
+    },
+    "Full screenshot captured" : {
+
+    },
+    "Full screenshot failed" : {
+
     },
     "General" : {
       "localizations" : {
@@ -410,6 +518,12 @@
           }
         }
       }
+    },
+    "Generating video" : {
+
+    },
+    "Generation Info" : {
+
     },
     "Grid" : {
       "localizations" : {
@@ -451,6 +565,15 @@
         }
       }
     },
+    "Inspected UI hierarchy" : {
+
+    },
+    "Inspecting UI hierarchy" : {
+
+    },
+    "Key press failed" : {
+
+    },
     "Language" : {
       "localizations" : {
         "zh-Hans" : {
@@ -480,6 +603,12 @@
           }
         }
       }
+    },
+    "Listed running applications" : {
+
+    },
+    "Listing running applications" : {
+
     },
     "Map search failed" : {
       "localizations" : {
@@ -560,6 +689,9 @@
     "No files added yet" : {
 
     },
+    "No messages" : {
+
+    },
     "No Models Available" : {
       "localizations" : {
         "zh-Hans" : {
@@ -590,6 +722,15 @@
         }
       }
     },
+    "Prefill Time" : {
+
+    },
+    "Pressed a key" : {
+
+    },
+    "Pressing a key" : {
+
+    },
     "Project Documentation" : {
       "localizations" : {
         "zh-Hans" : {
@@ -610,8 +751,25 @@
         }
       }
     },
-    "Ran %@" : {
-
+    "Ran a command" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已执行命令"
+          }
+        }
+      }
+    },
+    "Read" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已读取"
+          }
+        }
+      }
     },
     "Read %@" : {
 
@@ -636,10 +794,23 @@
         }
       }
     },
+    "Reading" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在读取"
+          }
+        }
+      }
+    },
     "Reading %@" : {
 
     },
     "Recents" : {
+
+    },
+    "Recommended" : {
 
     },
     "Refresh" : {
@@ -672,8 +843,15 @@
         }
       }
     },
-    "Running %@" : {
-
+    "Running a command" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在执行命令"
+          }
+        }
+      }
     },
     "Save" : {
       "localizations" : {
@@ -685,6 +863,15 @@
         }
       }
     },
+    "Scroll failed" : {
+
+    },
+    "Scrolled" : {
+
+    },
+    "Scrolling" : {
+
+    },
     "Searched documents for %@" : {
 
     },
@@ -695,6 +882,9 @@
 
     },
     "Searching map for %@" : {
+
+    },
+    "Select Model" : {
 
     },
     "Show in Finder" : {
@@ -733,6 +923,9 @@
         }
       }
     },
+    "Speed" : {
+
+    },
     "Stopped" : {
       "localizations" : {
         "zh-Hans" : {
@@ -753,6 +946,9 @@
         }
       }
     },
+    "Taking full screenshot" : {
+
+    },
     "Taking screenshot" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -764,10 +960,11 @@
         }
       }
     },
-    "The model has been discarded to conserve memory and is no longer available. Please recreate the model container." : {
+    "Text input failed" : {
 
     },
     "Thinking" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -790,6 +987,15 @@
         }
       }
     },
+    "Typed text" : {
+
+    },
+    "Typing text" : {
+
+    },
+    "UI hierarchy inspection failed" : {
+
+    },
     "Unable to create a %@ with model ID '%@'. The model may not support this operation type." : {
       "localizations" : {
         "en" : {
@@ -804,6 +1010,9 @@
 
     },
     "Unable to open the image file." : {
+
+    },
+    "Unknown" : {
 
     },
     "Unknown Tool Call" : {
@@ -842,6 +1051,9 @@
     "Voice Mode" : {
 
     },
+    "Waiting for a decision" : {
+
+    },
     "Waiting to delete" : {
       "localizations" : {
         "zh-Hans" : {
@@ -863,6 +1075,27 @@
       }
     },
     "Writing %@" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在写入%@"
+          }
+        }
+      }
+    },
+    "Writing into" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在写入"
+          }
+        }
+      }
+    },
+    "Writing into %@" : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -873,6 +1106,27 @@
       }
     },
     "Wrote %@" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已写入%@"
+          }
+        }
+      }
+    },
+    "Wrote into" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已写入"
+          }
+        }
+      }
+    },
+    "Wrote into %@" : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {

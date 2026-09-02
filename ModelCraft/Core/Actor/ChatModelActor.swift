@@ -65,9 +65,11 @@ actor ChatModelActor {
             let endSummaryIndex = sorted.count - bufferCount - 1
             let summarySlice = Array(sorted[chat.lastSummaryIndex + 1...endSummaryIndex])
             
+            try Task.checkCancellation()
             guard let newSummary = try await summaryLogic(chat.summary, summarySlice) else {
                 return
             }
+            try Task.checkCancellation()
             chat.lastSummaryIndex = endSummaryIndex
             chat.summary = newSummary
             
@@ -80,7 +82,9 @@ actor ChatModelActor {
             if chat.title != nil {
                 return
             }
+            try Task.checkCancellation()
             guard let newTitle = try await summaryLogic(chat.sortedMessages) else { return }
+            try Task.checkCancellation()
             chat.title = newTitle
             try modelContext.save()
         }

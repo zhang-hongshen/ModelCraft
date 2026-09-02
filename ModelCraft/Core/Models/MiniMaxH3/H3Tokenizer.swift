@@ -1,4 +1,10 @@
-// SPDX-License-Identifier: Apache-2.0
+//
+//  H3Tokenizer.swift
+//  ModelCraft
+//
+//  Created by Hongshen on 27/8/26.
+//
+
 
 import Foundation
 import Hub
@@ -98,7 +104,7 @@ struct H3Tokenizer {
         let vocabulary = try H3Loader.resolve(
             hub: hub,
             configuration: configuration,
-            key: "tokenizerVocabulary")
+            key: .tokenizerVocabulary)
         try self.init(directory: vocabulary.deletingLastPathComponent())
     }
 
@@ -196,22 +202,3 @@ struct H3Tokenizer {
     /// constant.
     func textTags(count: Int) -> [Int] { Array(repeating: 1, count: count) }
 }
-
-// SPDX-License-Identifier: Apache-2.0
-// Copyright 2026 Sean Kammerich
-
-
-/// Image -> `flatten_patches`, the vision tower's actual input.
-///
-/// `process_qwen2vl_images` in the reference. Three things it does that are
-/// easy to get wrong, in the order they bite:
-///
-///  1. **Resize to a multiple of `patch * merge` = 32**, by rounding the
-///     original dimensions rather than by cropping.
-///  2. **Normalise with mean/std 0.5** — Qwen3-VL maps to [-1, 1]. Qwen2.5-VL
-///     used CLIP statistics, and the two look similar enough to swap by
-///     accident and produce plausible garbage.
-///  3. **Duplicate the frame across the temporal patch**, then apply a 9-way
-///     permutation that interleaves 2x2 merge blocks. That permutation is the
-///     reason a token's neighbours in the sequence are its neighbours in the
-///     block, which is what the merger's reshape assumes.

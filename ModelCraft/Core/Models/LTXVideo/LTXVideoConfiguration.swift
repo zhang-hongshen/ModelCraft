@@ -5,6 +5,8 @@
 
 import Foundation
 
+import Hub
+
 public enum LTXVideoFileKey: String, Sendable, Codable {
     case transformerWeights
     case textEncoderWeights
@@ -12,43 +14,110 @@ public enum LTXVideoFileKey: String, Sendable, Codable {
     case vaeWeights
 }
 
+public enum LTXVideoAspectRatio: String, CaseIterable, Sendable, Codable {
+    case ultraWide = "21:9"
+    case landscape = "16:9"
+    case photoLandscape = "3:2"
+    case classicLandscape = "4:3"
+    case square = "1:1"
+    case classicPortrait = "3:4"
+    case photoPortrait = "2:3"
+    case portrait = "9:16"
+    case ultraTall = "9:21"
+
+    public var value: Double {
+        Double(widthUnits) / Double(heightUnits)
+    }
+
+    func dimensions(resolution: LTXVideoResolution) -> (width: Int, height: Int) {
+        let scale = resolution.rawValue / max(widthUnits, heightUnits)
+        return (widthUnits * scale, heightUnits * scale)
+    }
+
+    private var widthUnits: Int {
+        switch self {
+        case .ultraWide: 21
+        case .landscape: 16
+        case .photoLandscape: 3
+        case .classicLandscape: 4
+        case .square: 1
+        case .classicPortrait: 3
+        case .photoPortrait: 2
+        case .portrait: 9
+        case .ultraTall: 9
+        }
+    }
+
+    private var heightUnits: Int {
+        switch self {
+        case .ultraWide: 9
+        case .landscape: 9
+        case .photoLandscape: 2
+        case .classicLandscape: 3
+        case .square: 1
+        case .classicPortrait: 4
+        case .photoPortrait: 3
+        case .portrait: 16
+        case .ultraTall: 21
+        }
+    }
+}
+
+public enum LTXVideoResolution: Int, CaseIterable, Sendable, Codable {
+    case compact = 512
+    case standard = 768
+    case full = 1280
+
+    public static func recommended(physicalMemory: UInt64) -> Self {
+        let gibibyte = UInt64(1024 * 1024 * 1024)
+        if physicalMemory < 32 * gibibyte { return .compact }
+        if physicalMemory < 48 * gibibyte { return .standard }
+        return .full
+    }
+
+    public static var deviceRecommendation: Self {
+        recommended(physicalMemory: ProcessInfo.processInfo.physicalMemory)
+    }
+}
+
 public struct LTXVideoEvaluateParameters: Sendable {
     public var prompt: String
-    public var negativePrompt: String
-    public var width: Int
-    public var height: Int
-    public var frameCount: Int
-    public var frameRate: Int
-    public var steps: Int
-    public var guidanceScale: Float
-    public var decodeTimestep: Float
-    public var decodeNoiseScale: Float
-    public var maxTokenCount: Int
+    public var ratio: LTXVideoAspectRatio
+    public var resolution: LTXVideoResolution
+    public var durationSeconds: Int
+
+    public var width: Int { ratio.dimensions(resolution: resolution).width }
+    public var height: Int { ratio.dimensions(resolution: resolution).height }
+
+    var paddedWidth: Int { Self.padded(width, toMultipleOf: 32) }
+    var paddedHeight: Int { Self.padded(height, toMultipleOf: 32) }
+
+    static let frameRate = 24
+    static let steps = 8
+    static let decodeNoiseScale: Float = 0.025
+    static let maxTokenCount = 128
+    static let minimumDurationSeconds = 1
+    static let maximumDurationSeconds = 10
+
+    var frameCount: Int {
+        let requestedFrames = durationSeconds * Self.frameRate
+        return ((requestedFrames - 1 + 7) / 8) * 8 + 1
+    }
 
     public init(
         prompt: String,
-        negativePrompt: String = "worst quality, inconsistent motion, blurry, jittery, distorted",
-        width: Int = 512,
-        height: Int = 320,
-        frameCount: Int = 33,
-        frameRate: Int = 24,
-        steps: Int = 8,
-        guidanceScale: Float = 1.0,
-        decodeTimestep: Float = 0.05,
-        decodeNoiseScale: Float = 0.025,
-        maxTokenCount: Int = 128
+        ratio: LTXVideoAspectRatio,
+        resolution: LTXVideoResolution,
+        durationSeconds: Int
     ) {
         self.prompt = prompt
-        self.negativePrompt = negativePrompt
-        self.width = width
-        self.height = height
-        self.frameCount = frameCount
-        self.frameRate = frameRate
-        self.steps = steps
-        self.guidanceScale = guidanceScale
-        self.decodeTimestep = decodeTimestep
-        self.decodeNoiseScale = decodeNoiseScale
-        self.maxTokenCount = maxTokenCount
+        self.ratio = ratio
+        self.resolution = resolution
+        self.durationSeconds = durationSeconds
+    }
+
+    private static func padded(_ value: Int, toMultipleOf multiple: Int) -> Int {
+        ((value + multiple - 1) / multiple) * multiple
     }
 }
 
@@ -105,7 +174,24 @@ public struct LTXVideoConfiguration: Sendable {
     public let files: [LTXVideoFileKey: String]
     public let transformer: LTXVideoTransformerConfiguration
     public let vae: LTXVideoVAEConfiguration
-    public let defaultParameters: @Sendable (_ prompt: String) -> LTXVideoEvaluateParameters
+    public let makeParameters:
+        @Sendable (String, LTXVideoAspectRatio, LTXVideoResolution, Int) -> LTXVideoEvaluateParameters
+
+    public func download(
+        hub: HubApi = .default,
+        progressHandler: @escaping (Progress) -> Void = { _ in }
+    ) async throws {
+        try await hub.snapshot(
+            from: Hub.Repo(id: id),
+            matching: [
+                files[.transformerWeights]!,
+                "text_encoder/*.safetensors",
+                "text_encoder/*.json",
+                "tokenizer/*",
+                files[.vaeWeights]!,
+            ],
+            progressHandler: progressHandler)
+    }
 
     public static let ltxv2BDistilled = LTXVideoConfiguration(
         id: "Lightricks/LTX-Video",
@@ -117,9 +203,12 @@ public struct LTXVideoConfiguration: Sendable {
         ],
         transformer: .ltx2B,
         vae: .ltx,
-        defaultParameters: { prompt in
-            LTXVideoEvaluateParameters(prompt: prompt)
+        makeParameters: { prompt, ratio, resolution, durationSeconds in
+            LTXVideoEvaluateParameters(
+                prompt: prompt,
+                ratio: ratio,
+                resolution: resolution,
+                durationSeconds: durationSeconds)
         }
     )
 }
-

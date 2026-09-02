@@ -17,8 +17,10 @@ struct ModelCraftApp: App {
     @State private var modelTaskTimer: Timer? = nil
     
     @Environment(\.openWindow) private var openWindow
+    @Environment(\.scenePhase) private var scenePhase
     
     private let globalStore = GlobalStore()
+    @State private var localModelStore = LocalModelStore()
     
     init() {}
     
@@ -29,11 +31,16 @@ struct ModelCraftApp: App {
                     .background(.ultraThinMaterial)
                     .applyUserSettings()
                     .task {
+                        localModelStore.reload()
                         modelTaskTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { timer in
                             guard timer.isValid else { return }
                             try? self.handleModelTask()
                         }
                         await SkillManager.shared.loadSkills()
+                    }
+                    .onChange(of: scenePhase) { _, newPhase in
+                        guard newPhase == .active else { return }
+                        localModelStore.reload()
                     }
             }.commands {
                 CommandGroup(after: .help) {
@@ -53,6 +60,7 @@ struct ModelCraftApp: App {
         .modelContainer(.shared)
         .environment(SpeechManager())
         .environment(globalStore)
+        .environment(localModelStore)
         .environment(UserSettings())
         .environment(STTService())
         .windowResizability(.contentSize)
@@ -86,18 +94,17 @@ extension ModelCraftApp {
                 globalStore.runningTasks.removeValue(forKey: task.modelID)
             }
             do {
-                let localModel = LocalModel(id: task.modelID, size: task.totalUnitCount ?? 0)
                 for try await progress in ModelService.shared.downloadModel(modelID: task.modelID) {
                     task.completedUnitCount = progress.completedUnitCount
                     task.totalUnitCount = progress.totalUnitCount
                     task.fractionCompleted = progress.fractionCompleted
                 }
                 try Task.checkCancellation()
+                localModelStore.reload()
                 task.status = .completed
                 
                 ModelContainer.shared.mainContext.delete(task)
-                ModelContainer.shared.mainContext.persist(localModel)
-                print("\(localModel.id) downloaded")
+                print("\(task.modelID) downloaded")
                 
             } catch is CancellationError {
                 task.status = .stopped
@@ -119,6 +126,10 @@ extension ModelCraftApp {
                 try ModelService.shared.deleteModel(modelID: task.modelID)
                 task.status = .completed
                 ModelContainer.shared.mainContext.delete(task)
+                localModelStore.reload()
+                if globalStore.selectedModel?.id == task.modelID {
+                    globalStore.selectedModel = nil
+                }
             } catch is CancellationError {
                 task.status = .stopped
             } catch {

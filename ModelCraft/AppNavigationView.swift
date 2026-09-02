@@ -47,7 +47,7 @@ struct AppNavigationView: View {
     func ChatSection() -> some View {
         Section("Recents", isExpanded: $isRecentsExpanded) {
             ForEach(chats) { chat in
-                Text(chat.title ?? "New Chat").tag(AppNavigationTab.chat(chat))
+                Text(chat.title ?? String(localized: "New Chat")).tag(AppNavigationTab.chat(chat))
                     .contextMenu{
                         DeleteButton(style: .textOnly) {
                             modelContext.delete(chat)

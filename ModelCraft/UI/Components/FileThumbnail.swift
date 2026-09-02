@@ -28,7 +28,7 @@ enum ViewType: Identifiable, CaseIterable {
 
 struct FileThumbnail: View {
     
-    @State var url: URL
+    let url: URL
     @State private var previewImage: PlatformImage? = nil
     
     var frameWidth: CGFloat = 80
@@ -44,7 +44,10 @@ struct FileThumbnail: View {
     var body: some View {
         image.resizable()
             .aspectRatio(contentMode: .fit)
-            .task { generateThumbnailRepresentations() }
+            .task(id: url) {
+                previewImage = nil
+                generateThumbnailRepresentations()
+            }
     }
 }
 

@@ -9,7 +9,7 @@ import SwiftUI
 
 struct ModelTaskView: View {
     
-    @State var task: ModelTask
+    let task: ModelTask
     
     @Environment(\.modelContext) private var modelContext
     @Environment(GlobalStore.self) private var globalStore

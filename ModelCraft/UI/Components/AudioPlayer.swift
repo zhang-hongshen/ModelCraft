@@ -16,7 +16,6 @@ struct AudioPlayer: View {
     let windowDuration: TimeInterval = 5.0
     
     @State private var model = WaveformModel()
-    @State private var start = 0
     
     private enum Source: Hashable {
         case url(URL)
@@ -33,6 +32,8 @@ struct AudioPlayer: View {
     }
     
     var body: some View {
+        @Bindable var model = model
+
         VStack(spacing: 0) {
             switch model.state {
             case .loading:
@@ -41,7 +42,7 @@ struct AudioPlayer: View {
                 Waveform(samples: SampleBuffer(samples: model.samples),
                          start: model.currentSampleTime,
                          length: Int(model.sampleRate  * windowDuration))
-                    .foregroundColor(.accentColor)
+                    .foregroundStyle(Color.accentColor)
                     .animation(.linear, value: model.samples.count)
         
                 
@@ -58,14 +59,7 @@ struct AudioPlayer: View {
                     
                     VStack(spacing: 0) {
                         Slider(
-                            value: Binding(
-                                get: {
-                                    model.currentTime
-                                },
-                                set: { newTime in
-                                    model.seek(to: newTime)
-                                }
-                            ),
+                            value: $model.playbackTime,
                             in: 0...model.totalDuration
                         )
                         
@@ -96,10 +90,14 @@ struct AudioPlayer: View {
                 await model.loadSamples(data: data, mimeType: mimeType, maxDuration: windowDuration)
             }
         }
+        .onDisappear {
+            model.stop()
+        }
     }
     
 }
 
+@MainActor
 @Observable
 fileprivate final class WaveformModel: NSObject, AVAudioPlayerDelegate {
     
@@ -117,6 +115,11 @@ fileprivate final class WaveformModel: NSObject, AVAudioPlayerDelegate {
     var currentTime: TimeInterval = 0
     var totalDuration: TimeInterval = 0
     var currentSampleTime: Int = 0
+
+    var playbackTime: TimeInterval {
+        get { currentTime }
+        set { seek(to: newValue) }
+    }
     
     private var rawSampleRate: Double = 44_100
     
@@ -127,16 +130,13 @@ fileprivate final class WaveformModel: NSObject, AVAudioPlayerDelegate {
     private var player: AVAudioPlayer? = nil
     private var file: AVAudioFile? = nil
     
-    deinit {
-        player?.delegate = self
-        stop()
-    }
-    
-    func audioPlayerDidFinishPlaying(
+    nonisolated func audioPlayerDidFinishPlaying(
         _ player: AVAudioPlayer,
         successfully flag: Bool
     ) {
-        isPlaying = false
+        Task { @MainActor [weak self] in
+            self?.isPlaying = false
+        }
     }
     
     func loadSamples(url: URL, maxDuration: TimeInterval = 10) async {
@@ -196,8 +196,9 @@ fileprivate final class WaveformModel: NSObject, AVAudioPlayerDelegate {
         let format = file.processingFormat
         let frameCount = AVAudioFrameCount(file.length)
         let bufferSize = AVAudioFrameCount(rawSampleRate * 0.5)
+        state = .loaded
         self.task = Task {
-            while file.framePosition < frameCount || !Task.isCancelled {
+            while file.framePosition < frameCount && !Task.isCancelled {
                 try Task.checkCancellation()
                 
                 guard let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: bufferSize) else { break }
@@ -207,7 +208,6 @@ fileprivate final class WaveformModel: NSObject, AVAudioPlayerDelegate {
                 let frameData = Array(UnsafeBufferPointer(start: channelData, count: Int(buffer.frameLength)))
                 
                 self.samples.append(contentsOf: self.downsample(frameData, fromSampleRate: rawSampleRate, toSampleRate: sampleRate))
-                self.state = .loaded
             }
         }
     }
@@ -253,10 +253,12 @@ fileprivate final class WaveformModel: NSObject, AVAudioPlayerDelegate {
     
     private func startTimer() {
         timer?.invalidate()
-        timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { _ in
-            guard let player = self.player else { return }
-            self.currentTime = player.currentTime
-            self.currentSampleTime = Int((player.currentTime / self.totalDuration) * Double(self.samples.count))
+        timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                guard let self, let player = self.player else { return }
+                self.currentTime = player.currentTime
+                self.currentSampleTime = Int((player.currentTime / self.totalDuration) * Double(self.samples.count))
+            }
         }
     }
     

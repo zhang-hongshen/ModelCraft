@@ -16,8 +16,6 @@ struct ChatInputView<Content: View>: View {
     
     @State private var fileImporterPresented = false
     @State private var photosPickerPresented = false
-    @Environment(GlobalStore.self) private var globalStore
-    
     @State private var selectedImages: [PhotosPickerItem] = []
     
     init(
@@ -78,30 +76,18 @@ extension ChatInputView {
                 }
             }
             
-            ViewThatFits {
-                
-                HStack(alignment: .center) {
-                    UploadButton()
-                    TextField("Type Anything", text: $userInput.content, axis: .vertical)
-                        .lineLimit(1)
-                        .textFieldStyle(.plain)
-                    trailing()
-                }
-                
-                VStack {
-                    TextField("Type Anything", text: $userInput.content, axis: .vertical)
-                        .lineLimit(1...3)
-                        .textFieldStyle(.plain)
-                    
-                    HStack(alignment: .center) {
-                        UploadButton()
-                        Spacer()
-                        trailing()
-                    }
-                }
+            TextField("Type Anything", text: $userInput.content, axis: .vertical)
+                .lineLimit(1...3)
+                .textFieldStyle(.plain)
+                .contentMargins(.trailing, 0, for: .scrollIndicators)
+                .scrollIndicators(.automatic)
+                .padding(.trailing, -16)
+            
+            HStack(alignment: .center) {
+                UploadButton()
+                Spacer()
+                trailing()
             }
-            
-            
         }
         .padding()
         .background(
@@ -125,6 +111,8 @@ extension ChatInputView {
             }
         } label: {
             Image(systemName: "plus")
+                .font(.title3)
+                .frame(width: 36, height: 36)
         }
         .menuIndicator(.hidden)
         .menuStyle(.borderlessButton)

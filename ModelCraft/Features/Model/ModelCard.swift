@@ -10,18 +10,18 @@ import SwiftData
 
 struct ModelCard: View {
     
-    @State var model: ModelStoreModel
-    @State var viewMode: ViewMode
+    let model: ModelStoreModel
+    let viewMode: ViewMode
     @State private var isHovered = false
     
     @Environment(\.modelContext) private var modelContext
     @Environment(GlobalStore.self) private var globalStore
+    @Environment(LocalModelStore.self) private var localModelStore
     
-    @Query private var downloadedModels: [LocalModel]
     @Query private var downloadTasks: [ModelTask]
     
     private var downloadState: DownloadState {
-        if !downloadedModels.isEmpty {
+        if localModelStore.contains(model.id) {
             return .downloaded
         }
         if let downloadTask = downloadTasks.first {
@@ -44,9 +44,6 @@ struct ModelCard: View {
         self.model = model
         self.viewMode = viewMode
         let modelID = model.id
-        self._downloadedModels = Query(
-            filter: #Predicate<LocalModel> { $0.id == modelID }
-        )
         let _type = TaskType.download.rawValue
         self._downloadTasks = Query(
             filter: #Predicate<ModelTask>{ $0.modelID == modelID && $0._type == _type },

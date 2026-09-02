@@ -9,13 +9,19 @@ import SwiftUI
 import SwiftData
 
 struct DownloadedModelsView: View {
+
+    private static let byteCountFormatter: ByteCountFormatter = {
+        let formatter = ByteCountFormatter()
+        formatter.allowedUnits = [.useGB, .useMB]
+        formatter.countStyle = .file
+        return formatter
+    }()
     
     @State private var selectedModelIds: Set<String> = []
     @State private var confirmationDialogPresented = false
     
     @Environment(\.modelContext) private var modelContext
-    
-    @Query(sort: \LocalModel.createdAt, order: .reverse) private var models: [LocalModel]
+    @Environment(LocalModelStore.self) private var localModelStore
     
     @Query(ModelTask.fetchByType(.delete))
     private var deleteTasks: [ModelTask] = []
@@ -26,7 +32,7 @@ struct DownloadedModelsView: View {
     var body: some View {
         List(selection: $selectedModelIds) {
             
-            ForEach(models) { model in
+            ForEach(localModelStore.models) { model in
                 DownloadedModelListCell(model).tag(model.id)
             }
             
@@ -61,16 +67,12 @@ extension DownloadedModelsView {
     }
     
     func DownloadedModelListCell(_ model: LocalModel) -> some View {
-        let formatter = ByteCountFormatter()
-        formatter.allowedUnits = [.useGB, .useMB]
-        formatter.countStyle = .file
-        
-        return HStack {
+        HStack {
             Label(model.displayName, systemImage: "shippingbox")
             
             Spacer()
             
-            Text(formatter.string(fromByteCount: model.size))
+            Text(DownloadedModelsView.byteCountFormatter.string(fromByteCount: model.size))
             
             if let task = deleteTasks.first(where: { $0.modelID == model.id }) {
                 Text(task.statusLocalizedDescription)

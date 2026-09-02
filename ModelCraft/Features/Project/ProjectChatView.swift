@@ -9,7 +9,7 @@ import SwiftUI
 
 struct ProjectChatView: View {
     
-    @State var chats: [Chat]
+    let chats: [Chat]
     @State private var chat: Chat? = nil
     
     var body: some View {
@@ -29,7 +29,7 @@ struct ProjectChatView: View {
 }
 
 struct ChatCard: View {
-    @State var chat: Chat
+    let chat: Chat
     @State private var isHovered = false
     
     var body: some View {
@@ -46,7 +46,7 @@ struct ChatCard: View {
             
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
-                    Text(chat.title ?? "New Chat")
+                    Text(chat.title ?? String(localized: "New Chat"))
                         .font(.system(.headline, design: .rounded))
                         .foregroundStyle(Color.primary)
                         .lineLimit(1)
@@ -59,7 +59,7 @@ struct ChatCard: View {
                         .foregroundStyle(Color.secondary)
                 }
                 
-                Text(chat.sortedMessages.first?.content ?? "No messages")
+                Text(chat.sortedMessages.first?.content ?? String(localized: "No messages"))
                     .font(.subheadline)
                     .foregroundStyle(Color.secondary)
                     .lineLimit(1)

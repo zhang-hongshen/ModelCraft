@@ -60,6 +60,8 @@ class PromptBuilder {
         4. If a tool is not needed, answer directly.
         5. After receiving tool results, continue reasoning and respond naturally.
         6. Return a normal, helpful answer to the user.
+        7. For application UI tasks, use get_ui_hierarchy for semantic controls and capture_app_window for visual context when needed.
+        8. After any click, text entry, key press, drag, or scroll, observe the application again before claiming the action succeeded.
         </rules>
         """
     )

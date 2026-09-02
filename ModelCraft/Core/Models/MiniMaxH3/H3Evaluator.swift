@@ -41,142 +41,41 @@ extension H3EvaluatorError: LocalizedError {
     public var errorDescription: String? { description }
 }
 
-// SPDX-License-Identifier: Apache-2.0
-// Copyright 2026 Sean Kammerich
 
-
-/// Progress reported by the H3 Evaluator.
-public struct H3EvaluatorProgress: Sendable {
-    public enum Phase: String, Sendable, CaseIterable {
-        case textConditioning
-        case conditionEncoding
-        case modelLoading
-        case sampling
-        case decoding
-        case writing
-    }
-
-    public let phase: Phase
-    public let completed: Int
-    public let total: Int
-    public let detail: String
-    public let elapsed: TimeInterval
-
-    public init(
-        phase: Phase,
-        completed: Int = 0,
-        total: Int = 0,
-        detail: String = "",
-        elapsed: TimeInterval = 0
-    ) {
-        self.phase = phase
-        self.completed = completed
-        self.total = total
-        self.detail = detail
-        self.elapsed = elapsed
-    }
-
-    public var fraction: Double? {
-        total > 0 ? Double(completed) / Double(total) : nil
-    }
-}
-
-/// Cancellation shared between a UI task and the synchronous MLX sampler.
-public final class H3EvaluatorCancellation: @unchecked Sendable {
-    private let lock = NSLock()
-    private var cancelled = false
-
-    public init() {}
-
-    public func cancel() {
-        lock.lock()
-        cancelled = true
-        lock.unlock()
-    }
-
-    public var isCancelled: Bool {
-        lock.lock()
-        defer { lock.unlock() }
-        return cancelled
-    }
-}
-
-public struct H3EvaluatorCancelled: Error, CustomStringConvertible, Sendable {
-    public let phase: H3EvaluatorProgress.Phase
-    public let detail: String
-
-    public init(phase: H3EvaluatorProgress.Phase, detail: String) {
-        self.phase = phase
-        self.detail = detail
-    }
-
-    public var description: String {
-        "H3 Evaluator cancelled during \(phase.rawValue): \(detail)"
-    }
-}
-
-/// The generated video and its optional side-car audio.
+/// The generated video and its output metadata.
 public struct H3EvaluatorResult: Sendable {
     public let video: URL
-    public let audio: URL?
     public let frameCount: Int
     public let width: Int
     public let height: Int
     public let seconds: Double
-    public let muxedAudio: Bool
 
     public init(
         video: URL,
-        audio: URL?,
         frameCount: Int,
         width: Int,
         height: Int,
-        seconds: Double,
-        muxedAudio: Bool = true
+        seconds: Double
     ) {
         self.video = video
-        self.audio = audio
         self.frameCount = frameCount
         self.width = width
         self.height = height
         self.seconds = seconds
-        self.muxedAudio = muxedAudio
     }
 }
 
-// SPDX-License-Identifier: Apache-2.0
-// Copyright 2026 Sean Kammerich
-
 
 /// One locally stored Ref2VA reference, kept in the order supplied by the
-/// caller. The order is part of the model input: it determines the numbered
-/// picture, video and audio tokens used by Ref2VA conditioning.
-public enum H3Reference: Sendable, Equatable {
-    case image(URL)
-    case video(URL)
-    case audio(URL)
+/// caller. Media type is resolved from the URL by the evaluator and IO layer.
+enum H3ReferenceMediaKind: Sendable {
+    case image
+    case video
+    case audio
+}
 
-    public enum Kind: String, Sendable, Equatable {
-        case image
-        case video
-        case audio
-    }
-
-    public var kind: Kind {
-        switch self {
-        case .image: .image
-        case .video: .video
-        case .audio: .audio
-        }
-    }
-
-    public var url: URL {
-        switch self {
-        case let .image(url), let .video(url), let .audio(url): url
-        }
-    }
-
-    static func validate(_ references: [H3Reference]) throws {
+extension H3EvaluatorRequest {
+    private func validateReferences() throws {
         guard references.count <= 12 else {
             throw H3EvaluatorError.invalidRequest(
                 rule: "too many references",
@@ -184,9 +83,16 @@ public enum H3Reference: Sendable, Equatable {
                 remedy: "provide at most 9 images, 3 videos and 3 audio clips in total.")
         }
 
-        let images = references.filter { $0.kind == .image }.count
-        let videos = references.filter { $0.kind == .video }.count
-        let audio = references.filter { $0.kind == .audio }.count
+        var images = 0
+        var videos = 0
+        var audio = 0
+        for reference in references {
+            switch try H3IO.inspect(reference) {
+            case .image: images += 1
+            case .video: videos += 1
+            case .audio: audio += 1
+            }
+        }
         guard images <= 9 else {
             throw H3EvaluatorError.invalidRequest(
                 rule: "too many image references",
@@ -212,14 +118,8 @@ public enum H3Reference: Sendable, Equatable {
                 remedy: "include an image or video reference before generating.")
         }
 
-        for reference in references {
-            try H3IO.inspect(reference)
-        }
     }
 }
-
-// SPDX-License-Identifier: Apache-2.0
-// Copyright 2026 Sean Kammerich
 
 
 /// The input modes exposed by the two MiniMax H3 Base variants.
@@ -248,37 +148,29 @@ public struct H3EvaluatorRequest: Sendable {
     public let firstFrame: URL?
     public let lastFrame: URL?
     /// Ref2VA inputs in caller order. Their order must not be regrouped by kind.
-    public let references: [H3Reference]
+    public let references: [URL]
     public let videoOutput: URL
-    public let audioOutput: URL?
-    public let durationSeconds: Int
-    public let width: Int
-    public let height: Int
+    /// H3 Base resolution is fixed by the selected checkpoint configuration.
+    public let duration: Int
     public let steps: Int
-    public let seed: UInt64
+    public let seed: UInt64?
 
     public init(
         prompt: String,
         videoOutput: URL,
-        audioOutput: URL? = nil,
         firstFrame: URL? = nil,
         lastFrame: URL? = nil,
-        references: [H3Reference] = [],
-        durationSeconds: Int = 5,
-        width: Int = 1344,
-        height: Int = 768,
+        references: [URL] = [],
+        duration: Int = 5,
         steps: Int = 20,
-        seed: UInt64 = 0
+        seed: UInt64? = nil
     ) {
         self.prompt = prompt
         self.firstFrame = firstFrame
         self.lastFrame = lastFrame
         self.references = references
         self.videoOutput = videoOutput
-        self.audioOutput = audioOutput
-        self.durationSeconds = durationSeconds
-        self.width = width
-        self.height = height
+        self.duration = duration
         self.steps = steps
         self.seed = seed
     }
@@ -301,16 +193,12 @@ public struct H3EvaluatorRequest: Sendable {
     /// The frame count after applying H3's 17k+5 temporal lattice.
     var alignedFrameCount: Int {
         H3LatentGeometry.alignFrameCount(
-            durationSeconds * H3Configuration.presetH3BaseFL2VA.frameRate,
+            duration * H3Configuration.presetH3BaseFL2VA.frameRate,
             configuration: .presetH3BaseFL2VA)
     }
 
     var hasFrameConditioning: Bool {
         firstFrame != nil || lastFrame != nil
-    }
-
-    var hasReferences: Bool {
-        !references.isEmpty
     }
 
     /// Keyframes are sorted once here so the text encoder, VAE and packed
@@ -328,12 +216,14 @@ public struct H3EvaluatorRequest: Sendable {
             .map(\.element)
     }
 
-    func dimensions() throws -> (width: Int, height: Int) {
+    func dimensions(for configuration: H3Configuration) throws -> (width: Int, height: Int) {
+        let width = configuration.outputWidth
+        let height = configuration.outputHeight
         guard width > 0, height > 0 else {
             throw H3EvaluatorError.invalidRequest(
                 rule: "invalid dimensions",
                 detail: "\(width)x\(height)",
-                remedy: "provide positive width and height values.")
+                remedy: "use a valid H3 checkpoint configuration.")
         }
         guard width % 32 == 0, height % 32 == 0 else {
             throw H3EvaluatorError.dimensionOffGrid(width: width, height: height, multiple: 32)
@@ -366,13 +256,12 @@ public struct H3EvaluatorRequest: Sendable {
                 detail: "\(prompt.count) characters; the limit is 7,000",
                 remedy: "shorten the scene description.")
         }
-        guard (5 ... 15).contains(durationSeconds) else {
+        guard (5 ... 15).contains(duration) else {
             throw H3EvaluatorError.invalidRequest(
                 rule: "duration out of range",
-                detail: "\(durationSeconds) seconds; H3 Base is trained for 5–15 seconds",
+                detail: "\(duration) seconds; H3 Base is trained for 5–15 seconds",
                 remedy: "use a duration between 5 and 15 seconds.")
         }
-        _ = try dimensions()
         guard (1 ... 50).contains(steps) else {
             throw H3EvaluatorError.invalidRequest(
                 rule: "invalid sampling steps",
@@ -396,7 +285,7 @@ public struct H3EvaluatorRequest: Sendable {
                     detail: "FL2VA first/last frames cannot be combined with Ref2VA references",
                     remedy: "use first/last frames or ordered references, but not both.")
             }
-            try H3Reference.validate(references)
+            try validateReferences()
         }
 
         let aligned = alignedFrameCount
@@ -404,9 +293,10 @@ public struct H3EvaluatorRequest: Sendable {
         case .fl2va: .presetH3BaseFL2VA
         case .ref2va: .presetH3BaseRef2VA
         }
+        _ = try dimensions(for: configuration)
         guard configuration.minimumFrameCount...configuration.maximumFrameCount ~= aligned else {
             throw H3EvaluatorError.frameCount(
-                requested: durationSeconds * configuration.frameRate,
+                requested: duration * configuration.frameRate,
                 aligned: aligned,
                 trained: configuration.minimumFrameCount...configuration.maximumFrameCount)
         }
@@ -419,67 +309,32 @@ public struct H3EvaluatorRequest: Sendable {
 /// first/last-frame modes). A request with ordered references uses
 /// H3-Base-Ref2VA. Conditioning and generation stay inside the selected model.
 public actor H3Evaluator {
-    private let fl2vaConfiguration: H3Configuration
-    private let ref2vaConfiguration: H3Configuration
+
     private let factory = H3ModelFactory()
 
-    public init(
-        fl2vaConfiguration: H3Configuration = .presetH3BaseFL2VA,
-        ref2vaConfiguration: H3Configuration = .presetH3BaseRef2VA
-    ) {
-        precondition(fl2vaConfiguration.task == .fl2va)
-        precondition(ref2vaConfiguration.task == .ref2va)
-        self.fl2vaConfiguration = fl2vaConfiguration
-        self.ref2vaConfiguration = ref2vaConfiguration
-    }
-
     @discardableResult
-    public func generate(
-        _ request: H3EvaluatorRequest,
-        progress: @escaping (H3EvaluatorProgress) -> Void = { _ in },
-        cancellation: H3EvaluatorCancellation? = nil,
-        log: @escaping (String) -> Void = { _ in },
-        hub: HubApi = .default
-    ) async throws -> H3EvaluatorResult {
+    public func generate(_ request: H3EvaluatorRequest) async throws -> H3EvaluatorResult {
         try request.validate()
-        if Task.isCancelled || cancellation?.isCancelled == true {
-            throw H3EvaluatorCancelled(
-                phase: .modelLoading,
-                detail: "before loading \(request.task.rawValue)")
-        }
+        if Task.isCancelled { throw CancellationError() }
 
+        let lease = try await InferenceRuntimeCoordinator.shared.acquire(.miniMaxH3)
+        do {
         let configuration = switch request.task {
-        case .fl2va: fl2vaConfiguration
-        case .ref2va: ref2vaConfiguration
+        case .fl2va: H3Configuration.presetH3BaseFL2VA
+        case .ref2va: H3Configuration.presetH3BaseRef2VA
         }
-        let modelName = configuration.modelName
-        progress(H3EvaluatorProgress(
-            phase: .modelLoading,
-            detail: "downloading or loading \(modelName)"))
-
-        let model = try await factory.load(configuration: configuration, hub: hub) {
-            reportDownload($0, modelName: modelName, progress: progress)
+        let model = try await factory.load(configuration: configuration)
+        if Task.isCancelled { throw CancellationError() }
+        let result = try await model.generate(request: request)
+        await lease.release()
+        return result
+        } catch {
+            await lease.release()
+            throw error
         }
-        return try await model.generate(
-            request: request,
-            progress: progress,
-            cancellation: cancellation,
-            log: log)
     }
 
     public func resetLoadedModels() async {
         await factory.reset()
     }
-}
-
-private func reportDownload(
-    _ download: Progress,
-    modelName: String,
-    progress: (H3EvaluatorProgress) -> Void
-) {
-    progress(H3EvaluatorProgress(
-        phase: .modelLoading,
-        completed: Int(download.completedUnitCount),
-        total: Int(download.totalUnitCount),
-        detail: "loading \(modelName)"))
 }

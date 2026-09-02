@@ -10,6 +10,8 @@ import MLXLMCommon
 
 struct ImageGenerationToolRenderer: View {
 
+    private static let imageWidth: CGFloat = 180
+
     let toolCall: ToolCall
     let result: CallToolResult?
     let status: ToolCallStatus
@@ -20,19 +22,27 @@ struct ImageGenerationToolRenderer: View {
 
         case .running:
 
-            ImageGeneratingView()
-                .frame(height: 300)
+            imageLayout(ImageGeneratingView())
 
         case .completed:
 
             if let result {
-                ContentBlocksView(result: result)
+                imageLayout(ContentBlocksView(result: result))
             }
 
         default:
 
             ToolStatusView(toolCall: toolCall, status: status)
         }
+    }
+
+    private func imageLayout<Content: View>(_ content: Content) -> some View {
+        let latentSize = StableDiffusionEvaluator.shared.defaultParameters.latentSize
+        let aspectRatio = CGFloat(latentSize[1]) / CGFloat(latentSize[0])
+
+        return content
+            .aspectRatio(aspectRatio, contentMode: .fit)
+            .frame(width: Self.imageWidth)
     }
 }
 
@@ -94,9 +104,7 @@ struct ImageGeneratingView: View {
                             .minimumScaleFactor(0.35)
                             .frame(width: badge * 0.62, height: badge * 0.62)
                     }
-
                 }
-                .padding(pad)
             }
             .frame(width: w, height: h)
             .clipShape(RoundedRectangle(cornerRadius: corner, style: .continuous))
@@ -116,8 +124,6 @@ struct ImageGeneratingView: View {
                 .padding(.top, pad)
             }
         }
-        .aspectRatio(contentMode: .fit)
-        .frame(maxWidth: .infinity)
         .onAppear {
             shimmerActive = true
         }

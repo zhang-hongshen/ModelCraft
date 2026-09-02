@@ -7,6 +7,7 @@
 
 import SwiftUI
 
+@MainActor
 @Observable
 class GlobalStore {
     var selectedModel: LocalModel? = nil

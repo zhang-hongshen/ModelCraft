@@ -16,6 +16,10 @@ final class StableDiffusionEvaluator: @unchecked Sendable {
 
     private let modelFactory = StableDiffusionModelFactory()
 
+    var defaultParameters: StableDiffusionEvaluateParameters {
+        modelFactory.configuration.defaultParameters()
+    }
+
     nonisolated private func toCGImage(_ array: MLXArray) -> CGImage {
         let raster = (array * 255).asType(.uint8).squeezed()
         return StableDiffusionImage(raster).asCGImage()
@@ -48,16 +52,16 @@ final class StableDiffusionEvaluator: @unchecked Sendable {
 
         do {
             let container = try await modelFactory.load()
-            let configuration = modelFactory.configuration
             let releasesComponentsBetweenStages =
                 modelFactory.releasesComponentsBetweenStages
+            var configuredParameters = defaultParameters
+            configuredParameters.prompt = prompt
+            let parameters = configuredParameters
             return AsyncThrowingStream { continuation in
                 let task = Task {
                     do {
                         try await container.perform { generator in
                             try Task.checkCancellation()
-                            var parameters = configuration.defaultParameters()
-                            parameters.prompt = prompt
 
                             var latents: DenoiseIterator? = try generator.generateLatents(
                                 parameters: parameters)

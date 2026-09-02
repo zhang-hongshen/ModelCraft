@@ -11,6 +11,9 @@ import SwiftUI
 
 
 struct ToolNames {
+    // MARK: Decision Tool
+    static let requestDecision = "request_decision"
+
     // MARK: File Tool
     static let readFromFile = "read_from_file"
     static let writeToFile = "write_to_file"
@@ -43,7 +46,7 @@ struct ToolNames {
     static let textToAudio = "text_to_audio"
 
     // MARK: Computer Use Tool
-    static let listRunningApps = "list_running_apps"
+    static let listRunningApps = "list_running_application"
     static let getUIHierarchy = "get_ui_hierarchy"
     static let clickElement = "click_element"
     static let typeText = "type_text"
@@ -54,126 +57,231 @@ struct ToolNames {
 
 
 extension ToolCall {
+
+    var fileDisplayName: String? {
+        guard let path = function.arguments["path"]?.stringValue else {
+            return nil
+        }
+        return (path as NSString).lastPathComponent
+    }
+
+    func compactDescription(_ status: ToolCallStatus) -> String {
+        guard function.name == ToolNames.executeCommand else {
+            return localizedDescription(status)
+        }
+
+        switch status {
+        case .running:
+            return String(localized: "Running a command")
+        case .completed:
+            return String(localized: "Ran a command")
+        case .failed:
+            return String(localized: "Command failed")
+        }
+    }
     
     func localizedDescription(_ status: ToolCallStatus) -> String {
         let arguments = function.arguments
         switch function.name {
-        case ToolNames.readFromFile:
-            let path = arguments["path"]?.stringValue ?? "Unknown"
+        case ToolNames.requestDecision:
             switch status {
             case .running:
-                return String(format: String(localized: "Reading %@"), path)
+                return String(localized: "Waiting for a decision")
             case .completed:
-                return String(format: String(localized: "Read %@"), path)
+                return String(localized: "Decision received")
             case .failed:
-                return String(format: String(localized: "Failed to read %@"), path)
+                return String(localized: "Decision cancelled")
+            }
+        case ToolNames.readFromFile:
+            let fileName = fileDisplayName ?? String(localized: "Unknown")
+            switch status {
+            case .running:
+                return String(localized: "Reading \(fileName)")
+            case .completed:
+                return String(localized: "Read \(fileName)")
+            case .failed:
+                return String(localized: "Failed to read \(fileName)")
             }
         case ToolNames.writeToFile:
-            let path = arguments["path"]?.stringValue ?? "Unknown"
+            let fileName = fileDisplayName ?? String(localized: "Unknown")
             switch status {
             case .running:
-                return String(format: String(localized: "Writing %@"), path)
+                return String(localized: "Writing into \(fileName)")
             case .completed:
-                return String(format: String(localized: "Wrote %@"), path)
+                return String(localized: "Wrote into \(fileName)")
             case .failed:
-                return String(format: String(localized: "Failed to write %@"), path)
+                return String(localized: "Failed to write into \(fileName)")
             }
         case ToolNames.executeCommand:
-            let command = arguments["command"]?.stringValue ?? "None"
-            switch status {
-            case .running:
-                return String(format: String(localized: "Running %@"), command)
-            case .completed:
-                return String(format: String(localized: "Ran %@"), command)
-            case .failed:
-                return String(format: String(localized: "Command failed: %@"), command)
-            }
+            return compactDescription(status)
         case ToolNames.searchMap:
             let query = arguments["query"]?.stringValue ?? ""
             switch status {
             case .running:
-                return "Searching map for \(String(describing: query))"
+                return String(localized: "Searching map for \(query)")
             case .completed:
-                return "Searched map for \(String(describing: query))"
+                return String(localized: "Searched map for \(query)")
             case .failed:
-                return "Map search failed"
+                return String(localized: "Map search failed")
             }
         case ToolNames.searchRelevantDocuments:
             let query = arguments["query"]?.stringValue ?? ""
             switch status {
             case .running:
-                return "Searching documents for \(String(describing: query))"
+                return String(localized: "Searching documents for \(query)")
             case .completed:
-                return "Searched documents for \(String(describing: query))"
+                return String(localized: "Searched documents for \(query)")
             case .failed:
-                return "Document search failed"
+                return String(localized: "Document search failed")
             }
         case ToolNames.click:
             let x = arguments["x"]?.doubleValue ?? 0
             let y = arguments["y"]?.doubleValue ?? 0
             switch status {
             case .running:
-                return "Clicking (\(x), \(y))"
+                return String(localized: "Clicking (\(x), \(y))")
             case .completed:
-                return "Clicked (\(x), \(y))"
+                return String(localized: "Clicked (\(x), \(y))")
             case .failed:
-                return "Click failed at (\(x), \(y))"
+                return String(localized: "Click failed at (\(x), \(y))")
             }
         case ToolNames.move:
             let x = arguments["x"]?.doubleValue ?? 0
             let y = arguments["y"]?.doubleValue ?? 0
             switch status {
             case .running:
-                return "Moving pointer to (\(x), \(y))"
+                return String(localized: "Moving pointer to (\(x), \(y))")
             case .completed:
-                return "Moved to (\(x), \(y))"
+                return String(localized: "Moved to (\(x), \(y))")
             case .failed:
-                return "Move failed"
+                return String(localized: "Move failed")
             }
         case ToolNames.captureFullScreen:
             switch status {
             case .running:
-                return "Taking full screenshot"
+                return String(localized: "Taking full screenshot")
             case .completed:
-                return "Full screenshot captured"
+                return String(localized: "Full screenshot captured")
             case .failed:
-                return "Full screenshot failed"
+                return String(localized: "Full screenshot failed")
+            }
+        case ToolNames.captureAppWindow:
+            switch status {
+            case .running:
+                return String(localized: "Capturing application windows")
+            case .completed:
+                return String(localized: "Captured application windows")
+            case .failed:
+                return String(localized: "Application window capture failed")
+            }
+        case ToolNames.drag:
+            switch status {
+            case .running:
+                return String(localized: "Dragging pointer")
+            case .completed:
+                return String(localized: "Dragged pointer")
+            case .failed:
+                return String(localized: "Drag failed")
+            }
+        case ToolNames.scroll:
+            switch status {
+            case .running:
+                return String(localized: "Scrolling")
+            case .completed:
+                return String(localized: "Scrolled")
+            case .failed:
+                return String(localized: "Scroll failed")
             }
         case ToolNames.textToImage:
             switch status {
             case .running:
-                return "Creating image"
+                return String(localized: "Creating image")
             case .completed: 
-                return "Image created"
+                return String(localized: "Image created")
             case .failed: 
-                return "Image creation failed"
+                return String(localized: "Image creation failed")
             }
         case ToolNames.textToVideo:
             switch status {
             case .running: 
-                return "Creating video"
+                return String(localized: "Creating video")
             case .completed:
-                return "Video created"
+                return String(localized: "Video created")
             case .failed:
-                return "Video creation failed"
+                return String(localized: "Video creation failed")
+            }
+        case ToolNames.textToAudio:
+            switch status {
+            case .running:
+                return String(localized: "Creating audio")
+            case .completed:
+                return String(localized: "Audio created")
+            case .failed:
+                return String(localized: "Audio creation failed")
             }
         case ToolNames.activateSkill:
             let name = arguments["name"]?.stringValue ?? ""
             switch status {
             case .running:
-                return "Activating skill \(String(describing: name))"
+                return String(localized: "Activating skill \(name)")
             case .completed:
-                return "Activated skill \(String(describing: name))"
+                return String(localized: "Activated skill \(name)")
             case .failed:
-                return "Skill activation failed"
+                return String(localized: "Skill activation failed")
+            }
+        case ToolNames.listRunningApps:
+            switch status {
+            case .running:
+                return String(localized: "Listing running applications")
+            case .completed:
+                return String(localized: "Listed running applications")
+            case .failed:
+                return String(localized: "Failed to list running applications")
+            }
+        case ToolNames.getUIHierarchy:
+            switch status {
+            case .running:
+                return String(localized: "Inspecting UI hierarchy")
+            case .completed:
+                return String(localized: "Inspected UI hierarchy")
+            case .failed:
+                return String(localized: "UI hierarchy inspection failed")
+            }
+        case ToolNames.clickElement:
+            switch status {
+            case .running:
+                return String(localized: "Clicking an element")
+            case .completed:
+                return String(localized: "Clicked an element")
+            case .failed:
+                return String(localized: "Element click failed")
+            }
+        case ToolNames.typeText:
+            switch status {
+            case .running:
+                return String(localized: "Typing text")
+            case .completed:
+                return String(localized: "Typed text")
+            case .failed:
+                return String(localized: "Text input failed")
+            }
+        case ToolNames.pressKey:
+            switch status {
+            case .running:
+                return String(localized: "Pressing a key")
+            case .completed:
+                return String(localized: "Pressed a key")
+            case .failed:
+                return String(localized: "Key press failed")
             }
         default:
-            return "Unknown Tool Call"
+            return String(localized: "Unknown Tool Call")
         }
     }
     
     var icon: String {
         switch function.name {
+        case ToolNames.requestDecision: "questionmark.bubble"
         case ToolNames.readFromFile: "square.and.pencil"
         case ToolNames.writeToFile: "square.and.pencil"
         case ToolNames.executeCommand : "apple.terminal"
@@ -182,11 +290,15 @@ extension ToolCall {
         case ToolNames.textToImage: "photo"
         case ToolNames.textToVideo: "video"
         case ToolNames.textToAudio: "waveform"
-        case ToolNames.click, ToolNames.clickElement, ToolNames.move: "pointer.arrow"
+        case ToolNames.activateSkill: "sparkles"
+        case ToolNames.listRunningApps: "app.badge"
+        case ToolNames.getUIHierarchy: "list.bullet.indent"
+        case ToolNames.click, ToolNames.clickElement, ToolNames.move, ToolNames.drag: "pointer.arrow"
+        case ToolNames.scroll: "arrow.up.and.down"
         case ToolNames.captureFullScreen: "display.2"
         case ToolNames.captureAppWindow: "macwindow"
         case ToolNames.typeText, ToolNames.pressKey: "keyboard"
-        default: "error"
+        default: "exclamationmark.triangle"
         }
     }
 }

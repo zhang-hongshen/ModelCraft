@@ -1,4 +1,10 @@
-// SPDX-License-Identifier: Apache-2.0
+//
+//  H3VisualVAE.swift
+//  ModelCraft
+//
+//  Created by Hongshen on 27/8/26.
+//
+
 
 import Foundation
 import Hub
@@ -310,7 +316,7 @@ final class H3VisualVAEEncoder {
             weights: try H3Loader.loadWeights(
                 hub: hub,
                 configuration: configuration,
-                key: "videoVAEWeights"))
+                key: .videoVAEWeights))
     }
 
     /// The conv stack, returning `[B, 48, T_lat, H/16, W/16]` moments.
@@ -490,9 +496,6 @@ final class H3VisualVAEEncoder {
         return sampleMoments(temporalMoments(normalized), seed: seed)
     }
 }
-
-// SPDX-License-Identifier: Apache-2.0
-// Copyright 2026 Sean Kammerich
 
 
 struct VaeRMSNorm {
@@ -746,7 +749,7 @@ struct ViT3DDecoder {
 }
 
 final class H3VisualVAE {
-    let url: URL
+    let url: URL?
     private let postQuantConvWeight: MLXArray
     private let postQuantConvBias: MLXArray
     private let decoder: ViT3DDecoder
@@ -760,9 +763,9 @@ final class H3VisualVAE {
     static let IMAGENET_MEAN: [Float] = [0.485, 0.456, 0.406]
     static let IMAGENET_STD: [Float] = [0.229, 0.224, 0.225]
 
-    init(url: URL) throws {
-        self.url = url
-        let w = try H3Loader.loadWeights(from: url)
+    private init(weights: [String: MLXArray], sourceURL: URL?) throws {
+        self.url = sourceURL
+        let w = weights
 
         func get(_ name: String) throws -> MLXArray {
             guard let a = w[name] else {
@@ -833,12 +836,22 @@ final class H3VisualVAE {
         )
     }
 
+    convenience init(weights: [String: MLXArray]) throws {
+        try self.init(weights: weights, sourceURL: nil)
+    }
+
+    convenience init(url: URL) throws {
+        try self.init(
+            weights: H3Loader.loadWeights(from: url),
+            sourceURL: url)
+    }
+
     convenience init(hub: HubApi, configuration: H3Configuration) throws {
         try self.init(
-            url: H3Loader.resolve(
+            weights: H3Loader.loadWeights(
                 hub: hub,
                 configuration: configuration,
-                key: "videoVAEWeights"))
+                key: .videoVAEWeights))
     }
 
     func postQuantConv(_ z: MLXArray) -> MLXArray {
@@ -1149,13 +1162,3 @@ final class H3VisualVAE {
         return clamped * 2.0 - 1.0
     }
 }
-
-// SPDX-License-Identifier: Apache-2.0
-// Copyright 2026 Sean Kammerich
-
-
-/// MiniMax H3-Base.
-///
-/// FL2VA and Ref2VA share the H3 Omni Transformer, joint audio-video sampling,
-/// VAE decoding, cancellation, progress reporting, and output writing. The
-/// selected configuration only changes how the condition context is encoded.

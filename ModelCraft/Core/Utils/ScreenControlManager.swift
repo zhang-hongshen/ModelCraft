@@ -41,6 +41,9 @@ class ScreenControlManager {
 
         let content = try await SCShareableContent.current
         guard !content.displays.isEmpty else { return nil }
+        let captureFrame = content.displays
+            .map(\.frame)
+            .reduce(CGRect.null) { $0.union($1) }
 
         // Capture each display concurrently at its native point-space resolution
         var captures: [(image: CGImage, frame: CGRect)] = []
@@ -68,8 +71,8 @@ class ScreenControlManager {
 
         guard let ctx = CGContext(
             data: nil,
-            width: Int(screen.width.rounded()),
-            height: Int(screen.height.rounded()),
+            width: Int(captureFrame.width.rounded()),
+            height: Int(captureFrame.height.rounded()),
             bitsPerComponent: 8,
             bytesPerRow: 0,
             space: CGColorSpaceCreateDeviceRGB(),
@@ -78,17 +81,17 @@ class ScreenControlManager {
 
         // Fill background black to cover any gaps between non-contiguous displays
         ctx.setFillColor(CGColor(red: 0, green: 0, blue: 0, alpha: 1))
-        ctx.fill(CGRect(x: 0, y: 0, width: screen.width, height: screen.height))
+        ctx.fill(CGRect(x: 0, y: 0, width: captureFrame.width, height: captureFrame.height))
 
         for (image, frame) in captures {
-            let destX = frame.origin.x - screen.origin.x
-            let destY = frame.origin.y - screen.origin.y
+            let destX = frame.minX - captureFrame.minX
+            let destY = captureFrame.maxY - frame.maxY
 
             let destRect = CGRect(x: destX, y: destY, width: frame.width, height: frame.height)
             ctx.draw(image, in: destRect)
         }
 
-        return FullScreenshot(image: ctx.makeImage()!, size: screen.size)
+        return FullScreenshot(image: ctx.makeImage()!, size: captureFrame.size)
         #elseif canImport(UIKit)
         guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
               let window = windowScene.windows.first(where: { $0.isKeyWindow }) else {
@@ -132,13 +135,9 @@ class ScreenControlManager {
             
             do {
                 let image = try await SCScreenshotManager.captureImage(contentFilter: filter, configuration: config)
-                let absoluteX = window.frame.origin.x - screen.origin.x
-                let absoluteY = window.frame.origin.y - screen.origin.y
-                let relativeFrame = CGRect(x: absoluteX, y: absoluteY, width: window.frame.width, height: window.frame.height)
-                
                 results.append(AppWindowScreenshot(
                     image: image,
-                    windowFrame: relativeFrame,
+                    windowFrame: window.frame,
                     windowID: Int(window.windowID)
                 ))
             } catch {
@@ -309,12 +308,7 @@ class ScreenControlManager {
     }
 
     func screenToSystemPoint(point: CGPoint) -> CGPoint {
-        #if canImport(AppKit)
-        let height = screen.height
-        return CGPoint(x: point.x, y: height - point.y)
-        #else
-        return CGPoint(x: point.x, y: point.y)
-        #endif
+        point
     }
 }
 

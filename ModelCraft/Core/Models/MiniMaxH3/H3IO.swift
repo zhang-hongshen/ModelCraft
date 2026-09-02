@@ -1,4 +1,10 @@
-// SPDX-License-Identifier: Apache-2.0
+//
+//  H3IO.swift
+//  ModelCraft
+//
+//  Created by Hongshen on 27/8/26.
+//
+
 
 import Foundation
 import AVFoundation
@@ -7,9 +13,6 @@ import CoreGraphics
 import ImageIO
 import Metal
 import MLX
-
-// SPDX-License-Identifier: Apache-2.0
-// Copyright 2026 Sean Kammerich
 
 
 /// Cursors shared with the two mux queues. Each field is touched by exactly one
@@ -54,6 +57,52 @@ private final class MuxCompletion: @unchecked Sendable {
 /// loose wav throws away the thing that makes the model interesting. The mp4
 /// carries both; the wav is a convenience and a fallback.
 enum H3IO {
+
+    /// Converts decoded H3 tensors and saves the final video to one file.
+    static func save(
+        frames: MLXArray,
+        waveform: MLXArray,
+        to url: URL,
+        fps: Double,
+        sampleRate: Int
+    ) async throws -> H3EvaluatorResult {
+        let samples = deinterleave(waveform)
+        let frameCount = frames.dim(2)
+        let frameHeight = frames.dim(3)
+        let frameWidth = frames.dim(4)
+        let rgb = clip((frames + 1.0) * 127.5, min: 0.0, max: 255.0)
+            .transposed(0, 2, 3, 4, 1)
+            .reshaped([frameCount, frameHeight, frameWidth, 3])
+        let alpha = MLXArray.full(
+            [frameCount, frameHeight, frameWidth, 1],
+            values: MLXArray(255.0 as Float))
+        let argb = concatenated([alpha, rgb], axis: -1).asType(.uint8)
+        eval(argb)
+
+        do {
+            try await saveVideo(
+                argb: argb,
+                waveform: samples,
+                to: url,
+                fps: fps,
+                sampleRate: sampleRate)
+        } catch {
+            try await saveVideo(
+                argb: argb,
+                waveform: samples,
+                to: url,
+                fps: fps,
+                sampleRate: sampleRate,
+                withAudio: false)
+        }
+
+        return H3EvaluatorResult(
+            video: url,
+            frameCount: frameCount,
+            width: frameWidth,
+            height: frameHeight,
+            seconds: Double(frameCount) / fps)
+    }
 
     /// 16-bit PCM stereo, written by hand because the alternative is an
     /// `AVAudioFile` and a format conversion for a file this simple.
@@ -105,9 +154,9 @@ enum H3IO {
     /// Audio is delivered in **1024-sample chunks**, matching AAC's frame size.
     ///
     /// - Parameter argb: `[T, H, W, 4]` uint8, alpha first.
-    static func writeMovie(argb: MLXArray, waveform: [[Float]], to url: URL,
-                           fps: Double, sampleRate: Int,
-                           withAudio: Bool = true) async throws {
+    static func saveVideo(argb: MLXArray, waveform: [[Float]], to url: URL,
+                          fps: Double, sampleRate: Int,
+                          withAudio: Bool = true) async throws {
         let frameCount = argb.dim(0), height = argb.dim(1), width = argb.dim(2)
         guard frameCount > 0 else {
             throw H3EvaluatorError.invalidRequest(rule: "nothing to write", detail: "no frames",
@@ -397,9 +446,6 @@ extension H3IO {
     }
 }
 
-// SPDX-License-Identifier: Apache-2.0
-// Copyright 2026 Sean Kammerich
-
 
 /// Ref2VA-ready pixels for a still image. Both representations originate from
 /// the same decode so the encoder and Visual VAE see identical pixels.
@@ -438,16 +484,15 @@ enum H3DecodedReference {
     case audio(H3DecodedAudio)
 }
 
-/// Local media inspection and decoding for Ref2VA. This stays internal so the
-/// public request API only needs ordered `H3Reference` values.
+/// Local media inspection and decoding for Ref2VA. The public request API
+/// carries ordered URLs; media kind is resolved here from each URL.
 extension H3IO {
     private static let minimumDuration = 2.0
     private static let maximumDuration = 15.0
     private static let frameRate = H3Configuration.presetH3BaseRef2VA.frameRate
     private static let sampleRate = H3Configuration.presetH3BaseRef2VA.audioSampleRate
 
-    static func inspect(_ reference: H3Reference) throws {
-        let url = reference.url
+    static func inspect(_ url: URL) throws -> H3ReferenceMediaKind {
         guard url.isFileURL,
               FileManager.default.isReadableFile(atPath: url.path) else {
             throw H3EvaluatorError.unreadable(
@@ -455,35 +500,45 @@ extension H3IO {
                 reason: "reference file does not exist or is not readable")
         }
 
-        switch reference {
-        case .image:
+        guard let type = UTType(filenameExtension: url.pathExtension) else {
+            throw H3EvaluatorError.unreadable(
+                path: url.path,
+                reason: "file extension does not identify a supported image, video, or audio type")
+        }
+
+        if type.conforms(to: .image) {
             _ = try H3IO.imageSize(at: url.path)
-        case .video:
+            return .image
+        } else if type.conforms(to: .movie) || type.conforms(to: .video) {
             let asset = AVURLAsset(url: url)
             guard !asset.tracks(withMediaType: .video).isEmpty else {
                 throw H3EvaluatorError.unreadable(path: url.path, reason: "no decodable video track")
             }
             _ = try validateDuration(of: asset, path: url.path, kind: "video")
-        case .audio:
+            return .video
+        } else if type.conforms(to: .audio) {
             let asset = AVURLAsset(url: url)
             guard !asset.tracks(withMediaType: .audio).isEmpty else {
                 throw H3EvaluatorError.unreadable(path: url.path, reason: "no decodable audio track")
             }
             _ = try validateDuration(of: asset, path: url.path, kind: "audio")
+            return .audio
         }
+        throw H3EvaluatorError.unreadable(
+            path: url.path,
+            reason: "unsupported reference media type")
     }
 
     static func decode(
-        _ reference: H3Reference,
+        _ url: URL,
         fit: (width: Int, height: Int)? = nil
     ) throws -> H3DecodedReference {
-        try inspect(reference)
-        switch reference {
-        case let .image(url):
+        switch try inspect(url) {
+        case .image:
             return H3DecodedReference.image(try image(at: url, fit: fit))
-        case let .video(url):
+        case .video:
             return H3DecodedReference.video(try video(at: url, fit: fit))
-        case let .audio(url):
+        case .audio:
             return H3DecodedReference.audio(try audio(at: url))
         }
     }
@@ -807,5 +862,16 @@ extension H3IO {
         }
         return (MLXArray(rgb, [height, width, 3]).asType(.float32) / 255.0)
             .expandedDimensions(axis: 0)
+    }
+
+    private static func deinterleave(_ waveform: MLXArray) -> [[Float]] {
+        let length = waveform.dim(2)
+        let flat = waveform
+            .reshaped([waveform.dim(0) * waveform.dim(1), length])
+            .asType(.float32)
+            .asArray(Float.self)
+        return (0 ..< min(2, waveform.dim(1))).map {
+            Array(flat[($0 * length) ..< (($0 + 1) * length)])
+        }
     }
 }

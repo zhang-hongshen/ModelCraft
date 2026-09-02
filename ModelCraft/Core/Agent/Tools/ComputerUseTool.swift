@@ -5,7 +5,6 @@
 //  Created by Hongshen on 12/6/26.
 //
 
-import UniformTypeIdentifiers
 import MLXLMCommon
 import ApplicationServices
 import AppKit
@@ -26,7 +25,7 @@ class ComputerUseTool {
 
     static let listRunningApplication = Tool<ListRunningApplicationInput, [RunningAppInfo]>(
         name: "list_running_application",
-        description: "List all running applications",
+        description: "List visible running applications and their bundle identifiers. Use the returned appID with UI inspection and interaction tools.",
         parameters: []
     ) { _ in
         return NSWorkspace.shared.runningApplications
@@ -44,13 +43,13 @@ class ComputerUseTool {
     static let getUIHierarchy = Tool<GetUIHierarchyInput, [String]>(
         name: "get_ui_hierarchy",
         description: """
-            Get the complete structure layout and UI element hierarchy of all windows for a given application.
-            Use this tool whenever you need to inspect the current state of an application, look for elements to interact with, or verify if an action (click/type) was successful.
+            Inspect the accessible UI hierarchy of all visible windows for an application.
+            Use this before click_element or type_text, and call it again after an action to verify the resulting state. Use capture_app_window when visual layout is needed or the accessibility tree is incomplete.
             ### Output Format Specification:
             The return value is a list of strings representing the UI tree. Elements follow these formats:
             1. **Interactive Elements**: Used for elements you can interact with.
-               - Format: '[index][:]<type>[interactive]'
-               - Example: '1[:]<AXButton enabled=true actions=AXPress>[interactive]'
+               - Format: '[index][:]<type attributes path=hierarchy>[interactive]'
+               - Example: '1[:]<AXButton enabled=true title=Save actions=AXPress path=/AXWindow/AXButton(title=Save)>[interactive]'
             2. **Context Elements**: Used for non-interactive text or containers.
                - Format: '_[:]<type>[context]'
                - Example: '_[:]<AXStaticText value=20>[context]'
@@ -73,13 +72,19 @@ class ComputerUseTool {
         let appElement = AXUIElementCreateApplication(app.processIdentifier)
         
         let maxDepth = input.maxDepth ?? 30
-        return UIManager.shared.getUITree(appID: app.bundleIdentifier ?? "", element: appElement, depth: 0, maxDepth: maxDepth)
+        let tree = UIManager.shared.getUITree(
+            appID: app.bundleIdentifier ?? input.appID,
+            element: appElement,
+            depth: 0,
+            maxDepth: maxDepth
+        )
+        return tree.isEmpty ? ["No accessible UI elements were found for this application."] : tree
     }
 
     // MARK: - Click an element
     static let clickElement = Tool<ClickElementInput, ActionOutput>(
         name: "click_element",
-        description: "Click element and choose action",
+        description: "Perform one of the element's advertised accessibility actions. Call get_ui_hierarchy first and use its current index and action name.",
         parameters: [
             .required("appID", type: .string, description: "Bundle identifier of the target app, e.g. 'com.apple.Safari'"),
             .optional("appName", type: .string, description: "Localized name of the target app, e.g. 'Safari'"),
@@ -98,8 +103,17 @@ class ComputerUseTool {
         if element.performAction(input.action) {
             return ActionOutput(success: true, error: nil)
         }
-        
-        // Fall back to synthetic click at element's center if unsupported
+
+        guard input.action == kAXPressAction else {
+            return ActionOutput(
+                success: false,
+                error: ComputerUseToolError.actionFailed(
+                    "The element did not perform \(input.action). Refresh the UI hierarchy before retrying."
+                ).errorDescription
+            )
+        }
+
+        // AXPress can fall back to a click at the element's center.
         guard let frame = element.frame else {
             throw ComputerUseToolError.uiElementNotFound
         }
@@ -115,11 +129,12 @@ class ComputerUseTool {
     // MARK: - Type Text
     static let typeText = Tool<TypeTextInput, ActionOutput>(
         name: "type_text",
-        description: "Find a text field in a target app and set its value",
+        description: "Set the full value of an editable text field or text area. Call get_ui_hierarchy first and use a current text element index.",
         parameters: [
-            .required("appIdentifier", type: .string, description: "Bundle identifier of the target app, e.g. 'com.apple.Safari'"),
+            .required("appID", type: .string, description: "Bundle identifier of the target app, e.g. 'com.apple.TextEdit'"),
             .optional("appName", type: .string, description: "Localized name of the target app, e.g. 'Safari'"),
-            .required("index", type: .int, description: "index of the element")
+            .required("index", type: .int, description: "Current index of an editable text element from get_ui_hierarchy"),
+            .required("text", type: .string, description: "The complete text value to place in the element")
         ]
     ) { input in
         if !checkAccessibilityPermission() {
@@ -167,22 +182,30 @@ class ComputerUseTool {
             .optional("modifiers", type: .array(elementType: .string), description: "Modifier keys: 'command', 'shift', 'option', 'control'")
         ]
     ) { input in
-        
+        if !checkAccessibilityPermission() {
+            throw ComputerUseToolError.accessibilityPermissionNotGranted
+        }
+
         let app = try await findAndActivateApp(appID: input.appID, appName: input.appName)
 
-        var flags: [CGEventFlags] = []
-        for modifier in input.modifiers ?? [] {
-            switch modifier.lowercased() {
-            case "command", "cmd": flags.append(.maskCommand)
-            case "shift": flags.append(.maskShift)
-            case "option", "alt": flags.append(.maskAlternate)
-            case "control", "ctrl" : flags.append(.maskCommand)
-            default: break
+        let flags = modifierFlags(for: input.modifiers ?? [])
+        ScreenControlManager.shared.pressKey(
+            keyCode: CGKeyCode(input.keyCode),
+            modifiers: flags
+        )
+        return ActionOutput(success: true, error: nil)
+    }
+
+    static func modifierFlags(for names: [String]) -> [CGEventFlags] {
+        names.compactMap { name in
+            switch name.lowercased() {
+            case "command", "cmd": .maskCommand
+            case "shift": .maskShift
+            case "option", "alt": .maskAlternate
+            case "control", "ctrl": .maskControl
+            default: nil
             }
         }
-        
-        ScreenControlManager.shared.pressKey(keyCode: CGKeyCode(input.keyCode), modifiers: flags)
-        return ActionOutput(success: true, error: nil)
     }
 
     

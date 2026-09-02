@@ -19,6 +19,8 @@ class Message {
     var role: MessageRole
     var content: String
     var files: [URL]
+    var prefillTime: TimeInterval?
+    var tokensPerSecond: Double?
     
     private var _toolCall: String?
     private var _toolCallResult: String?
@@ -66,12 +68,15 @@ class Message {
     
     init(role: MessageRole = .user, chat: Chat? = nil, content: String = "",
          files: [URL] = [], toolCall: ToolCall? = nil, toolCallResult: CallToolResult? = nil,
-         status: MessageStatus = .generated) {
+         status: MessageStatus = .generated, prefillTime: TimeInterval? = nil,
+         tokensPerSecond: Double? = nil) {
         self.chat = chat
         self.role = role
         self.content = content
         self.files = files
         self.status = status
+        self.prefillTime = prefillTime
+        self.tokensPerSecond = tokensPerSecond
         self.toolCall = toolCall
         self.toolCallResult = toolCallResult
     }
@@ -86,6 +91,11 @@ class Message {
 }
 
 extension Message {
+
+    var isWaitingForFirstToken: Bool {
+        guard case .assistant = role else { return false }
+        return status == .generating && content.isEmpty
+    }
     
     func addFiles<T>(_ urls: T) where T: Swift.Collection, T.Element == URL {
         var addedFiles: [URL] = []
@@ -146,6 +156,5 @@ enum MessageRole: Codable {
 }
 
 enum MessageStatus: Codable {
-    case new, generating, failed, generated
+    case generating, failed, generated
 }
-

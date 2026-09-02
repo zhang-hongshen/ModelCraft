@@ -97,7 +97,8 @@ enum ChatContentBuilder {
         }
 
         for message in messages {
-            guard let toolCall = message.toolCall else {
+            guard case .tool = message.role,
+                  let toolCall = message.toolCall else {
                 flushToolCalls()
                 items.append(.message(message))
                 continue
@@ -116,6 +117,92 @@ enum ChatContentBuilder {
     }
 }
 
+struct AssistantTurn: Identifiable {
+    let userMessage: Message?
+    let messages: [Message]
+
+    var id: UUID {
+        messages.first?.id ?? userMessage?.id ?? UUID()
+    }
+
+    var contentItems: [ChatContentItem] {
+        ChatContentBuilder.items(from: messages)
+    }
+
+    var content: String {
+        messages
+            .compactMap { message in
+                guard case .assistant = message.role else { return nil }
+                return message.content
+            }
+            .filter { !$0.isEmpty }
+            .joined(separator: "\n\n")
+    }
+
+    var status: MessageStatus {
+        messages.last?.status ?? .generated
+    }
+
+    var isWaitingForFirstToken: Bool {
+        messages.last?.isWaitingForFirstToken ?? false
+    }
+}
+
+enum ConversationContentItem: Identifiable {
+    case message(Message)
+    case assistantTurn(AssistantTurn)
+
+    var id: UUID {
+        switch self {
+        case .message(let message):
+            message.id
+        case .assistantTurn(let turn):
+            turn.id
+        }
+    }
+}
+
+/// Groups the model's recursive assistant/tool messages into the single reply
+/// turn that users perceive after each user message.
+enum ConversationContentBuilder {
+    static func items(from messages: [Message]) -> [ConversationContentItem] {
+        var items: [ConversationContentItem] = []
+        var pendingAssistantMessages: [Message] = []
+        var latestUserMessage: Message?
+
+        func flushAssistantTurn() {
+            guard !pendingAssistantMessages.isEmpty else { return }
+            items.append(.assistantTurn(.init(
+                userMessage: latestUserMessage,
+                messages: pendingAssistantMessages
+            )))
+            pendingAssistantMessages.removeAll(keepingCapacity: true)
+        }
+
+        for message in messages {
+            switch message.role {
+            case .assistant, .tool:
+                pendingAssistantMessages.append(message)
+                continue
+            default:
+                if message.toolCall != nil {
+                    pendingAssistantMessages.append(message)
+                    continue
+                }
+            }
+
+            flushAssistantTurn()
+            items.append(.message(message))
+            if case .user = message.role {
+                latestUserMessage = message
+            }
+        }
+
+        flushAssistantTurn()
+        return items
+    }
+}
+
 struct ToolCallGroupSummary {
     let messages: [Message]
 
@@ -124,7 +211,7 @@ struct ToolCallGroupSummary {
     }
 
     var activeToolDescription: String? {
-        messages.last(where: { $0.toolCallStatus == .running })?.toolCall?.localizedDescription(.running)
+        messages.last(where: { $0.toolCallStatus == .running })?.toolCall?.compactDescription(.running)
     }
 
     var fileReadCount: Int {

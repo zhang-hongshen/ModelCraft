@@ -7,6 +7,7 @@ import Foundation
 
 import Hub
 import MLX
+import MLXNN
 import Tokenizers
 
 public enum LTXVideoLoaderError: Error, LocalizedError {
@@ -47,7 +48,7 @@ public enum LTXVideoLoader {
             .appending(component: configuration.files[key]!)
     }
 
-    public static func loadWeights(from url: URL) throws -> [String: MLXArray] {
+    private static func weightURLs(from url: URL) throws -> [URL] {
         let fileManager = FileManager.default
         guard fileManager.fileExists(at: url) else {
             throw LTXVideoLoaderError.fileNotFound(url)
@@ -63,38 +64,95 @@ public enum LTXVideoLoader {
             }
 
             let weightDir = url.deletingLastPathComponent()
-            var weights = [String: MLXArray]()
-            for shard in Set(weightMap.values) {
+            return try Set(weightMap.values).sorted().map { shard in
                 let shardURL = weightDir.appending(component: shard)
-                guard fileManager.fileExists(at: shardURL) else { continue }
-                let shardWeights = try MLX.loadArrays(url: shardURL)
-                for (key, value) in shardWeights {
-                    weights[key] = value
+                guard fileManager.fileExists(at: shardURL) else {
+                    throw LTXVideoLoaderError.fileNotFound(shardURL)
                 }
+                return shardURL
             }
-            if weights.isEmpty {
-                throw LTXVideoLoaderError.emptyWeights(url)
-            }
-            return weights
         }
 
-        let weights = try MLX.loadArrays(url: url)
+        return [url]
+    }
+
+    public static func loadWeights(from url: URL) throws -> [String: MLXArray] {
+        var weights = [String: MLXArray]()
+        for weightsURL in try weightURLs(from: url) {
+            for (key, value) in try MLX.loadArrays(url: weightsURL) {
+                weights[key] = value
+            }
+        }
         if weights.isEmpty {
             throw LTXVideoLoaderError.emptyWeights(url)
         }
         return weights
     }
 
+    @discardableResult
+    private static func loadWeights(
+        from url: URL,
+        into model: Module,
+        sanitize: ([String: MLXArray]) -> [String: MLXArray],
+        quantization: LTXVideoQuantization? = nil
+    ) throws -> Set<String> {
+        var loadedKeys = Set<String>()
+
+        for weightsURL in try weightURLs(from: url) {
+            let weights = sanitize(try MLX.loadArrays(url: weightsURL))
+                .map { ($0.key, $0.value.asType(.bfloat16)) }
+            guard !weights.isEmpty else { continue }
+
+            loadedKeys.formUnion(weights.map(\.0))
+            try model.update(parameters: .unflattened(weights), verify: .none)
+
+            if let quantization {
+                let loadedWeightPaths = Set(weights.compactMap { key, _ in
+                    key.hasSuffix(".weight") ? String(key.dropLast(".weight".count)) : nil
+                })
+                quantize(
+                    model: model,
+                    groupSize: quantization.groupSize,
+                    bits: quantization.bits,
+                    filter: { path, _ in loadedWeightPaths.contains(path) })
+                for (path, module) in model.leafModules().flattened()
+                where loadedWeightPaths.contains(path) {
+                    eval(module)
+                }
+                Memory.clearCache()
+            }
+        }
+
+        if loadedKeys.isEmpty {
+            throw LTXVideoLoaderError.emptyWeights(url)
+        }
+        return loadedKeys
+    }
+
     public static func loadTextEncoder(
         hub: HubApi = .default,
         configuration: LTXVideoConfiguration
     ) throws -> LTXVideoTextEncoder {
+        try loadTextEncoder(
+            hub: hub,
+            configuration: configuration,
+            quantization: nil)
+    }
+
+    static func loadTextEncoder(
+        hub: HubApi = .default,
+        configuration: LTXVideoConfiguration,
+        quantization: LTXVideoQuantization?
+    ) throws -> LTXVideoTextEncoder {
         let url = try resolve(hub: hub, configuration: configuration, key: .textEncoderWeights)
         let textEncoder = LTXVideoTextEncoder.t5XXL()
-        let weights = LTXVideoTextEncoder.sanitize(try loadWeights(from: url))
-            .mapValues { $0.asType(.bfloat16) }
-            .map { ($0.key, $0.value) }
-        try textEncoder.update(parameters: .unflattened(weights), verify: .none)
+        try loadWeights(
+            from: url,
+            into: textEncoder,
+            sanitize: LTXVideoTextEncoder.sanitize,
+            quantization: quantization)
+        eval(textEncoder)
+        Memory.clearCache()
         return textEncoder
     }
 
@@ -114,20 +172,35 @@ public enum LTXVideoLoader {
         hub: HubApi = .default,
         configuration: LTXVideoConfiguration
     ) throws -> LTXVideoTransformer3DModel {
+        try loadTransformer(
+            hub: hub,
+            configuration: configuration,
+            quantization: nil)
+    }
+
+    static func loadTransformer(
+        hub: HubApi = .default,
+        configuration: LTXVideoConfiguration,
+        quantization: LTXVideoQuantization?
+    ) throws -> LTXVideoTransformer3DModel {
         let model = LTXVideoTransformer3DModel(configuration: configuration.transformer)
         let url = try resolve(hub: hub, configuration: configuration, key: .transformerWeights)
-        let rawWeights = try loadWeights(from: url)
-        let weights = LTXVideoTransformer3DModel.sanitize(rawWeights)
-            .mapValues { $0.asType(.bfloat16) }
-            .map { ($0.key, $0.value) }
+        let loadedKeys = try loadWeights(
+            from: url,
+            into: model,
+            sanitize: LTXVideoTransformer3DModel.sanitize,
+            quantization: quantization)
 
-        guard weights.contains(where: { $0.0.hasPrefix("transformer_blocks.") || $0.0.hasPrefix("proj_in.") }) else {
+        guard loadedKeys.contains(where: {
+            $0.hasPrefix("transformer_blocks.") || $0.hasPrefix("proj_in.")
+        }) else {
             throw LTXVideoLoaderError.unsupportedWeightLayout(
                 "The LTX transformer checkpoint does not look like a Diffusers LTXVideoTransformer3DModel. Convert the 2B distilled single-file checkpoint to Diffusers/ModelCraft keys before loading it."
             )
         }
 
-        try model.update(parameters: .unflattened(weights), verify: .none)
+        eval(model)
+        Memory.clearCache()
         return model
     }
 
@@ -137,11 +210,12 @@ public enum LTXVideoLoader {
     ) throws -> LTXVideoVAE {
         let model = LTXVideoVAE(configuration: configuration.vae)
         let url = try resolve(hub: hub, configuration: configuration, key: .vaeWeights)
-        let weights = LTXVideoVAE.sanitize(try loadWeights(from: url))
-            .mapValues { $0.asType(.bfloat16) }
-            .map { ($0.key, $0.value) }
-        try model.update(parameters: .unflattened(weights), verify: .none)
+        try loadWeights(
+            from: url,
+            into: model,
+            sanitize: LTXVideoVAE.sanitize)
+        eval(model)
+        Memory.clearCache()
         return model
     }
 }
-

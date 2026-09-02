@@ -23,7 +23,7 @@ class CommandTool {
     @discardableResult
     static func executeCommand(
         _ command: String
-    ) throws -> CommandResult {
+    ) async throws -> CommandResult {
 
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
@@ -56,7 +56,7 @@ class CommandTool {
         ]
     ) { input in
         
-        let result = try CommandTool.executeCommand(input.command)
+        let result = try await CommandTool.executeCommand(input.command)
         return ExecuteCommandOutput(
             stdout: result.stdout,
             stderr: result.stderr,
@@ -65,7 +65,7 @@ class CommandTool {
 #endif
 }
 
-struct CommandResult {
+struct CommandResult: Sendable {
     let stdout: String
     let stderr: String
     let exitCode: Int

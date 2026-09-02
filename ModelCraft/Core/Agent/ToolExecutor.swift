@@ -25,6 +25,7 @@ class ToolExecutor {
                 message.content = result.toolResult
             case ToolNames.writeToFile:
                 let result = try await toolCall.execute(with: FileTool.writeToFile)
+                toolCallResult.content.append(.text(TextContent(text: result.toolResult)))
                 message.content = result.toolResult
             case ToolNames.searchMap:
                 let result = try await toolCall.execute(with: SearchTool.searchMap)
@@ -51,39 +52,73 @@ class ToolExecutor {
                 message.content = result.toolResult
             case ToolNames.captureFullScreen:
                 if let result = try await toolCall.execute(with: ScreenControlTool.captureFullScreen) {
+                    toolCallResult.content.append(.text(TextContent(
+                        text: "Captured all displays at \(Int(result.size.width))x\(Int(result.size.height)) points."
+                    )))
                     toolCallResult.content.append(.image(ImageContent(data: result.imageData.base64EncodedString(), mimeType: result.mimeType)))
                     if let ciImage = CIImage(data: result.imageData){
                         message.images.append(.ciImage(ciImage))
                     }
+                } else {
+                    let errorDescription = "Failed to capture the full screen."
+                    toolCallResult.isError = true
+                    toolCallResult.content.append(.text(TextContent(text: errorDescription)))
+                    message.content = errorDescription
                 }
             case ToolNames.captureAppWindow:
                 let screenshots = try await toolCall.execute(with: ScreenControlTool.captureAppWindow)
-                for screenshot in screenshots {
-                    toolCallResult.content.append(.image(ImageContent(data: screenshot.imageData.base64EncodedString(), mimeType: screenshot.mimeType)))
-                    if let ciImage = CIImage(data: screenshot.imageData){
-                        message.images.append(.ciImage(ciImage))
+                if screenshots.isEmpty {
+                    let resultDescription = "No application windows were captured."
+                    toolCallResult.isError = true
+                    toolCallResult.content.append(.text(TextContent(text: resultDescription)))
+                    message.content = resultDescription
+                } else {
+                    for screenshot in screenshots {
+                        let frame = screenshot.windowFrame
+                        toolCallResult.content.append(.text(TextContent(
+                            text: "Window \(screenshot.windowID): x=\(Int(frame.minX)), y=\(Int(frame.minY)), width=\(Int(frame.width)), height=\(Int(frame.height))."
+                        )))
+                        toolCallResult.content.append(.image(ImageContent(data: screenshot.imageData.base64EncodedString(), mimeType: screenshot.mimeType)))
+                        if let ciImage = CIImage(data: screenshot.imageData){
+                            message.images.append(.ciImage(ciImage))
+                        }
                     }
                 }
             case ToolNames.click:
                 let result = try await toolCall.execute(with: ScreenControlTool.click)
+                toolCallResult.content.append(.text(TextContent(text: result.toolResult)))
                 message.content = result.toolResult
             case ToolNames.move:
                 let result = try await toolCall.execute(with: ScreenControlTool.move)
+                toolCallResult.content.append(.text(TextContent(text: result.toolResult)))
+                message.content = result.toolResult
+            case ToolNames.drag:
+                let result = try await toolCall.execute(with: ScreenControlTool.drag)
+                toolCallResult.content.append(.text(TextContent(text: result.toolResult)))
                 message.content = result.toolResult
             case ToolNames.scroll:
                 let result = try await toolCall.execute(with: ScreenControlTool.scroll)
+                toolCallResult.content.append(.text(TextContent(text: result.toolResult)))
+                message.content = result.toolResult
+            case ToolNames.listRunningApps:
+                let result = try await toolCall.execute(with: ComputerUseTool.listRunningApplication)
+                toolCallResult.content.append(.text(TextContent(text: result.toolResult)))
                 message.content = result.toolResult
             case ToolNames.getUIHierarchy:
                 let result = try await toolCall.execute(with: ComputerUseTool.getUIHierarchy)
+                toolCallResult.content.append(.text(TextContent(text: result.toolResult)))
                 message.content = result.toolResult
             case ToolNames.clickElement:
                 let result = try await toolCall.execute(with: ComputerUseTool.clickElement)
+                toolCallResult.content.append(.text(TextContent(text: result.toolResult)))
                 message.content = result.toolResult
             case ToolNames.typeText:
                 let result = try await toolCall.execute(with: ComputerUseTool.typeText)
+                toolCallResult.content.append(.text(TextContent(text: result.toolResult)))
                 message.content = result.toolResult
             case ToolNames.pressKey:
                 let result = try await toolCall.execute(with: ComputerUseTool.pressKey)
+                toolCallResult.content.append(.text(TextContent(text: result.toolResult)))
                 message.content = result.toolResult
             #if os(macOS)
             case ToolNames.executeCommand:

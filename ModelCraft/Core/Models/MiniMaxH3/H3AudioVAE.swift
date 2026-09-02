@@ -1,4 +1,9 @@
-// SPDX-License-Identifier: Apache-2.0
+//
+//  H3AudioVAE.swift
+//  ModelCraft
+//
+//  Created by Hongshen on 27/8/26.
+//
 
 import Foundation
 import Hub
@@ -258,7 +263,7 @@ final class H3AudioVAEEncoder {
             weights: try H3Loader.loadWeights(
                 hub: hub,
                 configuration: configuration,
-                key: "audioVAEWeights"))
+                key: .audioVAEWeights))
     }
 
     /// Stereo waveform `[B, 2, L]` in [-1, 1] -> normalized latents `[B, 32, 2, T]`.
@@ -295,9 +300,6 @@ final class H3AudioVAEEncoder {
                  .transposed(0, 2, 1, 3)                             // [B, 32, 2, T]
     }
 }
-
-// SPDX-License-Identifier: Apache-2.0
-// Copyright 2026 Sean Kammerich
 
 
 func snake(_ x: MLXArray, alpha: MLXArray, beta: MLXArray) -> MLXArray {
@@ -658,15 +660,15 @@ class BigVGAN: Module {
 }
 
 final class H3AudioVAE {
-    let url: URL
+    let url: URL?
     let latentsMean: MLXArray
     let latentsStd: MLXArray
     let decInProj: VaeConv1d
     let decoder: BigVGAN
 
-    init(url: URL) throws {
-        self.url = url
-        let w = try H3Loader.loadWeights(from: url)
+    private init(weights: [String: MLXArray], sourceURL: URL?) throws {
+        self.url = sourceURL
+        let w = weights
 
         func get(_ name: String) throws -> MLXArray {
             guard let a = w[name] else {
@@ -685,12 +687,22 @@ final class H3AudioVAE {
         self.decoder = try BigVGAN(numMels: 2048, upsampleInitialChannel: 1024, weights: w)
     }
 
+    convenience init(weights: [String: MLXArray]) throws {
+        try self.init(weights: weights, sourceURL: nil)
+    }
+
+    convenience init(url: URL) throws {
+        try self.init(
+            weights: H3Loader.loadWeights(from: url),
+            sourceURL: url)
+    }
+
     convenience init(hub: HubApi, configuration: H3Configuration) throws {
         try self.init(
-            url: H3Loader.resolve(
+            weights: H3Loader.loadWeights(
                 hub: hub,
                 configuration: configuration,
-                key: "audioVAEWeights"))
+                key: .audioVAEWeights))
     }
 
     func decode(_ z: MLXArray) -> MLXArray {
@@ -725,24 +737,3 @@ final class H3AudioVAE {
         return out
     }
 }
-
-// SPDX-License-Identifier: Apache-2.0
-// Copyright 2026 Sean Kammerich
-
-
-/// `EncoderFCN3D` — the conv half of the MiniMax H3 Visual VAE.
-///
-/// The encoder and the decoder are **not** mirror images: the decoder is a ViT
-/// (`ViT3DDecoder`, 440 tensors in the model export), this is a 6-level causal-conv
-/// ResNet (116 tensors). Porting one teaches you nothing about the other.
-///
-/// Convolutions run in MLX's channels-last layout; the model's own tensors stay
-/// in the reference's `[B, C, T, H, W]` between blocks, and each conv transposes
-/// in and out. That keeps the shapes readable against `comfy/ldm/minimax/vae.py`
-/// at the cost of some shuffling.
-
-/// Spatial tiling, shared by encode and decode.
-///
-/// Lifted out of ``H3VisualVAE`` — which had them as instance methods that never
-/// touched instance state — so the encoder can reuse them rather than grow a
-/// second copy that drifts.

@@ -1,6 +1,12 @@
-// SPDX-License-Identifier: Apache-2.0
+//
+//  H3Conditioning.swift
+//  ModelCraft
+//
+//  Created by Hongshen on 27/8/26.
+//
 
 import Foundation
+import MLX
 
 /// Latent shapes used by the H3 Base Visual VAE and Audio VAE.
 struct H3LatentGeometry: Sendable {
@@ -64,9 +70,6 @@ struct H3LatentGeometry: Sendable {
         configuration.minimumFrameCount...configuration.maximumFrameCount ~= frameCount
     }
 }
-
-// SPDX-License-Identifier: Apache-2.0
-// Copyright 2026 Sean Kammerich
 
 
 /// The modality tag an AdaLN row carries. Fixed by the reference's `seg_tag`
@@ -459,8 +462,6 @@ struct H3Sequence: Sendable, Equatable {
     func blockShape(config: H3Configuration) -> [Int] { [totalTokens, config.hiddenSize] }
 }
 
-// SPDX-License-Identifier: Apache-2.0
-// Copyright 2026 Sean Kammerich
 
 
 /// The flow-matching sigma schedule.
@@ -482,65 +483,55 @@ struct H3Conditions {
 /// Encodes FL2VA conditions before the H3 Omni Transformer is sampled.
 enum H3Conditioning {
     static func encodeFL2VAVisual(
-        request: H3EvaluatorRequest,
-        hub: HubApi,
-        configuration: H3Configuration,
+        keyframes: [H3EvaluatorKeyframe],
+        encoder: H3VisualVAEEncoder,
         width: Int,
-        height: Int,
-        frameCount: Int,
-        log: (String) -> Void = { _ in }
+        height: Int
     ) throws -> [MLXArray] {
-        let keyframes = request.resolvedKeyframes(frameCount: frameCount)
         guard !keyframes.isEmpty else { return [] }
 
-        log("Encoding \(keyframes.count) frame condition(s) with H3 Visual VAE...")
-        let encoder = try H3VisualVAEEncoder(hub: hub, configuration: configuration)
         return try keyframes.map { keyframe in
             let pixels = try H3IO.image(
                 at: keyframe.image.path,
                 fit: (width, height))
             let latent = encoder.encode(pixels)
             eval(latent)
-            log("    \(keyframe.image.lastPathComponent): \(width)x\(height) -> \(latent.shape)")
             return latent
         }
     }
 
     static func assembleFL2VA(
-        request: H3EvaluatorRequest,
+        keyframes: [H3EvaluatorKeyframe],
         geometry: H3LatentGeometry,
         visualLatents: [MLXArray],
-        log: (String) -> Void = { _ in }
+        seed: UInt64
     ) throws -> H3Conditions {
-        let anchors = request.resolvedKeyframes(frameCount: geometry.frameCount)
-        guard visualLatents.count == anchors.count else {
+        guard visualLatents.count == keyframes.count else {
             throw H3EvaluatorError.invalidRequest(
                 rule: "frame conditioning count mismatch",
-                detail: "received \(visualLatents.count) latent(s) for \(anchors.count) frame(s)",
+                detail: "received \(visualLatents.count) latent(s) for \(keyframes.count) frame(s)",
                 remedy: "provide one valid latent for every first/last frame.")
         }
 
-        let keyframes = anchors.map {
+        let anchors = keyframes.map {
             KeyframeConfig(resolvedFrameIndex: $0.frame)
         }
         let videoRows = try visualRows(
             visualLatents,
             augmentation: geometry.configuration.visualConditionNoise,
-            seed: request.seed,
-            log: log)
+            seed: seed)
 
         return H3Conditions(
             videoRows: videoRows,
             audioRows: nil,
-            keyframes: keyframes,
+            keyframes: anchors,
             references: [])
     }
 
     static func visualRows(
         _ latents: [MLXArray],
         augmentation: Float,
-        seed: UInt64,
-        log: (String) -> Void
+        seed: UInt64? = nil
     ) throws -> MLXArray? {
         guard !latents.isEmpty else { return nil }
         let packed = latents.map {
@@ -551,6 +542,7 @@ enum H3Conditioning {
             return concatenated(packed, axis: 0)
         }
 
+        let seed = seed ?? UInt64.random(in: UInt64.min ... UInt64.max)
         let mixed = packed.enumerated().map { index, condition in
             let noise = MLXRandom.normal(
                 condition.shape,
@@ -558,7 +550,6 @@ enum H3Conditioning {
             return MLXArray(augmentation) * condition
                 + MLXArray(1.0 - augmentation) * noise
         }
-        log("  frame conditioning noise augmentation: \(augmentation)")
         return concatenated(mixed, axis: 0)
     }
 }
@@ -571,22 +562,17 @@ enum H3Conditioning {
 /// References remain in request order. Images and videos contribute H3 Encoder
 /// vision tokens and Visual VAE rows; audio files and video soundtracks
 /// contribute Audio VAE rows immediately before their associated video rows.
-enum H3Ref2VAConditioning {
+extension H3Conditioning {
     private static let videoSampleFPS = 2.0
     private static let temporalPatch = 2
     private static let conditionEncodeSeed: UInt64 = 42
 
     static func encodeText(
         prompt: String,
-        references: [H3Reference],
-        hub: HubApi,
-        configuration: H3Configuration,
-        log: (String) -> Void = { _ in }
+        references: [URL],
+        encoder: H3Encoder,
+        tokenizer: H3Tokenizer
     ) throws -> H3TextConditioningData {
-        let encoder = try H3TextEncoder(hub: hub, configuration: configuration)
-        let tokenizer = try H3Tokenizer(hub: hub, configuration: configuration)
-        let tower = try H3VisionEncoder(hub: hub, configuration: configuration)
-
         var elements: [H3Presentation.Element] = []
         var pictureIndex = 0
         var videoIndex = 0
@@ -598,10 +584,9 @@ enum H3Ref2VAConditioning {
                 pictureIndex += 1
                 let (block, grid) = try visionBlock(
                     pixels: image.encoderPixels,
-                    tower: tower)
+                    tower: encoder.visionEncoder)
                 elements.append(.text("<Picture \(pictureIndex)>: "))
                 elements.append(.vision(block, grid))
-                log("    Picture \(pictureIndex) -> \(block.tokens) H3 Encoder vision tokens")
 
             case .audio:
                 audioIndex += 1
@@ -630,7 +615,7 @@ enum H3Ref2VAConditioning {
                     video: frameTensor,
                     grid: grid,
                     config: config)
-                let encoded = tower(patches: patches, grid: grid)
+                let encoded = encoder.visionEncoder(patches: patches, grid: grid)
                 let tokensPerBlock = encoded.merged.dim(0) / grid.t
 
                 for blockIndex in 0 ..< grid.t {
@@ -643,7 +628,6 @@ enum H3Ref2VAConditioning {
                             tokensPerBlock: tokensPerBlock),
                         H3VisionGrid(t: 1, h: grid.h, w: grid.w)))
                 }
-                log("    Video \(videoIndex) -> \(grid.t) timestamped H3 Encoder vision blocks")
             }
         }
 
@@ -651,36 +635,32 @@ enum H3Ref2VAConditioning {
         let assembled = H3Presentation.assemble(
             elements: elements,
             tokenizer: tokenizer,
-            encoder: encoder)
-        let encoded = encoder(
+            encoder: encoder.textEncoder)
+        let encoded = encoder.textEncoder(
             embeds: assembled.embeds,
             computeDType: .float32,
             positionIds: assembled.positionIds,
             visualSpans: assembled.spans.map { (start: $0.start, count: $0.size) },
             deepstack: assembled.deepstack)
         eval(encoded)
-        log("  Ref2VA presentation -> \(assembled.embeds.dim(1)) H3 Encoder tokens")
         return H3TextConditioningData(
             textEmbeddings: encoded,
-            tags: assembled.tags,
-            tokenCount: assembled.embeds.dim(1))
+            tags: assembled.tags)
     }
 
     static func encodeReferences(
-        request: H3EvaluatorRequest,
-        hub: HubApi,
-        configuration: H3Configuration = .presetH3BaseRef2VA,
-        log: (String) -> Void = { _ in }
+        references: [URL],
+        visualEncoder: H3VisualVAEEncoder,
+        audioEncoder: H3AudioVAEEncoder,
+        configuration: H3Configuration,
+        seed: UInt64
     ) throws -> H3Conditions {
         precondition(configuration.task == .ref2va)
-        let visualEncoder = try H3VisualVAEEncoder(hub: hub, configuration: configuration)
-        let audioEncoder = try H3AudioVAEEncoder(hub: hub, configuration: configuration)
-
         var visualLatents: [MLXArray] = []
         var audioRows: [MLXArray] = []
         var blocks: [H3ReferenceSequenceBlock] = []
 
-        for (index, reference) in request.references.enumerated() {
+        for reference in references {
             let decoded = try H3IO.decode(reference)
             switch decoded {
             case .image(let image):
@@ -692,7 +672,6 @@ enum H3Ref2VAConditioning {
                 blocks.append(H3ReferenceSequenceBlock(
                     kind: .image,
                     visual: geometry(of: latent)))
-                log("    reference \(index + 1) image -> \(latent.shape)")
 
             case .audio(let audio):
                 let rows = audioConditionRows(audio, encoder: audioEncoder)
@@ -701,7 +680,6 @@ enum H3Ref2VAConditioning {
                 blocks.append(H3ReferenceSequenceBlock(
                     kind: .audio,
                     audioT: rows.dim(0) / 2))
-                log("    reference \(index + 1) audio -> \(rows.dim(0)) packed rows")
 
             case .video(let video):
                 let frameCount = alignedReferenceFrameCount(video.visualVAEPixels.dim(2))
@@ -727,16 +705,13 @@ enum H3Ref2VAConditioning {
                     kind: .video,
                     visual: geometry(of: latent),
                     audioT: soundtrackRows.map { $0.dim(0) / 2 } ?? 0))
-                log("    reference \(index + 1) video -> \(latent.shape)"
-                    + (soundtrackRows == nil ? "" : ", with soundtrack"))
             }
         }
 
         let packedVisual = try H3Conditioning.visualRows(
             visualLatents,
             augmentation: configuration.visualConditionNoise,
-            seed: request.seed,
-            log: log)
+            seed: seed)
         return H3Conditions(
             videoRows: packedVisual,
             audioRows: audioRows.isEmpty ? nil : concatenated(audioRows, axis: 0),
@@ -833,22 +808,3 @@ enum H3Ref2VAConditioning {
         max(1, (count - 5) / 17) * 17 + 5
     }
 }
-
-// SPDX-License-Identifier: Apache-2.0
-// Copyright 2026 Sean Kammerich
-
-
-/// The DAC encoder side of the MiniMax H3 stereo audio VAE.
-///
-/// Everything here runs in **NLC** layout because that is what MLX's `conv1d`
-/// takes, while the reference is PyTorch's NCL. Weights are transposed once at
-/// load (`[O, I, K] -> [O, K, I]`) and per-channel parameters are reshaped to
-/// `[1, 1, C]` rather than the reference's `[1, C, 1]`.
-///
-/// Two things about `encode` are easy to assume wrong, and both are load-bearing:
-///
-///  * **It returns the posterior mean. There is no sampling.** `logs_proj` is in
-///    the component weights, but H3 Base uses the mean path for conditioning.
-///  * **The waveform is right-padded with zeros to a multiple of 800 samples**
-///    (the hop length) before anything else touches it. Skipping that silently
-///    truncates the tail of the clip.

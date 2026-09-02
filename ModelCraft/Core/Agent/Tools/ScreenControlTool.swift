@@ -23,7 +23,7 @@ class ScreenControlTool {
     
     static let captureFullScreen = Tool<CaptureFullScreenInput, CaptureFullScreenOutput?>(
         name: "capture_full_screen",
-        description: "Capture full screenshot of all displays.",
+        description: "Capture all displays for visual context. Prefer capture_app_window for a specific app, and use get_ui_hierarchy when semantic labels or actionable element indexes are needed.",
         parameters: []
     ) { input in
         guard let screenshot = try await ScreenControlManager.shared.takeFullScreenshot() else { return nil }
@@ -38,7 +38,7 @@ class ScreenControlTool {
     
     static let captureAppWindow = Tool<CaptureAppWindowInput, [AppWindow]>(
         name: "capture_app_window",
-        description: "Capture all windows of a specific application.",
+        description: "Capture every visible window of an application for visual inspection. Use get_ui_hierarchy alongside this when you need semantic labels or element indexes.",
         parameters: [
             .required("appID", type: .string, description: "The bundle identifier of the target app (e.g., com.apple.Finder)")
         ]
@@ -71,7 +71,7 @@ class ScreenControlTool {
         ]
     ) { input in
         ScreenControlManager.shared.move(x: input.x, y: input.y)
-        return MoveOutput()
+        return MoveOutput(success: true)
     }
     
     static let drag = Tool<DragInput, DragOutput>(
@@ -88,7 +88,7 @@ class ScreenControlTool {
             from: CGPoint(x: input.startX, y: input.startY),
             to: CGPoint(x: input.endX, y: input.endY)
         )
-        return DragOutput()
+        return DragOutput(success: true)
     }
     
     static let scroll = Tool<ScrollInput, ScrollOutput>(
@@ -99,7 +99,7 @@ class ScreenControlTool {
         ]
     ) { input in
         ScreenControlManager.shared.scroll(deltaY: input.deltaY)
-        return ScrollOutput()
+        return ScrollOutput(success: true)
     }
     
     
@@ -112,7 +112,7 @@ class ScreenControlTool {
         ]
     ) { input in
         ScreenControlManager.shared.click(x: input.x, y: input.y)
-        return ClickOutput()
+        return ClickOutput(success: true)
     }
 }
 
@@ -144,14 +144,18 @@ struct ClickInput: Codable {
     let y: Double
 }
 
-struct ClickOutput: Codable {}
+struct ClickOutput: Codable {
+    let success: Bool
+}
 
 struct MoveInput: Codable {
     let x: Double
     let y: Double
 }
 
-struct MoveOutput: Codable {}
+struct MoveOutput: Codable {
+    let success: Bool
+}
 
 struct DragInput: Codable {
     let startX: Double
@@ -160,10 +164,14 @@ struct DragInput: Codable {
     let endY: Double
 }
 
-struct DragOutput: Codable {}
+struct DragOutput: Codable {
+    let success: Bool
+}
 
 struct ScrollInput: Codable {
     let deltaY: Int32
 }
 
-struct ScrollOutput: Codable {}
+struct ScrollOutput: Codable {
+    let success: Bool
+}

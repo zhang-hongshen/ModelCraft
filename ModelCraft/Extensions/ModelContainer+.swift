@@ -12,7 +12,7 @@ extension ModelContainer {
     static let shared: ModelContainer = {
         let schema = Schema([
             Message.self, Chat.self, ModelTask.self,
-            Project.self, LocalModel.self,
+            Project.self,
         ])
 #if DEBUG
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)

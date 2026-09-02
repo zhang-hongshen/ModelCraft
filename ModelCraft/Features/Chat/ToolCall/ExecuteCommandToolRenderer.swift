@@ -14,6 +14,8 @@ struct ExecuteCommandToolRenderer: View {
     let result: CallToolResult?
     let status: ToolCallStatus
 
+    @State private var isDetailPresented = false
+
     private var command: String {
         toolCall.function.arguments["command"]?.stringValue ?? "Unknown Command"
     }
@@ -27,17 +29,27 @@ struct ExecuteCommandToolRenderer: View {
     }
     
     var body: some View {
-
-        switch status {
-
-        case .running, .completed:
-
+        Button {
+            isDetailPresented.toggle()
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: toolCall.icon)
+                if status == .running {
+                    ProgressView()
+                        .controlSize(.small)
+                }
+                Text(toolCall.compactDescription(status))
+            }
+            .foregroundStyle(.secondary)
+        }
+        .buttonStyle(.plain)
+        .popover(isPresented: $isDetailPresented, arrowEdge: .leading) {
             TerminalView(
                 command: command,
                 output: output
             )
-        default:
-            ToolStatusView(toolCall: toolCall, status: status)
+            .frame(width: 520)
+            .padding(12)
         }
     }
 }
@@ -72,6 +84,7 @@ struct TerminalView: View {
                             .font(.system(.footnote, design: .monospaced))
                             .textSelection(.enabled)
                     }
+                    .frame(maxHeight: 300)
                 }
             }
             .font(.system(.subheadline, design: .monospaced))
@@ -81,7 +94,7 @@ struct TerminalView: View {
         }
         .background(.ultraThinMaterial)
         .cornerRadius(8)
-        .shadow(radius: 4)
+        .shadow(radius: 2)
     }
 }
 

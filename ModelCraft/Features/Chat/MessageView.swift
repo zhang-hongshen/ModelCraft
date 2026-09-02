@@ -8,51 +8,35 @@
 import SwiftUI
 import MapKit
 
-import MarkdownUI
-import Splash
+import SwiftStreamingMarkdown
 
 struct MessageView: View {
     
     @Bindable var message: Message
+    var showsAssistantButtons = true
     
-    @State var toolCallPresented: Bool = false
-    @State private var copied = false
     @State private var isHovering = false
     @State private var isEditing = false
     
-    @Environment(\.colorScheme) private var colorScheme
-    @Environment(SpeechManager.self) private var speechManager
     @Environment(GlobalStore.self) private var globalStore
-    @Environment(UserSettings.self) private var userSettings
     @Environment(ChatService.self) private var service
     
     private static let columns = Array.init(repeating: GridItem(.flexible()), count: 4)
     
-    private var splashTheme: Splash.Theme {
-        switch self.colorScheme {
-        case .dark:
-            return .sundellsColors(withFont: .init(size: 16))
-        default:
-            return .sunset(withFont: .init(size: 16))
-        }
-    }
-    
     var body: some View {
-        ZStack {
-            
-            Color.clear.contentShape(Rectangle())
-            
-            VStack {
-                switch message.role {
-                case .user:
-                    UserMessageView()
-                case .assistant:
-                    AssistantMessageView()
-                default:
-                    EmptyView()
-                }
+        VStack {
+            switch message.role {
+            case .user:
+                UserMessageView()
+            case .assistant:
+                AssistantMessageView()
+            case .tool:
+                AssistantMessageView()
+            default:
+                EmptyView()
             }
         }
+        .contentShape(Rectangle())
         .onHover(perform: { isHovering = $0 })
     }
 
@@ -66,6 +50,17 @@ extension MessageView {
     func CommonButtons(_ message: Message) -> some View {
         CopyButton(style: .iconOnly) {
             Pasteboard.general.setString(message.content)
+        }
+    }
+
+    @ViewBuilder
+    func GenerationInfoButton(_ message: Message) -> some View {
+        if let prefillTime = message.prefillTime,
+           let tokensPerSecond = message.tokensPerSecond {
+            GenerationMetricsButton(
+                prefillTime: prefillTime,
+                tokensPerSecond: tokensPerSecond
+            )
         }
     }
     
@@ -149,10 +144,7 @@ extension MessageView {
     
     @ViewBuilder
     func UserMessageContentView(_ message: Message) -> some View {
-        Markdown(message.content)
-            .markdownTheme(.modelCraft)
-            .markdownCodeSyntaxHighlighter(.splash(theme: self.splashTheme))
-            .textSelection(.enabled)
+        MarkdownView(text: message.content, config: .modelCraft)
             .multilineTextAlignment(.leading)
     }
     
@@ -168,17 +160,23 @@ extension MessageView {
         HStack(alignment: .top) {
             VStack(alignment: .leading) {
                 
-                if message.status == .new {
+                if message.isWaitingForFirstToken {
                     ProgressView().controlSize(.small)
                 } else {
                     MessageFilesView(message.files)
-                    AssistantMessageContentView(message)
-                        .contextMenu {
-                            AssistantButtons()
-                        }
-                    AssistantButtons()
-                        .buttonStyle(.borderless)
-                        .opacity(isHovering ? 1 : 0)
+                    if showsAssistantButtons {
+                        AssistantMessageContentView(message)
+                            .contextMenu {
+                                AssistantButtons()
+                            }
+                    } else {
+                        AssistantMessageContentView(message)
+                    }
+                    if showsAssistantButtons {
+                        AssistantButtons()
+                            .buttonStyle(.borderless)
+                            .opacity(isHovering ? 1 : 0)
+                    }
                 }
             }
             Spacer()
@@ -189,22 +187,9 @@ extension MessageView {
     func AssistantButtons() -> some View {
         HStack(alignment: .center) {
             CommonButtons(message)
+            GenerationInfoButton(message)
             
-            if speechManager.isSpeaking {
-                Button {
-                    speechManager.stop()
-                } label: {
-                    Image(systemName: "stop.circle")
-                }
-            } else {
-                Button {
-                    speechManager.speak(message.content,
-                                            rate: Float(userSettings.speakingRate),
-                                            volume: Float(userSettings.speakingVolume))
-                } label: {
-                    Image(systemName: "speaker.wave.2")
-                }
-            }
+            AssistantSpeechButton(content: message.content)
             
             Button {
                 regenerateAssistantMessage()
@@ -218,11 +203,13 @@ extension MessageView {
     func AssistantMessageContentView(_ message: Message) -> some View {
         VStack(alignment: .leading) {
 
-            Markdown(message.content)
-                    .markdownTheme(.modelCraft)
-                    .markdownCodeSyntaxHighlighter(.splash(theme: self.splashTheme))
-                    .textSelection(.enabled)
-                    .multilineTextAlignment(.leading)
+            if case .assistant = message.role, !message.content.isEmpty {
+                MarkdownView(
+                    text: message.content,
+                    config: .modelCraft
+                )
+                .multilineTextAlignment(.leading)
+            }
             
             
             if let toolCall = message.toolCall {
@@ -272,6 +259,156 @@ extension MessageView {
                                             message: userMessage)
         }
         
+    }
+}
+
+struct AssistantTurnView: View {
+
+    let turn: AssistantTurn
+
+    private var generationInfo: (prefillTime: TimeInterval, tokensPerSecond: Double)? {
+        turn.messages.reversed().compactMap { message in
+            guard case .assistant = message.role,
+                  let prefillTime = message.prefillTime,
+                  let tokensPerSecond = message.tokensPerSecond else {
+                return nil
+            }
+            return (prefillTime, tokensPerSecond)
+        }.first
+    }
+
+    @State private var isHovering = false
+
+    @Environment(GlobalStore.self) private var globalStore
+    @Environment(ChatService.self) private var service
+
+    var body: some View {
+        HStack(alignment: .top) {
+            VStack(alignment: .leading, spacing: 10) {
+                ForEach(turn.contentItems) { item in
+                    switch item {
+                    case .message(let message):
+                        MessageView(message: message, showsAssistantButtons: false)
+                    case .toolCallGroup(let messages):
+                        ToolCallGroupView(messages: messages)
+                    }
+                }
+
+                if !turn.isWaitingForFirstToken {
+                    AssistantButtons()
+                        .buttonStyle(.borderless)
+                        .opacity(isHovering ? 1 : 0)
+                }
+            }
+            .contextMenu {
+                if !turn.isWaitingForFirstToken {
+                    AssistantButtons()
+                }
+            }
+            Spacer()
+        }
+        .contentShape(Rectangle())
+        .onHover { isHovering = $0 }
+    }
+
+    @ViewBuilder
+    private func AssistantButtons() -> some View {
+        HStack(alignment: .center) {
+            CopyButton(style: .iconOnly) {
+                Pasteboard.general.setString(turn.content)
+            }
+
+            if let info = generationInfo {
+                GenerationMetricsButton(
+                    prefillTime: info.prefillTime,
+                    tokensPerSecond: info.tokensPerSecond
+                )
+            }
+
+            AssistantSpeechButton(content: turn.content)
+
+            Button {
+                regenerateAssistantTurn()
+            } label: {
+                Image(systemName: "arrow.trianglehead.2.clockwise.rotate.90")
+            }
+            .disabled(turn.userMessage == nil)
+        }
+    }
+
+    private func regenerateAssistantTurn() {
+        guard let userMessage = turn.userMessage,
+              let chat = userMessage.chat,
+              let model = globalStore.selectedModel else {
+            return
+        }
+        Task {
+            try await service.resendMessage(
+                model: model,
+                chat: chat,
+                message: userMessage
+            )
+        }
+    }
+}
+
+private struct GenerationMetricsButton: View {
+
+    let prefillTime: TimeInterval
+    let tokensPerSecond: Double
+
+    @State private var isPresented = false
+
+    var body: some View {
+        Button {
+            isPresented.toggle()
+        } label: {
+            Image(systemName: "info.circle")
+        }
+        .help("Generation Info")
+        .popover(isPresented: $isPresented) {
+            Grid(alignment: .leading, horizontalSpacing: 20, verticalSpacing: 8) {
+                GridRow {
+                    Text("Prefill Time")
+                    Text("\(prefillTime.formatted(.number.precision(.fractionLength(2))))s")
+                        .monospacedDigit()
+                }
+                GridRow {
+                    Text("Speed")
+                    Text("\(tokensPerSecond.formatted(.number.precision(.fractionLength(2)))) tokens/s")
+                        .monospacedDigit()
+                }
+            }
+            .padding()
+        }
+    }
+}
+
+private struct AssistantSpeechButton: View {
+
+    let content: String
+
+    @Environment(SpeechManager.self) private var speechManager
+    @Environment(UserSettings.self) private var userSettings
+
+    var body: some View {
+        if speechManager.isSpeaking {
+            Button {
+                speechManager.stop()
+            } label: {
+                Image(systemName: "stop.circle")
+            }
+        } else {
+            Button {
+                speechManager.speak(
+                    content,
+                    rate: Float(userSettings.speakingRate),
+                    volume: Float(userSettings.speakingVolume)
+                )
+            } label: {
+                Image(systemName: "speaker.wave.2")
+            }
+        }
     }
 }
 

@@ -45,8 +45,8 @@ struct ContentBlockView: View {
                let image = PlatformImage(data: data) {
                 Image(platformImage: image)
                     .resizable()
-                    .frame(height: 300)
-                    .aspectRatio(contentMode: .fit)
+                    .aspectRatio(image.aspectRatio, contentMode: .fit)
+                    .frame(maxHeight: 300)
                     .cornerRadius()
                     .contextMenu {
                         CopyButton() { Pasteboard.general.setImage(image) }
@@ -88,8 +88,8 @@ struct ResourceLinkBlock: View {
 
                     Image(platformImage: image)
                         .resizable()
-                        .frame(height: 300)
-                        .aspectRatio(contentMode: .fit)
+                        .aspectRatio(image.aspectRatio, contentMode: .fit)
+                        .frame(maxHeight: 300)
                         .cornerRadius()
                         .contextMenu {
                             CopyButton() { Pasteboard.general.setImage(image) }

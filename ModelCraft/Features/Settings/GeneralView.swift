@@ -9,7 +9,6 @@ import SwiftUI
 
 struct GeneralView: View {
     
-    @Environment(GlobalStore.self) private var globalStore
     @Environment(UserSettings.self) private var userSettings
     
     var body: some View {

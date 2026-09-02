@@ -134,10 +134,11 @@ class LMService {
                             input: UserInput(chat: history, tools: tools))
                         if historyInput.image == nil && historyInput.video == nil {
                             let fullTokens = fullInput.text.tokens.flattened().asArray(Int.self)
-                            let prefixTokens = historyInput.text.tokens.flattened().asArray(Int.self)
-                            if let prefixCount = PromptPrefixPlanner.prefixCount(
-                                full: fullTokens, prefix: prefixTokens)
+                            let historyTokens = historyInput.text.tokens.flattened().asArray(Int.self)
+                            if let prefixCount = PromptPrefixPlanner.commonPrefixCount(
+                                full: fullTokens, candidate: historyTokens)
                             {
+                                let prefixTokens = Array(fullTokens.prefix(prefixCount))
                                 let key = PromptCacheKeyBuilder.make(
                                     modelID: model.id,
                                     prefixTokens: prefixTokens,
@@ -215,8 +216,13 @@ class LMService {
                                     }
                                 } else {
                                     let built = context.model.newCache(parameters: parameters)
+                                    let prefixInput = LMInput(
+                                        text: .init(
+                                            tokens: MLXArray(prefixTokens).reshaped(1, -1)),
+                                        image: nil,
+                                        video: nil)
                                     _ = try TokenIterator(
-                                        input: historyInput,
+                                        input: prefixInput,
                                         model: context.model,
                                         cache: built,
                                         parameters: parameters)
@@ -290,15 +296,17 @@ class LMService {
                         if Task.isCancelled { break }
                         continuation.yield(item)
                     }
-                    continuation.finish()
 
                     // `AsyncStream` can finish before the producer task has
                     // released its iterator/cache. Cancel on early stop and
                     // wait for the producer before making the global lease
-                    // available to another model.
+                    // available to another model. Finishing the outer stream
+                    // last also prevents an immediate regenerate from
+                    // observing completion while the lease is still held.
                     inner.1.cancel()
                     await inner.1.value
                     await lease.release()
+                    continuation.finish()
                 }
                 continuation.onTermination = { _ in
                     task.cancel()
@@ -321,10 +329,12 @@ class LMService {
     func generate(model: LocalModel, messages: [MLXLMCommon.Chat.Message], tools: [ToolSpec] = []) async throws -> String {
         var output = ""
         for await segement in try await generate(model: model, messages: messages, tools: tools) {
+            try Task.checkCancellation()
             if let chunk = segement.chunk {
                 output.append(chunk)
             }
         }
+        try Task.checkCancellation()
         return output
     }
     

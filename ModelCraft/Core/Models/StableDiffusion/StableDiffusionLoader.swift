@@ -19,7 +19,7 @@ public class StableDiffusionLoader {
 
     // MARK: - Loading
 
-    private static func resolve(hub: HubApi, configuration: StableDiffusionConfiguration, key: FileKey) -> URL {
+    private static func resolve(hub: HubApi, configuration: StableDiffusionConfiguration, key: StableDiffusionFileKey) -> URL {
         precondition(
             configuration.files[key] != nil, "configuration \(configuration.id) missing key: \(key)")
         let repo = Hub.Repo(id: configuration.id)
@@ -28,7 +28,7 @@ public class StableDiffusionLoader {
     }
 
     static func loadConfiguration<T: Decodable>(
-        hub: HubApi, configuration: StableDiffusionConfiguration, key: FileKey, type: T.Type
+        hub: HubApi, configuration: StableDiffusionConfiguration, key: StableDiffusionFileKey, type: T.Type
     ) throws -> T {
         let url = resolve(hub: hub, configuration: configuration, key: key)
         return try JSONDecoder().decode(T.self, from: Data(contentsOf: url))
@@ -49,7 +49,7 @@ public class StableDiffusionLoader {
 
     static func loadTextEncoder(
         hub: HubApi, configuration: StableDiffusionConfiguration,
-        configKey: FileKey = .textEncoderConfig, weightsKey: FileKey = .textEncoderWeights, dType: DType
+        configKey: StableDiffusionFileKey = .textEncoderConfig, weightsKey: StableDiffusionFileKey = .textEncoderWeights, dType: DType
     ) throws -> StableDiffusionTextEncoder {
         let clipConfiguration = try loadConfiguration(
             hub: hub, configuration: configuration, key: configKey,
@@ -88,7 +88,7 @@ public class StableDiffusionLoader {
 
     static func loadTokenizer(
         hub: HubApi, configuration: StableDiffusionConfiguration,
-        vocabulary: FileKey = .tokenizerVocabulary, merges: FileKey = .tokenizerMerges
+        vocabulary: StableDiffusionFileKey = .tokenizerVocabulary, merges: StableDiffusionFileKey = .tokenizerMerges
     ) throws -> StableDiffusionTokenizer {
         let vocabularyURL = resolve(hub: hub, configuration: configuration, key: vocabulary)
         let mergesURL = resolve(hub: hub, configuration: configuration, key: merges)

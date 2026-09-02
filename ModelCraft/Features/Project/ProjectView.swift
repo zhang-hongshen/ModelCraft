@@ -77,7 +77,7 @@ extension ProjectView {
         TabView(selection: $selectedTab) {
             
             ProjectChatView(chats: project.chats)
-                .tag(ProjectViewTab.file)
+                .tag(ProjectViewTab.chat)
                 .tabItem{
                     Text("Chats")
                 }

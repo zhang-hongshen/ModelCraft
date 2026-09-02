@@ -15,11 +15,29 @@ struct DefaultToolRenderer: View {
     let result: CallToolResult?
     let status: ToolCallStatus
 
+    @State private var isDetailPresented = false
+
     var body: some View {
 
         if let result {
-
-            ContentBlocksView(result: result)
+            Button {
+                isDetailPresented.toggle()
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: toolCall.icon)
+                    Text(toolCall.compactDescription(status))
+                }
+                .foregroundStyle(.secondary)
+            }
+            .buttonStyle(.plain)
+            .popover(isPresented: $isDetailPresented, arrowEdge: .leading) {
+                ScrollView {
+                    ContentBlocksView(result: result)
+                        .textSelection(.enabled)
+                }
+                .frame(width: 520, height: 320)
+                .padding(12)
+            }
 
         } else {
 

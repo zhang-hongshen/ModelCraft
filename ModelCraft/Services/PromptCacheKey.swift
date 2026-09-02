@@ -1,11 +1,30 @@
 import Foundation
 import MLXLMCommon
+import Tokenizers
 
 enum PromptPrefixPlanner {
     static func prefixCount(full: [Int], prefix: [Int]) -> Int? {
         guard !prefix.isEmpty, prefix.count < full.count else { return nil }
         guard full.starts(with: prefix) else { return nil }
         return prefix.count
+    }
+
+    /// Returns the longest usable common prefix between a fully rendered
+    /// prompt and a reference rendering. Chat templates commonly add an
+    /// assistant-generation marker to the reference rendering, so requiring
+    /// the entire reference to be a prefix would reject the stable tokens
+    /// before that marker.
+    static func commonPrefixCount(full: [Int], candidate: [Int]) -> Int? {
+        guard !full.isEmpty, !candidate.isEmpty else { return nil }
+
+        let count = min(full.count, candidate.count)
+        var index = 0
+        while index < count, full[index] == candidate[index] {
+            index += 1
+        }
+
+        guard index > 0, index < full.count else { return nil }
+        return index
     }
 
     static func suffix(full: [Int], prefixCount: Int) -> [Int] {
