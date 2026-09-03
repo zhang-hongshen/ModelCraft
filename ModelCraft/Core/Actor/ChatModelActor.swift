@@ -51,32 +51,6 @@ actor ChatModelActor {
         try modelContext.save()
     }
     
-    func updateSummary(chatID: PersistentIdentifier, summaryLogic: (String?, [Message]) async throws -> String?) async throws {
-            guard let chat = modelContext.model(for: chatID) as? Chat else { return }
-            
-            let sorted = chat.messages.sorted { $0.createdAt < $1.createdAt }
-            
-            let bufferCount = 4
-            let threshold = 20
-            let unsummarizedCount = sorted.count - chat.lastSummaryIndex - bufferCount
-            
-            guard unsummarizedCount >= threshold else { return }
-
-            let endSummaryIndex = sorted.count - bufferCount - 1
-            let summarySlice = Array(sorted[chat.lastSummaryIndex + 1...endSummaryIndex])
-            
-            try Task.checkCancellation()
-            guard let newSummary = try await summaryLogic(chat.summary, summarySlice) else {
-                return
-            }
-            try Task.checkCancellation()
-            chat.lastSummaryIndex = endSummaryIndex
-            chat.summary = newSummary
-            
-            try modelContext.save()
-        }
-    
-    
     func generateTitle(chatID: PersistentIdentifier, summaryLogic: ([Message]) async throws -> String?) async throws {
             guard let chat = modelContext.model(for: chatID) as? Chat else { return }
             if chat.title != nil {

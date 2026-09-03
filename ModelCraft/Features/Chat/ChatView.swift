@@ -44,6 +44,21 @@ struct ChatView: View {
                 guard globalStore.selectedModel == nil else { return }
                 globalStore.selectedModel = availableModels.first
             }
+            .onChange(of: globalStore.selectedModel, initial: true) {
+                refreshContextUsage()
+            }
+            .onChange(of: chat?.messages.count) {
+                refreshContextUsage()
+            }
+            .onChange(of: chat?.summary) {
+                refreshContextUsage()
+            }
+            .onChange(of: draft.content) {
+                refreshContextUsage()
+            }
+            .onChange(of: draft.files) {
+                refreshContextUsage()
+            }
             .modifier(AudioLevelChangeModifier { transcript in
                 _ = submitMessage(content: transcript, files: [])
             })
@@ -233,7 +248,12 @@ extension ChatView {
                     userInput: draft,
                     trailing: {
                         HStack {
-                            if let chat = chat, chat.isGenerating {
+                            if let contextUsage = chatService.contextUsage {
+                                ContextWindowProgressView(usage: contextUsage)
+                            }
+
+                            if let chat = chat,
+                               chat.isGenerating || chatService.isPreparingResponse {
                                 StopGeneratingMessageButton()
                             } else {
                                 if draft.content.isEmpty {
@@ -316,12 +336,51 @@ extension ChatView {
         draft.content = ""
         draft.files = []
     }
+
+    func refreshContextUsage() {
+        chatService.scheduleContextUsage(
+            model: globalStore.selectedModel,
+            chat: chat,
+            draftContent: draft.content,
+            draftFiles: draft.files)
+    }
     
     func scrollToBottom(_ proxy: ScrollViewProxy, lastID: ConversationContentItem.ID?) {
         guard let lastID else { return }
         withAnimation {
             proxy.scrollTo(lastID, anchor: .bottom)
         }
+    }
+}
+
+private struct ContextWindowProgressView: View {
+
+    let usage: ContextWindowUsage
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .stroke(Color.secondary.opacity(0.25), lineWidth: 2)
+
+            Circle()
+                .trim(from: 0, to: usage.fraction)
+                .stroke(
+                    Color.accentColor,
+                    style: StrokeStyle(lineWidth: 2, lineCap: .round))
+                .rotationEffect(.degrees(-90))
+        }
+        .frame(width: 16, height: 16)
+        .help(helpText)
+        .accessibilityLabel("Context window usage")
+        .accessibilityValue(Text(accessibilityValue))
+    }
+
+    private var helpText: String {
+        return String(localized: "\(usage.usedTokens.formatted()) of \(usage.totalTokens.formatted()) context tokens")
+    }
+
+    private var accessibilityValue: String {
+        return usage.fraction.formatted(.percent.precision(.fractionLength(0)))
     }
 }
 

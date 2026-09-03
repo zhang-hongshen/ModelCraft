@@ -28,6 +28,16 @@ class AgentExecutor {
         RequestDecisionInput
     ) async throws -> RequestDecisionOutput
 
+    typealias ContextUsageUpdater = @MainActor (
+        LocalModel,
+        [MLXLMCommon.Chat.Message],
+        [ToolSpec]
+    ) async -> Void
+
+    typealias GenerationInfoHandler = @MainActor (
+        GenerateCompletionInfo
+    ) -> Void
+
     private let generationProvider: GenerationProvider
     private let toolDispatcher: ToolDispatcher
     private let decisionProvider: DecisionProvider
@@ -70,7 +80,9 @@ class AgentExecutor {
         toolRound: Int = 0,
         lastToolSignature: String? = nil,
         consecutiveSameToolCalls: Int = 0,
-        temporarilyDisabledTool: String? = nil
+        temporarilyDisabledTool: String? = nil,
+        contextUsageUpdater: ContextUsageUpdater? = nil,
+        generationInfoHandler: GenerationInfoHandler? = nil
     ) async throws -> Void {
         try Task.checkCancellation()
 
@@ -91,6 +103,11 @@ class AgentExecutor {
         }
         if let temporarilyDisabledTool {
             availableTools.removeAll { toolName(from: $0) == temporarilyDisabledTool }
+        }
+
+        if toolRound > 0, let contextUsageUpdater {
+            await contextUsageUpdater(model, messages, availableTools)
+            try Task.checkCancellation()
         }
         
         let assistantMessage = Message(role: .assistant, chat: chat, status: .generating)
@@ -125,7 +142,7 @@ class AgentExecutor {
                         lastToolSignature: signature,
                         consecutiveSameToolCalls: newConsecutive
                     )
-                    break
+                    continue
                 }
 
                 if let chunk = batch.chunk {
@@ -135,6 +152,7 @@ class AgentExecutor {
                 if let info = batch.info {
                     assistantMessage.prefillTime = info.promptTime
                     assistantMessage.tokensPerSecond = info.tokensPerSecond
+                    generationInfoHandler?(info)
                 }
             }
             assistantMessage.status = .generated
@@ -191,7 +209,9 @@ class AgentExecutor {
                     consecutiveSameToolCalls: nextTurn.consecutiveSameToolCalls,
                     temporarilyDisabledTool: duplicateCallBlocked
                         ? nextTurn.toolCall.function.name
-                        : nil)
+                        : nil,
+                    contextUsageUpdater: contextUsageUpdater,
+                    generationInfoHandler: generationInfoHandler)
             }
         } catch is CancellationError {
             // Stop/cancel leaves the partial answer visible instead of

@@ -30,6 +30,16 @@ private enum PrefixCacheProbeError: Error {
     case emptyPrefix
 }
 
+struct ContextWindowUsage: Equatable, Sendable {
+    let usedTokens: Int
+    let totalTokens: Int
+
+    var fraction: Double {
+        guard totalTokens > 0 else { return 0 }
+        return min(Double(usedTokens) / Double(totalTokens), 1)
+    }
+}
+
 enum PromptCacheMetadata {
     static func matches(
         _ metadata: [String: String],
@@ -90,6 +100,30 @@ class LMService {
         // Cache the loaded model for future use
         modelCache.setObject(container, forKey: model.id as NSString)
         return container
+    }
+
+    func contextUsage(
+        model: LocalModel,
+        messages: [MLXLMCommon.Chat.Message],
+        tools: [ToolSpec] = []
+    ) async throws -> ContextWindowUsage {
+        let lease = try await InferenceRuntimeCoordinator.shared.acquire(.languageModel)
+
+        do {
+            let modelContainer = try await load(model: model)
+            let usedTokens = try await modelContainer.perform { context in
+                let input = try await context.processor.prepare(
+                    input: UserInput(chat: messages, tools: tools))
+                return input.text.tokens.size
+            }
+            await lease.release()
+            return ContextWindowUsage(
+                usedTokens: usedTokens,
+                totalTokens: model.contextWindow)
+        } catch {
+            await lease.release()
+            throw error
+        }
     }
     
     /// Generates text based on the provided messages using the specified model.

@@ -82,7 +82,7 @@ class PromptBuilder {
     static func summarize<T: RandomAccessCollection>(previousSummary: String?, messages: T) -> [Message]
         where T.Element == Message{
             
-        let conversation = messages.toString()
+        let conversation = compressionText(messages)
         return [
             Message(
                 role: .user,
@@ -96,11 +96,13 @@ class PromptBuilder {
                 </task>
 
                 <rules>
-                1. Keep the summary concise.
+                1. Make the summary as short as possible without losing information required to continue the task.
                 2. Preserve important context and technical details.
                 3. Update the previous summary if new information is present.
                 4. Remove redundant or irrelevant conversation details.
                 5. Focus on information necessary to continue the task.
+                6. For completed tool work, preserve the tool name, important inputs, outcome, errors, file paths, identifiers, side effects, and unresolved follow-up work.
+                7. Preserve user decisions and authorizations exactly.
                 </rules>
 
                 <output_format>
@@ -119,6 +121,37 @@ class PromptBuilder {
                     <conversation>\(conversation)</conversation>
                 </context>
                 """)]
+    }
+
+    private static func compressionText<T: RandomAccessCollection>(
+        _ messages: T
+    ) -> String where T.Element == Message {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys]
+
+        return messages.map { message in
+            let role = switch message.role {
+            case .user: "user"
+            case .assistant: "assistant"
+            case .system: "system"
+            case .tool: "tool"
+            }
+
+            var fields = ["<content>\(message.content)</content>"]
+            if let toolCall = message.toolCall,
+               let data = try? encoder.encode(toolCall),
+               let value = String(data: data, encoding: .utf8) {
+                fields.insert("<tool_call>\(value)</tool_call>", at: 0)
+                fields.append("<tool_status>\(message.toolCallStatus)</tool_status>")
+            }
+            if let toolCallResult = message.toolCallResult,
+               let data = try? encoder.encode(toolCallResult),
+               let value = String(data: data, encoding: .utf8) {
+                fields.append("<tool_result>\(value)</tool_result>")
+            }
+            return "<\(role)>\(fields.joined())</\(role)>"
+        }
+        .joined(separator: "\n")
     }
     
     
