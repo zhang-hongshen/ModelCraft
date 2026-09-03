@@ -7,6 +7,7 @@
 
 import SwiftUI
 import SwiftData
+import AppKit
 
 
 struct ChatView: View {
@@ -192,10 +193,13 @@ extension ChatView {
                         ConversationItemsView(items: items)
                             .environment(chatService)
                             .safeAreaPadding()
+                            .background(SmallScrollerConfigurator())
                         
-                        Text(sttService.transcript)
-                            .padding()
-                            .animation(.easeInOut, value: sttService.transcript)
+                        if !sttService.transcript.isEmpty {
+                            Text(sttService.transcript)
+                                .padding()
+                                .animation(.easeInOut, value: sttService.transcript)
+                        }
                     }
                     .contentMargins(.leading, Layout.padding, for: .scrollContent)
                     .contentMargins(.bottom, composerHeight, for: .scrollContent)
@@ -217,18 +221,6 @@ extension ChatView {
                     .safeAreaPadding(.bottom, composerHeight)
             }
 
-            Rectangle()
-                .fill(.background)
-                .mask(
-                    LinearGradient(
-                        colors: [.clear, .black],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                )
-                .frame(height: composerHeight + 48)
-                .allowsHitTesting(false)
-            
             VStack(spacing: 8) {
                 if let pendingDecision = chatService.decisionCoordinator.pendingDecision {
                     DecisionRequestView(
@@ -265,6 +257,29 @@ extension ChatView {
         
     }
     
+}
+
+private struct SmallScrollerConfigurator: NSViewRepresentable {
+
+    func makeNSView(context: Context) -> ConfiguratorView {
+        ConfiguratorView()
+    }
+
+    func updateNSView(_ nsView: ConfiguratorView, context: Context) {
+        nsView.configureScroller()
+    }
+
+    final class ConfiguratorView: NSView {
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            configureScroller()
+        }
+
+        func configureScroller() {
+            enclosingScrollView?.verticalScroller?.controlSize = .small
+        }
+    }
 }
 
 extension ChatView {
