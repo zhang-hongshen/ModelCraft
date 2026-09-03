@@ -40,8 +40,9 @@ struct ToolCallView: View {
                 status: status
             )
 
-        case ToolNames.readFromFile,
-             ToolNames.writeToFile:
+        case ToolNames.readFile,
+             ToolNames.writeFile,
+             ToolNames.editFile:
 
             FileToolRenderer(
                 toolCall: toolCall,

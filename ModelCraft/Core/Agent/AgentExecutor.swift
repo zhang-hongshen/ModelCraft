@@ -167,6 +167,11 @@ class AgentExecutor {
                     )
                 } else if nextTurn.toolCall.function.name == ToolNames.requestDecision {
                     executionResult = try await executeDecision(nextTurn.toolCall)
+                } else if nextTurn.toolCall.function.name == ToolNames.searchRelevantDocuments,
+                          let projectID {
+                    executionResult = try await executeDocumentSearch(
+                        nextTurn.toolCall,
+                        projectID: projectID)
                 } else {
                     executionResult = try await toolDispatcher(nextTurn.toolCall)
                 }
@@ -247,6 +252,18 @@ class AgentExecutor {
         var result = CallToolResult()
         result.content.append(.text(TextContent(text: content)))
         return (result, .tool(content))
+    }
+
+    @MainActor
+    private func executeDocumentSearch(
+        _ toolCall: ToolCall,
+        projectID: PersistentIdentifier
+    ) async throws -> (CallToolResult, MLXLMCommon.Chat.Message) {
+        let output = try await toolCall.execute(
+            with: SearchTool.searchRelevantDocuments(projectID: projectID))
+        var result = CallToolResult()
+        result.content.append(.text(TextContent(text: output.toolResult)))
+        return (result, .tool(output.toolResult))
     }
     
 }

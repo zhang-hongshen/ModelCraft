@@ -215,11 +215,11 @@ struct ToolCallGroupSummary {
     }
 
     var fileReadCount: Int {
-        count(named: ToolNames.readFromFile)
+        count(named: ToolNames.readFile)
     }
 
     var fileWriteCount: Int {
-        count(named: ToolNames.writeToFile)
+        count(named: ToolNames.writeFile) + count(named: ToolNames.editFile)
     }
 
     var commandCount: Int {

@@ -64,7 +64,7 @@ extension Chat {
                 role: .tool,
                 chat: chat,
                 toolCall: ToolCall(function: .init(
-                    name: ToolNames.readFromFile,
+                    name: ToolNames.readFile,
                     arguments: ["path": "Sources/App.swift"]
                 )),
                 toolCallResult: .success(content: [.text(TextContent(text: "import SwiftUI"))])
@@ -73,7 +73,7 @@ extension Chat {
                 role: .tool,
                 chat: chat,
                 toolCall: ToolCall(function: .init(
-                    name: ToolNames.writeToFile,
+                    name: ToolNames.writeFile,
                     arguments: ["path": "Sources/App.swift"]
                 )),
                 toolCallResult: .success()

@@ -15,8 +15,10 @@ struct ToolNames {
     static let requestDecision = "request_decision"
 
     // MARK: File Tool
-    static let readFromFile = "read_from_file"
-    static let writeToFile = "write_to_file"
+    static let readFile = "read_file"
+    static let writeFile = "write_file"
+    static let editFile = "edit_file"
+    static let listDirectory = "list_directory"
 
     // MARK: Command Tool
     static let executeCommand = "execute_command"
@@ -92,7 +94,7 @@ extension ToolCall {
             case .failed:
                 return String(localized: "Decision cancelled")
             }
-        case ToolNames.readFromFile:
+        case ToolNames.readFile:
             let fileName = fileDisplayName ?? String(localized: "Unknown")
             switch status {
             case .running:
@@ -102,7 +104,7 @@ extension ToolCall {
             case .failed:
                 return String(localized: "Failed to read \(fileName)")
             }
-        case ToolNames.writeToFile:
+        case ToolNames.writeFile:
             let fileName = fileDisplayName ?? String(localized: "Unknown")
             switch status {
             case .running:
@@ -111,6 +113,25 @@ extension ToolCall {
                 return String(localized: "Wrote into \(fileName)")
             case .failed:
                 return String(localized: "Failed to write into \(fileName)")
+            }
+        case ToolNames.editFile:
+            let fileName = fileDisplayName ?? String(localized: "Unknown")
+            switch status {
+            case .running:
+                return String(localized: "Editing \(fileName)")
+            case .completed:
+                return String(localized: "Edited \(fileName)")
+            case .failed:
+                return String(localized: "Failed to edit \(fileName)")
+            }
+        case ToolNames.listDirectory:
+            switch status {
+            case .running:
+                return String(localized: "Listing directory")
+            case .completed:
+                return String(localized: "Listed directory")
+            case .failed:
+                return String(localized: "Failed to list directory")
             }
         case ToolNames.executeCommand:
             return compactDescription(status)
@@ -282,8 +303,9 @@ extension ToolCall {
     var icon: String {
         switch function.name {
         case ToolNames.requestDecision: "questionmark.bubble"
-        case ToolNames.readFromFile: "square.and.pencil"
-        case ToolNames.writeToFile: "square.and.pencil"
+        case ToolNames.readFile: "doc.text.magnifyingglass"
+        case ToolNames.writeFile, ToolNames.editFile: "square.and.pencil"
+        case ToolNames.listDirectory: "folder"
         case ToolNames.executeCommand : "apple.terminal"
         case ToolNames.searchMap: "map"
         case ToolNames.searchRelevantDocuments: "magnifyingglass"

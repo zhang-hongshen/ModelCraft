@@ -28,7 +28,7 @@ class CommandTool {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
         process.arguments = ["sh", "-c", command]
-        process.currentDirectoryURL = PathResolver.resolve("")
+        process.currentDirectoryURL = try PathResolver.resolve("")
         
         let stdoutPipe = Pipe()
         let stderrPipe = Pipe()

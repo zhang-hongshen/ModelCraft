@@ -83,7 +83,10 @@ class SearchTool {
             ]
         ) { input in
             let actor = ProjectModelActor(modelContainer: SwiftData.ModelContainer.shared)
-            let docs = await actor.searchRelevantDocuments(projectID: projectID, query: input.query)
+            let docs = await actor.searchRelevantDocuments(
+                projectID: projectID,
+                query: input.query,
+                numOfResults: input.numOfResults)
             return SearchRelevantDocumentsOutput(docs: docs)
         }
     }

@@ -8,15 +8,31 @@
 import Foundation
 
 struct PathResolver {
-    
-    /// Resolves a potentially relative path from an LLM into a full, absolute Sandbox URL.
-    /// - Parameter path: The path string provided by the LLM (could be relative or absolute).
-    /// - Returns: A validated absolute file URL within the App's Documents directory.
-    static func resolve(_ path: String) -> URL {
+
+    static func resolve(_ path: String) throws -> URL {
         let rootURL = URL.documentsDirectory
-        if path.hasPrefix(rootURL.path()) {
-            return URL(fileURLWithPath: path)
+            .standardizedFileURL
+            .resolvingSymlinksInPath()
+        let candidate = if (path as NSString).isAbsolute {
+            URL(fileURLWithPath: path)
+        } else {
+            rootURL.appendingPathComponent(path)
         }
-        return rootURL.appendingPathComponent(path)
+        let resolvedURL = candidate.standardizedFileURL.resolvingSymlinksInPath()
+        let rootPath = rootURL.path
+        let resolvedPath = resolvedURL.path
+
+        guard resolvedPath == rootPath || resolvedPath.hasPrefix(rootPath + "/") else {
+            throw PathResolverError.outsideDocumentsDirectory
+        }
+        return resolvedURL
+    }
+}
+
+enum PathResolverError: LocalizedError {
+    case outsideDocumentsDirectory
+
+    var errorDescription: String? {
+        "The path must be inside the app's Documents directory."
     }
 }

@@ -19,12 +19,20 @@ class ToolExecutor {
         var message = MLXLMCommon.Chat.Message(role: .tool, content: "")
         do  {
             switch toolCall.function.name {
-            case ToolNames.readFromFile:
-                let result = try await toolCall.execute(with: FileTool.readFromFile)
+            case ToolNames.readFile:
+                let result = try await toolCall.execute(with: FileTool.readFile)
                 toolCallResult.content.append(.text(TextContent(text: result.content)))
                 message.content = result.toolResult
-            case ToolNames.writeToFile:
-                let result = try await toolCall.execute(with: FileTool.writeToFile)
+            case ToolNames.writeFile:
+                let result = try await toolCall.execute(with: FileTool.writeFile)
+                toolCallResult.content.append(.text(TextContent(text: result.toolResult)))
+                message.content = result.toolResult
+            case ToolNames.editFile:
+                let result = try await toolCall.execute(with: FileTool.editFile)
+                toolCallResult.content.append(.text(TextContent(text: result.toolResult)))
+                message.content = result.toolResult
+            case ToolNames.listDirectory:
+                let result = try await toolCall.execute(with: FileTool.listDirectory)
                 toolCallResult.content.append(.text(TextContent(text: result.toolResult)))
                 message.content = result.toolResult
             case ToolNames.searchMap:
@@ -45,7 +53,7 @@ class ToolExecutor {
                 let result = try await toolCall.execute(with: AudioTool.textToAudio)
                 toolCallResult.content.append(
                     .resourceLink(ResourceLink(name: "", title: "", url: result.audioURL, mimeType: result.mimeType)))
-                message.videos.append(.url(result.audioURL))
+                message.content = result.toolResult
             case ToolNames.activateSkill:
                 let result = try await toolCall.execute(with: SkillTool.activateSkill)
                 toolCallResult.content.append(.text(TextContent(text: result.content)))

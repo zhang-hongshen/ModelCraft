@@ -42,7 +42,7 @@ final class TagStreamParserTests {
     @Test func assistantMessagesAfterOneUserArePresentedAsOneTurn() {
         let firstUser = ModelCraft.Message(role: .user, content: "Please inspect this")
         let prelude = ModelCraft.Message(role: .assistant, content: "I will inspect it.")
-        let toolCall = Self.toolMessage(ToolNames.readFromFile)
+        let toolCall = Self.toolMessage(ToolNames.readFile)
         let finalAnswer = ModelCraft.Message(role: .assistant, content: "It is ready.")
         let secondUser = ModelCraft.Message(role: .user, content: "Thanks")
         let secondAnswer = ModelCraft.Message(role: .assistant, content: "You're welcome.")
@@ -74,7 +74,7 @@ final class TagStreamParserTests {
             role: .tool,
             content: "tool result",
             toolCall: ToolCall(function: .init(
-                name: ToolNames.readFromFile,
+                name: ToolNames.readFile,
                 arguments: ["path": "Sources/App.swift"]
             )),
             toolCallResult: .success()
@@ -94,8 +94,8 @@ final class TagStreamParserTests {
 
     @Test func toolCallsAreGroupedOnlyWhenTheyAreContiguousAndMultiple() {
         let messages = [
-            Self.toolMessage(ToolNames.readFromFile),
-            Self.toolMessage(ToolNames.writeToFile),
+            Self.toolMessage(ToolNames.readFile),
+            Self.toolMessage(ToolNames.writeFile),
             ModelCraft.Message(role: .assistant, content: "The files are ready."),
             Self.toolMessage(ToolNames.executeCommand)
         ]
@@ -121,12 +121,12 @@ final class TagStreamParserTests {
     }
 
     @Test func assistantTextBetweenToolMessagesBreaksTheToolGroup() {
-        let firstTool = Self.toolMessage(ToolNames.readFromFile)
+        let firstTool = Self.toolMessage(ToolNames.readFile)
         let assistantText = ModelCraft.Message(
             role: .assistant,
             content: "I will update the file next.",
             toolCall: ToolCall(function: .init(
-                name: ToolNames.writeToFile,
+                name: ToolNames.writeFile,
                 arguments: [:]
             )),
             toolCallResult: .success()
@@ -239,7 +239,7 @@ final class TagStreamParserTests {
 
     @Test func imageGenerationRemainsOutsideToolCallGroups() {
         let messages = [
-            Self.toolMessage(ToolNames.readFromFile),
+            Self.toolMessage(ToolNames.readFile),
             Self.toolMessage(ToolNames.textToImage),
             Self.toolMessage(ToolNames.executeCommand)
         ]
@@ -256,8 +256,8 @@ final class TagStreamParserTests {
 
     @Test func completedToolGroupSummaryUsesSpecificToolCounts() {
         let messages = [
-            Self.toolMessage(ToolNames.readFromFile),
-            Self.toolMessage(ToolNames.writeToFile),
+            Self.toolMessage(ToolNames.readFile),
+            Self.toolMessage(ToolNames.writeFile),
             Self.toolMessage(ToolNames.executeCommand)
         ]
 
@@ -288,7 +288,7 @@ final class TagStreamParserTests {
 
     @Test func fileDisplayNameUsesOnlyTheLastPathComponent() {
         let toolCall = ToolCall(function: .init(
-            name: ToolNames.writeToFile,
+            name: ToolNames.writeFile,
             arguments: ["path": "/Users/example/Project/Sources/App.swift"]
         ))
 

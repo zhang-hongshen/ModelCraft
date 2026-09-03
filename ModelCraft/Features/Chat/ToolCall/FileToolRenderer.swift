@@ -22,20 +22,26 @@ struct FileToolRenderer: View {
             return nil
         }
 
-        return PathResolver.resolve(path)
+        return try? PathResolver.resolve(path)
     }
 
     private var actionDescription: String {
         switch (toolCall.function.name, status) {
-        case (ToolNames.writeToFile, .running):
+        case (ToolNames.writeFile, .running):
             return String(localized: "Writing into")
-        case (ToolNames.writeToFile, .completed):
+        case (ToolNames.writeFile, .completed):
             return String(localized: "Wrote into")
-        case (ToolNames.writeToFile, .failed):
+        case (ToolNames.writeFile, .failed):
             return String(localized: "Failed to write into")
-        case (ToolNames.readFromFile, .running):
+        case (ToolNames.editFile, .running):
+            return String(localized: "Editing")
+        case (ToolNames.editFile, .completed):
+            return String(localized: "Edited")
+        case (ToolNames.editFile, .failed):
+            return String(localized: "Failed to edit")
+        case (ToolNames.readFile, .running):
             return String(localized: "Reading")
-        case (ToolNames.readFromFile, .completed):
+        case (ToolNames.readFile, .completed):
             return String(localized: "Read")
         default:
             return String(localized: "Failed to read")
@@ -72,7 +78,7 @@ struct FileToolRenderer: View {
 
 #Preview {
     ScrollView {
-        let toolCall = ToolCall(function: .init(name: ToolNames.readFromFile, arguments: ["path": "1.pdf"]))
+        let toolCall = ToolCall(function: .init(name: ToolNames.readFile, arguments: ["path": "1.pdf"]))
         
         VStack {
             FileToolRenderer(toolCall: toolCall, result: nil, status: .running)
