@@ -39,11 +39,10 @@ struct AudioPlayer: View {
             case .loading:
                 ProgressView()
             case .loaded, .idle:
-                Waveform(samples: SampleBuffer(samples: model.samples),
-                         start: model.currentSampleTime,
+                Waveform(samples: model.sampleBuffer,
+                         start: model.waveformStart,
                          length: Int(model.sampleRate  * windowDuration))
                     .foregroundStyle(Color.accentColor)
-                    .animation(.linear, value: model.samples.count)
         
                 
                 HStack(alignment: .center) {
@@ -85,9 +84,9 @@ struct AudioPlayer: View {
         .task(id: source) {
             switch source {
             case .url(let url):
-                await model.loadSamples(url: url, maxDuration: windowDuration)
+                await model.loadSamples(url: url)
             case .data(let data, let mimeType):
-                await model.loadSamples(data: data, mimeType: mimeType, maxDuration: windowDuration)
+                await model.loadSamples(data: data, mimeType: mimeType)
             }
         }
         .onDisappear {
@@ -110,25 +109,26 @@ fileprivate final class WaveformModel: NSObject, AVAudioPlayerDelegate {
 
     var state: LoadingState = .idle
     var isPlaying = false
-    var sampleRate: Double = 200
-    var samples: [Float] = []
+    let sampleRate: Double = 200
+    private(set) var sampleBuffer = SampleBuffer(samples: [0, 0, 0])
+    private(set) var availableSampleCount = 0
     var currentTime: TimeInterval = 0
     var totalDuration: TimeInterval = 0
-    var currentSampleTime: Int = 0
+
+    var waveformStart: Int {
+        min(Int(currentTime * sampleRate), max(availableSampleCount - 1, 0))
+    }
 
     var playbackTime: TimeInterval {
         get { currentTime }
         set { seek(to: newValue) }
     }
     
-    private var rawSampleRate: Double = 44_100
-    
-
     private var timer: Timer?
-    
-    private var task: Task<Void, Error>?
-    private var player: AVAudioPlayer? = nil
-    private var file: AVAudioFile? = nil
+    private var samplingTask: Task<Void, Never>?
+    private var player: AVAudioPlayer?
+    private var samples: [Float] = []
+    private var temporaryURL: URL?
     
     nonisolated func audioPlayerDidFinishPlaying(
         _ player: AVAudioPlayer,
@@ -136,108 +136,133 @@ fileprivate final class WaveformModel: NSObject, AVAudioPlayerDelegate {
     ) {
         Task { @MainActor [weak self] in
             self?.isPlaying = false
+            self?.stopTimer()
+            self?.currentTime = player.duration
         }
     }
     
-    func loadSamples(url: URL, maxDuration: TimeInterval = 10) async {
+    func loadSamples(url: URL) async {
         stop()
         state = .loading
         
         do {
-            player = try AVAudioPlayer(contentsOf: url)
-            file = try AVAudioFile(forReading: url)
-            loadSamples(player: player!)
-            
+            try prepare(url: url)
         } catch {
             state = LoadingState.failed(error)
         }
     }
     
-    func loadSamples(data: Data, mimeType: String, maxDuration: TimeInterval = 10) async {
+    func loadSamples(data: Data, mimeType: String) async {
         stop()
         state = .loading
+        var createdTempURL: URL?
         
         do {
-            player = try AVAudioPlayer(data: data)
             guard let type = UTType(mimeType: mimeType) else {
-                return
+                throw WaveformError.unsupportedAudioType
             }
             let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, conformingTo: type)
-            
-            try data.write(to: tempURL, options: .atomic)
-            defer {
-                try? FileManager.default.removeItem(at: tempURL)
+            createdTempURL = tempURL
+            try await Task.detached(priority: .utility) {
+                try data.write(to: tempURL, options: .atomic)
+            }.value
+            try Task.checkCancellation()
+            try prepare(url: tempURL)
+            temporaryURL = tempURL
+            createdTempURL = nil
+        } catch is CancellationError {
+            if let createdTempURL {
+                try? FileManager.default.removeItem(at: createdTempURL)
             }
-            file = try AVAudioFile(forReading: tempURL)
-            loadSamples(player: player!)
-            
+            return
         } catch {
+            if let createdTempURL {
+                try? FileManager.default.removeItem(at: createdTempURL)
+            }
             state = LoadingState.failed(error)
         }
     }
     
-    
-    private func loadSamples(player: AVAudioPlayer) {
+    private func prepare(url: URL) throws {
+        let player = try AVAudioPlayer(contentsOf: url)
+        player.delegate = self
         player.prepareToPlay()
+        self.player = player
         totalDuration = player.duration
-        rawSampleRate = player.format.sampleRate
-        self.startTimer()
-        self.startSamplingTask()
+        state = .loaded
+        startSampling(url: url)
     }
     
     func seek(to: TimeInterval) {
         player?.currentTime = to
-        self.currentTime = to
-        self.currentSampleTime = Int((to / self.totalDuration) * Double(self.samples.count))
+        currentTime = to
     }
     
-    func startSamplingTask() {
-        guard let file = self.file else { return }
-        let format = file.processingFormat
-        let frameCount = AVAudioFrameCount(file.length)
-        let bufferSize = AVAudioFrameCount(rawSampleRate * 0.5)
-        state = .loaded
-        self.task = Task {
-            while file.framePosition < frameCount && !Task.isCancelled {
-                try Task.checkCancellation()
-                
-                guard let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: bufferSize) else { break }
-                try file.read(into: buffer)
-                guard let channelData = buffer.floatChannelData?[0] else { continue }
-                
-                let frameData = Array(UnsafeBufferPointer(start: channelData, count: Int(buffer.frameLength)))
-                
-                self.samples.append(contentsOf: self.downsample(frameData, fromSampleRate: rawSampleRate, toSampleRate: sampleRate))
+    private func startSampling(url: URL) {
+        let stream = Self.sampleChunks(url: url, sampleRate: sampleRate)
+        samplingTask = Task { [weak self] in
+            guard let self else { return }
+
+            do {
+                var lastPublishedAt = Date.timeIntervalSinceReferenceDate
+                for try await chunk in stream {
+                    try Task.checkCancellation()
+                    samples.append(contentsOf: chunk)
+
+                    let now = Date.timeIntervalSinceReferenceDate
+                    if now - lastPublishedAt >= 0.25 {
+                        publishSamples()
+                        lastPublishedAt = now
+                    }
+                }
+                publishSamples()
+            } catch is CancellationError {
+                return
+            } catch {
+                pause()
+                state = .failed(error)
             }
         }
     }
     
-    func stopSamplingTask() {
-        task?.cancel()
-        self.task = nil
+    private func publishSamples() {
+        let displaySamples = samples.count >= 3
+            ? samples
+            : samples + Array(repeating: 0, count: 3 - samples.count)
+        sampleBuffer = SampleBuffer(samples: displaySamples)
+        availableSampleCount = samples.count
     }
     
     func stop() {
         stopTimer()
+        samplingTask?.cancel()
+        samplingTask = nil
         samples = []
+        publishSamples()
         player?.stop()
+        player = nil
         isPlaying = false
         state = .idle
-        stopSamplingTask()
-        file = nil
+        currentTime = 0
+        totalDuration = 0
+        if let temporaryURL {
+            try? FileManager.default.removeItem(at: temporaryURL)
+            self.temporaryURL = nil
+        }
     }
     
     func pause() {
         player?.pause()
         isPlaying = false
         stopTimer()
-        stopSamplingTask()
-        state = .idle
     }
     
     func play() {
-        startSamplingTask()
-        player?.play()
+        guard let player else { return }
+        if player.currentTime >= player.duration {
+            seek(to: 0)
+        }
+        guard player.play() else { return }
         isPlaying = true
         startTimer()
     }
@@ -257,7 +282,6 @@ fileprivate final class WaveformModel: NSObject, AVAudioPlayerDelegate {
             Task { @MainActor in
                 guard let self, let player = self.player else { return }
                 self.currentTime = player.currentTime
-                self.currentSampleTime = Int((player.currentTime / self.totalDuration) * Double(self.samples.count))
             }
         }
     }
@@ -267,29 +291,86 @@ fileprivate final class WaveformModel: NSObject, AVAudioPlayerDelegate {
         timer = nil
     }
     
-    func downsample(
-        _ input: [Float],
-        fromSampleRate: Double,
-        toSampleRate: Double
-    ) -> [Float] {
-        assert(fromSampleRate >= toSampleRate)
-        let ratio = fromSampleRate / toSampleRate
-        let chunkSize = max(1, Int(ratio))
-        
-        var result: [Float] = []
-        result.reserveCapacity(input.count / chunkSize)
-        
-        var i = 0
-        
-        while i < input.count {
-            let end = min(i + chunkSize, input.count)
-            let chunk = input[i..<end]
-            let peak = chunk.max(by: { abs($0) < abs($1) }) ?? 0
-            result.append(peak)
-            i += chunkSize
+    nonisolated private static func sampleChunks(
+        url: URL,
+        sampleRate: Double
+    ) -> AsyncThrowingStream<[Float], Error> {
+        AsyncThrowingStream { continuation in
+            let worker = Task.detached(priority: .utility) {
+                do {
+                    let file = try AVAudioFile(forReading: url)
+                    let format = file.processingFormat
+                    let sourceRate = format.sampleRate
+                    let bufferSize = AVAudioFrameCount(sourceRate * 0.5)
+                    let framesPerSample = sourceRate / sampleRate
+                    let chunkSampleCount = Int(sampleRate * 5)
+
+                    var sourceFrame = 0
+                    var nextBoundary = framesPerSample
+                    var peak: Float = 0
+                    var framesInPeak = 0
+                    var chunk: [Float] = []
+                    chunk.reserveCapacity(chunkSampleCount)
+
+                    while file.framePosition < file.length {
+                        try Task.checkCancellation()
+                        guard let buffer = AVAudioPCMBuffer(
+                            pcmFormat: format,
+                            frameCapacity: bufferSize
+                        ) else {
+                            break
+                        }
+                        try file.read(into: buffer)
+                        guard let channelData = buffer.floatChannelData else { continue }
+
+                        for frame in 0 ..< Int(buffer.frameLength) {
+                            for channel in 0 ..< Int(format.channelCount) {
+                                let value = channelData[channel][frame]
+                                if abs(value) > abs(peak) {
+                                    peak = value
+                                }
+                            }
+
+                            sourceFrame += 1
+                            framesInPeak += 1
+                            if Double(sourceFrame) >= nextBoundary {
+                                chunk.append(peak)
+                                peak = 0
+                                framesInPeak = 0
+                                nextBoundary += framesPerSample
+
+                                if chunk.count == chunkSampleCount {
+                                    continuation.yield(chunk)
+                                    chunk.removeAll(keepingCapacity: true)
+                                }
+                            }
+                        }
+                    }
+
+                    if framesInPeak > 0 {
+                        chunk.append(peak)
+                    }
+                    if !chunk.isEmpty {
+                        continuation.yield(chunk)
+                    }
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+
+            continuation.onTermination = { @Sendable _ in
+                worker.cancel()
+            }
         }
-        
-        return result
+    }
+}
+
+private enum WaveformError: LocalizedError {
+    case unsupportedAudioType
+
+    var errorDescription: String? {
+        String(localized: "Unsupported audio type")
     }
 }
 
