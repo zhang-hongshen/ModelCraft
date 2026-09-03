@@ -19,7 +19,7 @@ class VideoTool {
     static var textToVideo: Tool<textToVideoInput, textToVideoOutput> {
         Tool<textToVideoInput, textToVideoOutput>(
             name: "text_to_video",
-            description: "Generate an LTX Video clip from a text prompt with an explicit aspect ratio, long-edge resolution, and duration",
+            description: "Generate a Video clip from a text prompt with an explicit aspect ratio, long-edge resolution, and duration",
             parameters: [
                 .required("prompt", type: .string, description: "Description of the video and motion"),
                 .required(
@@ -38,12 +38,12 @@ class VideoTool {
                         "x-recommended": LTXVideoResolution.deviceRecommendation.rawValue,
                     ]),
                 .required(
-                    "duration_seconds",
+                    "duration",
                     type: .int,
                     description: "Output duration in seconds",
                     extraProperties: [
-                        "minimum": LTXVideoEvaluateParameters.minimumDurationSeconds,
-                        "maximum": LTXVideoEvaluateParameters.maximumDurationSeconds,
+                        "minimum": LTXVideoEvaluateParameters.minimumDuration,
+                        "maximum": LTXVideoEvaluateParameters.maximumDuration,
                     ])
             ]
         ) { input in
@@ -55,15 +55,15 @@ class VideoTool {
             guard let resolution = LTXVideoResolution(rawValue: input.resolution) else {
                 throw LTXVideoToolError.unsupportedResolution(input.resolution)
             }
-            guard input.durationSeconds >= LTXVideoEvaluateParameters.minimumDurationSeconds,
-                  input.durationSeconds <= LTXVideoEvaluateParameters.maximumDurationSeconds else {
-                throw LTXVideoToolError.unsupportedDuration(input.durationSeconds)
+            guard input.duration >= LTXVideoEvaluateParameters.minimumDuration,
+                  input.duration <= LTXVideoEvaluateParameters.maximumDuration else {
+                throw LTXVideoToolError.unsupportedDuration(input.duration)
             }
             let frames = try await evaluator.generate(
                 prompt: input.prompt,
                 ratio: ratio,
                 resolution: resolution,
-                durationSeconds: input.durationSeconds)
+                duration: input.duration)
             try LTXVideoIO.saveVideo(
                 frames: frames,
                 fps: LTXVideoEvaluateParameters.frameRate,
@@ -81,13 +81,13 @@ struct textToVideoInput: Codable {
     let prompt: String
     let ratio: String
     let resolution: Int
-    let durationSeconds: Int
+    let duration: Int
 
     enum CodingKeys: String, CodingKey {
         case prompt
         case ratio
         case resolution
-        case durationSeconds = "duration_seconds"
+        case duration = "duration"
     }
 }
 

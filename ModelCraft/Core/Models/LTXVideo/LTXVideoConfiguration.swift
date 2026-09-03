@@ -84,7 +84,7 @@ public struct LTXVideoEvaluateParameters: Sendable {
     public var prompt: String
     public var ratio: LTXVideoAspectRatio
     public var resolution: LTXVideoResolution
-    public var durationSeconds: Int
+    public var duration: Int
 
     public var width: Int { ratio.dimensions(resolution: resolution).width }
     public var height: Int { ratio.dimensions(resolution: resolution).height }
@@ -96,11 +96,11 @@ public struct LTXVideoEvaluateParameters: Sendable {
     static let steps = 8
     static let decodeNoiseScale: Float = 0.025
     static let maxTokenCount = 128
-    static let minimumDurationSeconds = 1
-    static let maximumDurationSeconds = 10
+    static let minimumDuration = 1
+    static let maximumDuration = 10
 
     var frameCount: Int {
-        let requestedFrames = durationSeconds * Self.frameRate
+        let requestedFrames = duration * Self.frameRate
         return ((requestedFrames - 1 + 7) / 8) * 8 + 1
     }
 
@@ -108,12 +108,12 @@ public struct LTXVideoEvaluateParameters: Sendable {
         prompt: String,
         ratio: LTXVideoAspectRatio,
         resolution: LTXVideoResolution,
-        durationSeconds: Int
+        duration: Int
     ) {
         self.prompt = prompt
         self.ratio = ratio
         self.resolution = resolution
-        self.durationSeconds = durationSeconds
+        self.duration = duration
     }
 
     private static func padded(_ value: Int, toMultipleOf multiple: Int) -> Int {
@@ -203,12 +203,12 @@ public struct LTXVideoConfiguration: Sendable {
         ],
         transformer: .ltx2B,
         vae: .ltx,
-        makeParameters: { prompt, ratio, resolution, durationSeconds in
+        makeParameters: { prompt, ratio, resolution, duration in
             LTXVideoEvaluateParameters(
                 prompt: prompt,
                 ratio: ratio,
                 resolution: resolution,
-                durationSeconds: durationSeconds)
+                duration: duration)
         }
     )
 }
