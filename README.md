@@ -1,88 +1,67 @@
-<div align="center"><img alt="ModelCraft" height="200px" src="./logo.png" /></div>
+<div align="center">
+  <img alt="ModelCraft" height="200" src="./logo.png" />
 
-<div align="center" style="line-height: 1;">
-  <a href="README_zh-CN.md" style="margin: 2px;">
-    <img alt="Language" src="https://img.shields.io/badge/lang-简体中文-red.svg" style="display: inline-block; vertical-align: middle;"/>
-  </a>  
-</div>
-<div align="center" style="line-height: 1;">
-  <a href="https://github.com/zhang-hongshen/ModelCraft/LICENSE" style="margin: 2px;">
-    <img alt="License" src="https://img.shields.io/badge/License-MIT-f5de53?&color=f5de53" style="display: inline-block; vertical-align: middle;"/>
-  </a>
-  <a href="https://deepwiki.com/zhang-hongshen/ModelCraft" style="margin: 2px;">
-    <img alt="Docs" src="https://img.shields.io/badge/docs-DeepWiki-blue" style="display: inline-block; vertical-align: middle;"/>
-  </a>
+  <p><strong>A local-first, open-source AI assistant for Apple platforms.</strong></p>
+
+  <p>
+    <a href="README_zh-CN.md"><img alt="简体中文" src="https://img.shields.io/badge/lang-简体中文-red.svg" /></a>
+    <a href="https://github.com/zhang-hongshen/ModelCraft/releases"><img alt="Release" src="https://img.shields.io/github/v/release/zhang-hongshen/ModelCraft?display_name=tag" /></a>
+    <a href="https://github.com/zhang-hongshen/ModelCraft/blob/master/LICENSE"><img alt="License" src="https://img.shields.io/badge/license-MIT-f5de53" /></a>
+    <a href="https://deepwiki.com/zhang-hongshen/ModelCraft"><img alt="Documentation" src="https://img.shields.io/badge/docs-DeepWiki-blue" /></a>
+  </p>
 </div>
 
-## 💡 What is ModelCraft?
+ModelCraft brings local language and media models into one native app for macOS, iPhone, and iPad. Chat with a model, organize work into projects, provide files as context, and let the assistant use tools to complete multi-step tasks.
 
-**ModelCraft** is a cross-platform personal AI assistant for **Mac, iPhone, and iPad**. One app, your devices—chat, organize projects, and work with AI wherever you are. Everything runs on your device, so your conversations and files stay private.
+<!-- Screenshot: Main chat showing a multi-step tool workflow in light and dark mode. -->
 
-ModelCraft is built for **multimodal** use: talk with text or voice, send photos, read documents and audio, let the AI search your project files, and even create images from a description. Different inputs, one assistant.
+## What ModelCraft does
 
-## 💬 Chat in action
+- **Local model conversations:** Browse, download, and switch between supported models without configuring a separate inference server.
+- **Multimodal input:** Work with text, voice input, images, documents, and audio in the same conversation.
+- **Projects and document context:** Keep related chats and files together, then let the assistant search project documents when answering.
+- **Agent workflows on macOS:** Allow the assistant to work with files, run commands, fetch web pages, and interact with the screen through available tools.
+- **Local media creation:** Generate images, audio, music, and video with supported models and keep the results in the conversation.
+- **Context control:** Inspect context usage and compact long conversations when needed.
 
-One message can do many things—generate an image, write a file, and explain the result, all in the same conversation:
+<!-- Screenshot: Projects and document context. -->
 
-> I'm designing a logo for a coding app. Generate an image of a glowing blue silicon chip with a futuristic vibe. Then, create a file named design_notes.md and write a description of this image inside it, including the style keywords you used.
+<!-- Screenshot: Model Store and model download management. -->
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="./assets/chat_dark.png">
-  <source media="(prefers-color-scheme: light)" srcset="./assets/chat_light.png">
-  <img src="./assets/chat_dark.png" alt="Chat — multimodal assistant generating an image and writing a file" width="100%">
-</picture>
+## Getting started
 
-## ✨ Why Choose ModelCraft?
+### Requirements
 
-- **Works across your Apple devices:** The same experience on Mac, iPhone, and iPad—pick up where you left off on any device.
-- **Truly multimodal:** Text, voice, images, documents, and generated pictures—all in one conversation.
-- **Private & local:** Your data stays on your device. No cloud account required to get started.
-- **Ready to use:** Download, choose a model, and start chatting—no complicated setup.
-- **Your own AI library:** Build project knowledge bases from your files and switch models anytime.
+- macOS 15 or later
+- iOS or iPadOS 18 or later
 
-## 🚀 Get Started
+### Install a release
 
-1. **Download** the latest version from [Releases](https://github.com/zhang-hongshen/ModelCraft/releases).
-2. **Install** on your Mac, iPhone, or iPad.
-3. **Open the Model Store** and download a model, then start your first chat.
+Download the latest available build from [GitHub Releases](https://github.com/zhang-hongshen/ModelCraft/releases). Open ModelCraft, download a compatible model from the Model Store, and start a conversation.
 
-*(Homebrew installation is coming soon.)*
+### Build from source
 
-## 🌟 Key Features
+1. Clone this repository.
+2. Open `ModelCraft.xcodeproj` in Xcode.
+3. Select the ModelCraft scheme and an Apple platform destination.
+4. Build and run the app. Xcode resolves the Swift package dependencies declared by the project.
 
-🍔 **Multimodal chat:** Type, speak, or share images and files—the AI understands more than plain text. Switch models and follow along as the assistant works through tasks.
+## How it works
 
-🍞 **Projects & knowledge base:** Collect chats and files in one place. Add PDFs, notes, pictures, and audio—the AI can read and answer based on what you add.
+ModelCraft runs supported models directly on your device. A conversation can remain a simple local chat or become an agent workflow: attach context, enable the tools you want to expose, and let the model choose the appropriate tool from its description as the task develops.
 
-🍰 **Model store:** Browse and download models with one tap, on any supported device. Pause and resume downloads whenever you like.
+Projects provide a persistent workspace for related chats and documents. On macOS, additional system capabilities are available for tasks that involve files, commands, or screen interaction.
 
-🤖 **Smarter help on Mac:** On Mac, the assistant can take on extra hands-on tasks—working with files, the system, and your screen when you need it.
+## Privacy and network access
 
-## 📸 More screenshots
+Local inference and conversation data stay on your device. Model downloads, web access, and other explicitly connected features require a network connection and may send requests to the service you choose to use.
 
-<table width="100%">
-  <tr>
-    <td width="50%">
-      <picture>
-        <source media="(prefers-color-scheme: dark)" srcset="./assets/project_dark.png">
-        <source media="(prefers-color-scheme: light)" srcset="./assets/project_light.png">
-        <img src="./assets/project_dark.png" alt="Projects" width="100%">
-      </picture>
-    </td>
-    <td width="50%">
-      <picture>
-        <source media="(prefers-color-scheme: dark)" srcset="./assets/model_store_dark.png">
-        <source media="(prefers-color-scheme: light)" srcset="./assets/model_store_light.png">
-        <img src="./assets/model_store_dark.png" alt="Model Store" width="100%">
-      </picture>
-    </td>
-  </tr>
-</table>
+## Documentation and contributing
 
-## 📄 Documentation
+- Read the [project documentation](https://deepwiki.com/zhang-hongshen/ModelCraft).
+- Report bugs or propose features through [GitHub Issues](https://github.com/zhang-hongshen/ModelCraft/issues).
+- Contributions are welcome. Please open an issue before starting a large change so its scope can be discussed first.
 
-Want to learn more? See our [documentation](https://deepwiki.com/zhang-hongshen/ModelCraft).
+## License
 
-## 📜 License
-
-ModelCraft is available under the MIT License. See [`LICENSE`](./LICENSE) for details.
+ModelCraft is open source under the [MIT License](./LICENSE).

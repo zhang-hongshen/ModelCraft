@@ -1,88 +1,67 @@
-<div align="center"><img alt="ModelCraft" height="200px" src="./logo.png" /></div>
+<div align="center">
+  <img alt="ModelCraft" height="200" src="./logo.png" />
 
-<div align="center" style="line-height: 1;">
-  <a href="README.md" style="margin: 2px;">
-    <img alt="Language" src="https://img.shields.io/badge/lang-English-blue.svg" style="display: inline-block; vertical-align: middle;"/>
-  </a>  
-</div>
-<div align="center" style="line-height: 1;">
-  <a href="https://github.com/zhang-hongshen/ModelCraft/LICENSE" style="margin: 2px;">
-    <img alt="License" src="https://img.shields.io/badge/License-MIT-f5de53?&color=f5de53" style="display: inline-block; vertical-align: middle;"/>
-  </a>
-  <a href="https://deepwiki.com/zhang-hongshen/ModelCraft" style="margin: 2px;">
-    <img alt="Docs" src="https://img.shields.io/badge/docs-DeepWiki-blue" style="display: inline-block; vertical-align: middle;"/>
-  </a>
+  <p><strong>面向 Apple 平台、本地优先的开源 AI 助手。</strong></p>
+
+  <p>
+    <a href="README.md"><img alt="English" src="https://img.shields.io/badge/lang-English-blue.svg" /></a>
+    <a href="https://github.com/zhang-hongshen/ModelCraft/releases"><img alt="Release" src="https://img.shields.io/github/v/release/zhang-hongshen/ModelCraft?display_name=tag" /></a>
+    <a href="https://github.com/zhang-hongshen/ModelCraft/blob/master/LICENSE"><img alt="License" src="https://img.shields.io/badge/license-MIT-f5de53" /></a>
+    <a href="https://deepwiki.com/zhang-hongshen/ModelCraft"><img alt="Documentation" src="https://img.shields.io/badge/docs-DeepWiki-blue" /></a>
+  </p>
 </div>
 
-## 💡 ModelCraft 是什么？
+ModelCraft 将本地语言模型与媒体生成模型整合到一款原生应用中，支持 macOS、iPhone 和 iPad。你可以与模型对话、使用项目整理工作、把文件作为上下文，并让助手通过工具完成多步骤任务。
 
-**ModelCraft** 是一款**跨平台**的个人 AI 助手，支持 **Mac、iPhone 和 iPad**。同一款应用，多台设备随时使用——对话、整理项目、与 AI 协作。一切都在本地运行，对话与文件更安心。
+<!-- 截图：浅色与深色模式下，展示多步骤工具任务的主对话界面。 -->
 
-ModelCraft 主打**多模态**体验：文字或语音交流、发送图片、阅读文档与音频、检索项目资料、根据描述生成图片……多种方式，一个助手。
+## ModelCraft 可以做什么
 
-## 💬 对话示例
+- **本地模型对话：** 直接浏览、下载和切换受支持的模型，无需另外配置推理服务器。
+- **多模态输入：** 在同一次对话中使用文字、语音输入、图片、文档和音频。
+- **项目与文档上下文：** 将相关对话和文件集中到项目中，让助手在回答时检索项目文档。
+- **macOS Agent 工作流：** 通过可用工具，让助手处理文件、运行命令、读取网页并与屏幕交互。
+- **本地媒体创作：** 使用受支持的模型生成图片、音频、音乐和视频，并在对话中查看结果。
+- **上下文管理：** 查看上下文使用情况，并在长对话中按需压缩上下文。
 
-一句话就能完成多件事——生成图片、写入文件、给出说明，全在同一次对话里：
+<!-- 截图：项目与文档上下文。 -->
 
-> I'm designing a logo for a coding app. Generate an image of a glowing blue silicon chip with a futuristic vibe. Then, create a file named design_notes.md and write a description of this image inside it, including the style keywords you used.
+<!-- 截图：模型商店与模型下载管理。 -->
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="./assets/chat_dark.png">
-  <source media="(prefers-color-scheme: light)" srcset="./assets/chat_light.png">
-  <img src="./assets/chat_dark.png" alt="聊天界面 — 多模态助手生成图片并写入文件" width="100%">
-</picture>
+## 开始使用
 
-## ✨ 为什么选择 ModelCraft？
+### 系统要求
 
-- **覆盖你的 Apple 设备：** Mac、iPhone、iPad 都能用，在不同设备间无缝衔接。
-- **真正的多模态：** 文字、语音、图片、文档与 AI 绘图，都能在同一次对话里完成。
-- **本地隐私：** 数据留在你的设备上，上手即可使用，无需复杂配置。
-- **开箱即用：** 下载、选模型、开聊，几步就能开始。
-- **专属智库：** 用你自己的文件搭建项目知识库，随时切换模型。
+- macOS 15 或更高版本
+- iOS 或 iPadOS 18 或更高版本
 
-## 🚀 快速开始
+### 安装发布版本
 
-1. **下载：** 前往 [发布页面](https://github.com/zhang-hongshen/ModelCraft/releases) 获取最新版本。
-2. **安装** 到你的 Mac、iPhone 或 iPad。
-3. **打开模型商店，** 下载一个模型，即可开始对话。
+前往 [GitHub Releases](https://github.com/zhang-hongshen/ModelCraft/releases) 下载最新可用版本。打开 ModelCraft，在模型商店中下载兼容模型，即可开始对话。
 
-*（Homebrew 安装方式正在开发中。）*
+### 从源码构建
 
-## 🌟 核心功能
+1. 克隆此仓库。
+2. 使用 Xcode 打开 `ModelCraft.xcodeproj`。
+3. 选择 ModelCraft scheme 和目标 Apple 平台。
+4. 构建并运行应用。Xcode 会解析项目声明的 Swift Package 依赖。
 
-🍔 **多模态对话：** 打字、说话、发图、传文件——AI 不只会读文字。可切换模型，并查看助手一步步完成任务。
+## 工作方式
 
-🍞 **项目与知识库：** 把对话和资料收进项目。添加 PDF、笔记、图片、音频等，AI 能根据你放入的内容检索并回答。
+ModelCraft 直接在设备上运行受支持的模型。一次对话既可以是简单的本地聊天，也可以成为 Agent 工作流：添加上下文、启用希望提供给模型的工具，让模型随着任务推进，根据工具描述选择合适的能力。
 
-🍰 **模型商店：** 在任意支持的设备上一键浏览、下载模型，下载过程可随时暂停与继续。
+项目为相关对话和文档提供持续使用的工作空间。在 macOS 上，涉及文件、命令或屏幕交互的任务还可以使用额外的系统能力。
 
-🤖 **Mac 上更省心：** 在 Mac 上，助手还能帮你处理更多实操类任务——操作文件、系统与屏幕，需要时搭把手。
+## 隐私与网络访问
 
-## 📸 更多截图
+本地推理和对话数据保留在你的设备上。模型下载、网页访问以及其他由你明确连接的功能需要网络，并可能向你选择使用的服务发送请求。
 
-<table width="100%">
-  <tr>
-    <td width="50%">
-      <picture>
-        <source media="(prefers-color-scheme: dark)" srcset="./assets/project_dark.png">
-        <source media="(prefers-color-scheme: light)" srcset="./assets/project_light.png">
-        <img src="./assets/project_dark.png" alt="项目" width="100%">
-      </picture>
-    </td>
-    <td width="50%">
-      <picture>
-        <source media="(prefers-color-scheme: dark)" srcset="./assets/model_store_dark.png">
-        <source media="(prefers-color-scheme: light)" srcset="./assets/model_store_light.png">
-        <img src="./assets/model_store_dark.png" alt="模型商店" width="100%">
-      </picture>
-    </td>
-  </tr>
-</table>
+## 文档与贡献
 
-## 📄 文档指南
+- 阅读[项目文档](https://deepwiki.com/zhang-hongshen/ModelCraft)。
+- 通过 [GitHub Issues](https://github.com/zhang-hongshen/ModelCraft/issues) 报告问题或提出功能建议。
+- 欢迎贡献代码。较大的改动建议先创建 Issue，讨论并确认范围。
 
-想了解更多？欢迎查阅 [项目文档](https://deepwiki.com/zhang-hongshen/ModelCraft)。
+## 许可证
 
-## 📜 许可证
-
-ModelCraft 采用 MIT 许可证开源。详见 [`LICENSE`](./LICENSE) 文件。
+ModelCraft 使用 [MIT License](./LICENSE) 开源。
