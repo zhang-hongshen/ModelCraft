@@ -25,7 +25,7 @@ class ComputerUseTool {
 
     static let listRunningApplication = Tool<ListRunningApplicationInput, [RunningAppInfo]>(
         name: "list_running_application",
-        description: "List visible running applications and their bundle identifiers. Use the returned appID with UI inspection and interaction tools.",
+        description: "List visible running applications and their bundle identifiers. Use this when the target application's bundle identifier is unknown; pass the returned appID to application UI inspection and interaction tools.",
         parameters: []
     ) { _ in
         return NSWorkspace.shared.runningApplications
@@ -59,9 +59,9 @@ class ComputerUseTool {
             - Use Context Elements to understand the screen's state, labels, or layout.
         """,
         parameters: [
-            .required("appID", type: .string, description: "Bundle identifier of the target app, e.g. 'com.apple.Safari'"),
-            .optional("appName", type: .string, description: "Localized name of the target app, e.g. 'Safari'"),
-            .optional("maxDepth", type: .int, description: "Maximum UI hierarchy tree depth to traverse (default 30)")
+            .required("appID", type: .string, description: "The target application's bundle identifier, normally obtained from list_running_application, for example `com.apple.Safari`."),
+            .optional("appName", type: .string, description: "The target application's localized visible name, used as a fallback when appID does not match, for example `Safari`."),
+            .optional("maxDepth", type: .int, description: "Maximum accessibility-tree depth to traverse. Omit it to use 30; lower values return less nested context.")
         ]
     ) { input in
         if !checkAccessibilityPermission() {
@@ -84,12 +84,12 @@ class ComputerUseTool {
     // MARK: - Click an element
     static let clickElement = Tool<ClickElementInput, ActionOutput>(
         name: "click_element",
-        description: "Perform one of the element's advertised accessibility actions. Call get_ui_hierarchy first and use its current index and action name.",
+        description: "Perform one advertised accessibility action on a semantic UI element. Call get_ui_hierarchy first and use its current index and action name; indexes become stale after UI changes. Call get_ui_hierarchy again after the action, or capture_app_window for visual state, before treating the interaction as successful.",
         parameters: [
-            .required("appID", type: .string, description: "Bundle identifier of the target app, e.g. 'com.apple.Safari'"),
-            .optional("appName", type: .string, description: "Localized name of the target app, e.g. 'Safari'"),
-            .required("index", type: .int, description: "index of the element"),
-            .required("action", type: .string, description: "action to perform, e.g. AXPress")
+            .required("appID", type: .string, description: "The bundle identifier used in the get_ui_hierarchy call that produced the element index."),
+            .optional("appName", type: .string, description: "The localized application name used as a fallback when appID does not match a running app."),
+            .required("index", type: .int, description: "A current numeric interactive-element index returned by get_ui_hierarchy for this application."),
+            .required("action", type: .string, description: "One exact accessibility action advertised on that indexed element, for example `AXPress`.")
         ]
     ) { input in
         if !checkAccessibilityPermission() {
@@ -129,12 +129,12 @@ class ComputerUseTool {
     // MARK: - Type Text
     static let typeText = Tool<TypeTextInput, ActionOutput>(
         name: "type_text",
-        description: "Set the full value of an editable text field or text area. Call get_ui_hierarchy first and use a current text element index.",
+        description: "Replace the full value of a semantic editable text field or text area. Call get_ui_hierarchy first and use a current editable element index; indexes become stale after UI changes. Inspect the hierarchy again after typing, or capture_app_window for visual state, before treating the interaction as successful.",
         parameters: [
-            .required("appID", type: .string, description: "Bundle identifier of the target app, e.g. 'com.apple.TextEdit'"),
-            .optional("appName", type: .string, description: "Localized name of the target app, e.g. 'Safari'"),
-            .required("index", type: .int, description: "Current index of an editable text element from get_ui_hierarchy"),
-            .required("text", type: .string, description: "The complete text value to place in the element")
+            .required("appID", type: .string, description: "The bundle identifier used in the get_ui_hierarchy call that produced the element index."),
+            .optional("appName", type: .string, description: "The localized application name used as a fallback when appID does not match a running app."),
+            .required("index", type: .int, description: "A current index for an editable element returned by get_ui_hierarchy for this application."),
+            .required("text", type: .string, description: "The complete value to place in the element, replacing its existing text rather than appending to it.")
         ]
     ) { input in
         if !checkAccessibilityPermission() {
@@ -174,12 +174,12 @@ class ComputerUseTool {
     // MARK: - Press a key / key combo
     static let pressKey = Tool<PressKeyInput, ActionOutput>(
         name: "press_key",
-        description: "Send a keyboard key press or key combination (e.g. Return, Tab, Cmd+A, Escape) to a target app.",
+        description: "Send one virtual keyboard key press or key combination to a target application, such as Return, Tab, Command+A, or Escape. Inspect the hierarchy or capture the application again afterward before treating any resulting UI change as successful.",
         parameters: [
-            .required("appID", type: .string, description: "Bundle identifier of the target app, e.g. 'com.apple.Safari'"),
-            .optional("appName", type: .string, description: "Localized name of the target app, e.g. 'Safari'"),
-            .required("keyCode", type: .int, description: "Virtual key code (e.g. 36 = Return, 48 = Tab, 53 = Escape)"),
-            .optional("modifiers", type: .array(elementType: .string), description: "Modifier keys: 'command', 'shift', 'option', 'control'")
+            .required("appID", type: .string, description: "The target application's bundle identifier, normally obtained from list_running_application."),
+            .optional("appName", type: .string, description: "The localized application name used as a fallback when appID does not match a running app."),
+            .required("keyCode", type: .int, description: "The macOS virtual key code, for example 36 for Return, 48 for Tab, or 53 for Escape."),
+            .optional("modifiers", type: .array(elementType: .string), description: "Modifier names held during the key press. Supported values are `command`, `shift`, `option`, and `control`; omit for no modifiers.")
         ]
     ) { input in
         if !checkAccessibilityPermission() {

@@ -55,9 +55,9 @@ class SearchTool {
     
     static let searchMap = Tool<SearchMapInput, SearchMapOutput>(
         name: "search_map",
-        description: "Search for points of interest, restaurants, or locations nearby or in a specific area.",
+        description: "Search Apple Maps for real-world places such as businesses, restaurants, landmarks, or addresses. Returns matching names, addresses, coordinates, and available contact details; distance is available when current-location search is enabled.",
         parameters: [
-            .required("query", type: .string, description: "The search keyword."),
+            .required("query", type: .string, description: "A place name, category, address, or natural-language location query. Include a city or area when the search is not near the user."),
             .required("useCurrentLocation", type: .bool, description: "Set to true if the user implies their current location. Set to false if a specific city or remote location is mentioned."),
             .optional("numOfResults",
                       type: .int,
@@ -76,9 +76,9 @@ class SearchTool {
     static func searchRelevantDocuments(projectID: PersistentIdentifier) -> Tool<SearchRelevantDocumentsInput, SearchRelevantDocumentsOutput>{
         return Tool(
             name: "search_relevant_documents",
-            description: "Search for information in the user's uploaded documents.",
+            description: "Search the current project's indexed documents for passages relevant to a question. Use this to ground an answer in files the user added to the project; it returns matching text passages, not web results or arbitrary local files.",
             parameters: [
-                .required("query", type: .string, description: "The keyword or question to search for in the document database."),
+                .required("query", type: .string, description: "The specific question, concept, or keywords to match against the current project's indexed document content."),
                 .optional("numOfResults", type: .int, description: "The maximum number of results to return. Defaults to 10 if not specified.")
             ]
         ) { input in

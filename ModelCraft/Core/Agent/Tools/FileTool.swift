@@ -19,7 +19,7 @@ class FileTool {
     ]
     
     static func writeFile(_ path: String, content: String) throws {
-        let url = try PathResolver.resolve(path)
+        let url = fileURL(for: path)
         let directory = url.deletingLastPathComponent()
         try FileManager.default.createDirectory(
             at: directory,
@@ -29,7 +29,7 @@ class FileTool {
     }
     
     static func readFile(_ path: String) throws -> String {
-        let url = try PathResolver.resolve(path)
+        let url = fileURL(for: path)
         let data = try Data(contentsOf: url)
         return String(decoding: data, as: UTF8.self)
     }
@@ -48,7 +48,7 @@ class FileTool {
     }
 
     static func listDirectory(_ path: String) throws -> [DirectoryEntry] {
-        let url = try PathResolver.resolve(path)
+        let url = fileURL(for: path)
         return try FileManager.default.contentsOfDirectory(
             at: url,
             includingPropertiesForKeys: [.isDirectoryKey]
@@ -58,6 +58,10 @@ class FileTool {
                 path: itemURL.path,
                 isDirectory: try itemURL.resourceValues(forKeys: [.isDirectoryKey]).isDirectory == true)
         }.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+    }
+
+    static func fileURL(for path: String) -> URL {
+        URL(fileURLWithPath: path, relativeTo: .documentsDirectory).standardizedFileURL
     }
     
     static let readFile = Tool<ReadFileInput, ReadFileOutput>(
@@ -91,10 +95,10 @@ class FileTool {
     
     static let writeFile = Tool<WriteFileInput, WriteFileOutput>(
         name: ToolNames.writeFile,
-        description: "Writes text content to a file. It creates the file if it doesn't exist or overwrites it if it already exists.",
+        description: "Write complete text content to a local file. Creates missing parent directories and the file when needed; replaces the entire existing file rather than appending or patching it.",
         parameters: [
-            .required("path", type: .string, description: "The file path where the content should be saved."),
-            .required("content", type: .string, description: "The string content to write into the file.")
+            .required("path", type: .string, description: "The absolute or Documents-relative destination path. An existing file at this path will be overwritten."),
+            .required("content", type: .string, description: "The complete text that the file must contain after the write.")
         ]
     ) { input in
         try FileTool.writeFile(input.path, content: input.content)
@@ -103,11 +107,11 @@ class FileTool {
 
     static let editFile = Tool<EditFileInput, EditFileOutput>(
         name: ToolNames.editFile,
-        description: "Edits a file by replacing one unique occurrence of exact text.",
+        description: "Patch an existing text file by replacing exactly one unique occurrence of literal text. The call fails without changing the file when the old text is absent or appears more than once.",
         parameters: [
-            .required("path", type: .string, description: "The path of the file to edit."),
+            .required("path", type: .string, description: "The absolute or Documents-relative path of the existing text file to patch."),
             .required("old_text", type: .string, description: "The exact text to replace. It must occur exactly once."),
-            .required("new_text", type: .string, description: "The replacement text.")
+            .required("new_text", type: .string, description: "The complete replacement for old_text; use an empty string to delete that occurrence.")
         ]
     ) { input in
         let replacements = try FileTool.editFile(
@@ -119,9 +123,9 @@ class FileTool {
 
     static let listDirectory = Tool<ListDirectoryInput, ListDirectoryOutput>(
         name: ToolNames.listDirectory,
-        description: "Lists the direct children of a directory.",
+        description: "List the direct children of one local directory without recursively reading descendants. Returns each child's name, path, and whether it is a directory.",
         parameters: [
-            .optional("path", type: .string, description: "The directory path. Defaults to the app's Documents directory.")
+            .optional("path", type: .string, description: "The absolute or Documents-relative directory path. Omit it to list the app's Documents directory.")
         ]
     ) { input in
         let entries = try FileTool.listDirectory(input.path ?? "")

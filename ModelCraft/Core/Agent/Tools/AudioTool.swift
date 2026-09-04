@@ -17,9 +17,9 @@ class AudioTool {
     
     static let textToAudio = Tool<textToAudioInput, textToAudioOutput>(
             name: "text_to_audio",
-            description: "Generate an audio from text prompt",
+            description: "Generate a new WAV music or audio clip from a text description with the local audio model. Saves the file in the Music directory and returns its file URL and MIME type.",
             parameters: [
-                .required("prompt", type: .string, description: "Description of the audio")
+                .required("prompt", type: .string, description: "Describe the desired sound, including genre or source, mood, instruments, rhythm, and other audible qualities that matter.")
             ]
         ) { input in
             let evaluator = await MusicGenEvaluator()

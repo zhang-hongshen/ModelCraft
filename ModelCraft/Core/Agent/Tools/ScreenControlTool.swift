@@ -23,7 +23,7 @@ class ScreenControlTool {
     
     static let captureFullScreen = Tool<CaptureFullScreenInput, CaptureFullScreenOutput?>(
         name: "capture_full_screen",
-        description: "Capture all displays for visual context. Prefer capture_app_window for a specific app, and use get_ui_hierarchy when semantic labels or actionable element indexes are needed.",
+        description: "Capture all displays as one screenshot for visual context or global screen coordinates. Use capture_app_window for a known application, or get_ui_hierarchy when semantic labels and actionable element indexes are needed. Returns image data, MIME type, and total size in screen points.",
         parameters: []
     ) { input in
         guard let screenshot = try await ScreenControlManager.shared.takeFullScreenshot() else { return nil }
@@ -38,7 +38,7 @@ class ScreenControlTool {
     
     static let captureAppWindow = Tool<CaptureAppWindowInput, [AppWindow]>(
         name: "capture_app_window",
-        description: "Capture every visible window of an application for visual inspection. Use get_ui_hierarchy alongside this when you need semantic labels or element indexes.",
+        description: "Capture every visible window of one application for visual layout, state, and global screen coordinates. Use get_ui_hierarchy instead when semantic labels or actionable element indexes are needed. Returns each window's image, identifier, and frame in screen points.",
         parameters: [
             .required("appID", type: .string, description: "The bundle identifier of the target app (e.g., com.apple.Finder)")
         ]
@@ -64,10 +64,10 @@ class ScreenControlTool {
     
     static let move = Tool<MoveInput, MoveOutput>(
         name: "move",
-        description: "Moves the mouse cursor to a specific (x, y) location.",
+        description: "Move the pointer to a global screen coordinate without clicking. Obtain coordinates from a recent screen or application-window capture.",
         parameters: [
-            .required("x", type: .double, description: "The target x coordinate."),
-            .required("y", type: .double, description: "The target y coordinate.")
+            .required("x", type: .double, description: "Horizontal coordinate in global screen points."),
+            .required("y", type: .double, description: "Vertical coordinate in global screen points.")
         ]
     ) { input in
         ScreenControlManager.shared.move(x: input.x, y: input.y)
@@ -76,12 +76,12 @@ class ScreenControlTool {
     
     static let drag = Tool<DragInput, DragOutput>(
         name: "drag",
-        description: "Presses the mouse at a starting point and drags it to another location.",
+        description: "Press at one global screen coordinate and drag to another. Use recent visual coordinates when semantic accessibility actions are unavailable, then capture or inspect the application again to verify the resulting state.",
         parameters: [
-            .required("startX", type: .double, description: "The starting x coordinate."),
-            .required("startY", type: .double, description: "The starting y coordinate."),
-            .required("endX", type: .double, description: "The destination x coordinate."),
-            .required("endY", type: .double, description: "The destination y coordinate.")
+            .required("startX", type: .double, description: "Starting horizontal coordinate in global screen points."),
+            .required("startY", type: .double, description: "Starting vertical coordinate in global screen points."),
+            .required("endX", type: .double, description: "Destination horizontal coordinate in global screen points."),
+            .required("endY", type: .double, description: "Destination vertical coordinate in global screen points.")
         ]
     ) { input in
         ScreenControlManager.shared.drag(
@@ -93,7 +93,7 @@ class ScreenControlTool {
     
     static let scroll = Tool<ScrollInput, ScrollOutput>(
         name: "scroll",
-        description: "Scrolls vertically at the current cursor position.",
+        description: "Scroll vertically in the application under the current pointer. Position the pointer over the intended scroll area first, then capture or inspect the application again to verify the resulting state.",
         parameters: [
             .required("deltaY", type: .int, description: "Scroll amount in pixels. Negative scrolls down, positive scrolls up.")
         ]
@@ -105,10 +105,10 @@ class ScreenControlTool {
     
     static let click = Tool<ClickInput, ClickOutput>(
         name: "click",
-        description: "click at a specific (x, y) location.",
+        description: "Click one global screen coordinate. Use a current visual capture when a semantic click_element action is unavailable, then capture or inspect the application again to verify the resulting state.",
         parameters: [
-            .required("x", type: .double, description: "The target x coordinate."),
-            .required("y", type: .double, description: "The target y coordinate.")
+            .required("x", type: .double, description: "Horizontal coordinate in global screen points."),
+            .required("y", type: .double, description: "Vertical coordinate in global screen points.")
         ]
     ) { input in
         ScreenControlManager.shared.click(x: input.x, y: input.y)

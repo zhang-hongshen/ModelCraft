@@ -22,7 +22,7 @@ struct FileToolRenderer: View {
             return nil
         }
 
-        return try? PathResolver.resolve(path)
+        return FileTool.fileURL(for: path)
     }
 
     private var actionDescription: String {

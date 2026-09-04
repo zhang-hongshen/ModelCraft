@@ -39,6 +39,15 @@ class ToolExecutor {
                 let result = try await toolCall.execute(with: SearchTool.searchMap)
                 toolCallResult.content.append(.text(TextContent(text: result.toolResult)))
                 message.content = result.toolResult
+            case ToolNames.webFetch:
+                let result = try await toolCall.execute(with: WebTool.webFetch)
+                let url = URL(string: result.url)!
+                toolCallResult.content.append(.resourceLink(ResourceLink(
+                    name: result.title ?? url.host ?? result.url,
+                    title: result.title ?? url.host ?? result.url,
+                    url: url
+                )))
+                message.content = result.toolResult
             case ToolNames.textToImage:
                 let result = try await toolCall.execute(with: ImageTool.textToImage)
                 toolCallResult.content.append(

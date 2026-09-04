@@ -20,9 +20,9 @@ class ImageTool {
     
     static let textToImage = Tool<textToImageInput, textToImageOutput>(
             name: "text_to_image",
-            description: "Generate an image from text prompt",
+            description: "Generate a new PNG image from a text description with the local image model. Saves the image in the Pictures directory and returns its file URL and MIME type.",
             parameters: [
-                .required("prompt", type: .string, description: "Description of the image")
+                .required("prompt", type: .string, description: "Describe the desired image, including subject, composition, style, lighting, colors, and any visible text that matter.")
             ]
         ) { input in
             let image = try await StableDiffusionEvaluator.shared.generate(prompt: input.prompt)

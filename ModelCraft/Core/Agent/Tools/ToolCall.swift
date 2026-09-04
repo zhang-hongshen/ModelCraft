@@ -26,6 +26,7 @@ struct ToolNames {
     // MARK: Search Tool
     static let searchMap = "search_map"
     static let searchRelevantDocuments = "search_relevant_documents"
+    static let webFetch = "web_fetch"
 
     // MARK: Screen Control Tool
     static let captureFullScreen = "capture_full_screen"
@@ -216,6 +217,15 @@ extension ToolCall {
             case .failed:
                 return String(localized: "Document search failed")
             }
+        case ToolNames.webFetch:
+            switch status {
+            case .running:
+                return String(localized: "Fetching web page")
+            case .completed:
+                return String(localized: "Fetched web page")
+            case .failed:
+                return String(localized: "Web fetch failed")
+            }
         case ToolNames.click:
             let x = arguments["x"]?.doubleValue ?? 0
             let y = arguments["y"]?.doubleValue ?? 0
@@ -370,6 +380,7 @@ extension ToolCall {
         case ToolNames.executeCommand : "apple.terminal"
         case ToolNames.searchMap: "map"
         case ToolNames.searchRelevantDocuments: "magnifyingglass"
+        case ToolNames.webFetch: "network"
         case ToolNames.textToImage: "photo"
         case ToolNames.textToVideo: "video"
         case ToolNames.textToAudio: "waveform"

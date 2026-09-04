@@ -32,7 +32,14 @@ struct ToolDefinition {
         SkillTool.allTools
     ].flatMap{ $0 }
     
-    static var allToolSchema = allTools.map { $0.schema }
+    @MainActor
+    static var allToolSchema: [ToolSpec] {
+        var tools = allTools.map { $0.schema }
+        if NetworkMonitor.shared.isConnected {
+            tools.append(WebTool.webFetch.schema)
+        }
+        return tools
+    }
     
 }
 

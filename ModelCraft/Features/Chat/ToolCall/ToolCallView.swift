@@ -53,6 +53,13 @@ struct ToolCallView: View {
                 status: status
             )
 
+        case ToolNames.webFetch:
+            WebToolRenderer(
+                toolCall: toolCall,
+                result: result,
+                status: status
+            )
+
         case ToolNames.readFile,
              ToolNames.writeFile,
              ToolNames.editFile:

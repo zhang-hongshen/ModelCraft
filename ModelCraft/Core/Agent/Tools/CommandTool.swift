@@ -28,7 +28,7 @@ class CommandTool {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
         process.arguments = ["sh", "-c", command]
-        process.currentDirectoryURL = try PathResolver.resolve("")
+        process.currentDirectoryURL = .documentsDirectory
         
         let stdoutPipe = Pipe()
         let stderrPipe = Pipe()
@@ -49,9 +49,9 @@ class CommandTool {
     
     static let executeCommand = Tool<ExecuteCommandInput, ExecuteCommandOutput>(
         name: "execute_command",
-        description: "Executes a shell command",
+        description: "Run one shell command from the app's Documents directory on macOS. The command may read or modify local files and returns stdout, stderr, and the process exit code.",
         parameters: [
-            .required("command", type: .string, description: "The full shell command string to execute (e.g., 'ls -la' or 'git status').")
+            .required("command", type: .string, description: "The complete command string passed to `sh -c`. Use paths relative to the Documents directory or explicit absolute paths, and include every required argument.")
         
         ]
     ) { input in

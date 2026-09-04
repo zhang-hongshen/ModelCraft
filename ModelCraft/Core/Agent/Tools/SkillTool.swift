@@ -21,11 +21,11 @@ class SkillTool {
             name: "activate_skill",
             description:
             """
-                Activate a skill to load its instructions.
+                Load the full instructions for one available specialized skill. Use this before performing a task covered by a listed skill, then follow the returned instructions for the rest of that task.
                 \(availableSkills)
             """,
             parameters: [
-                .required("name", type: .string, description: "Skill name")
+                .required("name", type: .string, description: "The exact name of one skill listed in this tool's description.")
             ]
         ) { input in
             

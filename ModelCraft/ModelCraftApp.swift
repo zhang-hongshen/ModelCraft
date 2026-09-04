@@ -22,7 +22,9 @@ struct ModelCraftApp: App {
     private let globalStore = GlobalStore()
     @State private var localModelStore = LocalModelStore()
     
-    init() {}
+    init() {
+        _ = NetworkMonitor.shared
+    }
     
     var body: some Scene {
         Group {

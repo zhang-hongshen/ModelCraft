@@ -60,13 +60,14 @@
 		7067E8242BCD1AE600FF2797 /* MessageFileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7067E8232BCD1AE600FF2797 /* MessageFileView.swift */; };
 		706943D22F79113500B271AA /* Settings.bundle in Resources */ = {isa = PBXBuildFile; fileRef = 706943D12F79113500B271AA /* Settings.bundle */; };
 		706943D52F7C16FB00B271AA /* CommandTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 706943D42F7C16FB00B271AA /* CommandTool.swift */; };
-		706943D72F7C183B00B271AA /* PathResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 706943D62F7C183B00B271AA /* PathResolver.swift */; };
 		706943D92F7C212E00B271AA /* ScreenControlTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 706943D82F7C212D00B271AA /* ScreenControlTool.swift */; };
 		706943DB2F7C21D700B271AA /* SkillTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 706943DA2F7C21D700B271AA /* SkillTool.swift */; };
 		706D82642F1E1ED600029818 /* AppNavigationTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = 706D82632F1E1ED400029818 /* AppNavigationTab.swift */; };
 		706D82662F1EB26600029818 /* SpeechManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 706D82652F1EB26500029818 /* SpeechManager.swift */; };
 		7071E37D2F26998000CACB8B /* LocationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7071E37C2F26997B00CACB8B /* LocationManager.swift */; };
 		7071E37F2F269EB000CACB8B /* SearchTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7071E37E2F269EAB00CACB8B /* SearchTool.swift */; };
+		70B4A00230C3A00100B4A001 /* WebTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70B4A00130C3A00100B4A001 /* WebTool.swift */; };
+		70B4A00430C3A00100B4A001 /* WebToolRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70B4A00330C3A00100B4A001 /* WebToolRenderer.swift */; };
 		7071E3812F26A33800CACB8B /* CallToolResult.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7071E3802F26A33100CACB8B /* CallToolResult.swift */; };
 		7071E3832F27C56100CACB8B /* FileTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7071E3822F27C55E00CACB8B /* FileTool.swift */; };
 		7078AA122F4B79E000711940 /* LMService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7078AA112F4B79DF00711940 /* LMService.swift */; };
@@ -245,13 +246,14 @@
 		7067E8232BCD1AE600FF2797 /* MessageFileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageFileView.swift; sourceTree = "<group>"; };
 		706943D12F79113500B271AA /* Settings.bundle */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.plug-in"; path = Settings.bundle; sourceTree = "<group>"; };
 		706943D42F7C16FB00B271AA /* CommandTool.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandTool.swift; sourceTree = "<group>"; };
-		706943D62F7C183B00B271AA /* PathResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PathResolver.swift; sourceTree = "<group>"; };
 		706943D82F7C212D00B271AA /* ScreenControlTool.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenControlTool.swift; sourceTree = "<group>"; };
 		706943DA2F7C21D700B271AA /* SkillTool.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkillTool.swift; sourceTree = "<group>"; };
 		706D82632F1E1ED400029818 /* AppNavigationTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppNavigationTab.swift; sourceTree = "<group>"; };
 		706D82652F1EB26500029818 /* SpeechManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechManager.swift; sourceTree = "<group>"; };
 		7071E37C2F26997B00CACB8B /* LocationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationManager.swift; sourceTree = "<group>"; };
 		7071E37E2F269EAB00CACB8B /* SearchTool.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchTool.swift; sourceTree = "<group>"; };
+		70B4A00130C3A00100B4A001 /* WebTool.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebTool.swift; sourceTree = "<group>"; };
+		70B4A00330C3A00100B4A001 /* WebToolRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebToolRenderer.swift; sourceTree = "<group>"; };
 		7071E3802F26A33100CACB8B /* CallToolResult.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CallToolResult.swift; sourceTree = "<group>"; };
 		7071E3822F27C55E00CACB8B /* FileTool.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileTool.swift; sourceTree = "<group>"; };
 		7078AA112F4B79DF00711940 /* LMService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LMService.swift; sourceTree = "<group>"; };
@@ -394,13 +396,13 @@
 				70F78FEE2FDBF98A003C8737 /* ComputerUseTool.swift */,
 				7071E3822F27C55E00CACB8B /* FileTool.swift */,
 				7021D75C2F84B14600A2F684 /* ImageTool.swift */,
-				706943D62F7C183B00B271AA /* PathResolver.swift */,
 				706943D82F7C212D00B271AA /* ScreenControlTool.swift */,
 				7071E37E2F269EAB00CACB8B /* SearchTool.swift */,
 				706943DA2F7C21D700B271AA /* SkillTool.swift */,
 				70FDA0232F20C21000F9DBD8 /* ToolCall.swift */,
 				7078AB132F4EDE9600711940 /* ToolDefinitions.swift */,
 				7039EF5B2F8F46C60099F491 /* VideoTool.swift */,
+				70B4A00130C3A00100B4A001 /* WebTool.swift */,
 			);
 			path = Tools;
 			sourceTree = "<group>";
@@ -697,6 +699,7 @@
 			children = (
 				70FB3AE32FB6EB100029EFDB /* ContentBlock.swift */,
 				70FB39D82FB6C6CF0029EFDB /* FileToolRenderer.swift */,
+				70B4A00330C3A00100B4A001 /* WebToolRenderer.swift */,
 				7014FA1C2F5DE29D00552108 /* ToolCallView.swift */,
 				70A0000C2FFF00000000000C /* ToolCallGroupView.swift */,
 				70FB39DF2FB6C94D0029EFDB /* ExecuteCommandToolRenderer.swift */,
@@ -937,6 +940,7 @@
 				7001D9B02EC10DEB00047F6B /* ChatInputView.swift in Sources */,
 				7008FD8F2E80414200D62EF6 /* NLEmbedding+.swift in Sources */,
 				70FB39D92FB6C6D10029EFDB /* FileToolRenderer.swift in Sources */,
+				70B4A00430C3A00100B4A001 /* WebToolRenderer.swift in Sources */,
 				70CE60C82BAD705E00A2D0B0 /* Chat.swift in Sources */,
 				701954252BC8286E00CD2ED3 /* FixedLengthTextSplitter.swift in Sources */,
 				70FE039F2F13EFA20061CCEB /* ChatService.swift in Sources */,
@@ -987,7 +991,6 @@
 				70C22FD12BAF2C35002754C7 /* RoundedRectangle+.swift in Sources */,
 				70321DD32FB8C04600A56C75 /* AppDetailView.swift in Sources */,
 				700C702A2E52FE830008EF5B /* TagStreamParser.swift in Sources */,
-				706943D72F7C183B00B271AA /* PathResolver.swift in Sources */,
 				70823EC82F520F720011DF58 /* ModelService.swift in Sources */,
 				7097F96B2BB02DD2001A91E3 /* ModelTask.swift in Sources */,
 				7071E3832F27C56100CACB8B /* FileTool.swift in Sources */,
@@ -998,6 +1001,7 @@
 				70896C632BB727AB006FEF6A /* ModelContext+.swift in Sources */,
 				70C534112E7535A8006E6731 /* SemanticTextSplitter.swift in Sources */,
 				7071E37F2F269EB000CACB8B /* SearchTool.swift in Sources */,
+				70B4A00230C3A00100B4A001 /* WebTool.swift in Sources */,
 				70FB3AE02FB6D08F0029EFDB /* MapToolRenderer.swift in Sources */,
 				70CE4D2F2BB94C7800E1DEE2 /* Project.swift in Sources */,
 				7019545A2BCB9A1400CD2ED3 /* RandomAccessCollection+.swift in Sources */,

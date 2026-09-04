@@ -21,7 +21,7 @@ struct FileToolRenderer: View {
             return nil
         }
 
-        return try? PathResolver.resolve(path)
+        return FileTool.fileURL(for: path)
     }
 
     var body: some View {
