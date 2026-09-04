@@ -18,7 +18,7 @@ import Tokenizers
 @inline(__always)
 func makeSuffixTokens(fullTokens: MLXArray, prefixCount: Int) -> MLXArray {
     let suffix = fullTokens.flattened().asArray(Int32.self)
-    return MLXArray(Array(suffix[prefixCount...])).reshaped(1, -1)
+    return MLXArray(Array(suffix[prefixCount...]))
 }
 
 @inline(__always)
@@ -199,7 +199,7 @@ class LMService {
                                             guard let probeToken = prefixProbeToken(from: prefixTokens) else {
                                                 throw PrefixCacheProbeError.emptyPrefix
                                             }
-                                            let probeTokens = MLXArray([probeToken]).reshaped(1, -1)
+                                            let probeTokens = MLXArray([probeToken])
                                             let probeInput = LMInput(
                                                 text: .init(tokens: probeTokens),
                                                 image: nil,
@@ -252,7 +252,7 @@ class LMService {
                                     let built = context.model.newCache(parameters: parameters)
                                     let prefixInput = LMInput(
                                         text: .init(
-                                            tokens: MLXArray(prefixTokens).reshaped(1, -1)),
+                                            tokens: MLXArray(prefixTokens)),
                                         image: nil,
                                         video: nil)
                                     _ = try TokenIterator(

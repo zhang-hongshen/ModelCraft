@@ -7,6 +7,5 @@
 
 enum AppNavigationTab: Hashable {
     case chat(Chat)
-    case project(Project)
     case modelStore, downloadedModels
 }

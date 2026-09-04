@@ -18,9 +18,6 @@ struct AppDetailView: View {
                 .navigationTitle(chat.title ?? String(localized: "New Chat"))
         case .modelStore:
             ModelStore().navigationTitle("Model Store")
-        case .project(let project):
-            ProjectView(project: project)
-                .navigationTitle(project.title)
         case .downloadedModels:
             DownloadedModelsView().navigationTitle("Downloaded Models")
         case .none:

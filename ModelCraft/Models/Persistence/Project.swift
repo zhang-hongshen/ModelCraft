@@ -121,10 +121,7 @@ extension Project {
 
     func removeFiles(atOffsets: IndexSet) {
         let urlsToRemove = atOffsets.map { files[$0] }
-        
         removeFiles(urlsToRemove)
-        
-        files.remove(atOffsets: atOffsets)
     }
     
     func removeFiles<T>(_ urls: T) where T: Swift.Collection, T.Element == URL {
@@ -143,6 +140,19 @@ extension Project {
         files.removeAll { removedFiles.contains($0) }
         Task {
             removeIndex(removedFiles)
+        }
+    }
+
+    func deleteStoredResources() {
+        let fileManager = FileManager.default
+        for url in files where fileManager.fileExists(atPath: url.path) {
+            try? fileManager.removeItem(at: url)
+        }
+        files.removeAll()
+
+        for path in [dbPath, dbPath + "-shm", dbPath + "-wal"]
+        where fileManager.fileExists(atPath: path) {
+            try? fileManager.removeItem(atPath: path)
         }
     }
     

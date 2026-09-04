@@ -27,6 +27,7 @@ class ChatService {
 
     private(set) var contextUsage: ContextWindowUsage?
     private(set) var isPreparingResponse = false
+    private(set) var isCompacting = false
 
     private static let compressionTrigger = 0.75
     private static let summaryInputLimit = 0.70
@@ -59,8 +60,8 @@ class ChatService {
         ModelContainer.shared.mainContext.delete(chat)
     }
     
-    func createChat() -> Chat {
-        let chat = Chat()
+    func createChat(project: Project? = nil) -> Chat {
+        let chat = Chat(project: project)
         ModelContainer.shared.mainContext.persist(chat)
         return chat
     }
@@ -98,24 +99,10 @@ class ChatService {
                     messages: promptMessages(
                         chat: chat,
                         question: message),
-                    contextUsageUpdater: { [weak self] model, messages, tools in
-                        guard let usage = try? await LMService.shared.contextUsage(
-                            model: model,
-                            messages: messages,
-                            tools: tools),
-                              !Task.isCancelled else {
-                            return
-                        }
-                        self?.contextUsage = usage
-                    },
                     generationInfoHandler: { [weak self] info in
-                        guard let self,
-                              let usage = self.contextUsage else {
-                            return
-                        }
-                        self.contextUsage = ContextWindowUsage(
-                            usedTokens: usage.usedTokens + info.generationTokenCount,
-                            totalTokens: usage.totalTokens)
+                        self?.contextUsage = ContextWindowUsage(
+                            usedTokens: info.promptTokenCount + info.generationTokenCount,
+                            totalTokens: model.contextWindow)
                     })
             } catch {
                 isPreparingResponse = false
@@ -148,13 +135,6 @@ class ChatService {
             do {
                 guard self.currentRequestID == requestID else { return }
                 try Task.checkCancellation()
-                try await self.refreshContextUsage(
-                    model: model,
-                    chat: chat,
-                    draftContent: "",
-                    draftFiles: [])
-                try Task.checkCancellation()
-                guard self.currentRequestID == requestID else { return }
                 try await self.generateTitleIfNeeded(model: model, chatID: chat.id)
             } catch is CancellationError {
                 // Expected when a new request supersedes background metadata.
@@ -184,6 +164,37 @@ class ChatService {
             message: message)
     }
 
+    func compactContext(
+        model: LocalModel,
+        chat: Chat
+    ) async throws {
+        guard currentTask == nil,
+              !isPreparingResponse,
+              !chat.isGenerating else {
+            return
+        }
+
+        metadataTask?.cancel()
+        metadataTask = nil
+        contextUsageTask?.cancel()
+        contextUsageTask = nil
+
+        let messages = chat.sortedMessages
+        let startIndex = min(chat.lastSummaryIndex, messages.count)
+        let messagesToSummarize = Array(messages.suffix(from: startIndex))
+        guard !messagesToSummarize.isEmpty else { return }
+
+        isCompacting = true
+        defer { isCompacting = false }
+
+        chat.summary = try await summarize(
+            model: model,
+            previousSummary: chat.summary,
+            messages: messagesToSummarize)
+        chat.lastSummaryIndex = messages.count
+        try ModelContainer.shared.mainContext.save()
+    }
+
     private func generateTitleIfNeeded (model: LocalModel, chatID: PersistentIdentifier) async throws {
         try await chatModelActor.generateTitle(chatID: chatID) { messages in
             let prompt = PromptBuilder.generateTitle(messages: messages)
@@ -209,19 +220,23 @@ class ChatService {
 
     func scheduleContextUsage(
         model: LocalModel?,
-        chat: Chat?,
-        draftContent: String,
-        draftFiles: [URL]
+        chat: Chat?
     ) {
         contextUsageTask?.cancel()
         guard let model else {
             contextUsage = nil
             return
         }
-        let hasConversationContext = chat?.messages.isEmpty == false
-            || chat?.summary?.isEmpty == false
-            || !draftContent.isEmpty
-            || !draftFiles.isEmpty
+        let hasConversationContext = chat?.messages.contains { message in
+            switch message.role {
+            case .assistant:
+                message.status == .generated
+            case .tool:
+                message.status != .generating
+            case .user, .system:
+                false
+            }
+        } == true || chat?.summary?.isEmpty == false
         guard hasConversationContext else {
             contextUsage = nil
             return
@@ -233,9 +248,7 @@ class ChatService {
                 guard chat?.isGenerating != true, !isPreparingResponse else { return }
                 try await refreshContextUsage(
                     model: model,
-                    chat: chat,
-                    draftContent: draftContent,
-                    draftFiles: draftFiles)
+                    chat: chat)
             } catch {
                 // Context usage is informational and must not affect chat.
             }
@@ -244,20 +257,14 @@ class ChatService {
 
     private func refreshContextUsage(
         model: LocalModel,
-        chat: Chat?,
-        draftContent: String,
-        draftFiles: [URL]
+        chat: Chat?
     ) async throws {
-        let draft = Message(
-            role: .user,
-            content: draftContent,
-            files: draftFiles)
+        let draft = Message(role: .user)
         let usage = try await LMService.shared.contextUsage(
             model: model,
             messages: promptMessages(
                 chat: chat,
-                question: draft,
-                includeQuestionInHistory: !draftContent.isEmpty || !draftFiles.isEmpty),
+                question: draft),
             tools: availableTools(for: chat))
         try Task.checkCancellation()
         contextUsage = usage
@@ -272,7 +279,6 @@ class ChatService {
             model: model,
             chat: chat,
             question: question)
-        contextUsage = usage
 
         guard usage.fraction >= Self.compressionTrigger else { return }
 
@@ -308,7 +314,6 @@ class ChatService {
                 model: model,
                 chat: chat,
                 question: question)
-            contextUsage = usage
         }
     }
 
@@ -436,7 +441,6 @@ class ChatService {
     private func promptMessages(
         chat: Chat?,
         question: Message,
-        includeQuestionInHistory: Bool = false,
         historyStart: Int? = nil
     ) -> [MLXLMCommon.Chat.Message] {
         var history: [Message] = []
@@ -445,10 +449,6 @@ class ChatService {
             let startIndex = min(historyStart ?? chat.lastSummaryIndex, messages.count)
             history = Array(messages.suffix(from: startIndex))
         }
-        if includeQuestionInHistory {
-            history.append(question)
-        }
-
         return ([PromptBuilder.multiStepAgentSystemPrompt]
             + history
             + [PromptBuilder.answerQuestion(

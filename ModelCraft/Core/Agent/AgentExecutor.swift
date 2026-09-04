@@ -28,12 +28,6 @@ class AgentExecutor {
         RequestDecisionInput
     ) async throws -> RequestDecisionOutput
 
-    typealias ContextUsageUpdater = @MainActor (
-        LocalModel,
-        [MLXLMCommon.Chat.Message],
-        [ToolSpec]
-    ) async -> Void
-
     typealias GenerationInfoHandler = @MainActor (
         GenerateCompletionInfo
     ) -> Void
@@ -81,7 +75,6 @@ class AgentExecutor {
         lastToolSignature: String? = nil,
         consecutiveSameToolCalls: Int = 0,
         temporarilyDisabledTool: String? = nil,
-        contextUsageUpdater: ContextUsageUpdater? = nil,
         generationInfoHandler: GenerationInfoHandler? = nil
     ) async throws -> Void {
         try Task.checkCancellation()
@@ -105,11 +98,6 @@ class AgentExecutor {
             availableTools.removeAll { toolName(from: $0) == temporarilyDisabledTool }
         }
 
-        if toolRound > 0, let contextUsageUpdater {
-            await contextUsageUpdater(model, messages, availableTools)
-            try Task.checkCancellation()
-        }
-        
         let assistantMessage = Message(role: .assistant, chat: chat, status: .generating)
         ModelContainer.shared.mainContext.persist(assistantMessage)
         var isAssistantMessagePersisted = true
@@ -210,7 +198,6 @@ class AgentExecutor {
                     temporarilyDisabledTool: duplicateCallBlocked
                         ? nextTurn.toolCall.function.name
                         : nil,
-                    contextUsageUpdater: contextUsageUpdater,
                     generationInfoHandler: generationInfoHandler)
             }
         } catch is CancellationError {

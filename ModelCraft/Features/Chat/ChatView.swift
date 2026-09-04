@@ -22,6 +22,8 @@ struct ChatView: View {
     @State private var draft = Message(role: .user)
     @State private var voiceState: VoiceState = .idle
     @State private var composerHeight: CGFloat = 0
+    @State private var selectedCommand: ChatCommand = .compact
+    @State private var projectEdition: Project?
     
     enum VoiceState {
         case idle
@@ -40,6 +42,10 @@ struct ChatView: View {
         MainView()
             .frame(minWidth: ChatView.minWidth, minHeight: 250)
             .toolbar(content: ToolbarItems)
+            .sheet(item: $projectEdition) { project in
+                ProjectEdition(project: project)
+                    .presentationDetents([.medium, .large])
+            }
             .onChange(of: localModelStore.models, initial: true) { _, availableModels in
                 guard globalStore.selectedModel == nil else { return }
                 globalStore.selectedModel = availableModels.first
@@ -54,10 +60,9 @@ struct ChatView: View {
                 refreshContextUsage()
             }
             .onChange(of: draft.content) {
-                refreshContextUsage()
-            }
-            .onChange(of: draft.files) {
-                refreshContextUsage()
+                if draft.content == "/" {
+                    selectedCommand = .compact
+                }
             }
             .modifier(AudioLevelChangeModifier { transcript in
                 _ = submitMessage(content: transcript, files: [])
@@ -65,7 +70,7 @@ struct ChatView: View {
     }
 }
 
-extension ChatView {
+private extension ChatView {
     
     @ViewBuilder
     func ModelPicker() -> some View {
@@ -91,23 +96,10 @@ extension ChatView {
 
     @ToolbarContentBuilder
     func ToolbarItems() -> some ToolbarContent {
-        ToolbarItem(placement: .principal) {
-            Menu {
-                ModelPicker()
-            } label: {
-                VStack(alignment: .leading) {
-                    Text(globalStore.selectedModel?.displayName ?? String(localized: "Select Model"))
-                        .font(.headline)
-
-                }
-            }
-            .menuStyle(.button)
-        }
-        
         if let chat = chat {
             ToolbarItemGroup(placement: .primaryAction) {
                 Button {
-                    globalStore.currentTab = nil
+                    globalStore.startNewChat()
                 } label: {
                     Image(systemName: "square.and.pencil")
                 }
@@ -130,7 +122,70 @@ extension ChatView {
                 
             }
         }
-        
+    }
+
+    @ViewBuilder
+    func ModelPickerButton() -> some View {
+        Menu {
+            ModelPicker()
+        } label: {
+            HStack(spacing: 4) {
+                Text(globalStore.selectedModel?.displayName ?? String(localized: "Select Model"))
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                Image(systemName: "chevron.down")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: 160)
+        }
+        .menuIndicator(.hidden)
+        .menuStyle(.borderlessButton)
+    }
+
+    @ViewBuilder
+    func ProjectPickerButton() -> some View {
+        Menu {
+            if !projects.isEmpty {
+                if globalStore.newChatProject != nil {
+                    Button {
+                        globalStore.newChatProject = nil
+                    } label: {
+                        Text("No Project")
+                    }
+
+                    Divider()
+                }
+
+                ForEach(projects) { project in
+                    Button {
+                        globalStore.newChatProject = project
+                    } label: {
+                        Text(project.title)
+                        if globalStore.newChatProject == project {
+                            Image(systemName: "checkmark")
+                        }
+                    }
+                }
+
+                Divider()
+            }
+
+            Button {
+                projectEdition = Project()
+            } label: {
+                Label("New Project", systemImage: "plus")
+                    .labelStyle(.titleAndIcon)
+            }
+        } label: {
+            Label(
+                globalStore.newChatProject?.title ?? String(localized: "Choose Project"),
+                systemImage: "folder")
+                .lineLimit(1)
+                .truncationMode(.middle)
+        }
+        .menuIndicator(.hidden)
+        .menuStyle(.borderlessButton)
     }
     
     @ViewBuilder
@@ -198,8 +253,8 @@ extension ChatView {
     
     @ViewBuilder
     func MainView() -> some View {
-        ZStack(alignment: .bottom) {
-            if let chat = chat {
+        if let chat = chat {
+            ZStack(alignment: .bottom) {
                 let messages = chat.sortedMessages
                 let items = ConversationContentBuilder.items(from: messages)
                 let lastItemID = items.last?.id
@@ -228,55 +283,97 @@ extension ChatView {
                 }
                 .scrollDismissesKeyboard(.interactively)
                 .scrollTargetBehavior(.paging)
-            } else {
-                Text("How can I help you today?")
-                    .font(.title.bold())
-                    .multilineTextAlignment(.leading)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .safeAreaPadding(.bottom, composerHeight)
+                ComposerView(showsProjectPicker: false)
+                    .shadow(color: Color.primary.opacity(0.1), radius: 8, x: 0, y: -4)
+                    .safeAreaPadding()
+                    .onGeometryChange(for: CGFloat.self) { proxy in
+                        proxy.size.height
+                    } action: { composerHeight in
+                        self.composerHeight = composerHeight
+                    }
+            }
+        } else {
+            NewChatLandingView {
+                ComposerView(showsProjectPicker: true)
+            }
+            .safeAreaPadding()
+        }
+    }
+
+    @ViewBuilder
+    func ComposerView(showsProjectPicker: Bool) -> some View {
+        VStack(spacing: 8) {
+            if let pendingDecision = chatService.decisionCoordinator.pendingDecision {
+                DecisionRequestView(
+                    pendingDecision: pendingDecision,
+                    onConfirm: chatService.decisionCoordinator.submit)
+                .id(pendingDecision.id)
             }
 
-            VStack(spacing: 8) {
-                if let pendingDecision = chatService.decisionCoordinator.pendingDecision {
-                    DecisionRequestView(
-                        pendingDecision: pendingDecision,
-                        onConfirm: chatService.decisionCoordinator.submit)
-                    .id(pendingDecision.id)
-                }
+            if isCommandPalettePresented {
+                ChatCommandPalette(
+                    selectedCommand: selectedCommand,
+                    isEnabled: isCommandEnabled,
+                    onSelect: runCommand)
+            }
 
-                ChatInputView(
-                    userInput: draft,
-                    trailing: {
-                        HStack {
-                            if let contextUsage = chatService.contextUsage {
-                                ContextWindowProgressView(usage: contextUsage)
-                            }
+            ChatInputView(
+                userInput: draft,
+                trailing: {
+                    HStack {
+                        if let contextUsage = chatService.contextUsage {
+                            ContextWindowProgressView(usage: contextUsage)
+                        }
 
-                            if let chat = chat,
-                               chat.isGenerating || chatService.isPreparingResponse {
-                                StopGeneratingMessageButton()
-                            } else {
-                                if draft.content.isEmpty {
-                                    voiceModeButton()
-                                } else {
-                                    SubmitMessageButton()
-                                }
+                        ModelPickerButton()
+
+                        if chatService.isCompacting {
+                            ProgressView()
+                                .controlSize(.small)
+                        } else if isAgentExecuting {
+                            if !draft.content.isEmpty && !isCommandPalettePresented {
+                                SubmitMessageButton()
                             }
+                            StopGeneratingMessageButton()
+                        } else if draft.content.isEmpty {
+                            voiceModeButton()
+                        } else {
+                            SubmitMessageButton()
                         }
                     }
-                )
-            }
-            .shadow(color: Color.primary.opacity(0.1), radius: 8, x: 0, y: -4)
-            .safeAreaPadding()
-            .onGeometryChange(for: CGFloat.self) { proxy in
-                proxy.size.height
-            } action: { composerHeight in
-                self.composerHeight = composerHeight
+                }
+            )
+            .onKeyPress(
+                keys: [.upArrow, .downArrow, .return, .escape],
+                phases: [.down, .repeat],
+                action: handleCommandKeyPress)
+
+            if showsProjectPicker {
+                HStack {
+                    ProjectPickerButton()
+                    Spacer()
+                }
+                .padding(.horizontal)
             }
         }
-        
     }
-    
+}
+
+private struct NewChatLandingView<Composer: View>: View {
+
+    @ViewBuilder let composer: Composer
+
+    var body: some View {
+        VStack(spacing: 24) {
+            Text("How can I help you today?")
+                .font(.largeTitle.bold())
+                .multilineTextAlignment(.center)
+
+            composer
+        }
+        .frame(maxWidth: 720)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
 }
 
 private struct SmallScrollerConfigurator: NSViewRepresentable {
@@ -302,16 +399,86 @@ private struct SmallScrollerConfigurator: NSViewRepresentable {
     }
 }
 
-extension ChatView {
+private extension ChatView {
+
+    var isAgentExecuting: Bool {
+        guard let chat else { return false }
+        return chat.isGenerating || chatService.isPreparingResponse
+    }
+
+    var isCommandPalettePresented: Bool {
+        draft.content == "/"
+    }
+
+    func isCommandEnabled(_ command: ChatCommand) -> Bool {
+        switch command {
+        case .compact:
+            return chat?.messages.isEmpty == false
+                && globalStore.selectedModel != nil
+                && !isAgentExecuting
+                && !chatService.isCompacting
+        }
+    }
+
+    func handleCommandKeyPress(_ keyPress: KeyPress) -> KeyPress.Result {
+        guard isCommandPalettePresented else { return .ignored }
+
+        switch keyPress.key {
+        case .upArrow:
+            selectPreviousCommand()
+        case .downArrow:
+            selectNextCommand()
+        case .return:
+            runCommand(selectedCommand)
+        case .escape:
+            draft.content = ""
+        default:
+            return .ignored
+        }
+        return .handled
+    }
+
+    func selectPreviousCommand() {
+        let commands = ChatCommand.allCases
+        guard let index = commands.firstIndex(of: selectedCommand) else { return }
+        selectedCommand = commands[(index - 1 + commands.count) % commands.count]
+    }
+
+    func selectNextCommand() {
+        let commands = ChatCommand.allCases
+        guard let index = commands.firstIndex(of: selectedCommand) else { return }
+        selectedCommand = commands[(index + 1) % commands.count]
+    }
+
+    func runCommand(_ command: ChatCommand) {
+        guard isCommandEnabled(command) else { return }
+        draft.content = ""
+
+        switch command {
+        case .compact:
+            guard let model = globalStore.selectedModel,
+                  let chat else {
+                return
+            }
+            Task {
+                try await chatService.compactContext(model: model, chat: chat)
+                refreshContextUsage()
+            }
+        }
+    }
     
     func submitMessage(content: String, files: [URL]) -> Bool {
-        guard let model = globalStore.selectedModel else { return false }
+        guard let model = globalStore.selectedModel,
+              !chatService.isCompacting else {
+            return false
+        }
         let activeChat: Chat
         if let chat = chat {
             activeChat = chat
         } else {
-            activeChat = chatService.createChat()
+            activeChat = chatService.createChat(project: globalStore.newChatProject)
             globalStore.currentTab = .chat(activeChat)
+            globalStore.newChatProject = nil
         }
         let message = Message(role: .user, chat: activeChat,
                               content: content, files: files)
@@ -340,15 +507,74 @@ extension ChatView {
     func refreshContextUsage() {
         chatService.scheduleContextUsage(
             model: globalStore.selectedModel,
-            chat: chat,
-            draftContent: draft.content,
-            draftFiles: draft.files)
+            chat: chat)
     }
     
     func scrollToBottom(_ proxy: ScrollViewProxy, lastID: ConversationContentItem.ID?) {
         guard let lastID else { return }
         withAnimation {
             proxy.scrollTo(lastID, anchor: .bottom)
+        }
+    }
+}
+
+private enum ChatCommand: String, CaseIterable, Identifiable {
+    case compact
+
+    var id: Self { self }
+
+    var title: String {
+        "/\(rawValue)"
+    }
+
+    var description: LocalizedStringResource {
+        switch self {
+        case .compact:
+            "Compress conversation history to free context space."
+        }
+    }
+}
+
+private struct ChatCommandPalette: View {
+
+    let selectedCommand: ChatCommand
+    let isEnabled: (ChatCommand) -> Bool
+    let onSelect: (ChatCommand) -> Void
+
+    var body: some View {
+        VStack(spacing: 2) {
+            ForEach(ChatCommand.allCases) { command in
+                Button {
+                    onSelect(command)
+                } label: {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(command.title)
+                                .font(.body.monospaced())
+                            Text(command.description)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                    }
+                    .contentShape(Rectangle())
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 8)
+                    .background(
+                        selectedCommand == command
+                            ? Color.accentColor.opacity(0.14)
+                            : Color.clear,
+                        in: RoundedRectangle(cornerRadius: 6))
+                }
+                .buttonStyle(.plain)
+                .disabled(!isEnabled(command))
+            }
+        }
+        .padding(6)
+        .background(.background, in: RoundedRectangle(cornerRadius: 12))
+        .overlay {
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(.separator)
         }
     }
 }

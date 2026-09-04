@@ -283,4 +283,11 @@ extension Chat {
         descriptor.sortBy = [.init(\.createdAt, order: .reverse)]
         return descriptor
     }
+
+    static func fetchRecents() -> FetchDescriptor<Chat> {
+        var descriptor = FetchDescriptor<Chat>(
+            predicate: #Predicate { $0.project == nil })
+        descriptor.sortBy = [.init(\.createdAt, order: .reverse)]
+        return descriptor
+    }
 }

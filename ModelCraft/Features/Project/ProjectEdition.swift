@@ -82,6 +82,10 @@ struct ProjectEdition: View {
                 project.addFiles(urls)
             }
         }
+        .dropDestination(for: URL.self) { urls, _ in
+            project.addFiles(urls)
+            return true
+        }
     }
 }
 
