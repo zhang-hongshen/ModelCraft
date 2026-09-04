@@ -150,6 +150,19 @@
         }
       }
     },
+    "Choose Folder…" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "选择文件夹…"
+          }
+        }
+      }
+    },
+    "Choose Project" : {
+
+    },
     "Click failed at (%lf, %lf)" : {
       "localizations" : {
         "en" : {
@@ -223,6 +236,16 @@
         }
       }
     },
+    "Compress conversation history to free context space." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "压缩对话历史以释放上下文空间。"
+          }
+        }
+      }
+    },
     "Confirm" : {
 
     },
@@ -291,6 +314,16 @@
     "Decision received" : {
 
     },
+    "Decoding..." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在解码..."
+          }
+        }
+      }
+    },
     "Delete" : {
       "localizations" : {
         "zh-Hans" : {
@@ -314,12 +347,33 @@
     "Document search failed" : {
 
     },
+    "Download Location" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "下载位置"
+          }
+        }
+      }
+    },
     "Downloaded" : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "已下载"
+          }
+        }
+      }
+    },
+    "Downloaded files are stored in the models subfolder. Existing models are moved when the location changes." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "下载的文件存储在 models 子文件夹中。更改位置时会迁移现有模型。"
           }
         }
       }
@@ -363,6 +417,12 @@
         }
       }
     },
+    "Edited" : {
+
+    },
+    "Edited %@" : {
+
+    },
     "Edited %lld files" : {
       "localizations" : {
         "zh-Hans" : {
@@ -382,6 +442,12 @@
           }
         }
       }
+    },
+    "Editing" : {
+
+    },
+    "Editing %@" : {
+
     },
     "Element click failed" : {
 
@@ -418,6 +484,15 @@
           }
         }
       }
+    },
+    "Failed to edit" : {
+
+    },
+    "Failed to edit %@" : {
+
+    },
+    "Failed to list directory" : {
+
     },
     "Failed to list running applications" : {
 
@@ -496,6 +571,12 @@
         }
       }
     },
+    "Fetched web page" : {
+
+    },
+    "Fetching web page" : {
+
+    },
     "Files" : {
       "localizations" : {
         "zh-Hans" : {
@@ -532,8 +613,15 @@
         }
       }
     },
-    "Generating video" : {
-
+    "Generating video %@" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在生成视频%@"
+          }
+        }
+      }
     },
     "Generation Info" : {
 
@@ -617,7 +705,13 @@
         }
       }
     },
+    "Listed directory" : {
+
+    },
     "Listed running applications" : {
+
+    },
+    "Listing directory" : {
 
     },
     "Listing running applications" : {
@@ -629,6 +723,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "地图搜索失败"
+          }
+        }
+      }
+    },
+    "Model Storage" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "模型存储"
           }
         }
       }
@@ -715,12 +819,25 @@
         }
       }
     },
+    "No Project" : {
+
+    },
     "None" : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "无"
+          }
+        }
+      }
+    },
+    "OK" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "确定"
           }
         }
       }
@@ -737,6 +854,16 @@
     },
     "Prefill Time" : {
 
+    },
+    "Preparing..." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "准备中..."
+          }
+        }
+      }
     },
     "Pressed a key" : {
 
@@ -842,6 +969,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "移除"
+          }
+        }
+      }
+    },
+    "Restore Default" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "恢复默认"
           }
         }
       }
@@ -976,6 +1113,16 @@
     "Text input failed" : {
 
     },
+    "The selected location already contains a models folder." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "所选位置已包含 models 文件夹。"
+          }
+        }
+      }
+    },
     "Thinking" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1022,6 +1169,16 @@
     "Unable to load the Stable Diffusion model. Please check your internet connection or available storage space." : {
 
     },
+    "Unable to Move Models" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法迁移模型"
+          }
+        }
+      }
+    },
     "Unable to open the image file." : {
 
     },
@@ -1029,6 +1186,9 @@
 
     },
     "Unknown Tool Call" : {
+
+    },
+    "Unsupported audio type" : {
 
     },
     "Video created" : {
@@ -1087,6 +1247,9 @@
         }
       }
     },
+    "Web fetch failed" : {
+
+    },
     "Writing %@" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1114,6 +1277,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "正在写入%@"
+          }
+        }
+      }
+    },
+    "Writing video..." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在写入视频..."
           }
         }
       }
