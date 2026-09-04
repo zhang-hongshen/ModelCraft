@@ -189,8 +189,6 @@ extension MessageView {
             CommonButtons(message)
             GenerationInfoButton(message)
             
-            AssistantSpeechButton(content: message.content)
-            
             Button {
                 regenerateAssistantMessage()
             } label: {
@@ -325,8 +323,6 @@ struct AssistantTurnView: View {
                 )
             }
 
-            AssistantSpeechButton(content: turn.content)
-
             Button {
                 regenerateAssistantTurn()
             } label: {
@@ -380,34 +376,6 @@ private struct GenerationMetricsButton: View {
                 }
             }
             .padding()
-        }
-    }
-}
-
-private struct AssistantSpeechButton: View {
-
-    let content: String
-
-    @Environment(SpeechManager.self) private var speechManager
-    @Environment(UserSettings.self) private var userSettings
-
-    var body: some View {
-        if speechManager.isSpeaking {
-            Button {
-                speechManager.stop()
-            } label: {
-                Image(systemName: "stop.circle")
-            }
-        } else {
-            Button {
-                speechManager.speak(
-                    content,
-                    rate: Float(userSettings.speakingRate),
-                    volume: Float(userSettings.speakingVolume)
-                )
-            } label: {
-                Image(systemName: "speaker.wave.2")
-            }
         }
     }
 }

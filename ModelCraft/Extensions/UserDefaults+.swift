@@ -12,6 +12,7 @@ extension UserDefaults {
     static let appearance = "appearance"
     static let language = "language"
     static let automaticallyScrollToBottom = "automaticallyScrollToBottom"
+    static let modelDownloadBaseDirectory = "modelDownloadBaseDirectory"
     // Speaking
     static let speakingRate = "speakingRate"
     static let speakingVolume = "speakingVolume"
@@ -27,6 +28,15 @@ extension UserDefaults {
     }
 }
 
+enum UserDefaultSettings {
+    static let appearance = Appearance.system
+    static let automaticallyScrollToBottom = false
+    static let language = Locale.defaultLanguage
+    static let modelDownloadBaseDirectory = URL.applicationSupportDirectory
+        .appending(path: "huggingface")
+    static let speakingRate = 0.5
+    static let speakingVolume = 0.8
+}
 
 enum Appearance: String {
     case system = "system"
@@ -35,4 +45,3 @@ enum Appearance: String {
     
     var id: Self { self }
 }
-

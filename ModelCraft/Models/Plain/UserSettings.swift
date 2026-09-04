@@ -11,20 +11,30 @@ import SwiftUI
 @MainActor
 @Observable
 class UserSettings {
+    var modelDownloadBaseDirectory = UserDefaults.standard.url(
+        forKey: UserDefaults.modelDownloadBaseDirectory
+    ) ?? UserDefaultSettings.modelDownloadBaseDirectory {
+        didSet {
+            UserDefaults.standard.set(
+                modelDownloadBaseDirectory,
+                forKey: UserDefaults.modelDownloadBaseDirectory
+            )
+        }
+    }
     
-    var appearance: Appearance = .system {
+    var appearance = UserDefaultSettings.appearance {
         didSet { UserDefaults.standard.set(appearance.rawValue, forKey: UserDefaults.appearance) }
     }
 
-    var language = Locale.defaultLanguage {
+    var language = UserDefaultSettings.language {
         didSet { UserDefaults.standard.set(language, forKey: UserDefaults.language) }
     }
 
-    var speakingRate = 0.5 {
+    var speakingRate = UserDefaultSettings.speakingRate {
         didSet { UserDefaults.standard.set(speakingRate, forKey: UserDefaults.speakingRate) }
     }
 
-    var speakingVolume = 0.8 {
+    var speakingVolume = UserDefaultSettings.speakingVolume {
         didSet { UserDefaults.standard.set(speakingVolume, forKey: UserDefaults.speakingVolume) }
     }
 }

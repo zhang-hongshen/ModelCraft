@@ -42,12 +42,12 @@ final class LocalModelStore {
 
     private(set) var models: [LocalModel]
 
-    private let modelsDirectory: URL
+    private let modelsDirectory: URL?
     private let fileManager: FileManager
 
     init(
         models: [LocalModel] = [],
-        modelsDirectory: URL = HubApi.defaultModelsDirectory,
+        modelsDirectory: URL? = nil,
         fileManager: FileManager = .default
     ) {
         self.models = models
@@ -64,6 +64,7 @@ final class LocalModelStore {
     }
 
     private func discoverModels() -> [LocalModel] {
+        let modelsDirectory = modelsDirectory ?? HubApi.modelsDirectory
         guard let authors = try? fileManager.contentsOfDirectory(
             at: modelsDirectory,
             includingPropertiesForKeys: [.isDirectoryKey],

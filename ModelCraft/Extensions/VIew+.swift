@@ -10,10 +10,10 @@ import SwiftUI
 struct SettingsModifier: ViewModifier {
     
     @AppStorage(UserDefaults.appearance)
-    private var apperance = Appearance.system
+    private var apperance = UserDefaultSettings.appearance
     
     @AppStorage(UserDefaults.language)
-    private var language = Locale.preferredLanguages.first ?? Bundle.main.localizations.first!
+    private var language = UserDefaultSettings.language
     
     func body(content: Content) -> some View {
         content.preferredColorScheme({

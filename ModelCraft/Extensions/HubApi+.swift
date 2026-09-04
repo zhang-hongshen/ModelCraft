@@ -13,13 +13,16 @@ import HuggingFace
 
 extension HubApi {
 
-    static let defaultDownloadBase = URL.applicationSupportDirectory
-        .appending(path: "huggingface")
+    static var downloadBaseDirectory: URL {
+        UserDefaults.standard.url(forKey: UserDefaults.modelDownloadBaseDirectory)
+            ?? UserDefaultSettings.modelDownloadBaseDirectory
+    }
 
-    static let defaultModelsDirectory = defaultDownloadBase
-        .appending(path: "models")
+    static var modelsDirectory: URL {
+        downloadBaseDirectory.appending(path: "models")
+    }
 
-    public static let `default` = HubApi(
-        downloadBase: defaultDownloadBase
-    )
+    public static var `default`: HubApi {
+        HubApi(downloadBase: downloadBaseDirectory)
+    }
 }

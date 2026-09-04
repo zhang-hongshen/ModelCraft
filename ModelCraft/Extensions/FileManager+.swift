@@ -18,5 +18,15 @@ extension FileManager {
             try createDirectory(at: at, withIntermediateDirectories: true)
         }
     }
+
+    func moveDirectory(at source: URL, to destination: URL) throws {
+        let source = source.standardizedFileURL
+        let destination = destination.standardizedFileURL
+
+        guard source != destination else { return }
+
+        try createDirectoryIfNotExists(at: destination.deletingLastPathComponent())
+        try moveItem(at: source, to: destination)
+    }
     
 }
