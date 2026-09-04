@@ -88,6 +88,13 @@ class Message {
         }
         return result.isError ? .failed : .completed
     }
+
+    var videoGenerationProgress: LTXVideoProgress? {
+        guard toolCall?.function.name == ToolNames.textToVideo,
+              toolCallResult == nil
+        else { return nil }
+        return LTXVideoProgress(storedValue: content)
+    }
 }
 
 extension Message {

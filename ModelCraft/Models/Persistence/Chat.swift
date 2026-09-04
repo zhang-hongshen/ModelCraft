@@ -211,7 +211,11 @@ struct ToolCallGroupSummary {
     }
 
     var activeToolDescription: String? {
-        messages.last(where: { $0.toolCallStatus == .running })?.toolCall?.compactDescription(.running)
+        guard let message = messages.last(where: { $0.toolCallStatus == .running }) else {
+            return nil
+        }
+        return message.videoGenerationProgress?.localizedDescription
+            ?? message.toolCall?.compactDescription(.running)
     }
 
     var fileReadCount: Int {

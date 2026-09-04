@@ -11,15 +11,12 @@ import MLXNN
 import Tokenizers
 
 public enum LTXVideoLoaderError: Error, LocalizedError {
-    case fileNotFound(URL)
     case invalidIndexFile(URL)
     case emptyWeights(URL)
     case unsupportedWeightLayout(String)
 
     public var errorDescription: String? {
         switch self {
-        case .fileNotFound(let url):
-            return "File not found: \(url.path)"
         case .invalidIndexFile(let url):
             return "Invalid safetensors shard index: \(url.path)"
         case .emptyWeights(let url):
@@ -49,11 +46,6 @@ public enum LTXVideoLoader {
     }
 
     private static func weightURLs(from url: URL) throws -> [URL] {
-        let fileManager = FileManager.default
-        guard fileManager.fileExists(at: url) else {
-            throw LTXVideoLoaderError.fileNotFound(url)
-        }
-
         if url.lastPathComponent.hasSuffix(".index.json") {
             let data = try Data(contentsOf: url)
             guard
@@ -64,12 +56,8 @@ public enum LTXVideoLoader {
             }
 
             let weightDir = url.deletingLastPathComponent()
-            return try Set(weightMap.values).sorted().map { shard in
-                let shardURL = weightDir.appending(component: shard)
-                guard fileManager.fileExists(at: shardURL) else {
-                    throw LTXVideoLoaderError.fileNotFound(shardURL)
-                }
-                return shardURL
+            return Set(weightMap.values).sorted().map { shard in
+                weightDir.appending(component: shard)
             }
         }
 
@@ -87,6 +75,28 @@ public enum LTXVideoLoader {
             throw LTXVideoLoaderError.emptyWeights(url)
         }
         return weights
+    }
+
+    private static func quantizeLoadedModules(
+        in model: Module,
+        paths: Set<String>,
+        quantization: LTXVideoQuantization
+    ) throws {
+        let modules = model.leafModules().flattened().map { path, module in
+            let replacement: Module
+            if paths.contains(path),
+               let quantized = quantizeSingle(
+                   layer: module,
+                   groupSize: quantization.groupSize,
+                   bits: quantization.bits)
+            {
+                replacement = quantized
+            } else {
+                replacement = module
+            }
+            return (path, replacement)
+        }
+        try model.update(modules: .unflattened(modules), verify: .none)
     }
 
     @discardableResult
@@ -110,11 +120,10 @@ public enum LTXVideoLoader {
                 let loadedWeightPaths = Set(weights.compactMap { key, _ in
                     key.hasSuffix(".weight") ? String(key.dropLast(".weight".count)) : nil
                 })
-                quantize(
-                    model: model,
-                    groupSize: quantization.groupSize,
-                    bits: quantization.bits,
-                    filter: { path, _ in loadedWeightPaths.contains(path) })
+                try quantizeLoadedModules(
+                    in: model,
+                    paths: loadedWeightPaths,
+                    quantization: quantization)
                 for (path, module) in model.leafModules().flattened()
                 where loadedWeightPaths.contains(path) {
                     eval(module)
@@ -160,12 +169,14 @@ public enum LTXVideoLoader {
         hub: HubApi = .default,
         configuration: LTXVideoConfiguration
     ) async throws -> Tokenizer {
-        let tokenizerURL = try resolve(hub: hub, configuration: configuration, key: .tokenizer)
-        guard FileManager.default.fileExists(at: tokenizerURL) else {
-            throw LTXVideoLoaderError.fileNotFound(tokenizerURL)
-        }
-
-        return try await AutoTokenizer.from(pretrained: tokenizerURL.path)
+        let directory = try resolve(hub: hub, configuration: configuration, key: .tokenizer)
+        let tokenizerData = try hub.configuration(
+            fileURL: directory.appending(component: "tokenizer.json"))
+        let tokenizerConfig = try hub.configuration(
+            fileURL: directory.appending(component: "tokenizer_config.json"))
+        return try AutoTokenizer.from(
+            tokenizerConfig: tokenizerConfig,
+            tokenizerData: tokenizerData)
     }
 
     public static func loadTransformer(

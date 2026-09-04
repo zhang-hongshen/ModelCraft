@@ -80,6 +80,15 @@ public enum LTXVideoResolution: Int, CaseIterable, Sendable, Codable {
     }
 }
 
+public enum LTXVideoProgress: Equatable, Sendable {
+    case preparing
+    case generating(completed: Int, total: Int)
+    case decoding
+    case writing
+}
+
+public typealias LTXVideoProgressHandler = @Sendable (LTXVideoProgress) async -> Void
+
 public struct LTXVideoEvaluateParameters: Sendable {
     public var prompt: String
     public var ratio: LTXVideoAspectRatio
@@ -170,6 +179,8 @@ public struct LTXVideoVAEConfiguration: Sendable, Codable {
 }
 
 public struct LTXVideoConfiguration: Sendable {
+    private static let tokenizerRepositoryID = "Xenova/t5-tokenizer-new"
+
     public let id: String
     public let files: [LTXVideoFileKey: String]
     public let transformer: LTXVideoTransformerConfiguration
@@ -181,7 +192,7 @@ public struct LTXVideoConfiguration: Sendable {
         hub: HubApi = .default,
         progressHandler: @escaping (Progress) -> Void = { _ in }
     ) async throws {
-        try await hub.snapshot(
+        let directory = try await hub.snapshot(
             from: Hub.Repo(id: id),
             matching: [
                 files[.transformerWeights]!,
@@ -191,6 +202,18 @@ public struct LTXVideoConfiguration: Sendable {
                 files[.vaeWeights]!,
             ],
             progressHandler: progressHandler)
+
+        let tokenizerDirectory = try await hub.snapshot(
+            from: Hub.Repo(id: Self.tokenizerRepositoryID),
+            matching: ["tokenizer.json"],
+            progressHandler: progressHandler)
+        let tokenizerData = try Data(
+            contentsOf: tokenizerDirectory.appending(component: "tokenizer.json"))
+        try tokenizerData.write(
+            to: directory
+                .appending(component: files[.tokenizer]!)
+                .appending(component: "tokenizer.json"),
+            options: .atomic)
     }
 
     public static let ltxv2BDistilled = LTXVideoConfiguration(

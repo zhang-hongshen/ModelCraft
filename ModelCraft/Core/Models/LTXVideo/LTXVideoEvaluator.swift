@@ -14,14 +14,16 @@ actor LTXVideoEvaluator {
         prompt: String,
         ratio: LTXVideoAspectRatio,
         resolution: LTXVideoResolution,
-        duration: Int
+        duration: Int,
+        progress: LTXVideoProgressHandler = { _ in }
     ) async throws -> MLXArray {
+        await progress(.preparing)
         let lease = try await InferenceRuntimeCoordinator.shared.acquire(.ltxVideo)
         do {
             let model = try await modelFactory.load()
             let parameters = model.configuration.makeParameters(
                 prompt, ratio, resolution, duration)
-            let result = try await model.generate(parameters)
+            let result = try await model.generate(parameters, progress: progress)
             await lease.release()
             return result
         } catch {

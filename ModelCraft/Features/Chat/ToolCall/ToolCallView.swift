@@ -13,6 +13,19 @@ struct ToolCallView: View {
     let toolCall: ToolCall
     let result: CallToolResult?
     let status: ToolCallStatus
+    let videoProgress: LTXVideoProgress?
+
+    init(
+        toolCall: ToolCall,
+        result: CallToolResult?,
+        status: ToolCallStatus,
+        videoProgress: LTXVideoProgress? = nil
+    ) {
+        self.toolCall = toolCall
+        self.result = result
+        self.status = status
+        self.videoProgress = videoProgress
+    }
 
     var body: some View {
 
@@ -61,7 +74,8 @@ struct ToolCallView: View {
             VideoGenerationToolRenderer(
                 toolCall: toolCall,
                 result: result,
-                status: status
+                status: status,
+                progress: videoProgress
             )
 
         default:

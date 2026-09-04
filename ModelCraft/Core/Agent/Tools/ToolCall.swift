@@ -55,6 +55,67 @@ struct ToolNames {
     static let pressKey = "press_key"
 }
 
+typealias VideoGenerationProgressHandler = @MainActor @Sendable (LTXVideoProgress) -> Void
+
+enum ToolExecutionProgressReporter {
+    @TaskLocal static var videoGeneration: VideoGenerationProgressHandler?
+}
+
+extension LTXVideoProgress {
+    var localizedDescription: String {
+        switch self {
+        case .preparing:
+            return String(localized: "Preparing...")
+        case .generating(let completed, let total):
+            guard total > 0 else { return String(localized: "Preparing...") }
+            let percentage = (Double(completed) / Double(total)).formatted(
+                .percent.precision(.fractionLength(0...1)))
+            return String(
+                format: String(localized: "Generating video %@"),
+                percentage)
+        case .decoding:
+            return String(localized: "Decoding...")
+        case .writing:
+            return String(localized: "Writing video...")
+        }
+    }
+
+    var storedValue: String {
+        switch self {
+        case .preparing:
+            "video:preparing"
+        case .generating(let completed, let total):
+            "video:generating:\(completed):\(total)"
+        case .decoding:
+            "video:decoding"
+        case .writing:
+            "video:writing"
+        }
+    }
+
+    init?(storedValue: String) {
+        let components = storedValue.split(separator: ":")
+        guard components.first == "video" else { return nil }
+
+        switch components.dropFirst().first {
+        case "preparing":
+            self = .preparing
+        case "generating":
+            guard components.count == 4,
+                  let completed = Int(components[2]),
+                  let total = Int(components[3])
+            else { return nil }
+            self = .generating(completed: completed, total: total)
+        case "decoding":
+            self = .decoding
+        case "writing":
+            self = .writing
+        default:
+            return nil
+        }
+    }
+}
+
 
 
 

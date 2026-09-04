@@ -14,6 +14,19 @@ struct VideoGenerationToolRenderer: View {
     let toolCall: ToolCall
     let result: CallToolResult?
     let status: ToolCallStatus
+    let progress: LTXVideoProgress?
+
+    init(
+        toolCall: ToolCall,
+        result: CallToolResult?,
+        status: ToolCallStatus,
+        progress: LTXVideoProgress? = nil
+    ) {
+        self.toolCall = toolCall
+        self.result = result
+        self.status = status
+        self.progress = progress
+    }
 
     private var aspectRatio: CGFloat {
         let rawValue = toolCall.function.arguments["ratio"]?.stringValue
@@ -25,7 +38,7 @@ struct VideoGenerationToolRenderer: View {
         switch status {
         case .running:
             VideoGenerationLayout(aspectRatio: aspectRatio) {
-                VideoGeneratingView()
+                VideoGeneratingView(progress: progress)
             }
 
         case .completed:
@@ -64,6 +77,15 @@ private struct VideoGenerationLayout<Content: View>: View {
 }
 
 private struct VideoGeneratingView: View {
+    let progress: LTXVideoProgress?
+
+    private var fractionCompleted: Double? {
+        guard case .generating(let completed, let total) = progress,
+              total > 0
+        else { return nil }
+        return Double(completed) / Double(total)
+    }
+
     var body: some View {
         ZStack {
             LinearGradient(
@@ -81,11 +103,17 @@ private struct VideoGeneratingView: View {
                 .foregroundStyle(.primary, Color.accentColor)
 
             HStack(spacing: 6) {
-                Text("Generating video")
+                progressText
                     .font(.headline)
                     .fontWeight(.semibold)
-                ProgressView()
-                    .controlSize(.small)
+                if let fractionCompleted {
+                    ProgressView(value: fractionCompleted)
+                        .progressViewStyle(.circular)
+                        .controlSize(.small)
+                } else {
+                    ProgressView()
+                        .controlSize(.small)
+                }
             }
             .padding(.top, 16)
             .frame(maxHeight: .infinity, alignment: .top)
@@ -95,6 +123,11 @@ private struct VideoGeneratingView: View {
             RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .strokeBorder(.quaternary)
         }
+    }
+
+    @ViewBuilder
+    private var progressText: some View {
+        Text(progress?.localizedDescription ?? String(localized: "Preparing..."))
     }
 }
 

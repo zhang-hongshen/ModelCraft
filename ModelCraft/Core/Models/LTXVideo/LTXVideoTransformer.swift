@@ -25,14 +25,13 @@ private func ltxApproximateGELU(_ x: MLXArray) -> MLXArray {
 private func ltxApplyRotary(_ x: MLXArray, cos: MLXArray, sin: MLXArray) -> MLXArray {
     let b = Int(x.shape[0])
     let s = Int(x.shape[1])
-    let h = Int(x.shape[2])
-    let d = Int(x.shape[3])
+    let d = Int(x.shape[2])
 
-    let pair = x.reshaped([b, s, h, d / 2, 2])
-    let real = pair[0..., 0..., 0..., 0..., 0]
-    let imag = pair[0..., 0..., 0..., 0..., 1]
-    let rotated = MLX.stacked([-imag, real], axis: -1).reshaped([b, s, h, d])
-    return x * cos.expandedDimensions(axis: 2) + rotated * sin.expandedDimensions(axis: 2)
+    let pair = x.reshaped([b, s, d / 2, 2])
+    let real = pair[0..., 0..., 0..., 0]
+    let imag = pair[0..., 0..., 0..., 1]
+    let rotated = MLX.stacked([-imag, real], axis: -1).reshaped([b, s, d])
+    return x * cos + rotated * sin
 }
 
 public final class LTXVideoAttention: Module {
@@ -78,18 +77,19 @@ public final class LTXVideoAttention: Module {
         let s = Int(hiddenStates.shape[1])
         let contextLength = Int(context.shape[1])
 
-        var q = normQ(toQ(hiddenStates)).reshaped([b, s, heads, headDim])
-        var k = normK(toK(context)).reshaped([b, contextLength, heads, headDim])
-        var v = toV(context).reshaped([b, contextLength, heads, headDim])
+        var q = normQ(toQ(hiddenStates))
+        var k = normK(toK(context))
 
         if let imageRotaryEmbedding {
             q = ltxApplyRotary(q, cos: imageRotaryEmbedding.0, sin: imageRotaryEmbedding.1)
             k = ltxApplyRotary(k, cos: imageRotaryEmbedding.0, sin: imageRotaryEmbedding.1)
         }
 
-        q = q.transposed(0, 2, 1, 3)
-        k = k.transposed(0, 2, 1, 3)
-        v = v.transposed(0, 2, 1, 3)
+        q = q.reshaped([b, s, heads, headDim]).transposed(0, 2, 1, 3)
+        k = k.reshaped([b, contextLength, heads, headDim]).transposed(0, 2, 1, 3)
+        let v = toV(context)
+            .reshaped([b, contextLength, heads, headDim])
+            .transposed(0, 2, 1, 3)
 
         let scale = 1.0 / sqrt(Float(headDim))
         let attended = MLXFast.scaledDotProductAttention(

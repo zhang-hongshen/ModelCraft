@@ -220,7 +220,8 @@ extension MessageView {
                 } else {
                     ToolCallView(toolCall: toolCall,
                                  result: message.toolCallResult,
-                                 status: message.toolCallStatus)
+                                 status: message.toolCallStatus,
+                                 videoProgress: message.videoGenerationProgress)
                 }
             }
         }

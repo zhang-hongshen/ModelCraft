@@ -348,6 +348,183 @@ public final class LTXVideoVAE: Module {
         decoder(latents)
     }
 
+    func decode(_ latents: MLXArray, tiling: LTXVideoDecodeTiling?) -> MLXArray {
+        guard let tiling else { return decode(latents) }
+
+        let tileLatentFrameCount = tiling.sampleFrameCount / configuration.temporalCompressionRatio
+        if Int(latents.shape[1]) > tileLatentFrameCount {
+            return temporalTiledDecode(latents, tiling: tiling)
+        }
+        return spatialTiledDecode(latents, tiling: tiling)
+    }
+
+    private func temporalTiledDecode(
+        _ latents: MLXArray,
+        tiling: LTXVideoDecodeTiling
+    ) -> MLXArray {
+        let latentFrameCount = Int(latents.shape[1])
+        let outputFrameCount = (latentFrameCount - 1) * configuration.temporalCompressionRatio + 1
+        let tileLatentFrameCount = tiling.sampleFrameCount / configuration.temporalCompressionRatio
+        let tileLatentFrameStride = tiling.sampleFrameStride / configuration.temporalCompressionRatio
+        let blendFrameCount = tiling.sampleFrameCount - tiling.sampleFrameStride
+        var decodedTiles: [MLXArray] = []
+
+        for start in stride(from: 0, to: latentFrameCount, by: tileLatentFrameStride) {
+            let end = min(start + tileLatentFrameCount + 1, latentFrameCount)
+            let tileLatents = latents[0..., start..<end, 0..., 0..., 0...]
+            var decoded = spatialTiledDecode(tileLatents, tiling: tiling)
+            if start > 0 {
+                decoded = decoded[0..., 0..<(Int(decoded.shape[1]) - 1), 0..., 0..., 0...]
+            }
+            MLX.eval(decoded)
+            Memory.clearCache()
+            decodedTiles.append(decoded)
+        }
+
+        var outputTiles: [MLXArray] = []
+        for index in decodedTiles.indices {
+            var tile = decodedTiles[index]
+            let keepFrameCount: Int
+            if index == 0 {
+                keepFrameCount = tiling.sampleFrameStride + 1
+            } else {
+                tile = blend(
+                    decodedTiles[index - 1],
+                    tile,
+                    extent: blendFrameCount,
+                    axis: 1)
+                keepFrameCount = tiling.sampleFrameStride
+            }
+            outputTiles.append(tile[
+                0...,
+                0..<min(keepFrameCount, Int(tile.shape[1])),
+                0...,
+                0...,
+                0...
+            ])
+        }
+
+        return MLX.concatenated(outputTiles, axis: 1)[
+            0...,
+            0..<outputFrameCount,
+            0...,
+            0...,
+            0...
+        ]
+    }
+
+    private func spatialTiledDecode(
+        _ latents: MLXArray,
+        tiling: LTXVideoDecodeTiling
+    ) -> MLXArray {
+        let latentHeight = Int(latents.shape[2])
+        let latentWidth = Int(latents.shape[3])
+        let tileLatentSize = tiling.spatialTileSize / configuration.spatialCompressionRatio
+        let tileLatentStride = tiling.spatialTileStride / configuration.spatialCompressionRatio
+
+        if latentHeight <= tileLatentSize && latentWidth <= tileLatentSize {
+            return decoder(latents)
+        }
+
+        let blendSize = tiling.spatialTileSize - tiling.spatialTileStride
+        var rows: [[MLXArray]] = []
+
+        for y in stride(from: 0, to: latentHeight, by: tileLatentStride) {
+            var row: [MLXArray] = []
+            for x in stride(from: 0, to: latentWidth, by: tileLatentStride) {
+                let yEnd = min(y + tileLatentSize, latentHeight)
+                let xEnd = min(x + tileLatentSize, latentWidth)
+                let tileLatents = latents[0..., 0..., y..<yEnd, x..<xEnd, 0...]
+                let decoded = decoder(tileLatents)
+                MLX.eval(decoded)
+                Memory.clearCache()
+                row.append(decoded)
+            }
+            rows.append(row)
+        }
+
+        var outputRows: [MLXArray] = []
+        for rowIndex in rows.indices {
+            var outputTiles: [MLXArray] = []
+            for columnIndex in rows[rowIndex].indices {
+                var tile = rows[rowIndex][columnIndex]
+                if rowIndex > 0 {
+                    tile = blend(
+                        rows[rowIndex - 1][columnIndex],
+                        tile,
+                        extent: blendSize,
+                        axis: 2)
+                }
+                if columnIndex > 0 {
+                    tile = blend(
+                        rows[rowIndex][columnIndex - 1],
+                        tile,
+                        extent: blendSize,
+                        axis: 3)
+                }
+                outputTiles.append(tile[
+                    0...,
+                    0...,
+                    0..<min(tiling.spatialTileStride, Int(tile.shape[2])),
+                    0..<min(tiling.spatialTileStride, Int(tile.shape[3])),
+                    0...
+                ])
+            }
+            outputRows.append(MLX.concatenated(outputTiles, axis: 3))
+        }
+
+        let outputHeight = latentHeight * configuration.spatialCompressionRatio
+        let outputWidth = latentWidth * configuration.spatialCompressionRatio
+        return MLX.concatenated(outputRows, axis: 2)[
+            0...,
+            0...,
+            0..<outputHeight,
+            0..<outputWidth,
+            0...
+        ]
+    }
+
+    private func blend(
+        _ previous: MLXArray,
+        _ current: MLXArray,
+        extent: Int,
+        axis: Int
+    ) -> MLXArray {
+        let count = min(extent, Int(previous.shape[axis]), Int(current.shape[axis]))
+        if count == 0 { return current }
+        let positions = MLX.arange(count).asType(current.dtype)
+        let currentWeight = positions / Float(count)
+        var weightShape = Array(repeating: 1, count: Int(current.ndim))
+        weightShape[axis] = count
+        let weight = currentWeight.reshaped(weightShape)
+        let previousSlice = slice(
+            previous,
+            axis: axis,
+            start: Int(previous.shape[axis]) - count,
+            end: Int(previous.shape[axis]))
+        let currentSlice = slice(current, axis: axis, start: 0, end: count)
+        let blended = previousSlice * (1 - weight) + currentSlice * weight
+        let remainder = slice(
+            current,
+            axis: axis,
+            start: count,
+            end: Int(current.shape[axis]))
+        return MLX.concatenated([blended, remainder], axis: axis)
+    }
+
+    private func slice(
+        _ array: MLXArray,
+        axis: Int,
+        start: Int,
+        end: Int
+    ) -> MLXArray {
+        var indices: [any MLXArrayIndex] = []
+        for dimension in 0..<Int(array.ndim) {
+            indices.append(dimension == axis ? start..<end : 0..<Int(array.shape[dimension]))
+        }
+        return array[indices]
+    }
+
     public func denormalize(_ latents: MLXArray) -> MLXArray {
         let mean = latentsMean.reshaped([1, 1, 1, 1, -1]).asType(latents.dtype)
         let std = latentsStd.reshaped([1, 1, 1, 1, -1]).asType(latents.dtype)

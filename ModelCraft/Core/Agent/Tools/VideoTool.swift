@@ -19,20 +19,20 @@ class VideoTool {
     static var textToVideo: Tool<textToVideoInput, textToVideoOutput> {
         Tool<textToVideoInput, textToVideoOutput>(
             name: "text_to_video",
-            description: "Generate a Video clip from a text prompt with an explicit aspect ratio, long-edge resolution, and duration",
+            description: "Generate a new MP4 video clip from a text description with the local video model. Requires an explicit aspect ratio, long-edge resolution, and duration, saves the file in the Movies directory, and returns its file URL and MIME type.",
             parameters: [
-                .required("prompt", type: .string, description: "Description of the video and motion"),
+                .required("prompt", type: .string, description: "Describe the subject, scene, visual style, camera behavior, and motion over time."),
                 .required(
                     "ratio",
                     type: .string,
-                    description: "Output aspect ratio",
+                    description: "The output frame's width-to-height aspect ratio. Use one of the enumerated string values.",
                     extraProperties: [
                         "enum": LTXVideoAspectRatio.allCases.map(\.rawValue)
                     ]),
                 .required(
                     "resolution",
                     type: .int,
-                    description: "Approximate output long edge",
+                    description: "Approximate pixel count of the output frame's longer edge. Use an enumerated value; prefer the recommended value unless the user requests another size.",
                     extraProperties: [
                         "enum": LTXVideoResolution.allCases.map(\.rawValue),
                         "x-recommended": LTXVideoResolution.deviceRecommendation.rawValue,
@@ -40,7 +40,7 @@ class VideoTool {
                 .required(
                     "duration",
                     type: .int,
-                    description: "Output duration in seconds",
+                    description: "Requested output duration in whole seconds within the minimum and maximum declared by this schema.",
                     extraProperties: [
                         "minimum": LTXVideoEvaluateParameters.minimumDuration,
                         "maximum": LTXVideoEvaluateParameters.maximumDuration,
@@ -63,7 +63,11 @@ class VideoTool {
                 prompt: input.prompt,
                 ratio: ratio,
                 resolution: resolution,
-                duration: input.duration)
+                duration: input.duration
+            ) { progress in
+                await ToolExecutionProgressReporter.videoGeneration?(progress)
+            }
+            await ToolExecutionProgressReporter.videoGeneration?(.writing)
             try LTXVideoIO.saveVideo(
                 frames: frames,
                 fps: LTXVideoEvaluateParameters.frameRate,

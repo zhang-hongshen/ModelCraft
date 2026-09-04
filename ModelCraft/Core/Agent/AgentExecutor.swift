@@ -179,7 +179,13 @@ class AgentExecutor {
                         nextTurn.toolCall,
                         projectID: projectID)
                 } else {
-                    executionResult = try await toolDispatcher(nextTurn.toolCall)
+                    executionResult = try await ToolExecutionProgressReporter.$videoGeneration.withValue(
+                        { progress in
+                            toolStorageMessage.content = progress.storedValue
+                        },
+                        operation: {
+                            try await toolDispatcher(nextTurn.toolCall)
+                        })
                 }
                 let (toolCallResult, protocolToolMessage) = executionResult
                 toolStorageMessage.content = protocolToolMessage.content

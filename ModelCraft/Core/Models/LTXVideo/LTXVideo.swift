@@ -46,7 +46,10 @@ public final class LTXVideo {
         return LTXVideoPromptEncoding(embeddings: embeddings, attentionMask: mask)
     }
 
-    public func generateLatents(_ parameters: LTXVideoEvaluateParameters) async throws -> MLXArray {
+    public func generateLatents(
+        _ parameters: LTXVideoEvaluateParameters,
+        progress: LTXVideoProgressHandler = { _ in }
+    ) async throws -> MLXArray {
         let promptEncoding = try await encodePrompt(parameters)
 
         if runtimeProfile.releasesComponentsBetweenStages {
@@ -109,13 +112,20 @@ public final class LTXVideo {
             ).asType(.float32)
             latents = scheduler.step(modelOutput: noisePrediction, stepIndex: stepIndex, sample: latents)
             MLX.eval(latents)
+            await progress(.generating(
+                completed: stepIndex + 1,
+                total: scheduler.timesteps.count))
         }
 
         return latents
     }
 
-    public func generate(_ parameters: LTXVideoEvaluateParameters) async throws -> MLXArray {
-        var latents = try await generateLatents(parameters)
+    public func generate(
+        _ parameters: LTXVideoEvaluateParameters,
+        progress: LTXVideoProgressHandler = { _ in }
+    ) async throws -> MLXArray {
+        var latents = try await generateLatents(parameters, progress: progress)
+        await progress(.decoding)
 
         if runtimeProfile.releasesComponentsBetweenStages {
             transformer = nil
@@ -151,7 +161,7 @@ public final class LTXVideo {
             latents = (1 - noiseScale) * latents + noiseScale * noise
         }
 
-        var video = vae.decode(latents)
+        var video = vae.decode(latents, tiling: runtimeProfile.decodeTiling)
         if Int(video.shape[1]) > parameters.frameCount
             || Int(video.shape[2]) > parameters.height
             || Int(video.shape[3]) > parameters.width
