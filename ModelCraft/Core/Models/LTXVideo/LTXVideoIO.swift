@@ -21,7 +21,8 @@ public enum LTXVideoIOError: Error, LocalizedError {
 }
 
 public enum LTXVideoIO {
-    public static func saveVideo(frames: MLXArray, fps: Int = 24, outputPath: URL) throws {
+    public static func saveVideo(frames: MLXArray, fps: Int = 24, outputPath: URL) async throws {
+        try Task.checkCancellation()
         let fileManager = FileManager.default
         try fileManager.createDirectory(
             at: outputPath.deletingLastPathComponent(),
@@ -44,6 +45,13 @@ public enum LTXVideoIO {
         let width = Int(video.shape[2])
 
         let writer = try AVAssetWriter(outputURL: outputPath, fileType: .mp4)
+        var completed = false
+        defer {
+            if !completed {
+                writer.cancelWriting()
+                try? fileManager.removeItem(at: outputPath)
+            }
+        }
         let settings: [String: Any] = [
             AVVideoCodecKey: AVVideoCodecType.h264,
             AVVideoWidthKey: width,
@@ -77,7 +85,9 @@ public enum LTXVideoIO {
         writer.startSession(atSourceTime: .zero)
 
         for frameIndex in 0..<frameCount {
+            try Task.checkCancellation()
             while !input.isReadyForMoreMediaData {
+                try Task.checkCancellation()
                 Thread.sleep(forTimeInterval: 0.001)
             }
 
@@ -131,17 +141,20 @@ public enum LTXVideoIO {
         }
 
         input.markAsFinished()
-        let semaphore = DispatchSemaphore(value: 0)
-        var finishError: Error?
-        writer.finishWriting {
-            finishError = writer.error
-            semaphore.signal()
+        try await withTaskCancellationHandler {
+            await withCheckedContinuation { continuation in
+                writer.finishWriting {
+                    continuation.resume()
+                }
+            }
+            try Task.checkCancellation()
+        } onCancel: {
+            writer.cancelWriting()
         }
-        semaphore.wait()
 
-        if let finishError {
+        if let finishError = writer.error {
             throw LTXVideoIOError.videoWriterFailed(finishError.localizedDescription)
         }
+        completed = true
     }
 }
-

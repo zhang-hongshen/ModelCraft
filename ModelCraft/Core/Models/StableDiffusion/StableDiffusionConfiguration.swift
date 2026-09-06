@@ -33,8 +33,6 @@ struct AutoencoderConfiguration: Codable {
         let container: KeyedDecodingContainer<AutoencoderConfiguration.CodingKeys> =
             try decoder.container(keyedBy: AutoencoderConfiguration.CodingKeys.self)
 
-        // load_autoencoder()
-
         self.scalingFactor =
             try container.decodeIfPresent(Float.self, forKey: .scalingFactor) ?? 0.18215
 
@@ -387,12 +385,10 @@ enum StableDiffusionFileKey {
 /// - ``Preset/sdxlTurbo``
 ///
 /// Call ``download(hub:progressHandler:)`` to download the weights, then
-/// ``textToImageGenerator(hub:configuration:)`` or
-/// ``imageToImageGenerator(hub:configuration:)`` to produce the ``ImageGenerator``.
+/// ``textToImageGenerator(hub:configuration:)`` to produce the ``ImageGenerator``.
 ///
 /// The ``ImageGenerator`` has a method to generate the latents:
 /// - ``TextToImageGenerator/generateLatents(parameters:)``
-/// - ``ImageToImageGenerator/generateLatents(image:parameters:strength:)``
 ///
 /// Evaluate each of the latents from that iterator and use the decoder to turn the last latent
 /// into an image:
@@ -416,16 +412,17 @@ public struct StableDiffusionConfiguration: Sendable {
             from: repo, matching: Array(files.values), progressHandler: progressHandler)
     }
 
+    func isDownloaded(hub: HubApi = .default) -> Bool {
+        let directory = hub.localRepoLocation(Hub.Repo(id: id))
+        return files.values.allSatisfy { path in
+            FileManager.default.fileExists(atPath: directory.appending(path: path).path)
+        }
+    }
+
     public func textToImageGenerator(hub: HubApi = .default, configuration: LoadConfiguration)
         throws -> TextToImageGenerator?
     {
         try factory(hub, self, configuration) as? TextToImageGenerator
-    }
-
-    public func imageToImageGenerator(hub: HubApi = .default, configuration: LoadConfiguration)
-        throws -> ImageToImageGenerator?
-    {
-        try factory(hub, self, configuration) as? ImageToImageGenerator
     }
 
     public enum Preset: String, Codable, CaseIterable, Sendable {

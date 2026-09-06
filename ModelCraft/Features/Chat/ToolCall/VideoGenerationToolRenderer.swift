@@ -102,21 +102,11 @@ private struct VideoGeneratingView: View {
                 .symbolRenderingMode(.hierarchical)
                 .foregroundStyle(.primary, Color.accentColor)
 
-            HStack(spacing: 6) {
-                progressText
-                    .font(.headline)
-                    .fontWeight(.semibold)
-                if let fractionCompleted {
-                    ProgressView(value: fractionCompleted)
-                        .progressViewStyle(.circular)
-                        .controlSize(.small)
-                } else {
-                    ProgressView()
-                        .controlSize(.small)
-                }
-            }
-            .padding(.top, 16)
-            .frame(maxHeight: .infinity, alignment: .top)
+            progressText
+                .font(.headline)
+                .fontWeight(.semibold)
+                .padding(.top, 16)
+                .frame(maxHeight: .infinity, alignment: .top)
         }
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         .overlay {

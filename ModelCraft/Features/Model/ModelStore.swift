@@ -16,33 +16,39 @@ struct ModelStore: View {
     
     @State private var isLoading = false
     @State private var canLoadMore = true
-    @State private var selectedModelName : String? = nil
     @State private var searchText = ""
     @State private var page = 0
-    @State private var searchTask: Task<Void, Never>? = nil
+
+    @Query(ModelTask.fetchByType(.download))
+    private var downloadTasks: [ModelTask] = []
     
-    @Environment(\.horizontalSizeClass) private var sizeClass
-    
-    private static let pageSize = 20
-    private static let columns = [GridItem(.adaptive(minimum: 200), spacing: 16)]
+    fileprivate static let pageSize = 20
+    fileprivate static let columns = [GridItem(.adaptive(minimum: 200), spacing: 16)]
     
     var body: some View {
+        let downloadTasksByModelID = Dictionary(
+            uniqueKeysWithValues: downloadTasks.map { ($0.modelID, $0) }
+        )
+
         ScrollView {
-            ContentView()
+            ModelStoreContent(
+                models: models,
+                downloadTasksByModelID: downloadTasksByModelID,
+                viewMode: viewMode,
+                isLoading: isLoading,
+                canLoadMore: canLoadMore,
+                onLoadMore: loadMoreModels)
                 .padding()
                 .toolbar(content: ToolbarItems)
         }
         .searchable(text: $searchText)
         .refreshable { await reloadModels() }
-        .task { await reloadModels() }
-        .onChange(of: searchText) { oldValue, newValue in
-            searchTask?.cancel()
-            searchTask = Task {
-                try? await Task.sleep(nanoseconds: 500_000_000)
-                if !Task.isCancelled {
-                    await reloadModels()
-                }
+        .task(id: searchText) {
+            if !searchText.isEmpty {
+                try? await Task.sleep(for: .milliseconds(500))
             }
+            guard !Task.isCancelled else { return }
+            await reloadModels()
         }
         
     }
@@ -53,20 +59,17 @@ extension ModelStore {
     @ToolbarContentBuilder
     func ToolbarItems() -> some ToolbarContent {
         ToolbarItemGroup {
-            
-            if sizeClass == .regular {
-                Menu {
-                    Picker("", selection: $viewMode) {
-                        Text("as List").tag(ViewMode.list)
-                        Text("as Grid").tag(ViewMode.grid)
-                    }
-                    .pickerStyle(.inline)
-                    .labelsHidden()
-                } label: {
-                    Image(systemName: viewMode.systemImage)
+            Menu {
+                Picker("", selection: $viewMode) {
+                    Text("as List").tag(ViewMode.list)
+                    Text("as Grid").tag(ViewMode.grid)
                 }
+                .pickerStyle(.inline)
+                .labelsHidden()
+            } label: {
+                Image(systemName: viewMode.systemImage)
             }
-            
+
             if isLoading {
                 ProgressView()
             } else {
@@ -79,89 +82,61 @@ extension ModelStore {
         }
     }
     
-    @ViewBuilder
-    func LoadMoreView() -> some View {
-        if canLoadMore {
-            ProgressView()
-                .frame(maxWidth: .infinity)
-                .onAppear {
-                    Task { await loadMoreModels() }
-                }
-        }
-        
-    }
-    
-    @ViewBuilder
-    func ContentView() -> some View {
+}
+
+private struct ModelStoreContent: View {
+    let models: [ModelStoreModel]
+    let downloadTasksByModelID: [String: ModelTask]
+    let viewMode: ViewMode
+    let isLoading: Bool
+    let canLoadMore: Bool
+    let onLoadMore: () async -> Void
+
+    var body: some View {
         switch viewMode {
         case .grid:
-            if isLoading {
-                GridLoadingView()
-            } else {
-                GridView()
+            LazyVGrid(columns: ModelStore.columns, spacing: 12) {
+                rows
             }
-            
         case .list:
-            if isLoading {
-                ListLoadingView()
-            } else {
-                ListView()
+            LazyVStack(spacing: 12) {
+                rows
             }
-            
         }
-        
     }
-    
+
     @ViewBuilder
-    func GridLoadingView() -> some View {
-        LazyVGrid(columns: ModelStore.columns, spacing: 12) {
+    private var rows: some View {
+        if isLoading {
             ForEach(0..<ModelStore.pageSize, id: \.self) { _ in
                 RoundedRectangle(cornerRadius: 12)
                     .fill(Color.secondary.opacity(0.1))
                     .frame(height: 100)
                     .redacted(reason: .placeholder)
             }
-        }
-    }
-    
-    @ViewBuilder
-    func GridView() -> some View {
-        LazyVGrid(columns: ModelStore.columns, spacing: 12) {
+        } else {
             ForEach(models) { model in
-                ModelCard(model: model, viewMode: viewMode)
+                ModelCard(
+                    model: model,
+                    viewMode: viewMode,
+                    downloadTask: downloadTasksByModelID[model.id])
             }
-            LoadMoreView()
-        }
-    }
-    
-    @ViewBuilder
-    func ListLoadingView() -> some View {
-        LazyVStack(spacing: 12) {
-            ForEach(0..<ModelStore.pageSize, id: \.self) { _ in
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(Color.secondary.opacity(0.1))
-                    .frame(height: 100)
-                    .redacted(reason: .placeholder)
+            if canLoadMore {
+                ProgressView()
+                    .frame(maxWidth: .infinity)
+                    .task { await onLoadMore() }
             }
         }
     }
-    
-    @ViewBuilder
-    func ListView() -> some View {
-        LazyVStack(alignment: .center,spacing: 12) {
-            ForEach(models) { model in
-                ModelCard(model: model, viewMode: viewMode)
-            }
-            LoadMoreView()
-        }
-    }
-    
 }
 
 extension ModelStore {
     
     func fetchModels() async throws -> [ModelStoreModel] {
-        let models = try await ModelService.shared.searchModel(keyword: searchText, page: page, pageSize: ModelStore.pageSize)
+        let models = try await ModelService.searchModel(
+            keyword: searchText,
+            page: page,
+            pageSize: ModelStore.pageSize)
         if models.count < ModelStore.pageSize {
             canLoadMore = false
         }

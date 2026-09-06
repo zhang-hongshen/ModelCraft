@@ -1,8 +1,6 @@
 // Copyright © 2024 Apple Inc.
 
 import Foundation
-import CoreGraphics
-import ImageIO
 import Hub
 import MLX
 import MLXNN
@@ -286,7 +284,7 @@ open class StableDiffusionBase: StableDiffusion, TextToImageGenerator {
 }
 
 /// Implementation of ``StableDiffusion`` for the `stabilityai/sdxl-turbo` model.
-open class StableDiffusionXL: StableDiffusion, TextToImageGenerator, ImageToImageGenerator {
+open class StableDiffusionXL: StableDiffusion, TextToImageGenerator {
 
     var textEncoder2: StableDiffusionTextEncoder?
     let tokenizer2: StableDiffusionTokenizer
@@ -364,54 +362,6 @@ open class StableDiffusionXL: StableDiffusion, TextToImageGenerator, ImageToImag
             conditioning: conditioning, textTime: (pooledConditioning, timeIDs))
     }
 
-    func conditionImage(image: URL) -> MLXArray {
-        guard let imageSource = CGImageSourceCreateWithURL(image as CFURL, nil),
-            let cgImage = CGImageSourceCreateImageAtIndex(imageSource, 0, nil)
-        else {
-            fatalError("Could not load image at \(image)")
-        }
-
-        let originalWidth = cgImage.width
-        let originalHeight = cgImage.height
-        let width = originalWidth - (originalWidth % 64)
-        let height = originalHeight - (originalHeight % 64)
-        var finalCGImage = cgImage
-
-        if width != originalWidth || height != originalHeight {
-            let colorSpace = CGColorSpaceCreateDeviceRGB()
-            guard
-                let context = CGContext(
-                    data: nil, width: width, height: height, bitsPerComponent: 8,
-                    bytesPerRow: 0, space: colorSpace,
-                    bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
-            else {
-                fatalError("Could not create CGContext for resizing")
-            }
-            context.interpolationQuality = .none
-            context.draw(cgImage, in: CGRect(x: 0, y: 0, width: width, height: height))
-            guard let resizedImage = context.makeImage() else {
-                fatalError("Could not create resized CGImage")
-            }
-            finalCGImage = resizedImage
-        }
-
-        let bytesPerPixel = 4
-        var pixelData = [UInt8](repeating: 0, count: width * height * bytesPerPixel)
-        let colorSpace = CGColorSpaceCreateDeviceRGB()
-        guard
-            let context = CGContext(
-                data: &pixelData, width: width, height: height, bitsPerComponent: 8,
-                bytesPerRow: width * bytesPerPixel, space: colorSpace,
-                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
-        else {
-            fatalError("Could not create CGContext for pixel extraction")
-        }
-        context.draw(finalCGImage, in: CGRect(x: 0, y: 0, width: width, height: height))
-
-        let rawArray = MLXArray(pixelData).reshaped([height, width, 4])
-        return (rawArray[0..., 0..., 0..<3].asType(.float32) / 255.0) * 2.0 - 1.0
-    }
-
     public func generateLatents(
         parameters: StableDiffusionEvaluateParameters
     ) throws -> DenoiseIterator {
@@ -427,27 +377,4 @@ open class StableDiffusionXL: StableDiffusion, TextToImageGenerator, ImageToImag
             parameters: parameters)
     }
 
-    public func generateLatents(
-        image: URL, parameters: StableDiffusionEvaluateParameters, strength: Float
-    ) throws -> DenoiseIterator {
-        MLXRandom.seed(parameters.seed)
-        let image = conditionImage(image: image)
-        let startStep = Float(sampler.maxTime) * strength
-        let numberOfSteps = Int(Float(parameters.steps) * strength)
-        let conditioning = try conditioning(parameters: parameters)
-
-        let autoencoder = try loadAutoencoder()
-        var (x0, _) = autoencoder.encode(image[.newAxis])
-        x0 = broadcast(x0, to: [parameters.imageCount] + x0.shape.dropFirst())
-        eval(x0)
-        if releasesComponentsBetweenStages {
-            self.autoencoder = nil
-            Memory.clearCache()
-        }
-        try Task.checkCancellation()
-        let xt = sampler.addNoise(x: x0, t: MLXArray(startStep))
-        return try makeDenoiseIterator(
-            xt: xt, startTime: sampler.maxTime, conditioning: conditioning,
-            parameters: parameters, steps: numberOfSteps)
-    }
 }

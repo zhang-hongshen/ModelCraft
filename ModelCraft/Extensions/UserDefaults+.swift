@@ -1,5 +1,5 @@
 //
-//  UserDefaults.swift
+//  UserDefaults+.swift
 //  ModelCraft
 //
 //  Created by Hongshen on 3/2/2024.
@@ -13,6 +13,10 @@ extension UserDefaults {
     static let language = "language"
     static let automaticallyScrollToBottom = "automaticallyScrollToBottom"
     static let modelDownloadBaseDirectory = "modelDownloadBaseDirectory"
+    static let imageOutputDirectory = "imageOutputDirectory"
+    static let audioOutputDirectory = "audioOutputDirectory"
+    static let videoOutputDirectory = "videoOutputDirectory"
+    static let customSkillDirectories = "customSkillDirectories"
     // Speaking
     static let speakingRate = "speakingRate"
     static let speakingVolume = "speakingVolume"
@@ -34,6 +38,11 @@ enum UserDefaultSettings {
     static let language = Locale.defaultLanguage
     static let modelDownloadBaseDirectory = URL.applicationSupportDirectory
         .appending(path: "huggingface")
+    static let imageOutputDirectory = URL.picturesDirectory
+    static let audioOutputDirectory = URL.musicDirectory
+    static let videoOutputDirectory = URL.moviesDirectory
+    static let skillDirectory = FileManager.default.homeDirectoryForCurrentUser
+        .appendingPathComponent(".agents/skills")
     static let speakingRate = 0.5
     static let speakingVolume = 0.8
 }

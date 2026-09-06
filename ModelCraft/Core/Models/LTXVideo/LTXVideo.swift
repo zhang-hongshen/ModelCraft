@@ -26,14 +26,17 @@ public final class LTXVideo {
     }
 
     public func encodePrompt(_ parameters: LTXVideoEvaluateParameters) async throws -> LTXVideoPromptEncoding {
+        try Task.checkCancellation()
         if tokenizer == nil {
             tokenizer = LTXVideoTokenizer(tokenizer: try await LTXVideoLoader.loadTokenizer(configuration: configuration))
         }
+        try Task.checkCancellation()
         if textEncoder == nil {
             textEncoder = try LTXVideoLoader.loadTextEncoder(
                 configuration: configuration,
                 quantization: runtimeProfile.textEncoderQuantization)
         }
+        try Task.checkCancellation()
         guard let tokenizer, let textEncoder else {
             throw LTXVideoLoaderError.unsupportedWeightLayout("Unable to load LTX text encoder.")
         }
@@ -43,6 +46,7 @@ public final class LTXVideo {
             maxLength: LTXVideoEvaluateParameters.maxTokenCount)
         let embeddings = textEncoder.encode(inputIDs: ids).asType(.bfloat16)
         MLX.eval(embeddings)
+        try Task.checkCancellation()
         return LTXVideoPromptEncoding(embeddings: embeddings, attentionMask: mask)
     }
 
@@ -51,6 +55,7 @@ public final class LTXVideo {
         progress: LTXVideoProgressHandler = { _ in }
     ) async throws -> MLXArray {
         let promptEncoding = try await encodePrompt(parameters)
+        try Task.checkCancellation()
 
         if runtimeProfile.releasesComponentsBetweenStages {
             textEncoder = nil
@@ -63,6 +68,7 @@ public final class LTXVideo {
                 configuration: configuration,
                 quantization: runtimeProfile.transformerQuantization)
         }
+        try Task.checkCancellation()
         guard let transformer else {
             throw LTXVideoLoaderError.unsupportedWeightLayout("Unable to load LTX transformer.")
         }
@@ -99,6 +105,7 @@ public final class LTXVideo {
         )
 
         for (stepIndex, timestepValue) in scheduler.timesteps.enumerated() {
+            try Task.checkCancellation()
             let timestep = MLXArray([timestepValue]).asType(.float32)
             let noisePrediction = transformer(
                 hiddenStates: latents.asType(.bfloat16),
@@ -112,6 +119,7 @@ public final class LTXVideo {
             ).asType(.float32)
             latents = scheduler.step(modelOutput: noisePrediction, stepIndex: stepIndex, sample: latents)
             MLX.eval(latents)
+            try Task.checkCancellation()
             await progress(.generating(
                 completed: stepIndex + 1,
                 total: scheduler.timesteps.count))
@@ -125,7 +133,9 @@ public final class LTXVideo {
         progress: LTXVideoProgressHandler = { _ in }
     ) async throws -> MLXArray {
         var latents = try await generateLatents(parameters, progress: progress)
+        try Task.checkCancellation()
         await progress(.decoding)
+        try Task.checkCancellation()
 
         if runtimeProfile.releasesComponentsBetweenStages {
             transformer = nil
@@ -135,6 +145,7 @@ public final class LTXVideo {
         if vae == nil {
             vae = try LTXVideoLoader.loadVAE(configuration: configuration)
         }
+        try Task.checkCancellation()
         guard let vae else {
             throw LTXVideoLoaderError.unsupportedWeightLayout("Unable to load LTX VAE.")
         }
@@ -161,6 +172,7 @@ public final class LTXVideo {
             latents = (1 - noiseScale) * latents + noiseScale * noise
         }
 
+        try Task.checkCancellation()
         var video = vae.decode(latents, tiling: runtimeProfile.decodeTiling)
         if Int(video.shape[1]) > parameters.frameCount
             || Int(video.shape[2]) > parameters.height
@@ -175,6 +187,7 @@ public final class LTXVideo {
             ]
         }
         MLX.eval(video)
+        try Task.checkCancellation()
         if runtimeProfile.releasesComponentsBetweenStages {
             self.vae = nil
             Memory.clearCache()

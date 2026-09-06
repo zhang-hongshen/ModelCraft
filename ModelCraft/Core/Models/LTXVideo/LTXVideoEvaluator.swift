@@ -17,10 +17,13 @@ actor LTXVideoEvaluator {
         duration: Int,
         progress: LTXVideoProgressHandler = { _ in }
     ) async throws -> MLXArray {
+        try Task.checkCancellation()
         await progress(.preparing)
-        let lease = try await InferenceRuntimeCoordinator.shared.acquire(.ltxVideo)
+        try Task.checkCancellation()
+        let lease = try await InferenceRuntimeCoordinator.shared.acquire()
         do {
             let model = try await modelFactory.load()
+            try Task.checkCancellation()
             let parameters = model.configuration.makeParameters(
                 prompt, ratio, resolution, duration)
             let result = try await model.generate(parameters, progress: progress)
@@ -54,25 +57,42 @@ actor LTXVideoModelFactory {
     }
 
     func load() async throws -> LTXVideo {
+        try Task.checkCancellation()
         switch state {
         case .loaded(let model):
             return model
         case .loading(let task):
-            return try await task.value
+            do {
+                return try await waitForLoad(task)
+            } catch {
+                state = .unloaded
+                throw error
+            }
         case .unloaded:
             let task = Task<LTXVideo, Error> {
                 try await configuration.download()
+                try Task.checkCancellation()
                 return LTXVideo(configuration: configuration, runtimeProfile: runtimeProfile)
             }
             state = .loading(task)
             do {
-                let model = try await task.value
+                let model = try await waitForLoad(task)
                 state = .loaded(model)
                 return model
             } catch {
                 state = .unloaded
                 throw error
             }
+        }
+    }
+
+    private func waitForLoad(_ task: Task<LTXVideo, Error>) async throws -> LTXVideo {
+        try await withTaskCancellationHandler {
+            let model = try await task.value
+            try Task.checkCancellation()
+            return model
+        } onCancel: {
+            task.cancel()
         }
     }
 

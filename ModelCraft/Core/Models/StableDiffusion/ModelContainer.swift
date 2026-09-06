@@ -59,7 +59,6 @@ struct StableDiffusionDenoiser {
 /// Created by:
 ///
 /// - ``TextToImageGenerator/generateLatents(parameters:)``
-/// - ``ImageToImageGenerator/generateLatents(image:parameters:strength:)``
 public struct DenoiseIterator: Sequence, IteratorProtocol {
 
     let denoiser: StableDiffusionDenoiser
@@ -134,67 +133,43 @@ public protocol TextToImageGenerator: ImageGenerator {
     func generateLatents(parameters: StableDiffusionEvaluateParameters) throws -> DenoiseIterator
 }
 
-/// Public interface for transforming a text prompt into an image.
-///
-/// Steps:
-///
-/// - ``generateLatents(image:parameters:strength:)``
-/// - evaluate each of the latents from the iterator
-/// - ``ImageGenerator/decode(xt:)`` or ``ImageGenerator/detachedDecoder()`` to convert the final latent into an image
-/// - use ``Image`` to save the image
-public protocol ImageToImageGenerator: ImageGenerator {
-    func generateLatents(image: URL, parameters: StableDiffusionEvaluateParameters, strength: Float)
-        throws -> DenoiseIterator
-}
-
 enum ModelContainerError: LocalizedError {
-    /// Unable to create the particular type of model, e.g. it doesn't support image to image
-    case unableToCreate(String, String)
+    case unableToCreate(String)
     var errorDescription: String? {
         switch self {
-        case .unableToCreate(let modelId, let generatorType):
+        case .unableToCreate(let modelId):
             return String(
                 localized:
-                    "Unable to create a \(generatorType) with model ID '\(modelId)'. The model may not support this operation type."
+                    "Unable to create an image generator with model ID '\(modelId)'."
             )
         }
     }
 }
 
 /// Container for models that guarantees single threaded access.
-public actor StableDiffusionModelContainer<M> {
+public actor StableDiffusionModelContainer {
 
-    let model: M
+    let model: any TextToImageGenerator
 
-    private init(model: M) {
+    private init(model: any TextToImageGenerator) {
         self.model = model
     }
 
-    /// create a ``ModelContainer`` that supports ``TextToImageGenerator``
     static public func createTextToImageGenerator(
         configuration: StableDiffusionConfiguration, loadConfiguration: LoadConfiguration = .init()
-    ) throws -> StableDiffusionModelContainer<TextToImageGenerator> {
+    ) throws -> StableDiffusionModelContainer {
         if let model = try configuration.textToImageGenerator(configuration: loadConfiguration) {
             return .init(model: model)
         } else {
-            throw ModelContainerError.unableToCreate(configuration.id, "TextToImageGenerator")
-        }
-    }
-
-    /// create a ``ModelContainer`` that supports ``ImageToImageGenerator``
-    static public func createImageToImageGenerator(
-        configuration: StableDiffusionConfiguration, loadConfiguration: LoadConfiguration = .init()
-    ) throws -> StableDiffusionModelContainer<ImageToImageGenerator> {
-        if let model = try configuration.imageToImageGenerator(configuration: loadConfiguration) {
-            return .init(model: model)
-        } else {
-            throw ModelContainerError.unableToCreate(configuration.id, "ImageToImageGenerator")
+            throw ModelContainerError.unableToCreate(configuration.id)
         }
     }
 
     /// Perform an action on the model and/or tokenizer. Callers _must_ eval any `MLXArray` before returning as
     /// `MLXArray` is not `Sendable`.
-    public func perform<R>(_ action: @Sendable (M) throws -> R) throws -> R {
+    public func perform<R>(
+        _ action: @Sendable (any TextToImageGenerator) throws -> R
+    ) throws -> R {
         try action(model)
     }
 

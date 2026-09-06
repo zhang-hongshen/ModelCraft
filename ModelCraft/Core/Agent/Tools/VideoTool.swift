@@ -10,16 +10,16 @@ import UniformTypeIdentifiers
 
 import MLXLMCommon
 
-class VideoTool {
+enum VideoTool {
     
     static var allTools: [any ToolProtocol] { [textToVideo] }
 
     private static let evaluator = LTXVideoEvaluator()
     
-    static var textToVideo: Tool<textToVideoInput, textToVideoOutput> {
-        Tool<textToVideoInput, textToVideoOutput>(
+    static var textToVideo: Tool<TextToVideoInput, TextToVideoOutput> {
+        Tool<TextToVideoInput, TextToVideoOutput>(
             name: "text_to_video",
-            description: "Generate a new MP4 video clip from a text description with the local video model. Requires an explicit aspect ratio, long-edge resolution, and duration, saves the file in the Movies directory, and returns its file URL and MIME type.",
+            description: "Generate a new MP4 video clip from a text description with the local video model. Before calling this tool, the user must explicitly choose the aspect ratio, long-edge resolution, and duration. If any choice is missing, first call request_user_input and present the schema-valid values as options. Mark a schema-recommended value as the recommended option instead of selecting it automatically. Saves the file in the configured video output directory and returns its file URL and MIME type.",
             parameters: [
                 .required("prompt", type: .string, description: "Describe the subject, scene, visual style, camera behavior, and motion over time."),
                 .required(
@@ -32,7 +32,7 @@ class VideoTool {
                 .required(
                     "resolution",
                     type: .int,
-                    description: "Approximate pixel count of the output frame's longer edge. Use an enumerated value; prefer the recommended value unless the user requests another size.",
+                    description: "Approximate pixel count of the output frame's longer edge. Use an enumerated value. The recommended value identifies the recommended request_user_input option and is not an automatic default.",
                     extraProperties: [
                         "enum": LTXVideoResolution.allCases.map(\.rawValue),
                         "x-recommended": LTXVideoResolution.deviceRecommendation.rawValue,
@@ -48,7 +48,9 @@ class VideoTool {
             ]
         ) { input in
             let type = UTType.mpeg4Movie
-            let url = URL.moviesDirectory.appendingPathComponent(UUID().uuidString, conformingTo: type)
+            let outputDirectory = UserDefaults.standard.url(forKey: UserDefaults.videoOutputDirectory)
+                ?? UserDefaultSettings.videoOutputDirectory
+            let url = outputDirectory.appendingPathComponent(UUID().uuidString, conformingTo: type)
             guard let ratio = LTXVideoAspectRatio(rawValue: input.ratio) else {
                 throw LTXVideoToolError.unsupportedRatio(input.ratio)
             }
@@ -67,12 +69,14 @@ class VideoTool {
             ) { progress in
                 await ToolExecutionProgressReporter.videoGeneration?(progress)
             }
+            try Task.checkCancellation()
             await ToolExecutionProgressReporter.videoGeneration?(.writing)
-            try LTXVideoIO.saveVideo(
+            try Task.checkCancellation()
+            try await LTXVideoIO.saveVideo(
                 frames: frames,
                 fps: LTXVideoEvaluateParameters.frameRate,
                 outputPath: url)
-            return textToVideoOutput(
+            return TextToVideoOutput(
                 videoURL: url,
                 mimeType: type.preferredMIMEType!
             )
@@ -81,7 +85,7 @@ class VideoTool {
 
 }
 
-struct textToVideoInput: Codable {
+struct TextToVideoInput: Codable {
     let prompt: String
     let ratio: String
     let resolution: Int
@@ -95,7 +99,7 @@ struct textToVideoInput: Codable {
     }
 }
 
-struct textToVideoOutput: Codable {
+struct TextToVideoOutput: Codable {
     let videoURL: URL
     let mimeType: String
 }

@@ -14,12 +14,14 @@ public class MusicGenIO {
     ///   - audio: Audio samples as MLXArray with values in range [-1, 1].
     ///   - samplingRate: Sample rate in Hz (e.g. 32000).
     public static func saveAudio(to url: URL, audio: MLXArray, samplingRate: Int) throws {
+        try Task.checkCancellation()
         // Clip audio to [-1, 1]
         let clipped = clip(audio, min: -1, max: 1)
         // Convert to Int16
         let int16Audio = (clipped * 32767).asType(.int16)
 
         eval(int16Audio)
+        try Task.checkCancellation()
 
         let totalSamples: Int
         let numChannels: Int
@@ -79,10 +81,15 @@ public class MusicGenIO {
         // MLXArray data access
         let mlxData = flatAudio.asData(Int16.self)
         for i in 0 ..< dataCount {
+            if i.isMultiple(of: 4096) {
+                try Task.checkCancellation()
+            }
             int16Pointer[0][i] = mlxData[i]
         }
 
+        try Task.checkCancellation()
         try audioFile.write(from: buffer)
+        try Task.checkCancellation()
     }
 
     // MARK: - Audio Error

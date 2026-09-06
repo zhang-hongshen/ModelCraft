@@ -12,19 +12,18 @@ struct ModelCard: View {
     
     let model: ModelStoreModel
     let viewMode: ViewMode
+    let downloadTask: ModelTask?
     @State private var isHovered = false
     
     @Environment(\.modelContext) private var modelContext
     @Environment(GlobalStore.self) private var globalStore
     @Environment(LocalModelStore.self) private var localModelStore
     
-    @Query private var downloadTasks: [ModelTask]
-    
     private var downloadState: DownloadState {
         if localModelStore.contains(model.id) {
             return .downloaded
         }
-        if let downloadTask = downloadTasks.first {
+        if let downloadTask {
             if downloadTask.status == .stopped {
                 return .stopped
             }
@@ -38,17 +37,6 @@ struct ModelCard: View {
         case downloading
         case stopped
         case downloaded
-    }
-    
-    init(model: ModelStoreModel, viewMode: ViewMode) {
-        self.model = model
-        self.viewMode = viewMode
-        let modelID = model.id
-        let _type = TaskType.download.rawValue
-        self._downloadTasks = Query(
-            filter: #Predicate<ModelTask>{ $0.modelID == modelID && $0._type == _type },
-            sort: \.createdAt
-        )
     }
     
     var body: some View {
@@ -145,7 +133,7 @@ extension ModelCard {
                 .disabled(downloadState != .notDownloaded)
                 
             case .downloading:
-                if let fractionCompleted = downloadTasks.first?.fractionCompleted {
+                if let fractionCompleted = downloadTask?.fractionCompleted {
                     ProgressView(value: fractionCompleted)
                         .progressViewStyle(.circular)
                         .overlay {
@@ -161,7 +149,7 @@ extension ModelCard {
                 }
                 
             case .stopped:
-                ProgressView(value: downloadTasks.first?.fractionCompleted)
+                ProgressView(value: downloadTask?.fractionCompleted)
                     .progressViewStyle(.circular)
                     .overlay {
                         Button {
@@ -207,6 +195,6 @@ extension ModelCard {
     }
     
     func resumeDownloadTask() {
-        downloadTasks.first?.status = .new
+        downloadTask?.status = .new
     }
 }

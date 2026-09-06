@@ -63,7 +63,8 @@ public class MusicGen: Module {
         return token
     }
     
-    public func generate(_ req: MusicGenEvaluateParameters) -> MLXArray {
+    public func generate(_ req: MusicGenEvaluateParameters) throws -> MLXArray {
+        try Task.checkCancellation()
         let bosTokenId = configuration.decoderParameters.bosTokenId
         let numCodebooks = configuration.decoderParameters.numCodebooks
         
@@ -82,6 +83,7 @@ public class MusicGen: Module {
         }
         
         for offset in 0..<req.maxSteps {
+            try Task.checkCancellation()
             let audioInput = MLX.broadcast(audioSeq[0..., offset..<offset+1], to: [2, 1, 1])
             
             let audioLogits = decoder(audioTokens: audioInput, conditioning: batchedConditioning, cache: &cache)
@@ -101,6 +103,7 @@ public class MusicGen: Module {
             
             audioSeq[0..., (offset + 1)...(offset + 1), 0...] = audioTokens
             MLX.eval(audioSeq)
+            try Task.checkCancellation()
         }
         
         for i in 0..<numCodebooks {
@@ -111,7 +114,10 @@ public class MusicGen: Module {
         audioSeq = audioSeq[0..., 1..<(req.maxSteps + 1 - numCodebooks + 1), 0...]
         audioSeq = audioSeq.swappedAxes(-1, -2).expandedDimensions(axes: [1])
         
+        try Task.checkCancellation()
         let audio = audioDecoder.decode(audioCodes: audioSeq, audioScales: [nil])
+        MLX.eval(audio)
+        try Task.checkCancellation()
         return audio[0]
     }
     

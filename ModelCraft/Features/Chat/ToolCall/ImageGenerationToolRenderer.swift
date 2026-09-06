@@ -15,6 +15,7 @@ struct ImageGenerationToolRenderer: View {
     let toolCall: ToolCall
     let result: CallToolResult?
     let status: ToolCallStatus
+    let progress: StableDiffusionProgress?
 
     var body: some View {
 
@@ -22,7 +23,7 @@ struct ImageGenerationToolRenderer: View {
 
         case .running:
 
-            imageLayout(ImageGeneratingView())
+            imageLayout(ImageGeneratingView(progress: progress))
 
         case .completed:
 
@@ -48,6 +49,8 @@ struct ImageGenerationToolRenderer: View {
 
 struct ImageGeneratingView: View {
 
+    let progress: StableDiffusionProgress?
+
     @State private var shimmerActive = false
 
     var body: some View {
@@ -58,7 +61,6 @@ struct ImageGeneratingView: View {
             let corner = s * 0.065
             let pad = s * 0.09
             let spacingMain = s * 0.055
-            let spacingSub = s * 0.022
             let badge = s * 0.26
             let gridStep = s * 0.072
             let blurAmount = s * 0.2
@@ -113,15 +115,11 @@ struct ImageGeneratingView: View {
                     .strokeBorder(.quaternary, lineWidth: hairline)
             }
             .overlay(alignment: .top) {
-                HStack(spacing: spacingSub) {
-                    Text("Generating image")
-                        .font(.headline)
-                        .fontWeight(.semibold)
-                    ProgressView()
-                        .controlSize(.small)
-                }
-                .foregroundStyle(.primary)
-                .padding(.top, pad)
+                Text(progress?.localizedDescription ?? String(localized: "Loading image model..."))
+                    .font(.headline)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(.primary)
+                    .padding(.top, pad)
             }
         }
         .onAppear {
@@ -213,8 +211,16 @@ struct ImageGeneratingView: View {
 
     ScrollView {
         VStack {
-            ImageGenerationToolRenderer(toolCall: toolCall, result: nil, status: .running)
-            ImageGenerationToolRenderer(toolCall: toolCall, result: result, status: .completed)
+            ImageGenerationToolRenderer(
+                toolCall: toolCall,
+                result: nil,
+                status: .running,
+                progress: .generating(completed: 1, total: 2))
+            ImageGenerationToolRenderer(
+                toolCall: toolCall,
+                result: result,
+                status: .completed,
+                progress: nil)
         }
         .padding()
     }

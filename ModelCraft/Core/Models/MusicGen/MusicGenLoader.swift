@@ -34,15 +34,6 @@ public class MusicGenLoader {
         return model
     }
     
-    public static func loadAudioEncoder(hub: HubApi = .default, configuration: MusicGenConfiguration) throws -> MusicGenAudioDecoder {
-        let directory = hub.localRepoLocation(Hub.Repo(id: configuration.audioEncoderParameters.id))
-        let url = directory.appending(component: "model.safetensors")
-        let model = MusicGenAudioDecoder(config: configuration.audioEncoderParameters)
-        let weights = try loadWeights(from: url).map { ($0.key, $0.value) }
-        model.update(parameters: .unflattened(weights))
-        return model
-    }
-    
     public static func loadTokenizer(hub: HubApi = .default, configuration: MusicGenConfiguration) throws -> MusicGenTokenizer {
         let directory = hub.localRepoLocation(Hub.Repo(id: configuration.id))
         let tokenizerDataURL = directory.appending(component: "tokenizer.json")

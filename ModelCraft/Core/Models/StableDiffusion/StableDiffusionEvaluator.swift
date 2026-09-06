@@ -9,6 +9,15 @@ import Foundation
 import CoreImage
 import MLX
 
+enum StableDiffusionProgress: Equatable, Sendable {
+    case downloading(percent: Int)
+    case loading
+    case generating(completed: Int, total: Int)
+    case decoding
+    case saving
+}
+
+typealias StableDiffusionProgressHandler = @Sendable (StableDiffusionProgress) async -> Void
 
 final class StableDiffusionEvaluator: @unchecked Sendable {
 
@@ -17,7 +26,9 @@ final class StableDiffusionEvaluator: @unchecked Sendable {
     private let modelFactory = StableDiffusionModelFactory()
 
     var defaultParameters: StableDiffusionEvaluateParameters {
-        modelFactory.configuration.defaultParameters()
+        var parameters = modelFactory.configuration.defaultParameters()
+        parameters.steps = modelFactory.generationSteps
+        return parameters
     }
 
     nonisolated private func toCGImage(_ array: MLXArray) -> CGImage {
@@ -26,11 +37,20 @@ final class StableDiffusionEvaluator: @unchecked Sendable {
     }
     
     
-    func generate(prompt: String) async throws -> CGImage {
+    func generate(
+        prompt: String,
+        progress: @escaping StableDiffusionProgressHandler = { _ in }
+    ) async throws -> CGImage {
+        if modelFactory.requiresDownload {
+            await progress(.downloading(percent: 0))
+        } else {
+            await progress(.loading)
+        }
         
         let stream = try await generate(
             prompt: prompt,
-            showProgress: false
+            showProgress: false,
+            progress: progress
         )
         
         var finalImage: CGImage?
@@ -46,12 +66,16 @@ final class StableDiffusionEvaluator: @unchecked Sendable {
         return finalImage
     }
     
-    func generate(prompt: String, showProgress: Bool) async throws
+    func generate(
+        prompt: String,
+        showProgress: Bool,
+        progress: @escaping StableDiffusionProgressHandler = { _ in }
+    ) async throws
         -> AsyncThrowingStream<CGImage, Error> {
-        let lease = try await InferenceRuntimeCoordinator.shared.acquire(.stableDiffusion)
+        let lease = try await InferenceRuntimeCoordinator.shared.acquire()
 
         do {
-            let container = try await modelFactory.load()
+            let container = try await modelFactory.load(progress: progress)
             let releasesComponentsBetweenStages =
                 modelFactory.releasesComponentsBetweenStages
             var configuredParameters = defaultParameters
@@ -59,12 +83,22 @@ final class StableDiffusionEvaluator: @unchecked Sendable {
             let parameters = configuredParameters
             return AsyncThrowingStream { continuation in
                 let task = Task {
+                    let (progressStream, progressContinuation) =
+                        AsyncStream.makeStream(of: StableDiffusionProgress.self)
+                    let progressTask = Task {
+                        for await value in progressStream {
+                            await progress(value)
+                        }
+                    }
                     do {
                         try await container.perform { generator in
                             try Task.checkCancellation()
 
                             var latents: DenoiseIterator? = try generator.generateLatents(
                                 parameters: parameters)
+                            let totalSteps = latents?.underestimatedCount ?? parameters.steps
+                            progressContinuation.yield(
+                                .generating(completed: 0, total: totalSteps))
                             var finalLatent: MLXArray?
                             var index = 0
                             while let latent = latents?.next() {
@@ -80,6 +114,8 @@ final class StableDiffusionEvaluator: @unchecked Sendable {
                                     continuation.yield(self.toCGImage(preview))
                                 }
                                 index += 1
+                                progressContinuation.yield(
+                                    .generating(completed: index, total: totalSteps))
                             }
                             latents = nil
                             Memory.clearCache()
@@ -88,14 +124,19 @@ final class StableDiffusionEvaluator: @unchecked Sendable {
                             guard let finalLatent else {
                                 throw NSError(domain: "StableDiffusionEvaluator", code: -1)
                             }
+                            progressContinuation.yield(.decoding)
                             let raster = try generator.decode(xt: finalLatent)
                             eval(raster)
                             try Task.checkCancellation()
                             continuation.yield(self.toCGImage(raster))
                         }
+                        progressContinuation.finish()
+                        await progressTask.value
                         await lease.release()
                         continuation.finish()
                     } catch {
+                        progressContinuation.finish()
+                        progressTask.cancel()
                         await lease.release()
                         continuation.finish(throwing: error)
                     }
@@ -112,88 +153,13 @@ final class StableDiffusionEvaluator: @unchecked Sendable {
 }
 
 
-actor StableDiffusionLoadState<Value: Sendable> {
-
-    private enum State {
-        case idle
-        case loading(id: UUID, task: Task<Value, Error>)
-        case loaded(Value)
-    }
-
-    private let loader: @Sendable () async throws -> Value
-    private var state = State.idle
-
-    init(loader: @escaping @Sendable () async throws -> Value) {
-        self.loader = loader
-    }
-
-    func load() async throws -> Value {
-        try Task.checkCancellation()
-        switch state {
-        case .idle:
-            let id = UUID()
-            let task = Task {
-                try await loader()
-            }
-            state = .loading(id: id, task: task)
-            return try await waitForLoad(id: id, task: task)
-
-        case .loading(let id, let task):
-            return try await waitForLoad(id: id, task: task)
-
-        case .loaded(let value):
-            try Task.checkCancellation()
-            return value
-        }
-    }
-
-    private func waitForLoad(id: UUID, task: Task<Value, Error>) async throws -> Value {
-        try await withTaskCancellationHandler {
-            do {
-                let value = try await task.value
-                completeLoad(id: id, value: value)
-                try Task.checkCancellation()
-                return value
-            } catch {
-                failLoad(id: id)
-                throw error
-            }
-        } onCancel: {
-            task.cancel()
-        }
-    }
-
-    private func completeLoad(id: UUID, value: Value) {
-        guard case let .loading(currentID, _) = state, currentID == id else {
-            return
-        }
-        state = .loaded(value)
-    }
-
-    private func failLoad(id: UUID) {
-        guard case let .loading(currentID, _) = state, currentID == id else {
-            return
-        }
-        state = .idle
-    }
-}
-
-
 /// Async model factory
 actor StableDiffusionModelFactory {
 
-    enum SDError: LocalizedError {
-        case unableToLoad
-
-        var errorDescription: String? {
-            switch self {
-            case .unableToLoad:
-                return String(
-                    localized:
-                        "Unable to load the Stable Diffusion model. Please check your internet connection or available storage space."
-                )
-            }
-        }
+    private enum State {
+        case idle
+        case loading(Task<StableDiffusionModelContainer, Error>)
+        case loaded(StableDiffusionModelContainer)
     }
 
     public nonisolated let configuration: StableDiffusionConfiguration
@@ -204,9 +170,17 @@ actor StableDiffusionModelFactory {
     /// if true we show UI to give negative text
     public nonisolated let canUseNegativeText: Bool
 
-    private let loadState: StableDiffusionLoadState<StableDiffusionModelContainer<TextToImageGenerator>>
-
     public nonisolated let releasesComponentsBetweenStages: Bool
+
+    public nonisolated let generationSteps: Int
+
+    private let loadConfiguration: LoadConfiguration
+    private let profile: StableDiffusionRuntimeProfile
+    private var state = State.idle
+
+    public nonisolated var requiresDownload: Bool {
+        !configuration.isDownloaded()
+    }
 
     init(configuration: StableDiffusionConfiguration = .presetSDXLTurbo) {
         let defaultParameters = configuration.defaultParameters()
@@ -220,43 +194,92 @@ actor StableDiffusionModelFactory {
         self.canUseNegativeText = defaultParameters.cfgWeight > 1
         self.configuration = configuration
         self.releasesComponentsBetweenStages = profile.releasesComponentsBetweenStages
-        self.loadState = StableDiffusionLoadState {
-            try Task.checkCancellation()
+        self.generationSteps = profile.generationSteps
+        self.loadConfiguration = loadConfiguration
+        self.profile = profile
+    }
 
+    public func load(progress: @escaping StableDiffusionProgressHandler) async throws
+        -> StableDiffusionModelContainer
+    {
+        try Task.checkCancellation()
+        switch state {
+        case .idle:
+            let task = Task { try await loadModel(progress: progress) }
+            state = .loading(task)
             do {
-                try await configuration.download()
+                let container = try await waitForLoad(task)
+                state = .loaded(container)
+                return container
             } catch {
-                let nserror = error as NSError
-                if nserror.domain == NSURLErrorDomain
-                    && nserror.code == NSURLErrorNotConnectedToInternet
-                {
-                    // Internet connection appears to be offline -- fall back to loading from
-                    // the local directory
-                } else {
-                    throw error
-                }
+                state = .idle
+                throw error
             }
-
-            try Task.checkCancellation()
-            let container = try StableDiffusionModelContainer<TextToImageGenerator>.createTextToImageGenerator(
-                configuration: configuration, loadConfiguration: loadConfiguration)
-            try Task.checkCancellation()
-
-            try await container.perform { model in
-                if !profile.releasesComponentsBetweenStages {
-                    try model.ensureLoaded()
-                }
-            }
-            try Task.checkCancellation()
-
+        case .loading(let task):
+            return try await waitForLoad(task)
+        case .loaded(let container):
+            await progress(.loading)
             return container
         }
     }
 
-    public func load() async throws
-        -> StableDiffusionModelContainer<TextToImageGenerator>
-    {
-        try await loadState.load()
+    private func waitForLoad(
+        _ task: Task<StableDiffusionModelContainer, Error>
+    ) async throws -> StableDiffusionModelContainer {
+        try await withTaskCancellationHandler {
+            let container = try await task.value
+            try Task.checkCancellation()
+            return container
+        } onCancel: {
+            task.cancel()
+        }
+    }
+
+    private func loadModel(
+        progress: @escaping StableDiffusionProgressHandler
+    ) async throws -> StableDiffusionModelContainer {
+        do {
+            if configuration.isDownloaded() {
+                await progress(.loading)
+            } else {
+                let downloadProgress = AsyncThrowingStream<Int, Error> { continuation in
+                    let task = Task {
+                        do {
+                            try await configuration.download { value in
+                                continuation.yield(Int(value.fractionCompleted * 100))
+                            }
+                            continuation.finish()
+                        } catch {
+                            continuation.finish(throwing: error)
+                        }
+                    }
+                    continuation.onTermination = { @Sendable _ in task.cancel() }
+                }
+                for try await percent in downloadProgress {
+                    await progress(.downloading(percent: percent))
+                }
+                await progress(.loading)
+            }
+        } catch {
+            let error = error as NSError
+            guard error.domain == NSURLErrorDomain,
+                  error.code == NSURLErrorNotConnectedToInternet else {
+                throw error
+            }
+        }
+
+        try Task.checkCancellation()
+        let container = try StableDiffusionModelContainer
+            .createTextToImageGenerator(
+                configuration: configuration,
+                loadConfiguration: loadConfiguration)
+        try await container.perform { model in
+            if !profile.releasesComponentsBetweenStages {
+                try model.ensureLoaded()
+            }
+        }
+        try Task.checkCancellation()
+        return container
     }
 
 }

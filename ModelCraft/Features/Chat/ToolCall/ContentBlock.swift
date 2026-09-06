@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import AppKit
 import AVKit
 
 struct ContentBlocksView: View {
@@ -42,14 +43,14 @@ struct ContentBlockView: View {
         case .image(let imageContent):
 
             if let data = Data(base64Encoded: imageContent.data),
-               let image = PlatformImage(data: data) {
-                Image(platformImage: image)
+               let image = NSImage(data: data) {
+                Image(nsImage: image)
                     .resizable()
                     .aspectRatio(image.aspectRatio, contentMode: .fit)
                     .frame(maxHeight: 300)
                     .cornerRadius()
                     .contextMenu {
-                        CopyButton() { Pasteboard.general.setImage(image) }
+                        CopyButton() { Pasteboard.setImage(image) }
                     }
             }
 
@@ -84,18 +85,16 @@ struct ResourceLinkBlock: View {
 
             if mimeType.hasPrefix("image") {
 
-                if let image = PlatformImage(contentsOfFile: link.url.path()) {
+                if let image = NSImage(contentsOfFile: link.url.path()) {
 
-                    Image(platformImage: image)
+                    Image(nsImage: image)
                         .resizable()
                         .aspectRatio(image.aspectRatio, contentMode: .fit)
                         .frame(maxHeight: 300)
                         .cornerRadius()
                         .contextMenu {
-                            CopyButton() { Pasteboard.general.setImage(image) }
-#if os(macOS)
+                            CopyButton() { Pasteboard.setImage(image) }
                             ShowInFinderButton(url: link.url)
-#endif
                         }
                 }
 
