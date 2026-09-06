@@ -6,20 +6,11 @@
 //
 
 import SwiftUI
-import SwiftData
-import OrderedCollections
 
 struct ContentView: View {
-    
-    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    
+
     var body: some View {
-        if horizontalSizeClass == .regular {
-            RegularContentView()
-        } else {
-            CompactContentView()
-        }
-        
+        RegularContentView()
     }
 }
 

@@ -6,19 +6,12 @@
 //
 
 import SwiftUI
+import AppKit
 
 extension Image {
     
     init?(data: Data) {
-        guard let pImage = PlatformImage(data: data) else { return nil }
-        self.init(platformImage: pImage)
-    }
-    
-    init(platformImage image: PlatformImage) {
-#if canImport(AppKit)
+        guard let image = NSImage(data: data) else { return nil }
         self.init(nsImage: image)
-#elseif canImport(UIKit)
-        self.init(uiImage: image)
-#endif
     }
 }

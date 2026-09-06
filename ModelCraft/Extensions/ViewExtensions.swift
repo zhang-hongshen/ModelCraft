@@ -1,5 +1,5 @@
 //
-//  VIew+.swift
+//  ViewExtensions.swift
 //  ModelCraft
 //
 //  Created by Hongshen on 23/3/2024.
@@ -8,16 +8,16 @@
 import SwiftUI
 
 struct SettingsModifier: ViewModifier {
-    
+
     @AppStorage(UserDefaults.appearance)
-    private var apperance = UserDefaultSettings.appearance
-    
+    private var appearance = UserDefaultSettings.appearance
+
     @AppStorage(UserDefaults.language)
     private var language = UserDefaultSettings.language
-    
+
     func body(content: Content) -> some View {
         content.preferredColorScheme({
-            switch apperance {
+            switch appearance {
             case .system:   nil
             case .light:    .light
             case .dark:     .dark
@@ -29,11 +29,10 @@ struct SettingsModifier: ViewModifier {
 
 extension View {
     func cornerRadius(_ radius: CGFloat = Layout.cornerRadius) -> some View {
-        self.clipShape(RoundedRectangle(cornerRadius: radius))
-    }
-    
-    func applyUserSettings() -> some View {
-        self.modifier(SettingsModifier())
+        clipShape(RoundedRectangle(cornerRadius: radius))
     }
 
+    func applyUserSettings() -> some View {
+        modifier(SettingsModifier())
+    }
 }

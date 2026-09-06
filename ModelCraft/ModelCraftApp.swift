@@ -38,7 +38,7 @@ struct ModelCraftApp: App {
                             guard timer.isValid else { return }
                             try? self.handleModelTask()
                         }
-                        await SkillManager.shared.loadSkills()
+                        SkillManager.shared.loadSkills()
                     }
                     .onChange(of: scenePhase) { _, newPhase in
                         guard newPhase == .active else { return }
@@ -51,13 +51,11 @@ struct ModelCraftApp: App {
                     }
                 }
             }
-#if os(macOS)
             Settings {
                 SettingsView().background(.ultraThinMaterial)
                     .applyUserSettings()
                     .frame(minWidth: 200, minHeight: 200)
             }
-#endif
         }
         .modelContainer(.shared)
         .environment(SpeechManager())
@@ -96,7 +94,7 @@ extension ModelCraftApp {
                 globalStore.runningTasks.removeValue(forKey: task.modelID)
             }
             do {
-                for try await progress in ModelService.shared.downloadModel(modelID: task.modelID) {
+                for try await progress in ModelService.downloadModel(modelID: task.modelID) {
                     task.completedUnitCount = progress.completedUnitCount
                     task.totalUnitCount = progress.totalUnitCount
                     task.fractionCompleted = progress.fractionCompleted
@@ -125,7 +123,7 @@ extension ModelCraftApp {
                 globalStore.runningTasks.removeValue(forKey: task.modelID)
             }
             do {
-                try ModelService.shared.deleteModel(modelID: task.modelID)
+                try ModelService.deleteModel(modelID: task.modelID)
                 task.status = .completed
                 ModelContainer.shared.mainContext.delete(task)
                 localModelStore.reload()

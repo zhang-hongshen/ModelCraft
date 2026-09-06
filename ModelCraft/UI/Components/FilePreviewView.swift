@@ -23,31 +23,6 @@ struct FilePreviewView: View {
     }
 }
 
-#if os(iOS)
-
-import PDFKit
-
-struct PDFPreview: UIViewRepresentable {
-
-    let url: URL
-
-    func makeUIView(context: Context) -> PDFView {
-        let view = PDFView()
-        view.autoScales = true
-        view.document = PDFDocument(url: url)
-        return view
-    }
-
-    func updateUIView(_ view: PDFView, context: Context) {}
-
-}
-
-#endif
-
-#if os(macOS)
-
-import PDFKit
-
 struct PDFPreview: NSViewRepresentable {
 
     let url: URL
@@ -65,51 +40,6 @@ struct PDFPreview: NSViewRepresentable {
 
 }
 
-#endif
-
-#if os(iOS)
-
-import QuickLook
-
-struct QuickLookPreview: UIViewControllerRepresentable {
-
-    let url: URL
-
-    func makeUIViewController(context: Context) -> QLPreviewController {
-
-        let controller = QLPreviewController()
-        controller.dataSource = context.coordinator
-        return controller
-    }
-
-    func updateUIViewController(_ controller: QLPreviewController, context: Context) {}
-
-    func makeCoordinator() -> Coordinator {
-        Coordinator(url: url)
-    }
-
-    class Coordinator: NSObject, QLPreviewControllerDataSource {
-
-        let url: URL
-
-        init(url: URL) {
-            self.url = url
-        }
-
-        func numberOfPreviewItems(in controller: QLPreviewController) -> Int { 1 }
-
-        func previewController(
-            _ controller: QLPreviewController,
-            previewItemAt index: Int
-        ) -> QLPreviewItem {
-            url as QLPreviewItem
-        }
-    }
-}
-
-#endif
-
-#if os(macOS)
 import QuickLookUI
 
 struct QuickLookPreview: NSViewRepresentable {
@@ -129,8 +59,6 @@ struct QuickLookPreview: NSViewRepresentable {
         nsView.previewItem = url as QLPreviewItem
     }
 }
-
-#endif
 
 
 #Preview {

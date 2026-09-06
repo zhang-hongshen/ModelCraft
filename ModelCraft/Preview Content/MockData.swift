@@ -102,11 +102,11 @@ extension Chat {
 
 extension Project {
     
-    static let preview = Project(title: "ModelCraft", files: [PreviewResources.mov.url, PreviewResources.pdf.url, PreviewResources.mp3.url])
+    static let preview = Project(title: "ModelCraft", resources: [PreviewResources.mov.url, PreviewResources.pdf.url, PreviewResources.mp3.url])
     
     static let previews = [
         preview,
-        Project(title: "ModelCraft UI", files: [PreviewResources.png.url, PreviewResources.mp3.url, PreviewResources.pdf.url]),
+        Project(title: "ModelCraft UI", resources: [PreviewResources.png.url, PreviewResources.mp3.url, PreviewResources.pdf.url]),
     ]
 }
 

@@ -14,9 +14,6 @@
         }
       }
     },
-    "%@ tokens/s" : {
-
-    },
     "%@s" : {
 
     },
@@ -36,10 +33,7 @@
         }
       }
     },
-    "Activated skill %@" : {
-
-    },
-    "Activating skill %@" : {
+    "Add" : {
 
     },
     "Add Files" : {
@@ -51,6 +45,22 @@
           }
         }
       }
+    },
+    "Add Skill Directory…" : {
+
+    },
+    "Allow for This Task" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "本任务允许"
+          }
+        }
+      }
+    },
+    "Allow this action?" : {
+
     },
     "Appearance" : {
       "localizations" : {
@@ -105,6 +115,9 @@
         }
       }
     },
+    "Audio" : {
+
+    },
     "Audio created" : {
 
     },
@@ -140,6 +153,16 @@
     "Capturing application windows" : {
 
     },
+    "Chat Title" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "对话标题"
+          }
+        }
+      }
+    },
     "Chats" : {
       "localizations" : {
         "zh-Hans" : {
@@ -150,6 +173,15 @@
         }
       }
     },
+    "Choose File" : {
+
+    },
+    "Choose Files" : {
+
+    },
+    "Choose Folder" : {
+
+    },
     "Choose Folder…" : {
       "localizations" : {
         "zh-Hans" : {
@@ -159,6 +191,9 @@
           }
         }
       }
+    },
+    "Choose Folders" : {
+
     },
     "Choose Project" : {
 
@@ -237,6 +272,7 @@
       }
     },
     "Compress conversation history to free context space." : {
+      "comment" : "Description of the slash command that manually compacts chat context.",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -308,11 +344,15 @@
         }
       }
     },
-    "Decision cancelled" : {
-
-    },
-    "Decision received" : {
-
+    "Decoding image..." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "解码中"
+          }
+        }
+      }
     },
     "Decoding..." : {
       "localizations" : {
@@ -323,6 +363,9 @@
           }
         }
       }
+    },
+    "Default" : {
+
     },
     "Delete" : {
       "localizations" : {
@@ -344,7 +387,7 @@
         }
       }
     },
-    "Document search failed" : {
+    "Don't Allow" : {
 
     },
     "Download Location" : {
@@ -388,6 +431,16 @@
         }
       }
     },
+    "Downloading image model %@" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在下载模型%@"
+          }
+        }
+      }
+    },
     "Downloading..." : {
       "localizations" : {
         "zh-Hans" : {
@@ -424,6 +477,7 @@
 
     },
     "Edited %lld files" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -434,6 +488,7 @@
       }
     },
     "Edited one file" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -456,6 +511,7 @@
 
     },
     "Executed %lld commands" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -466,6 +522,7 @@
       }
     },
     "Executed one command" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -613,6 +670,16 @@
         }
       }
     },
+    "Generating image %@" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在生成图像%@"
+          }
+        }
+      }
+    },
     "Generating video %@" : {
       "localizations" : {
         "zh-Hans" : {
@@ -627,6 +694,7 @@
 
     },
     "Grid" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -666,6 +734,9 @@
         }
       }
     },
+    "Images" : {
+
+    },
     "Inspected UI hierarchy" : {
 
     },
@@ -696,6 +767,7 @@
       }
     },
     "List" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -717,6 +789,22 @@
     "Listing running applications" : {
 
     },
+    "Loaded skill %@" : {
+
+    },
+    "Loading image model..." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在加载模型"
+          }
+        }
+      }
+    },
+    "Loading skill %@" : {
+
+    },
     "Map search failed" : {
       "localizations" : {
         "zh-Hans" : {
@@ -726,6 +814,9 @@
           }
         }
       }
+    },
+    "Media Storage" : {
+
     },
     "Model Storage" : {
       "localizations" : {
@@ -803,7 +894,7 @@
         }
       }
     },
-    "No files added yet" : {
+    "No Folder" : {
 
     },
     "No messages" : {
@@ -822,7 +913,11 @@
     "No Project" : {
 
     },
+    "No reference files added yet" : {
+
+    },
     "None" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -881,6 +976,9 @@
         }
       }
     },
+    "Project search failed" : {
+
+    },
     "Projects" : {
       "localizations" : {
         "zh-Hans" : {
@@ -915,6 +1013,7 @@
 
     },
     "Read %lld files" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -925,6 +1024,7 @@
       }
     },
     "Read one file" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -953,6 +1053,9 @@
     "Recommended" : {
 
     },
+    "Reference Files" : {
+
+    },
     "Refresh" : {
       "localizations" : {
         "zh-Hans" : {
@@ -969,6 +1072,42 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "移除"
+          }
+        }
+      }
+    },
+    "Remove Folder" : {
+
+    },
+    "Remove from %@" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "从“%1$@”中移除"
+          }
+        }
+      }
+    },
+    "Remove Skill Directory" : {
+
+    },
+    "Rename" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重命名"
+          }
+        }
+      }
+    },
+    "Rename Chat" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重命名对话"
           }
         }
       }
@@ -1013,6 +1152,16 @@
         }
       }
     },
+    "Saving image..." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在保存"
+          }
+        }
+      }
+    },
     "Scroll failed" : {
 
     },
@@ -1022,16 +1171,16 @@
     "Scrolling" : {
 
     },
-    "Searched documents for %@" : {
-
-    },
     "Searched map for %@" : {
 
     },
-    "Searching documents for %@" : {
+    "Searched project for %@" : {
 
     },
     "Searching map for %@" : {
+
+    },
+    "Searching project for %@" : {
 
     },
     "Select Model" : {
@@ -1047,13 +1196,24 @@
         }
       }
     },
-    "Skill activation failed" : {
+    "Skill Directories" : {
 
     },
-    "Source Files" : {
+    "Skill loading failed" : {
 
+    },
+    "Skills" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "技能"
+          }
+        }
+      }
     },
     "Speaking Rate" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -1064,6 +1224,7 @@
       }
     },
     "Speaking Volume" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -1072,9 +1233,6 @@
           }
         }
       }
-    },
-    "Speed" : {
-
     },
     "Stopped" : {
       "localizations" : {
@@ -1156,17 +1314,7 @@
     "UI hierarchy inspection failed" : {
 
     },
-    "Unable to create a %@ with model ID '%@'. The model may not support this operation type." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Unable to create a %1$@ with model ID '%2$@'. The model may not support this operation type."
-          }
-        }
-      }
-    },
-    "Unable to load the Stable Diffusion model. Please check your internet connection or available storage space." : {
+    "Unable to create an image generator with model ID '%@'." : {
 
     },
     "Unable to Move Models" : {
@@ -1189,6 +1337,15 @@
 
     },
     "Unsupported audio type" : {
+
+    },
+    "User input cancelled" : {
+
+    },
+    "User input received" : {
+
+    },
+    "Video" : {
 
     },
     "Video created" : {
@@ -1224,7 +1381,7 @@
     "Voice Mode" : {
 
     },
-    "Waiting for a decision" : {
+    "Waiting for user input" : {
 
     },
     "Waiting to delete" : {
@@ -1248,6 +1405,9 @@
       }
     },
     "Web fetch failed" : {
+
+    },
+    "Working Folder" : {
 
     },
     "Writing %@" : {

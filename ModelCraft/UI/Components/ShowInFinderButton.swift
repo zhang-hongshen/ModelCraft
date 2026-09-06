@@ -6,8 +6,8 @@
 //
 
 import SwiftUI
+import AppKit
 
-#if os(macOS)
 struct ShowInFinderButton: View {
     
     let url: URL
@@ -24,4 +24,3 @@ struct ShowInFinderButton: View {
         }
     }
 }
-#endif

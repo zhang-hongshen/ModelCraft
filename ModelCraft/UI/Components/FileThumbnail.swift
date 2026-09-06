@@ -6,36 +6,20 @@
 //
 
 import SwiftUI
+import AppKit
 import QuickLookThumbnailing
 import UniformTypeIdentifiers
-
-enum ViewType: Identifiable, CaseIterable {
-    case grid, list
-    var id: Self { self }
-    var systemImage: String {
-        switch self {
-        case .list: "list.bullet"
-        case .grid: "square.grid.2x2"
-        }
-    }
-    var localizedDescription: LocalizedStringKey {
-        switch self {
-        case .grid: "Grid"
-        case .list: "List"
-        }
-    }
-}
 
 struct FileThumbnail: View {
     
     let url: URL
-    @State private var previewImage: PlatformImage? = nil
+    @State private var previewImage: NSImage? = nil
     
     var frameWidth: CGFloat = 80
     
     var image: Image {
         if let previewImage {
-            Image(platformImage: previewImage)
+            Image(nsImage: previewImage)
         } else {
             Image(systemName: systemImageName(for: url))
         }
@@ -61,11 +45,7 @@ extension FileThumbnail {
         QLThumbnailGenerator.shared.generateRepresentations(for: request) { thumbnailOrNil, _, errorOrNil in
             guard let thumbnail = thumbnailOrNil else { return }
             DispatchQueue.main.async {
-#if canImport(AppKit)
                 previewImage = thumbnail.nsImage
-#elseif canImport(UIKit)
-                previewImage = thumbnail.uiImage
-#endif
             }
         }
     }
