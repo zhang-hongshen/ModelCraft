@@ -1,37 +1,27 @@
 # ModelCraft
 
-ModelCraft is a local-first SwiftUI personal AI assistant for macOS, iPhone, and iPad. It provides multimodal chat, local model inference, projects and document retrieval, media generation, and agent tools.
+ModelCraft is a local-first SwiftUI personal AI assistant for macOS with multimodal chat, local inference, projects and retrieval, media generation, and agent tools.
 
 ## Standing orders
 
-- Read this file before every task, then read each linked document whose trigger matches the change.
-- Inspect the relevant implementation before editing. Make the smallest coherent change and preserve existing behavior, persisted data, public contracts, and platform support.
-- Preserve unrelated staged, unstaged, and untracked work. Never reset, overwrite, reformat, or clean files outside the requested scope.
-- Prefer direct implementation over speculative abstractions, broad refactors, fallback layers, or defensive code for impossible states.
+- Read this file before every task, then only the linked documents whose trigger matches the change.
+- Inspect the relevant implementation first. Make the smallest complete change and preserve existing behavior, persisted data, public contracts, and supported macOS versions.
+- Prefer direct code and existing ownership. Do not introduce speculative abstractions, extra indirection, fallback layers, or defensive handling for impossible states.
+- Do not add a `Coordinator`, `Manager`, `Service`, protocol, wrapper, dependency-injection layer, or background task merely to move existing logic elsewhere. Add a new abstraction only when it owns a real boundary or is required by multiple concrete consumers.
+- Keep simple state and behavior with the type that owns it. Avoid asynchronous work when the value is already available from the current request, stream result, model state, or call path.
+- Preserve unrelated user changes. Never reset, overwrite, reformat, or clean files outside the requested scope.
 - Do not write unit tests or build the project.
-- Code and configuration are the source of truth. Durable documentation describes current contracts and architecture, not task history or reasoning transcripts.
-- Keep each fact in one authoritative document. Link to that document instead of duplicating its details.
+- Code and configuration are the source of truth. Documentation records durable current contracts, not task history or reasoning.
 
 ## Critical product rules
 
-- **Tool discovery belongs to the tool schema.** A tool's description and parameter descriptions must make its capability, selection conditions, constraints, effects, and result clear enough for a model to discover and use it without prior prompt knowledge. Never put tool-specific routing such as “when X happens, call tool Y” in a system prompt. Read the [Tools feature guide](docs/features/tools.md) before changing tools, tool schemas, tool execution, or agent prompts.
-- **SwiftUI is the default UI technology.** Prefer native controls, layout, navigation, presentation, materials, and interaction. Use AppKit/UIKit only for a platform capability SwiftUI cannot provide, and keep the bridge narrow. Every UI change must work in Light and Dark appearances. Read [Design](docs/design.md) before changing views or user interaction.
+- **Tool discovery belongs to the tool schema.** Do not encode tool-specific routing in the system prompt. Read [Tools](docs/features/tools.md) before changing tools, schemas, execution, or overlapping agent prompts.
+- **SwiftUI is the default UI technology.** Prefer native SwiftUI and keep AppKit bridges narrow. Read [Design](docs/design.md) before changing views or interaction.
 
-## Task workflow
+## Documentation index
 
-1. Check repository status and identify user-owned changes in the affected files.
-2. Read the documentation routed below and inspect the actual call path, data model, and UI state involved.
-3. State the behavior or contract that must remain true, then implement the narrowest complete change.
-4. Update the owning document when architecture, tool contracts, UI conventions, or another durable rule changes.
-5. Review the targeted diff and run static consistency checks only; do not run tests or builds.
-
-## Project documentation
-
-- [Architecture](docs/architecture.md) maps the repository, module ownership, application composition, conversation and tool lifecycle, persistence, inference, project knowledge, and extension boundaries. Read it before locating code across modules or changing any of those areas.
-- [Design](docs/design.md) owns UI and interaction conventions: SwiftUI usage, platform adaptation, Light and Dark appearances, layout, state, localization, accessibility, and chat/tool presentation. Read it before changing views or user interaction.
-- [Documentation guide](docs/documentation.md) defines where durable knowledge belongs and when to read, update, create, or skip documentation. Read it before changing documentation or when a code change alters a durable contract.
-- For a local implementation detail that changes no durable contract, inspect the owning code; no new document is required.
-
-## Feature documentation
-
-- [Tools](docs/features/tools.md) defines the Tool feature's model-visible discovery, schemas, parameters, execution, results, failures, and UI presentation. Read it before changing the Tool feature or an agent prompt that may overlap with Tool-owned knowledge.
+- [Coding](docs/coding.md): implementation style, ownership, abstraction threshold, dependency flow, concurrency, and refactoring rules. Read before writing or restructuring code.
+- [Architecture](docs/architecture.md): repository ownership, application flow, persistence, inference, agent/tool boundaries, and cross-feature dependencies. Read before changes spanning modules or altering ownership/lifecycle.
+- [Design](docs/design.md): SwiftUI, state/data flow, macOS interaction, appearance, localization, accessibility, and chat/tool presentation. Read before UI work.
+- [Documentation guide](docs/documentation.md): where durable knowledge belongs and when to update/create docs. Read before documentation changes or durable contract changes.
+- [Tools](docs/features/tools.md): model-visible tool discovery, schemas, execution, results, failures, and UI. Read before Tool changes.

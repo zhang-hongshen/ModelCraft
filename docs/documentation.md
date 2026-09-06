@@ -38,7 +38,7 @@ Create one focused document only when the knowledge is durable and at least one 
 - multiple future changes need the same rules, lifecycle, or extension procedure;
 - a consequential architectural decision needs a stable current-state description.
 
-Put project-wide structure and cross-feature flows in `architecture.md`. Put shared UI rules in `design.md`. Put feature-specific contracts under `docs/features/<feature>.md`. Add every new durable document to the appropriate index section in `AGENTS.md` with both its contents and reading trigger.
+Put implementation-wide coding rules in `coding.md`. Put project-wide structure and cross-feature flows in `architecture.md`. Put shared UI rules in `design.md`. Put feature-specific contracts under `docs/features/<feature>.md`. Add every new durable document to the appropriate index section in `AGENTS.md` with both its contents and reading trigger.
 
 Do not create a document for a local implementation detail, a one-off fix, temporary investigation, speculative future feature, or content already owned elsewhere. Do not use the product `README.md` files as engineering-agent indexes.
 

@@ -4,13 +4,13 @@ This document owns ModelCraft's UI and interaction rules. Read it before changin
 
 ## Product character
 
-ModelCraft should feel like a native Apple-platform application: calm, compact, content-first, and understandable without custom interaction training. Prefer platform conventions over decorative novelty. Reuse established patterns in the neighboring feature before introducing a new component or visual language.
+ModelCraft should feel like a native macOS application: calm, compact, content-first, and understandable without custom interaction training. Prefer platform conventions over decorative novelty. Reuse established patterns in the neighboring feature before introducing a new component or visual language.
 
 ## SwiftUI first
 
 Use native SwiftUI scenes, containers, controls, menus, toolbars, inspectors, sheets, alerts, focus, drag and drop, and scrolling whenever they express the intended behavior. Prefer intrinsic sizing and system placement over fixed popover or panel dimensions.
 
-Use AppKit/UIKit only when SwiftUI lacks the required platform capability. Keep representables and coordinator code in a focused adapter, expose a small SwiftUI-facing API, and prevent platform objects from becoming application state.
+Use AppKit only when SwiftUI lacks the required macOS capability. Keep representables and coordinator code in a focused adapter, expose a small SwiftUI-facing API, and prevent platform objects from becoming application state.
 
 Do not recreate a standard control only to change its appearance. Familiar compact actions may be icon-only when the symbol is unambiguous and an accessibility label is present; otherwise include visible text.
 
@@ -34,7 +34,7 @@ Lists and `ForEach` require stable domain identity. Do not use array offsets, tr
 
 ## State and data flow
 
-Views render state; services and models own durable behavior. Keep `@State` private and local. Pass narrow immutable values and bindings rather than entire models when a child needs only a few fields.
+Views render state; services and models own durable behavior. Keep `@State` private and local. Pass narrow immutable values and bindings rather than entire models when a child needs only a few fields. Do not route application services through view initializer chains merely for dependency injection; use the existing owning service or established environment when state is genuinely shared.
 
 Use `@Observable` for UI-observed reference models and keep UI-facing models on the main actor unless the project target's isolation setting provides the same guarantee. Derived collections or expensive formatting used during rendering should be cached outside `body` when their inputs do not change every render.
 
@@ -57,7 +57,7 @@ Use semantic text styles instead of fixed font sizes. Allow labels to expand for
 ## Review checklist
 
 - Does the result use the native SwiftUI component and interaction model available for the job?
-- Is any AppKit/UIKit bridge necessary, isolated, and smaller than the missing capability?
+- Is any AppKit bridge necessary, isolated, and smaller than the missing capability?
 - Are Light and Dark appearances correct for every state without hardcoded assumptions?
 - Does the layout adapt to window size, longer translations, and accessibility text sizes?
 - Are identity, state ownership, observation, cancellation, and loading settlement correct?

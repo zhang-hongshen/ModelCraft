@@ -4,9 +4,9 @@ Read this before changing agent execution, inference, persistence, project knowl
 
 ## Composition
 
-`ModelCraftApp` owns application launch, shared environment, model-container access, and background model tasks. The Xcode application target shares SwiftUI product code across macOS, iPhone, and iPad while platform-conditional services provide capabilities such as macOS accessibility and screen control.
+`ModelCraftApp` owns application launch, shared environment, model-container access, and background model tasks. The Xcode application target supports macOS only and combines SwiftUI product code with focused AppKit services for accessibility, file previews, pasteboard access, and screen control.
 
-`ContentView` selects the compact or regular application shell. `RegularContentView` uses a split-view layout; `CompactContentView` uses stack navigation. Both route through `AppNavigationView` and `AppNavigationTab`, so a feature should not create a parallel application-navigation source of truth.
+`ContentView` presents `RegularContentView`, whose split-view layout routes through `AppNavigationView` and `AppNavigationTab`. A feature should not create a parallel application-navigation source of truth.
 
 ## Ownership map
 
@@ -25,6 +25,7 @@ Read this before changing agent execution, inference, persistence, project knowl
 ## Conversation flow
 
 1. A chat view asks `ChatService` to send or resend a persisted user `Message`.
+   Promoting the new-chat landing view to its newly persisted `Chat` preserves the same `ChatView` identity so its in-flight `ChatService` and user-interaction coordinator remain attached to the visible conversation.
 2. `ChatService` cancels superseded generation and metadata work, compacts context when required, assembles protocol messages, and invokes `AgentExecutor` with the selected `LocalModel`.
 3. `AgentExecutor` requests a stream from `LMService` using the current model-visible tool schemas. Text chunks update a generating assistant message; final generation information settles timing and context usage.
 4. A model tool call is persisted as a tool message only after the model stream releases its inference lease. `ToolExecutor` or a special coordinator executes it and returns both a structured `CallToolResult` and a model-facing tool message.
@@ -58,6 +59,8 @@ Model-family implementations live under `Core/Models/`. Shared orchestration bel
 - Add a screen inside its owning feature and route it through the existing navigation state.
 - Add persistent behavior by extending the owning SwiftData model and its service path; do not make a view a second persistence layer.
 - Add agent behavior through a clear prompt, skill, or tool boundary. A new tool follows the [Tools feature guide](features/tools.md); do not teach tool routing through the system prompt.
+- Add shared behavior only after a real ownership boundary exists or two concrete consumers need the same contract; prefer extending the existing owner over introducing another coordinator/service layer.
+- Keep request metadata and derived inference values on the path that already produces them; do not add background inference or coordination work to rediscover values already available from the active request.
 - Add shared UI behavior only after two real consumers need the same contract, following [Design](design.md).
-- Keep platform-specific APIs behind conditional, focused adapters so shared SwiftUI and non-supporting destinations remain valid.
+- Keep AppKit APIs inside focused adapters with small SwiftUI-facing boundaries.
 - Update this document when ownership or the end-to-end flow changes; do not add local type inventories that will drift from source.
