@@ -7,7 +7,7 @@
 
 import Foundation
 
-class FixedLengthTextSplitter: TextSplitter {
+final class FixedLengthTextSplitter: TextSplitter {
     
     private let separator: CharacterSet
     private let chunkSize: Int

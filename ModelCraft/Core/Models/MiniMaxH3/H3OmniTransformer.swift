@@ -13,58 +13,6 @@ import MLXFast
 import MLXNN
 
 
-/// Optional context reserved for future attention implementations.
-struct AttentionContext: Sendable {
-    let blockIndex: Int
-    let blockCount: Int
-    let scheduleProgress: Double
-    let sequenceLength: Int
-    let videoSpan: Range<Int>?
-}
-
-/// Attention implementation used by H3 Base.
-///
-/// H3 currently uses MLX's dense SDPA. Keeping this small seam means a Metal
-/// attention kernel can be added later without making the Evaluator aware of it.
-protocol H3AttentionBackend: Sendable {
-    init()
-    static var identifier: String { get }
-
-    func attend(
-        queries: MLXArray,
-        keys: MLXArray,
-        values: MLXArray,
-        scale: Float,
-        mask: MLXArray?,
-        context: AttentionContext?
-    ) -> MLXArray
-}
-
-struct SDPABackend: H3AttentionBackend {
-    static let identifier = "sdpa"
-
-    init() {}
-
-    func attend(
-        queries: MLXArray,
-        keys: MLXArray,
-        values: MLXArray,
-        scale: Float,
-        mask: MLXArray?,
-        context: AttentionContext?
-    ) -> MLXArray {
-        MLXFast.scaledDotProductAttention(
-            queries: queries.expandedDimensions(axis: 0),
-            keys: keys.expandedDimensions(axis: 0),
-            values: values.expandedDimensions(axis: 0),
-            scale: scale,
-            mask: mask)
-            .squeezed(axis: 0)
-    }
-}
-
-
-
 struct ModSegment: Sendable, Equatable {
     let start: Int
     let stop: Int
@@ -255,13 +203,10 @@ struct AttentionLayer {
     /// Run the attention operation in fp32 while the rest of the block stays in
     /// the model's working dtype.
     let fp32Attention: Bool
-    /// The backend is resolved once at model build and held for every call.
-    let backend: any H3AttentionBackend
 
     init(qkvWeight: MLXArray, outWeight: MLXArray,
                 qNormWeight: MLXArray, kNormWeight: MLXArray,
-                heads: Int, headDim: Int, eps: Float, fp32Attention: Bool = false,
-                backend: any H3AttentionBackend = SDPABackend()) {
+                heads: Int, headDim: Int, eps: Float, fp32Attention: Bool = false) {
         self.qkvWeight = qkvWeight
         self.outWeight = outWeight
         self.qNorm = H3RMSNorm(weight: qNormWeight, eps: eps)
@@ -269,16 +214,13 @@ struct AttentionLayer {
         self.heads = heads
         self.headDim = headDim
         self.fp32Attention = fp32Attention
-        self.backend = backend
     }
 
     /// Scaled dot-product attention over `[S, heads, headDim]` or
     /// `[B, S, heads, headDim]` inputs. A backend may handle the unbatched H3
     /// path; batched text refinement uses the dense MLX operation.
     static func sdpa(q: MLXArray, k: MLXArray, v: MLXArray,
-                            headDim: Int, fp32: Bool = false,
-                            backend: (any H3AttentionBackend)? = nil,
-                            context: AttentionContext? = nil) -> MLXArray {
+                            headDim: Int, fp32: Bool = false) -> MLXArray {
         let at: DType = fp32 ? .float32 : q.dtype
         let hasBatch = q.ndim == 4
         let qh = hasBatch ? q.transposed(0, 2, 1, 3).asType(at) : q.transposed(1, 0, 2).expandedDimensions(axis: 0).asType(at)
@@ -287,15 +229,8 @@ struct AttentionLayer {
 
         let scale = 1.0 / Float(headDim).squareRoot()
 
-        let out: MLXArray
-        if let backend, let context, !hasBatch {
-            out = backend.attend(queries: qh[0], keys: kh[0], values: vh[0],
-                                 scale: scale, mask: nil, context: context)
-                .expandedDimensions(axis: 0)
-        } else {
-            out = MLXFast.scaledDotProductAttention(
-                queries: qh, keys: kh, values: vh, scale: scale, mask: nil)
-        }
+        let out = MLXFast.scaledDotProductAttention(
+            queries: qh, keys: kh, values: vh, scale: scale, mask: nil)
 
         if hasBatch {
             return out.transposed(0, 2, 1, 3).asType(q.dtype).reshaped([q.dim(0), q.dim(1), q.dim(2) * headDim])
@@ -306,9 +241,7 @@ struct AttentionLayer {
 
     /// `x` is `[S, hidden]` or `[B, S, hidden]`.
     ///
-    /// - Parameter context: optional information for a custom attention backend.
-    func callAsFunction(_ x: MLXArray, ropeTable: MLXArray?,
-                               context: AttentionContext? = nil) -> MLXArray {
+    func callAsFunction(_ x: MLXArray, ropeTable: MLXArray?) -> MLXArray {
         let qkv = matmul(x, qkvWeight.T)
         let qkvParts = qkv.split(parts: 3, axis: -1)
 
@@ -325,8 +258,12 @@ struct AttentionLayer {
             k = SplitHalfRoPE.apply(k, table: ropeTable)
         }
 
-        let merged = Self.sdpa(q: q, k: k, v: v, headDim: headDim, fp32: fp32Attention,
-                               backend: backend, context: context)
+        let merged = Self.sdpa(
+            q: q,
+            k: k,
+            v: v,
+            headDim: headDim,
+            fp32: fp32Attention)
         return matmul(merged, outWeight.T)
     }
 }
@@ -379,8 +316,7 @@ struct H3TransformerBlock {
     }
 
     func callAsFunction(_ x: MLXArray, tEmb: MLXArray, index: ModulationIndex,
-                               ropeTable: MLXArray?,
-                               context: AttentionContext? = nil) -> MLXArray {
+                               ropeTable: MLXArray?) -> MLXArray {
         let m = adaln(tEmb)
         precondition(m.count == 6, "H3TransformerBlock AdaLN must expand to 6, got \(m.count)")
 
@@ -393,7 +329,7 @@ struct H3TransformerBlock {
         }
 
         let h1 = norm(x, norm1, m[0], m[1])
-        let x1 = gated(x, m[2], attn(h1, ropeTable: ropeTable, context: context))
+        let x1 = gated(x, m[2], attn(h1, ropeTable: ropeTable))
         let h2 = norm(x1, norm2, m[3], m[4])
         return gated(x1, m[5], mlp(h2))
     }
@@ -769,11 +705,8 @@ struct H3OmniTransformer {
                 angles: H3RoPE.angles(positionIds: pos, invFreq: ropeInvFreq)).asType(dtype)
         }
 
-        // H3 Base currently uses the dense MLX attention path. The optional
-        // backend seam stays inside AttentionLayer so future Metal kernels do
-        // not change this model/evaluator boundary.
         for block in blocks {
-            h = block(h, tEmb: tEmb, index: index, ropeTable: table, context: nil)
+            h = block(h, tEmb: tEmb, index: index, ropeTable: table)
         }
 
         // The final layer's AdaLN has one modality, so these rows are timestep
@@ -861,13 +794,11 @@ struct TokenRefiner {
 /// construction path as explicit as its forward path.
 extension H3OmniTransformer {
     /// - Parameter computeDType: dtype used by the Transformer blocks.
-    /// - Parameter backend: one attention backend shared by every block.
     init(
         weights: H3BaseWeights,
         computeDType: DType = .bfloat16,
         fp32Attention: Bool = false,
-        keepAdaLNFP32Resident: Bool = false,
-        backend: any H3AttentionBackend = SDPABackend()
+        keepAdaLNFP32Resident: Bool = false
     ) throws {
         let c = weights.config
         func w(_ name: String) throws -> MLXArray { try weights.tensor(name) }
@@ -881,8 +812,7 @@ extension H3OmniTransformer {
                 heads: c.numHeads,
                 headDim: c.headDim,
                 eps: c.qkNormEps,
-                fp32Attention: fp32Attention,
-                backend: backend)
+                fp32Attention: fp32Attention)
         }
 
         func mlp(_ prefix: String) throws -> H3MLP {

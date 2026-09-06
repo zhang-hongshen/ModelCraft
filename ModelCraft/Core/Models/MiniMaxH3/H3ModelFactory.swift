@@ -48,8 +48,4 @@ actor H3ModelFactory {
             }
         }
     }
-
-    func reset() {
-        states.removeAll()
-    }
 }

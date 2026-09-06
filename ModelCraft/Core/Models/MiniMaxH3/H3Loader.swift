@@ -100,30 +100,20 @@ public enum H3Loader {
         return output
     }
 
-    static func loadAudioVAEEncoder(hub: HubApi, configuration: H3Configuration) throws -> H3AudioVAEEncoder {
-        let audioVAEWeights = try loadWeights(
-            hub: hub,
-            configuration: configuration,
-            key: .audioVAEWeights)
-        return try H3AudioVAEEncoder(weights: audioVAEWeights)
-    }
-
     /// Loads and constructs the H3 Omni Transformer from its configured
     /// SafeTensors file or shard index. The indexed weight accessor remains an
     /// implementation detail of the loader.
     static func loadOmniTransformer(
         hub: HubApi,
         configuration: H3Configuration,
-        computeDType: DType = .bfloat16,
-        backend: any H3AttentionBackend = SDPABackend()
+        computeDType: DType = .bfloat16
     ) throws -> H3OmniTransformer {
         try H3OmniTransformer(
             weights: try H3BaseWeights(
                 hub: hub,
                 configuration: configuration,
                 key: .transformerWeights),
-            computeDType: computeDType,
-            backend: backend)
+            computeDType: computeDType)
     }
 
     private static func shardURLs(for url: URL) throws -> [URL] {
@@ -437,22 +427,6 @@ final class H3BaseWeights {
             }
         }
         return config
-    }
-
-    func loadAll() throws {
-        lock.lock()
-        defer { lock.unlock() }
-        guard all == nil else { return }
-
-        var loaded: [String: MLXArray] = [:]
-        for source in sources {
-            for (name, value) in try MLX.loadArrays(url: source) {
-                guard loaded[name] == nil else { throw Error.invalid("duplicate tensor \(name)") }
-                loaded[name] = value
-            }
-        }
-        guard !loaded.isEmpty else { throw Error.invalid("no tensors were loaded") }
-        all = loaded
     }
 
     func tensor(_ name: String) throws -> MLXArray {

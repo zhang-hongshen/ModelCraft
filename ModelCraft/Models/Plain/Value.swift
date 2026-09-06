@@ -89,13 +89,6 @@ public enum Value: Hashable {
         guard case let .object(value) = self else { return nil }
         return value
     }
-    
-//    /// Returns the `object` value if the value is an `object`,
-//    /// otherwise returns `nil`.
-//    public var objectValue: AnyObject? {
-//        guard case let .object(value) = self else { return nil }
-//        return value
-//    }
 }
 
 // MARK: - Codable

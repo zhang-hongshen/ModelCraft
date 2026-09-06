@@ -14,7 +14,7 @@ import MLX
 /// and can be sliced for transcription without stopping recording.
 @MainActor
 @Observable
-class AudioRecorder {
+final class AudioRecorder {
     var isRecording = false
     var recordingDuration: TimeInterval = 0
     var audioLevel: Float = 0
@@ -26,17 +26,8 @@ class AudioRecorder {
     private let capture = AudioCaptureEngine()
 
     func startRecording() async throws {
-        #if os(macOS)
         try await Self.requestMicrophoneAccess()
-        #endif
 
-        #if os(iOS)
-        let session = AVAudioSession.sharedInstance()
-        try session.setCategory(.playAndRecord, mode: .measurement, options: [.defaultToSpeaker])
-        try session.setActive(true)
-        #endif
-        
-        
         try capture.start()
 
         isRecording = true
@@ -60,11 +51,6 @@ class AudioRecorder {
     /// Returns (audio MLXArray, sampleCount at end) so caller can track position.
     func getAudio(from startSample: Int) -> (MLXArray, Int)? {
         capture.getAudio(from: startSample)
-    }
-
-    /// Total number of samples captured so far.
-    var sampleCount: Int {
-        capture.sampleCount
     }
 
     func stopRecording() -> MLXArray? {
@@ -139,12 +125,6 @@ final class AudioCaptureEngine: @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
         return _currentLevel
-    }
-
-    var sampleCount: Int {
-        lock.lock()
-        defer { lock.unlock() }
-        return samples.count
     }
 
     func start() throws {

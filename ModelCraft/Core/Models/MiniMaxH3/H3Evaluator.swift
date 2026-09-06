@@ -317,7 +317,7 @@ public actor H3Evaluator {
         try request.validate()
         if Task.isCancelled { throw CancellationError() }
 
-        let lease = try await InferenceRuntimeCoordinator.shared.acquire(.miniMaxH3)
+        let lease = try await InferenceRuntimeCoordinator.shared.acquire()
         do {
         let configuration = switch request.task {
         case .fl2va: H3Configuration.presetH3BaseFL2VA
@@ -332,9 +332,5 @@ public actor H3Evaluator {
             await lease.release()
             throw error
         }
-    }
-
-    public func resetLoadedModels() async {
-        await factory.reset()
     }
 }

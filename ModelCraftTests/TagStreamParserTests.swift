@@ -295,7 +295,6 @@ final class TagStreamParserTests {
         #expect(toolCall.fileDisplayName == "App.swift")
     }
 
-#if os(macOS)
     @Test @MainActor func commandExecutionDoesNotBlockMainActor() async throws {
         let clock = ContinuousClock()
         let startedAt = clock.now
@@ -309,7 +308,6 @@ final class TagStreamParserTests {
         #expect(startedAt.duration(to: clock.now) < .milliseconds(250))
         _ = try await command.value
     }
-#endif
 
     private static func toolMessage(_ name: String) -> ModelCraft.Message {
         ModelCraft.Message(

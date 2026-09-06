@@ -7,8 +7,6 @@
 
 import Observation
 import Foundation
-import Combine
-@preconcurrency import AVFAudio
 
 import MLXAudioSTT
 import MLXAudioCore
@@ -16,7 +14,7 @@ import MLX
 
 @MainActor
 @Observable
-class STTService {
+final class STTService {
     var isLoading = false
     var transcript: String = ""
 
@@ -33,7 +31,6 @@ class STTService {
 
     private var model: Qwen3ASRModel?
     private let recorder = AudioRecorder()
-    private var generationTask: Task<Void, Never>?
 
     init() {}
 
@@ -49,12 +46,6 @@ class STTService {
         }
 
         isLoading = false
-    }
-
-    func reloadModel() async {
-        model = nil
-        Memory.clearCache()
-        await loadModel()
     }
 
     // MARK: - Live Recording & Streaming Transcription
@@ -94,15 +85,10 @@ class STTService {
         eventTask = Task {
             for await event in session.events {
                 switch event {
-                case .displayUpdate(let confirmed, let provisional):
+                case .displayUpdate, .provisional, .stats:
                     break
                 case .confirmed(let text):
                     transcript = text
-                    break
-                case .provisional:
-                    break
-                case .stats(let stats):
-                    break
                 case .ended(let fullText):
                     transcript = fullText
                 }
@@ -163,8 +149,6 @@ class STTService {
         streamingSession = nil
         eventTask?.cancel()
         eventTask = nil
-        generationTask?.cancel()
-        generationTask = nil
 
         if isRecording {
             recorder.cancelRecording()
@@ -172,45 +156,4 @@ class STTService {
         }
     }
 
-    private func resampleAudio(_ audio: MLXArray, from sourceSR: Int, to targetSR: Int) throws -> MLXArray {
-        let samples = audio.asArray(Float.self)
-
-        guard let inputFormat = AVAudioFormat(
-            commonFormat: .pcmFormatFloat32, sampleRate: Double(sourceSR), channels: 1, interleaved: false
-        ), let outputFormat = AVAudioFormat(
-            commonFormat: .pcmFormatFloat32, sampleRate: Double(targetSR), channels: 1, interleaved: false
-        ) else {
-            throw NSError(domain: "STT", code: 1, userInfo: [NSLocalizedDescriptionKey: "Failed to create audio formats"])
-        }
-
-        guard let converter = AVAudioConverter(from: inputFormat, to: outputFormat) else {
-            throw NSError(domain: "STT", code: 2, userInfo: [NSLocalizedDescriptionKey: "Failed to create audio converter"])
-        }
-
-        let inputFrameCount = AVAudioFrameCount(samples.count)
-        guard let inputBuffer = AVAudioPCMBuffer(pcmFormat: inputFormat, frameCapacity: inputFrameCount) else {
-            throw NSError(domain: "STT", code: 3, userInfo: [NSLocalizedDescriptionKey: "Failed to create input buffer"])
-        }
-        inputBuffer.frameLength = inputFrameCount
-        memcpy(inputBuffer.floatChannelData![0], samples, samples.count * MemoryLayout<Float>.size)
-
-        let ratio = Double(targetSR) / Double(sourceSR)
-        let outputFrameCount = AVAudioFrameCount(Double(samples.count) * ratio)
-        guard let outputBuffer = AVAudioPCMBuffer(pcmFormat: outputFormat, frameCapacity: outputFrameCount) else {
-            throw NSError(domain: "STT", code: 4, userInfo: [NSLocalizedDescriptionKey: "Failed to create output buffer"])
-        }
-
-        var error: NSError?
-        converter.convert(to: outputBuffer, error: &error) { _, outStatus in
-            outStatus.pointee = .haveData
-            return inputBuffer
-        }
-
-        if let error { throw error }
-
-        let outputSamples = Array(UnsafeBufferPointer(
-            start: outputBuffer.floatChannelData![0], count: Int(outputBuffer.frameLength)
-        ))
-        return MLXArray(outputSamples)
-    }
 }

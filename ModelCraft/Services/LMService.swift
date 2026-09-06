@@ -5,7 +5,6 @@
 //  Created by Hongshen on 23/2/26.
 //
 
-import CoreImage
 import UniformTypeIdentifiers
 
 import MLX
@@ -14,21 +13,6 @@ import MLXLMCommon
 import MLXVLM
 import Hub
 import Tokenizers
-
-@inline(__always)
-func makeSuffixTokens(fullTokens: MLXArray, prefixCount: Int) -> MLXArray {
-    let suffix = fullTokens.flattened().asArray(Int32.self)
-    return MLXArray(Array(suffix[prefixCount...]))
-}
-
-@inline(__always)
-func prefixProbeToken(from prefixTokens: [Int]) -> Int? {
-    prefixTokens.first
-}
-
-private enum PrefixCacheProbeError: Error {
-    case emptyPrefix
-}
 
 struct ContextWindowUsage: Equatable, Sendable {
     let usedTokens: Int
@@ -40,34 +24,9 @@ struct ContextWindowUsage: Equatable, Sendable {
     }
 }
 
-enum PromptCacheMetadata {
-    static func matches(
-        _ metadata: [String: String],
-        modelID: String,
-        prefixCount: Int,
-        stateSignature: String,
-        layoutSignature: String,
-        modelRevision: String,
-        tokenizerRevision: String,
-        templateRevision: String,
-        modelContainerIdentity: String
-    ) -> Bool {
-        metadata["cache_format_version"] == "1"
-            && metadata["prompt_cache_format_version"] == PromptCacheKeyBuilder.formatVersion
-            && metadata["model_id"] == modelID
-            && metadata["prefix_token_count"] == String(prefixCount)
-            && metadata["cache_state_signature"] == stateSignature
-            && metadata["cache_layout_signature"] == layoutSignature
-            && metadata["model_revision"] == modelRevision
-            && metadata["tokenizer_revision"] == tokenizerRevision
-            && metadata["template_revision"] == templateRevision
-            && metadata["model_container_identity"] == modelContainerIdentity
-    }
-}
-
 /// A service class that manages machine learning models for text and vision-language tasks.
 /// This class handles model loading, caching, and text generation using various LLM and VLM models.
-class LMService {
+final class LMService {
     
     static let shared = LMService()
     
@@ -107,7 +66,7 @@ class LMService {
         messages: [MLXLMCommon.Chat.Message],
         tools: [ToolSpec] = []
     ) async throws -> ContextWindowUsage {
-        let lease = try await InferenceRuntimeCoordinator.shared.acquire(.languageModel)
+        let lease = try await InferenceRuntimeCoordinator.shared.acquire()
 
         do {
             let modelContainer = try await load(model: model)
@@ -133,8 +92,13 @@ class LMService {
     ///   - tools: Array of available tools
     /// - Returns: An AsyncStream of generated text tokens
     /// - Throws: Errors that might occur during generation
-    func generate(model: LocalModel, messages: [MLXLMCommon.Chat.Message], tools: [ToolSpec] = []) async throws -> AsyncStream<Generation> {
-        let lease = try await InferenceRuntimeCoordinator.shared.acquire(.languageModel)
+    func generate(
+        model: LocalModel,
+        messages: [MLXLMCommon.Chat.Message],
+        tools: [ToolSpec] = [],
+        maxTokens: Int? = nil
+    ) async throws -> AsyncStream<Generation> {
+        let lease = try await InferenceRuntimeCoordinator.shared.acquire()
 
         do {
             let modelContainer = try await load(model: model)
@@ -145,17 +109,15 @@ class LMService {
             )
 
             let inner = try await modelContainer.perform { (context: ModelContext) in
+                let fullInput = try await context.processor.prepare(input: userInput)
+                let availableTokens = max(
+                    model.contextWindow - fullInput.text.tokens.size,
+                    0)
                 let parameters = GenerateParameters(
+                    maxTokens: min(maxTokens ?? availableTokens, availableTokens),
                     temperature: 0.7,
                     prefillStepSize: 256)
                 let modelIdentity = ObjectIdentifier(context.model)
-                let modelContainerIdentity = String(describing: modelIdentity)
-                let modelRevision = PromptCacheKeyBuilder.modelRevision(
-                    for: context.configuration)
-                let tokenizerRevision = PromptCacheKeyBuilder.tokenizerRevision(
-                    for: context.configuration)
-                let templateRevision = PromptCacheKeyBuilder.templateRevision
-                let fullInput = try await context.processor.prepare(input: userInput)
                 var generationInput = fullInput
                 var generationCache: [KVCache]?
                 var generationCacheKey: String?
@@ -169,78 +131,26 @@ class LMService {
                         if historyInput.image == nil && historyInput.video == nil {
                             let fullTokens = fullInput.text.tokens.flattened().asArray(Int.self)
                             let historyTokens = historyInput.text.tokens.flattened().asArray(Int.self)
-                            if let prefixCount = PromptPrefixPlanner.commonPrefixCount(
-                                full: fullTokens, candidate: historyTokens)
-                            {
+                            let sharedCount = min(fullTokens.count, historyTokens.count)
+                            var prefixCount = 0
+                            while prefixCount < sharedCount,
+                                  fullTokens[prefixCount] == historyTokens[prefixCount] {
+                                prefixCount += 1
+                            }
+                            if prefixCount > 0, prefixCount < fullTokens.count {
                                 let prefixTokens = Array(fullTokens.prefix(prefixCount))
-                                let key = PromptCacheKeyBuilder.make(
+                                let key = PromptCacheKey.make(
                                     modelID: model.id,
+                                    modelIdentity: modelIdentity,
                                     prefixTokens: prefixTokens,
-                                    tools: tools,
-                                    modelRevision: modelRevision,
-                                    tokenizerRevision: tokenizerRevision,
-                                    templateRevision: templateRevision)
+                                    tools: tools)
 
-                                if let snapshot = KVCacheManager.shared.cachedSnapshot(for: key) {
-                                    let cached = snapshot.cache
-                                    let stateSignature = KVCacheManager.stateSignature(for: cached)
-                                    let cachedLayout = KVCacheManager.layout(for: cached)
-                                    let expectedLayout: KVCacheManager.CacheLayout
-                                    if let registered = KVCacheManager.shared.registeredLayout(
-                                        for: model.id,
-                                        modelIdentity: modelIdentity
-                                    ) {
-                                        expectedLayout = registered
-                                    } else {
-                                        do {
-                                            // Empty caches do not expose tensor structure. A single-token
-                                            // current-model prefill establishes the stable layout while
-                                            // the layout descriptor ignores the growing sequence axis.
-                                            guard let probeToken = prefixProbeToken(from: prefixTokens) else {
-                                                throw PrefixCacheProbeError.emptyPrefix
-                                            }
-                                            let probeTokens = MLXArray([probeToken])
-                                            let probeInput = LMInput(
-                                                text: .init(tokens: probeTokens),
-                                                image: nil,
-                                                video: nil)
-                                            let probeCache = context.model.newCache(parameters: parameters)
-                                            _ = try TokenIterator(
-                                                input: probeInput,
-                                                model: context.model,
-                                                cache: probeCache,
-                                                parameters: parameters)
-                                            eval(probeCache)
-                                            expectedLayout = KVCacheManager.layout(for: probeCache)
-                                            KVCacheManager.shared.registerLayout(
-                                                expectedLayout,
-                                                for: model.id,
-                                                modelIdentity: modelIdentity)
-                                        } catch {
-                                            KVCacheManager.shared.clear(for: key)
-                                            throw error
-                                        }
-                                    }
-                                    let hasCompatibleLayout = cached.allSatisfy {
-                                        $0.offset == prefixCount
-                                    } && KVCacheManager.layoutsCompatible(
-                                        cached: cachedLayout,
-                                        expected: expectedLayout)
-                                    let hasCompatibleMetadata = PromptCacheMetadata.matches(
-                                        snapshot.metadata,
-                                        modelID: model.id,
-                                        prefixCount: prefixCount,
-                                        stateSignature: stateSignature,
-                                        layoutSignature: KVCacheManager.layoutSignature(for: cached),
-                                        modelRevision: modelRevision,
-                                        tokenizerRevision: tokenizerRevision,
-                                        templateRevision: templateRevision,
-                                        modelContainerIdentity: modelContainerIdentity)
-                                    if hasCompatibleLayout && hasCompatibleMetadata {
-                                        let suffixTokens = makeSuffixTokens(
-                                            fullTokens: fullInput.text.tokens, prefixCount: prefixCount)
+                                if let cached = KVCacheManager.shared.cachedCopy(for: key) {
+                                    if !cached.isEmpty,
+                                       cached.allSatisfy({ $0.offset == prefixCount }) {
                                         generationInput = LMInput(
-                                            text: .init(tokens: suffixTokens),
+                                            text: .init(tokens: MLXArray(
+                                                Array(fullTokens[prefixCount...]))),
                                             image: nil,
                                             video: nil)
                                         generationCache = cached
@@ -261,27 +171,10 @@ class LMService {
                                         cache: built,
                                         parameters: parameters)
                                     eval(built)
-                                    KVCacheManager.shared.registerLayout(
-                                        KVCacheManager.layout(for: built),
-                                        for: model.id,
-                                        modelIdentity: modelIdentity)
-                                    KVCacheManager.shared.save(
-                                        cache: built,
-                                        for: key,
-                                        metadata: [
-                                            "prompt_cache_format_version": PromptCacheKeyBuilder.formatVersion,
-                                            "model_id": model.id,
-                                            "prefix_token_count": String(prefixCount),
-                                            "model_revision": modelRevision,
-                                            "tokenizer_revision": tokenizerRevision,
-                                            "template_revision": templateRevision,
-                                            "model_container_identity": modelContainerIdentity,
-                                        ])
-
-                                    let suffixTokens = makeSuffixTokens(
-                                        fullTokens: fullInput.text.tokens, prefixCount: prefixCount)
+                                    KVCacheManager.shared.save(cache: built, for: key)
                                     generationInput = LMInput(
-                                        text: .init(tokens: suffixTokens),
+                                        text: .init(tokens: MLXArray(
+                                            Array(fullTokens[prefixCount...]))),
                                         image: nil,
                                         video: nil)
                                     generationCache = built.map { $0.copy() }
@@ -303,7 +196,7 @@ class LMService {
                         cache: generationCache,
                         parameters: parameters)
                     return MLXLMCommon.generateTask(
-                        promptTokenCount: generationInput.text.tokens.size,
+                        promptTokenCount: fullInput.text.tokens.size,
                         modelConfiguration: context.configuration,
                         tokenizer: context.tokenizer,
                         iterator: iterator)
@@ -360,11 +253,20 @@ class LMService {
     ///   - tools: Array of available tools
     /// - Returns: A String of generated text tokens
     /// - Throws: Errors that might occur during generation
-    func generate(model: LocalModel, messages: [MLXLMCommon.Chat.Message], tools: [ToolSpec] = []) async throws -> String {
+    func generate(
+        model: LocalModel,
+        messages: [MLXLMCommon.Chat.Message],
+        tools: [ToolSpec] = [],
+        maxTokens: Int? = nil
+    ) async throws -> String {
         var output = ""
-        for await segement in try await generate(model: model, messages: messages, tools: tools) {
+        for await segment in try await generate(
+            model: model,
+            messages: messages,
+            tools: tools,
+            maxTokens: maxTokens) {
             try Task.checkCancellation()
-            if let chunk = segement.chunk {
+            if let chunk = segment.chunk {
                 output.append(chunk)
             }
         }
@@ -372,8 +274,17 @@ class LMService {
         return output
     }
     
-    func generate(model: LocalModel, messages: [Message], tools: [ToolSpec] = []) async throws -> String {
-        return try await generate(model: model, messages: messages.compactMap{ toMessage($0) }, tools: tools)
+    func generate(
+        model: LocalModel,
+        messages: [Message],
+        tools: [ToolSpec] = [],
+        maxTokens: Int? = nil
+    ) async throws -> String {
+        return try await generate(
+            model: model,
+            messages: messages.compactMap { toMessage($0) },
+            tools: tools,
+            maxTokens: maxTokens)
     }
     
 }

@@ -7,7 +7,7 @@
 
 import CoreLocation
 
-class LocationManager: NSObject, CLLocationManagerDelegate {
+final class LocationManager: NSObject, CLLocationManagerDelegate {
     
     static let shared = LocationManager()
     
@@ -42,7 +42,7 @@ class LocationManager: NSObject, CLLocationManagerDelegate {
         }
     }
     
-    func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {//Trigged every time authorization
+    func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         checkLocationAuthorization()
     }
     

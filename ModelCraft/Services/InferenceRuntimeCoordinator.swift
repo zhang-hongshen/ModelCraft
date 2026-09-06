@@ -1,30 +1,6 @@
 import Foundation
 import MLX
 
-struct InferenceMemoryProfile: Sendable, Equatable {
-    let cacheLimit: Int
-
-    init(cacheLimit: Int) {
-        self.cacheLimit = max(0, cacheLimit)
-    }
-
-    static var deviceDefault: InferenceMemoryProfile {
-        let sixteenGB = 18_000_000_000
-        let limit = ProcessInfo.processInfo.physicalMemory <= sixteenGB
-            ? 128 * 1024 * 1024
-            : 256 * 1024 * 1024
-        return .init(cacheLimit: limit)
-    }
-}
-
-enum InferenceWorkload: String, Sendable {
-    case languageModel
-    case stableDiffusion
-    case musicGen
-    case miniMaxH3
-    case ltxVideo
-}
-
 struct InferenceLease: Sendable {
     fileprivate let id: UUID
     fileprivate let coordinator: InferenceRuntimeCoordinator
@@ -37,21 +13,23 @@ struct InferenceLease: Sendable {
 actor InferenceRuntimeCoordinator {
     static let shared = InferenceRuntimeCoordinator()
 
-    let profile: InferenceMemoryProfile
+    private let cacheLimit: Int
     private var activeLease: UUID?
     private struct Waiter {
         let id: UUID
-        let workload: InferenceWorkload
         let continuation: CheckedContinuation<InferenceLease, Error>
     }
 
     private var waiters: [Waiter] = []
 
-    init(profile: InferenceMemoryProfile = .deviceDefault) {
-        self.profile = profile
+    init(cacheLimit: Int? = nil) {
+        let defaultLimit = ProcessInfo.processInfo.physicalMemory <= 18_000_000_000
+            ? 128 * 1024 * 1024
+            : 256 * 1024 * 1024
+        self.cacheLimit = max(0, cacheLimit ?? defaultLimit)
     }
 
-    func acquire(_ workload: InferenceWorkload) async throws -> InferenceLease {
+    func acquire() async throws -> InferenceLease {
         let id = UUID()
         try Task.checkCancellation()
         if activeLease == nil {
@@ -69,10 +47,7 @@ actor InferenceRuntimeCoordinator {
                 if Task.isCancelled {
                     continuation.resume(throwing: CancellationError())
                 } else {
-                    waiters.append(Waiter(
-                        id: id,
-                        workload: workload,
-                        continuation: continuation))
+                    waiters.append(Waiter(id: id, continuation: continuation))
                 }
             }
         }, onCancel: {
@@ -111,28 +86,9 @@ actor InferenceRuntimeCoordinator {
         waiter.continuation.resume(returning: InferenceLease(id: waiter.id, coordinator: self))
     }
 
-    func pendingWaiterCount() -> Int {
-        waiters.count
-    }
-
-    func withExclusiveAccess<T: Sendable>(
-        _ workload: InferenceWorkload,
-        _ operation: @Sendable () async throws -> T
-    ) async throws -> T {
-        let lease = try await acquire(workload)
-        do {
-            let value = try await operation()
-            await lease.release()
-            return value
-        } catch {
-            await lease.release()
-            throw error
-        }
-    }
-
     private func applyMemoryProfile() {
-        if Memory.cacheLimit > profile.cacheLimit {
-            Memory.cacheLimit = profile.cacheLimit
+        if Memory.cacheLimit > cacheLimit {
+            Memory.cacheLimit = cacheLimit
         }
     }
 }

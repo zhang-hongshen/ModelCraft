@@ -11,13 +11,11 @@ import Hub
 import Alamofire
 import MLXLMCommon
 
-class ModelService {
+enum ModelService {
     
-    static let shared = ModelService()
+    private static let baseURL = "https://huggingface.co/api"
     
-    private let baseURL = "https://huggingface.co/api"
-    
-    func searchModel(keyword: String, page: Int = 0, pageSize: Int = 20) async throws -> [ModelStoreModel] {
+    static func searchModel(keyword: String, page: Int = 0, pageSize: Int = 20) async throws -> [ModelStoreModel] {
         var parameters: [String: Any] = [
             "author": "mlx-community",
             "filter": "mlx",
@@ -31,7 +29,7 @@ class ModelService {
             parameters["search"] = keyword
         }
         
-        var models = try await AF.request(baseURL + "/models", method: .get, parameters: parameters)
+        let models = try await AF.request(baseURL + "/models", method: .get, parameters: parameters)
                 .validate()
                 .serializingDecodable([ModelStoreModel].self, decoder: JSONDecoder.default)
                 .value
@@ -41,7 +39,7 @@ class ModelService {
                 group.addTask {
                     var newModel = model
                     do {
-                        newModel = try await AF.request(self.baseURL + "/models/\(model.id)", method: .get)
+                        newModel = try await AF.request(Self.baseURL + "/models/\(model.id)", method: .get)
                                 .validate()
                                 .serializingDecodable(ModelStoreModel.self, decoder: JSONDecoder.default)
                                 .value
@@ -60,7 +58,7 @@ class ModelService {
         }
     }
     
-    func downloadModel(hub: HubApi = .default, modelID: String) -> AsyncThrowingStream<Progress, Error> {
+    static func downloadModel(hub: HubApi = .default, modelID: String) -> AsyncThrowingStream<Progress, Error> {
         let repo = Hub.Repo(id: modelID)
         return AsyncThrowingStream { continuation in
             let task = Task {
@@ -81,7 +79,7 @@ class ModelService {
         }
     }
     
-    func deleteModel(modelID: String) throws {
+    static func deleteModel(modelID: String) throws {
         let modelFolder = HubApi.default.localRepoLocation(.init(id: modelID))
         try FileManager.default.removeItem(at: modelFolder)
     }
