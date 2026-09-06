@@ -30,7 +30,6 @@ struct CallToolResult: Codable {
         do {
             self = try JSONDecoder().decode(CallToolResult.self, from: data)
         } catch {
-//            debugPrint("Invalid Tool Call: \(error.localizedDescription)")
             return nil
         }
     }

@@ -9,7 +9,7 @@ import Foundation
 
 import MLXLMCommon
 
-class FileTool {
+enum FileTool {
 
     static let allTools: [any ToolProtocol] = [
         readFile,
@@ -19,22 +19,28 @@ class FileTool {
     ]
     
     static func writeFile(_ path: String, content: String) throws {
+        try Task.checkCancellation()
         let url = fileURL(for: path)
+        try ensureWritable(url)
         let directory = url.deletingLastPathComponent()
         try FileManager.default.createDirectory(
             at: directory,
             withIntermediateDirectories: true)
         let data = content.data(using: .utf8)!
         try data.write(to: url, options: .atomic)
+        try Task.checkCancellation()
     }
     
     static func readFile(_ path: String) throws -> String {
+        try Task.checkCancellation()
         let url = fileURL(for: path)
         let data = try Data(contentsOf: url)
+        try Task.checkCancellation()
         return String(decoding: data, as: UTF8.self)
     }
 
     static func editFile(_ path: String, oldText: String, newText: String) throws -> Int {
+        try Task.checkCancellation()
         guard !oldText.isEmpty else {
             throw FileToolError.emptyOldText
         }
@@ -48,12 +54,14 @@ class FileTool {
     }
 
     static func listDirectory(_ path: String) throws -> [DirectoryEntry] {
+        try Task.checkCancellation()
         let url = fileURL(for: path)
         return try FileManager.default.contentsOfDirectory(
             at: url,
             includingPropertiesForKeys: [.isDirectoryKey]
         ).map { itemURL in
-            DirectoryEntry(
+            try Task.checkCancellation()
+            return DirectoryEntry(
                 name: itemURL.lastPathComponent,
                 path: itemURL.path,
                 isDirectory: try itemURL.resourceValues(forKeys: [.isDirectoryKey]).isDirectory == true)
@@ -61,14 +69,33 @@ class FileTool {
     }
 
     static func fileURL(for path: String) -> URL {
-        URL(fileURLWithPath: path, relativeTo: .documentsDirectory).standardizedFileURL
+        URL(
+            fileURLWithPath: path,
+            relativeTo: ProjectToolContext.workingDirectory ?? .documentsDirectory
+        ).standardizedFileURL
+    }
+
+    private static func ensureWritable(_ url: URL) throws {
+        let candidate = url.resolvingSymlinksInPath()
+        let workingDirectory = ProjectToolContext.workingDirectory?.resolvingSymlinksInPath()
+        if let workingDirectory {
+            guard candidate.pathComponents.starts(with: workingDirectory.pathComponents) else {
+                throw FileToolError.outsideWorkingDirectory
+            }
+            return
+        }
+        if ProjectToolContext.readOnlyFiles.contains(where: {
+            $0.resolvingSymlinksInPath() == candidate
+        }) {
+            throw FileToolError.readOnlyReference
+        }
     }
     
     static let readFile = Tool<ReadFileInput, ReadFileOutput>(
         name: ToolNames.readFile,
-        description: "Reads text from a file. Returns the complete file unless a line range is specified.",
+        description: "Reads text from a file. Relative paths resolve from the current project's working folder, or the app's Documents directory when no working folder is configured. Returns the complete file unless a line range is specified.",
         parameters: [
-            .required("path", type: .string, description: "The absolute or Documents-relative path of the file to read."),
+            .required("path", type: .string, description: "The absolute path, or a path relative to the current project's working folder (Documents when no working folder is configured)."),
             .optional("start_line", type: .int, description: "The first line to return, starting from 1."),
             .optional("line_count", type: .int, description: "The maximum number of lines to return.")
         ]
@@ -95,9 +122,9 @@ class FileTool {
     
     static let writeFile = Tool<WriteFileInput, WriteFileOutput>(
         name: ToolNames.writeFile,
-        description: "Write complete text content to a local file. Creates missing parent directories and the file when needed; replaces the entire existing file rather than appending or patching it.",
+        description: "Write complete text content to a file in the current project's working folder. Creates missing parent directories and the file when needed; replaces the entire existing file rather than appending or patching it. Project reference files are read-only.",
         parameters: [
-            .required("path", type: .string, description: "The absolute or Documents-relative destination path. An existing file at this path will be overwritten."),
+            .required("path", type: .string, description: "The absolute path, or a path relative to the current project's working folder (Documents when no working folder is configured). An existing file at this path will be overwritten unless it is a read-only project reference."),
             .required("content", type: .string, description: "The complete text that the file must contain after the write.")
         ]
     ) { input in
@@ -107,9 +134,9 @@ class FileTool {
 
     static let editFile = Tool<EditFileInput, EditFileOutput>(
         name: ToolNames.editFile,
-        description: "Patch an existing text file by replacing exactly one unique occurrence of literal text. The call fails without changing the file when the old text is absent or appears more than once.",
+        description: "Patch an existing text file in the current project's working folder by replacing exactly one unique occurrence of literal text. Project reference files are read-only. The call fails without changing the file when the old text is absent or appears more than once.",
         parameters: [
-            .required("path", type: .string, description: "The absolute or Documents-relative path of the existing text file to patch."),
+            .required("path", type: .string, description: "The absolute path, or a path relative to the current project's working folder (Documents when no working folder is configured), of the existing text file to patch."),
             .required("old_text", type: .string, description: "The exact text to replace. It must occur exactly once."),
             .required("new_text", type: .string, description: "The complete replacement for old_text; use an empty string to delete that occurrence.")
         ]
@@ -123,9 +150,9 @@ class FileTool {
 
     static let listDirectory = Tool<ListDirectoryInput, ListDirectoryOutput>(
         name: ToolNames.listDirectory,
-        description: "List the direct children of one local directory without recursively reading descendants. Returns each child's name, path, and whether it is a directory.",
+        description: "List the direct children of one local directory without recursively reading descendants. Relative paths resolve from the current project's working folder, or Documents when no working folder is configured. Returns each child's name, path, and whether it is a directory.",
         parameters: [
-            .optional("path", type: .string, description: "The absolute or Documents-relative directory path. Omit it to list the app's Documents directory.")
+            .optional("path", type: .string, description: "The absolute path, or a path relative to the current project's working folder (Documents when no working folder is configured). Omit it to list that default directory.")
         ]
     ) { input in
         let entries = try FileTool.listDirectory(input.path ?? "")
@@ -134,6 +161,8 @@ class FileTool {
 }
 
 enum FileToolError: LocalizedError {
+    case outsideWorkingDirectory
+    case readOnlyReference
     case emptyOldText
     case expectedOneMatch(actual: Int)
     case invalidLineRange
@@ -141,6 +170,10 @@ enum FileToolError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
+        case .outsideWorkingDirectory:
+            "Files outside the project's working folder cannot be changed."
+        case .readOnlyReference:
+            "Project reference files are read-only."
         case .emptyOldText:
             "old_text must not be empty."
         case .expectedOneMatch(let actual):

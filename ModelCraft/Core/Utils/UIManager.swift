@@ -8,7 +8,7 @@
 import ApplicationServices
 import AppKit
 
-class UIManager {
+final class UIManager {
     
     static let shared = UIManager()
     
@@ -20,9 +20,8 @@ class UIManager {
     
     func getUITree(appID: String, element: AXUIElement, depth: Int, maxDepth: Int) -> [String] {
         cache.removeObject(forKey: appID as NSString)
-        var interactiveElements: [Element] = []
+        var interactiveElements: [UIElement] = []
         guard let root = describeElement(
-            appID: appID,
             element: element,
             depth: depth,
             maxDepth: maxDepth,
@@ -31,21 +30,25 @@ class UIManager {
             return []
         }
         cache.setObject(interactiveElements as NSArray, forKey: appID as NSString)
-        return root.getActionableElmenets()
+        return root.actionableElements()
     }
     
     
-    private func describeElement(appID: String, element: AXUIElement, parent: Element? = nil, depth: Int, maxDepth: Int,
-                                 cache: inout [Element]) -> Element? {
-        if depth > maxDepth { return nil }
+    private func describeElement(
+        element: AXUIElement,
+        parent: UIElement? = nil,
+        depth: Int,
+        maxDepth: Int,
+        cache: inout [UIElement]
+    ) -> UIElement? {
+        if Task.isCancelled || depth > maxDepth { return nil }
         
-        let node = Element(
+        let node = UIElement(
             role: element.role ?? kAXUnknownRole,
-            identifier: element.identifier,
             actions: element.actions,
             parent: parent,
             attributes: getAttributes(element),
-            uiElment: element
+            axElement: element
         )
         
         if node.interactive {
@@ -58,7 +61,6 @@ class UIManager {
             role: node.role
         )
         node.attach(children: children.compactMap { describeElement(
-            appID: appID,
             element: $0,
             parent: node,
             depth: depth + 1,
@@ -144,7 +146,7 @@ class UIManager {
     
     // MARK: - Element Search
     func searchElement(appID: String, index: Int) -> AXUIElement? {
-        guard let cachedArray = cache.object(forKey: appID as NSString) as? [Element] else {
+        guard let cachedArray = cache.object(forKey: appID as NSString) as? [UIElement] else {
             return nil
         }
         
@@ -152,13 +154,13 @@ class UIManager {
             return nil
         }
         
-        return cachedArray[index].uiElment
+        return cachedArray[index].axElement
     }
     
     private func getAttributes(_ element: AXUIElement) -> [String:Value] {
         var attributes: [String:Value] = [:]
         
-        if let title = Element.displayTitle(
+        if let title = UIElement.displayTitle(
             title: element.title,
             description: element.description,
             help: element.help
@@ -281,27 +283,32 @@ class UIManager {
 }
 
 
-class Element {
+final class UIElement {
     var index: Int?
     let role: String
-    var identifier: String?
-    var actions: [String]
-    var children: [Element]
-    weak var parent: Element?
-    var attributes: [String:Value]
-    var uiElment: AXUIElement
+    let actions: [String]
+    var children: [UIElement]
+    weak var parent: UIElement?
+    let attributes: [String: Value]
+    let axElement: AXUIElement
     
     
-    init(index: Int? = nil, role: String, identifier: String? = nil, actions: [String], children: [Element] = [],
-         parent: Element? = nil, attributes: [String:Value] = [:], uiElment: AXUIElement) {
+    init(
+        index: Int? = nil,
+        role: String,
+        actions: [String],
+        children: [UIElement] = [],
+        parent: UIElement? = nil,
+        attributes: [String: Value] = [:],
+        axElement: AXUIElement
+    ) {
         self.index = index
         self.role = role
-        self.identifier = identifier
         self.actions = actions
         self.children = children
         self.parent = parent
         self.attributes = attributes
-        self.uiElment = uiElment
+        self.axElement = axElement
     }
 
     static func displayTitle(title: String?, description: String?, help: String?) -> String? {
@@ -310,7 +317,7 @@ class Element {
             .first { !$0.isEmpty }
     }
 
-    func attach(children: [Element]) {
+    func attach(children: [UIElement]) {
         self.children = children
         for child in children {
             child.parent = self
@@ -319,7 +326,7 @@ class Element {
     
     var accessibilityPath: String {
         var pathComponents: [String] = []
-        var current: Element? = self
+        var current: UIElement? = self
         
         while let currentNode = current, let parent = currentNode.parent {
             let role = currentNode.role
@@ -353,12 +360,11 @@ class Element {
         return "/" + pathComponents.joined(separator: "/")
     }
     
-    func getActionableElmenets() -> [String] {
-        
-        return getActionableElmenets(self)
+    func actionableElements() -> [String] {
+        collectActionableElements(from: self)
     }
     
-    private func getActionableElmenets(_ element: Element) -> [String] {
+    private func collectActionableElements(from element: UIElement) -> [String] {
         
         var attributesText = ""
         for key in element.attributes.keys.sorted() {
@@ -384,7 +390,7 @@ class Element {
         }
         
         for child in element.children {
-            result.append(contentsOf: getActionableElmenets(child))
+            result.append(contentsOf: collectActionableElements(from: child))
         }
         return result
     }
@@ -432,7 +438,7 @@ class Element {
 
             var settable = DarwinBoolean(false)
             return AXUIElementIsAttributeSettable(
-                uiElment,
+                axElement,
                 kAXValueAttribute as CFString,
                 &settable
             ) == .success && settable.boolValue

@@ -40,10 +40,6 @@ struct WebToolRenderer: View {
         if let url, let title {
             HStack(spacing: 4) {
                 Image(systemName: toolCall.icon)
-                if status == .running {
-                    ProgressView()
-                        .controlSize(.small)
-                }
 
                 Text(toolCall.localizedDescription(status))
 

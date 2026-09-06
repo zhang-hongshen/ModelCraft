@@ -6,27 +6,17 @@
 //
 
 import SwiftUI
+import AppKit
 
-class Pasteboard {
-    
-    static let general = Pasteboard()
-    
-    func setString(_ string: String) {
-        
-#if canImport(AppKit)
+enum Pasteboard {
+
+    static func setString(_ string: String) {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(string, forType: .string)
-#elseif canImport(UIKit)
-        UIPasteboard.general.string = string
-#endif
     }
     
-    func setImage(_ image: PlatformImage) {
-#if canImport(AppKit)
+    static func setImage(_ image: NSImage) {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.writeObjects([image])
-#elseif canImport(UIKit)
-        UIPasteboard.general.image = image
-#endif
     }
 }

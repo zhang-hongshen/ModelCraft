@@ -11,7 +11,7 @@ import AppKit
 import CoreGraphics
 
 
-class ComputerUseTool {
+enum ComputerUseTool {
 
     static let allTools: [any ToolProtocol] = [
         listRunningApplication,
@@ -69,6 +69,7 @@ class ComputerUseTool {
         }
 
         let app = try await findAndActivateApp(appID: input.appID, appName: input.appName)
+        try Task.checkCancellation()
         let appElement = AXUIElementCreateApplication(app.processIdentifier)
         
         let maxDepth = input.maxDepth ?? 30
@@ -96,6 +97,7 @@ class ComputerUseTool {
             throw ComputerUseToolError.accessibilityPermissionNotGranted
         }
         let app = try await findAndActivateApp(appID: input.appID, appName: input.appName)
+        try Task.checkCancellation()
         guard let element = UIManager.shared.searchElement(appID: app.bundleIdentifier ?? "", index: input.index) else {
             throw ComputerUseToolError.uiElementNotFound
         }
@@ -142,6 +144,7 @@ class ComputerUseTool {
         }
 
         let app = try await findAndActivateApp(appID: input.appID, appName: input.appName)
+        try Task.checkCancellation()
 
         guard let element = UIManager.shared.searchElement(appID: app.bundleIdentifier ?? "", index: input.index) else {
             return ActionOutput(success: false, error: ComputerUseToolError.uiElementNotFound.errorDescription)
@@ -187,6 +190,7 @@ class ComputerUseTool {
         }
 
         let app = try await findAndActivateApp(appID: input.appID, appName: input.appName)
+        try Task.checkCancellation()
 
         let flags = modifierFlags(for: input.modifiers ?? [])
         ScreenControlManager.shared.pressKey(
@@ -214,16 +218,10 @@ class ComputerUseTool {
         return AXIsProcessTrustedWithOptions(options as CFDictionary)
     }
     
-    func openAccessibilitySettings() {
-        let urlString = "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"
-        if let url = URL(string: urlString) {
-            NSWorkspace.shared.open(url)
-        }
-    }
-    
     // MARK: - App Finder
     /// find a target NSRunningApplication by bundle identifier or name, launching it if necessary.
     private static func findAndActivateApp(appID: String, appName: String?) async throws -> NSRunningApplication {
+        try Task.checkCancellation()
         
         if let runningApp = NSRunningApplication.runningApplications(withBundleIdentifier: appID).first {
             runningApp.activate()

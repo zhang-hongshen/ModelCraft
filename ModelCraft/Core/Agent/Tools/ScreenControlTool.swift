@@ -10,7 +10,7 @@ import UniformTypeIdentifiers
 
 import MLXLMCommon
 
-class ScreenControlTool {
+enum ScreenControlTool {
     
     static let allTools: [any ToolProtocol] = [
         captureFullScreen,
@@ -26,7 +26,9 @@ class ScreenControlTool {
         description: "Capture all displays as one screenshot for visual context or global screen coordinates. Use capture_app_window for a known application, or get_ui_hierarchy when semantic labels and actionable element indexes are needed. Returns image data, MIME type, and total size in screen points.",
         parameters: []
     ) { input in
+        try Task.checkCancellation()
         guard let screenshot = try await ScreenControlManager.shared.takeFullScreenshot() else { return nil }
+        try Task.checkCancellation()
         guard let data = screenshot.image.data(type: .png) else {
             return nil
         }
@@ -43,11 +45,12 @@ class ScreenControlTool {
             .required("appID", type: .string, description: "The bundle identifier of the target app (e.g., com.apple.Finder)")
         ]
     ) { input in
-        
+        try Task.checkCancellation()
         let windows = try await ScreenControlManager.shared.takeAppWindowScreenshot(appID: input.appID)
         
         var results: [AppWindow] = []
         for window in windows {
+            try Task.checkCancellation()
             guard let data = window.image.data(type: .png) else {
                 continue
             }
@@ -70,6 +73,7 @@ class ScreenControlTool {
             .required("y", type: .double, description: "Vertical coordinate in global screen points.")
         ]
     ) { input in
+        try Task.checkCancellation()
         ScreenControlManager.shared.move(x: input.x, y: input.y)
         return MoveOutput(success: true)
     }
@@ -84,6 +88,7 @@ class ScreenControlTool {
             .required("endY", type: .double, description: "Destination vertical coordinate in global screen points.")
         ]
     ) { input in
+        try Task.checkCancellation()
         ScreenControlManager.shared.drag(
             from: CGPoint(x: input.startX, y: input.startY),
             to: CGPoint(x: input.endX, y: input.endY)
@@ -98,6 +103,7 @@ class ScreenControlTool {
             .required("deltaY", type: .int, description: "Scroll amount in pixels. Negative scrolls down, positive scrolls up.")
         ]
     ) { input in
+        try Task.checkCancellation()
         ScreenControlManager.shared.scroll(deltaY: input.deltaY)
         return ScrollOutput(success: true)
     }
@@ -111,6 +117,7 @@ class ScreenControlTool {
             .required("y", type: .double, description: "Vertical coordinate in global screen points.")
         ]
     ) { input in
+        try Task.checkCancellation()
         ScreenControlManager.shared.click(x: input.x, y: input.y)
         return ClickOutput(success: true)
     }
@@ -126,10 +133,6 @@ struct CaptureFullScreenOutput: Codable {
 
 struct CaptureAppWindowInput: Codable {
     let appID: String
-}
-
-struct CaptureAppWindowOutput: Codable {
-    
 }
 
 struct AppWindow: Codable {

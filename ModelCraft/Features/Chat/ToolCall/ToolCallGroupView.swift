@@ -23,6 +23,7 @@ struct ToolCallGroupView: View {
                             toolCall: toolCall,
                             result: message.toolCallResult,
                             status: message.toolCallStatus,
+                            imageProgress: message.imageGenerationProgress,
                             videoProgress: message.videoGenerationProgress
                         )
                     }

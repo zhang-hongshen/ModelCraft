@@ -12,6 +12,14 @@ Never put tool-specific routing in a system prompt. Do not write rules such as â
 
 If two tools must be used in sequence, place the prerequisite in the dependent tool's description and make the preceding tool's result expose the input needed for the next call. If an action must be observed before success can be claimed, the action tool itself must say so.
 
+## Skill discovery
+
+Skills use the open Agent Skills directory format with a required `SKILL.md`. ModelCraft loads bundled skills first, then the standard user directory at `~/.agents/skills`, followed by user-configured directories in settings order. A later directory overrides an earlier skill with the same name.
+
+Only skill names and descriptions appear in the `activate_skill` schema. Activating one skill returns its full instructions and directory so referenced resources remain relative to the skill root. The catalog reloads when its schema is assembled, allowing settings changes and newly created skills to become discoverable without relaunching the app.
+
+The chat slash palette reloads the same catalog and presents functions separately from a labeled Skills section. Skill rows show the metadata name and description. Selecting one inserts an inline `/<skill-name>` token at the current insertion point; a message may contain multiple tokens in any position, and each explicitly requires `activate_skill` before the request is handled.
+
 ## Schema writing
 
 Use a stable, specific verb-noun name that distinguishes the capability from neighboring tools. Avoid names that describe an implementation rather than the result the model can request.
@@ -48,6 +56,14 @@ Do not add a system-prompt rule to compensate for an ambiguous schema. Improve t
 Return the smallest structured result that supports the next model decision and the UI. Distinguish success from failure explicitly; do not report success before an effect is observable. Error text should name the failed operation and the corrective action available to the model without leaking implementation noise.
 
 Tool output is untrusted external or model-boundary data. Validate at file, process, network, accessibility, decoding, and model/tool JSON boundaries. Do not add redundant validation between typed same-process components.
+
+## Execution approval
+
+Application approval protects authority boundaries rather than every tool invocation. Observation, search, user-input collection, local media generation, skill activation, pointer movement, scrolling, and strictly recognized read-only commands execute without an application approval prompt. macOS privacy permissions such as Accessibility, Screen Recording, and Microphone access remain separate platform requirements.
+
+File and interface mutations reuse authorization only for the current user task. A file selected through `request_user_input` authorizes that exact file; a selected directory authorizes the directory and its descendants. Approval of a write authorizes that exact path, approval of a semantic interface action authorizes further interaction with that application, and approval of coordinate interaction authorizes further coordinate interaction. Other approved commands are reused only when their complete tool-call signature is unchanged. A new top-level user request starts with an empty authorization context.
+
+Command auto-approval is intentionally strict. A single recognized read-only command without shell control operators, redirection, command substitution, or known mutating options bypasses approval. Narrow `mkdir`, `rm`, and `touch` commands also bypass approval when every target is already inside a user-selected file scope. Ambiguous command strings still require approval.
 
 ## Review checklist
 

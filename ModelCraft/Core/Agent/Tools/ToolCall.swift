@@ -11,8 +11,8 @@ import SwiftUI
 
 
 struct ToolNames {
-    // MARK: Decision Tool
-    static let requestDecision = "request_decision"
+    // MARK: User Input Tool
+    static let requestUserInput = "request_user_input"
 
     // MARK: File Tool
     static let readFile = "read_file"
@@ -25,6 +25,7 @@ struct ToolNames {
 
     // MARK: Search Tool
     static let searchMap = "search_map"
+    static let searchProject = "search_project"
     static let searchRelevantDocuments = "search_relevant_documents"
     static let webFetch = "web_fetch"
 
@@ -57,9 +58,81 @@ struct ToolNames {
 }
 
 typealias VideoGenerationProgressHandler = @MainActor @Sendable (LTXVideoProgress) -> Void
+typealias ImageGenerationProgressHandler = @MainActor @Sendable (StableDiffusionProgress) -> Void
 
 enum ToolExecutionProgressReporter {
     @TaskLocal static var videoGeneration: VideoGenerationProgressHandler?
+    @TaskLocal static var imageGeneration: ImageGenerationProgressHandler?
+}
+
+struct ToolApprovalRequest: Sendable {
+    let toolName: String
+    let title: String
+    let detail: String?
+}
+
+extension StableDiffusionProgress {
+    var localizedDescription: String {
+        switch self {
+        case .downloading(let percent):
+            let percentage = (Double(percent) / 100).formatted(
+                .percent.precision(.fractionLength(0)))
+            return String(localized: "Downloading image model \(percentage)")
+        case .loading:
+            return String(localized: "Loading image model...")
+        case .generating(let completed, let total):
+            guard total > 0 else { return String(localized: "Generating image") }
+            let percentage = (Double(completed) / Double(total)).formatted(
+                .percent.precision(.fractionLength(0)))
+            return String(localized: "Generating image \(percentage)")
+        case .decoding:
+            return String(localized: "Decoding image...")
+        case .saving:
+            return String(localized: "Saving image...")
+        }
+    }
+
+    var storedValue: String {
+        switch self {
+        case .downloading(let percent):
+            "image:downloading:\(percent)"
+        case .loading:
+            "image:loading"
+        case .generating(let completed, let total):
+            "image:generating:\(completed):\(total)"
+        case .decoding:
+            "image:decoding"
+        case .saving:
+            "image:saving"
+        }
+    }
+
+    init?(storedValue: String) {
+        let components = storedValue.split(separator: ":")
+        guard components.first == "image" else { return nil }
+
+        switch components.dropFirst().first {
+        case "downloading":
+            guard components.count == 3,
+                  let percent = Int(components[2])
+            else { return nil }
+            self = .downloading(percent: percent)
+        case "loading":
+            self = .loading
+        case "generating":
+            guard components.count == 4,
+                  let completed = Int(components[2]),
+                  let total = Int(components[3])
+            else { return nil }
+            self = .generating(completed: completed, total: total)
+        case "decoding":
+            self = .decoding
+        case "saving":
+            self = .saving
+        default:
+            return nil
+        }
+    }
 }
 
 extension LTXVideoProgress {
@@ -122,6 +195,62 @@ extension LTXVideoProgress {
 
 extension ToolCall {
 
+    var signature: String {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys]
+        let arguments = (try? encoder.encode(function.arguments))
+            .flatMap { String(data: $0, encoding: .utf8) }
+            ?? String(describing: function.arguments)
+        return "\(function.name)|\(arguments)"
+    }
+    
+    
+    var requiresUserApproval: Bool {
+        switch function.name {
+        case ToolNames.writeFile,
+             ToolNames.editFile,
+             ToolNames.click,
+             ToolNames.drag,
+             ToolNames.clickElement,
+             ToolNames.typeText,
+             ToolNames.pressKey:
+            true
+        case ToolNames.executeCommand:
+            !isReadOnlyCommand
+        default:
+            false
+        }
+    }
+
+    private var isReadOnlyCommand: Bool {
+        guard let command = function.arguments["command"]?.stringValue else {
+            return false
+        }
+        return ReadOnlyCommandPolicy.allows(command)
+    }
+
+    var approvalRequest: ToolApprovalRequest {
+        ToolApprovalRequest(
+            toolName: function.name,
+            title: localizedDescription(.running),
+            detail: approvalDetail)
+    }
+
+    private var approvalDetail: String? {
+        switch function.name {
+        case ToolNames.writeFile, ToolNames.editFile:
+            function.arguments["path"]?.stringValue
+        case ToolNames.executeCommand:
+            function.arguments["command"]?.stringValue
+        case ToolNames.textToImage, ToolNames.textToVideo, ToolNames.textToAudio:
+            function.arguments["prompt"]?.stringValue
+        case ToolNames.clickElement, ToolNames.typeText, ToolNames.pressKey:
+            function.arguments["appID"]?.stringValue
+        default:
+            nil
+        }
+    }
+
     var fileDisplayName: String? {
         guard let path = function.arguments["path"]?.stringValue else {
             return nil
@@ -147,14 +276,14 @@ extension ToolCall {
     func localizedDescription(_ status: ToolCallStatus) -> String {
         let arguments = function.arguments
         switch function.name {
-        case ToolNames.requestDecision:
+        case ToolNames.requestUserInput:
             switch status {
             case .running:
-                return String(localized: "Waiting for a decision")
+                return String(localized: "Waiting for user input")
             case .completed:
-                return String(localized: "Decision received")
+                return String(localized: "User input received")
             case .failed:
-                return String(localized: "Decision cancelled")
+                return String(localized: "User input cancelled")
             }
         case ToolNames.readFile:
             let fileName = fileDisplayName ?? String(localized: "Unknown")
@@ -207,15 +336,15 @@ extension ToolCall {
             case .failed:
                 return String(localized: "Map search failed")
             }
-        case ToolNames.searchRelevantDocuments:
+        case ToolNames.searchProject, ToolNames.searchRelevantDocuments:
             let query = arguments["query"]?.stringValue ?? ""
             switch status {
             case .running:
-                return String(localized: "Searching documents for \(query)")
+                return String(localized: "Searching project for \(query)")
             case .completed:
-                return String(localized: "Searched documents for \(query)")
+                return String(localized: "Searched project for \(query)")
             case .failed:
-                return String(localized: "Document search failed")
+                return String(localized: "Project search failed")
             }
         case ToolNames.webFetch:
             switch status {
@@ -315,11 +444,11 @@ extension ToolCall {
             let name = arguments["name"]?.stringValue ?? ""
             switch status {
             case .running:
-                return String(localized: "Activating skill \(name)")
+                return String(localized: "Loading skill \(name)")
             case .completed:
-                return String(localized: "Activated skill \(name)")
+                return String(localized: "Loaded skill \(name)")
             case .failed:
-                return String(localized: "Skill activation failed")
+                return String(localized: "Skill loading failed")
             }
         case ToolNames.listRunningApps:
             switch status {
@@ -373,13 +502,13 @@ extension ToolCall {
     
     var icon: String {
         switch function.name {
-        case ToolNames.requestDecision: "questionmark.bubble"
+        case ToolNames.requestUserInput: "questionmark.bubble"
         case ToolNames.readFile: "doc.text.magnifyingglass"
         case ToolNames.writeFile, ToolNames.editFile: "square.and.pencil"
         case ToolNames.listDirectory: "folder"
         case ToolNames.executeCommand : "apple.terminal"
         case ToolNames.searchMap: "map"
-        case ToolNames.searchRelevantDocuments: "magnifyingglass"
+        case ToolNames.searchProject, ToolNames.searchRelevantDocuments: "magnifyingglass"
         case ToolNames.webFetch: "network"
         case ToolNames.textToImage: "photo"
         case ToolNames.textToVideo: "video"
@@ -393,6 +522,65 @@ extension ToolCall {
         case ToolNames.captureAppWindow: "macwindow"
         case ToolNames.typeText, ToolNames.pressKey: "keyboard"
         default: "exclamationmark.triangle"
+        }
+    }
+}
+
+enum ReadOnlyCommandPolicy {
+
+    private static let simpleCommands: Set<String> = [
+        "cat", "df", "du", "file", "grep", "head", "id", "ls", "mdls",
+        "pgrep", "ps", "pwd", "stat", "sw_vers", "tail", "uname", "wc",
+        "which"
+    ]
+
+    private static let readOnlyGitSubcommands: Set<String> = [
+        "diff", "grep", "log", "ls-files", "rev-parse", "show", "status"
+    ]
+
+    static func allows(_ command: String) -> Bool {
+        let forbiddenCharacters = CharacterSet(charactersIn: "\n\r;|&><`")
+        guard command.rangeOfCharacter(from: forbiddenCharacters) == nil,
+              !command.contains("$("),
+              !command.contains("${")
+        else {
+            return false
+        }
+
+        let arguments = command.split(whereSeparator: \.isWhitespace).map(String.init)
+        guard let executable = arguments.first.map({ ($0 as NSString).lastPathComponent }) else {
+            return false
+        }
+
+        if simpleCommands.contains(executable) {
+            return true
+        }
+
+        switch executable {
+        case "rg":
+            return arguments.dropFirst().allSatisfy { !$0.hasPrefix("--pre") }
+        case "find":
+            let mutatingPrimaries: Set<String> = [
+                "-delete", "-exec", "-execdir", "-fls", "-fprint", "-fprint0",
+                "-ok", "-okdir"
+            ]
+            return arguments.dropFirst().allSatisfy { !mutatingPrimaries.contains($0) }
+        case "git":
+            guard arguments.count >= 2 else {
+                return false
+            }
+            if arguments[1] == "branch" {
+                let options = Array(arguments.dropFirst(2))
+                return options.isEmpty
+                    || options == ["--show-current"]
+                    || options == ["--list"]
+            }
+            guard readOnlyGitSubcommands.contains(arguments[1]) else { return false }
+            return arguments.dropFirst(2).allSatisfy {
+                !$0.hasPrefix("--output") && $0 != "--ext-diff"
+            }
+        default:
+            return false
         }
     }
 }

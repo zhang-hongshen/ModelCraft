@@ -34,10 +34,6 @@ struct ExecuteCommandToolRenderer: View {
         } label: {
             HStack(spacing: 6) {
                 Image(systemName: toolCall.icon)
-                if status == .running {
-                    ProgressView()
-                        .controlSize(.small)
-                }
                 Text(toolCall.compactDescription(status))
             }
             .foregroundStyle(.secondary)

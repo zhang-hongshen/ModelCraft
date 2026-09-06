@@ -12,7 +12,7 @@ import SwiftUI
 
 @MainActor
 @Observable
-class SpeechManager: NSObject, AVSpeechSynthesizerDelegate {
+final class SpeechManager: NSObject, AVSpeechSynthesizerDelegate {
     private let synthesizer = AVSpeechSynthesizer()
     
     var isSpeaking: Bool = false

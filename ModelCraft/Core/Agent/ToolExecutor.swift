@@ -6,14 +6,17 @@
 //
 
 import CoreImage
+import SwiftData
 
 import MLXLMCommon
 
-class ToolExecutor {
+enum ToolExecutor {
     
-    static let shared = ToolExecutor()
-    
-    func dispath(_ toolCall: ToolCall) async throws -> (CallToolResult, MLXLMCommon.Chat.Message) {
+    static func dispatch(
+        _ toolCall: ToolCall,
+        projectID: PersistentIdentifier?
+    ) async throws -> (CallToolResult, MLXLMCommon.Chat.Message) {
+        try Task.checkCancellation()
         
         var toolCallResult = CallToolResult()
         var message = MLXLMCommon.Chat.Message(role: .tool, content: "")
@@ -37,6 +40,14 @@ class ToolExecutor {
                 message.content = result.toolResult
             case ToolNames.searchMap:
                 let result = try await toolCall.execute(with: SearchTool.searchMap)
+                toolCallResult.content.append(.text(TextContent(text: result.toolResult)))
+                message.content = result.toolResult
+            case ToolNames.searchProject:
+                guard let projectID else {
+                    throw ToolExecutorError.projectUnavailable
+                }
+                let result = try await toolCall.execute(
+                    with: SearchTool.searchProject(projectID: projectID))
                 toolCallResult.content.append(.text(TextContent(text: result.toolResult)))
                 message.content = result.toolResult
             case ToolNames.webFetch:
@@ -137,24 +148,34 @@ class ToolExecutor {
                 let result = try await toolCall.execute(with: ComputerUseTool.pressKey)
                 toolCallResult.content.append(.text(TextContent(text: result.toolResult)))
                 message.content = result.toolResult
-            #if os(macOS)
             case ToolNames.executeCommand:
                 let result = try await toolCall.execute(with: CommandTool.executeCommand)
                 toolCallResult.content.append(.text(TextContent(text: result.toolResult)))
                 message.content = result.toolResult
-            #endif
             default:
                 toolCallResult.isError = true
                 let errorDescription = "Unknown tool: \(toolCall.function.name)"
                 toolCallResult.content.append(.text(TextContent(text: errorDescription)))
                 message.content = errorDescription
             }
+            try Task.checkCancellation()
+        } catch is CancellationError {
+            throw CancellationError()
         } catch {
+            try Task.checkCancellation()
             toolCallResult.isError = true
             toolCallResult.content.append(.text(TextContent(text: error.localizedDescription)))
             message.content = error.localizedDescription
         }
         print("ToolCall result \(toolCallResult)")
         return (toolCallResult, message)
+    }
+}
+
+private enum ToolExecutorError: LocalizedError {
+    case projectUnavailable
+
+    var errorDescription: String? {
+        "The project is unavailable."
     }
 }

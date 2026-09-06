@@ -143,8 +143,12 @@ struct AssistantTurn: Identifiable {
         messages.last?.status ?? .generated
     }
 
-    var isWaitingForFirstToken: Bool {
-        messages.last?.isWaitingForFirstToken ?? false
+    var isWaitingForModelResponse: Bool {
+        messages.last?.isWaitingForModelResponse ?? false
+    }
+
+    var prefillTime: TimeInterval? {
+        messages.lazy.compactMap(\.prefillTime).first
     }
 }
 
@@ -169,7 +173,7 @@ enum ConversationContentBuilder {
         var items: [ConversationContentItem] = []
         var pendingAssistantMessages: [Message] = []
         var latestUserMessage: Message?
-
+ 
         func flushAssistantTurn() {
             guard !pendingAssistantMessages.isEmpty else { return }
             items.append(.assistantTurn(.init(
@@ -214,7 +218,8 @@ struct ToolCallGroupSummary {
         guard let message = messages.last(where: { $0.toolCallStatus == .running }) else {
             return nil
         }
-        return message.videoGenerationProgress?.localizedDescription
+        return message.imageGenerationProgress?.localizedDescription
+            ?? message.videoGenerationProgress?.localizedDescription
             ?? message.toolCall?.compactDescription(.running)
     }
 

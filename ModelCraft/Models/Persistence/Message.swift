@@ -20,7 +20,8 @@ class Message {
     var content: String
     var files: [URL]
     var prefillTime: TimeInterval?
-    var tokensPerSecond: Double?
+    var promptTokenCount: Int?
+    var generationTokenCount: Int?
     
     private var _toolCall: String?
     private var _toolCallResult: String?
@@ -69,14 +70,15 @@ class Message {
     init(role: MessageRole = .user, chat: Chat? = nil, content: String = "",
          files: [URL] = [], toolCall: ToolCall? = nil, toolCallResult: CallToolResult? = nil,
          status: MessageStatus = .generated, prefillTime: TimeInterval? = nil,
-         tokensPerSecond: Double? = nil) {
+         promptTokenCount: Int? = nil, generationTokenCount: Int? = nil) {
         self.chat = chat
         self.role = role
         self.content = content
         self.files = files
         self.status = status
         self.prefillTime = prefillTime
-        self.tokensPerSecond = tokensPerSecond
+        self.promptTokenCount = promptTokenCount
+        self.generationTokenCount = generationTokenCount
         self.toolCall = toolCall
         self.toolCallResult = toolCallResult
     }
@@ -95,13 +97,20 @@ class Message {
         else { return nil }
         return LTXVideoProgress(storedValue: content)
     }
+
+    var imageGenerationProgress: StableDiffusionProgress? {
+        guard toolCall?.function.name == ToolNames.textToImage,
+              toolCallResult == nil
+        else { return nil }
+        return StableDiffusionProgress(storedValue: content)
+    }
 }
 
 extension Message {
 
-    var isWaitingForFirstToken: Bool {
+    var isWaitingForModelResponse: Bool {
         guard case .assistant = role else { return false }
-        return status == .generating && content.isEmpty
+        return status == .new
     }
     
     func addFiles<T>(_ urls: T) where T: Swift.Collection, T.Element == URL {
@@ -163,5 +172,5 @@ enum MessageRole: Codable {
 }
 
 enum MessageStatus: Codable {
-    case generating, failed, generated
+    case new, generating, failed, generated
 }

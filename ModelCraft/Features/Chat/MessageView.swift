@@ -49,18 +49,14 @@ extension MessageView {
     @ViewBuilder
     func CommonButtons(_ message: Message) -> some View {
         CopyButton(style: .iconOnly) {
-            Pasteboard.general.setString(message.content)
+            Pasteboard.setString(message.content)
         }
     }
 
     @ViewBuilder
     func GenerationInfoButton(_ message: Message) -> some View {
-        if let prefillTime = message.prefillTime,
-           let tokensPerSecond = message.tokensPerSecond {
-            GenerationMetricsButton(
-                prefillTime: prefillTime,
-                tokensPerSecond: tokensPerSecond
-            )
+        if let prefillTime = message.prefillTime {
+            GenerationMetricsButton(prefillTime: prefillTime)
         }
     }
     
@@ -159,24 +155,24 @@ extension MessageView {
     func AssistantMessageView() -> some View {
         HStack(alignment: .top) {
             VStack(alignment: .leading) {
-                
-                if message.isWaitingForFirstToken {
-                    ProgressView().controlSize(.small)
+
+                MessageFilesView(message.files)
+                if showsAssistantButtons {
+                    AssistantMessageContentView(message)
+                        .contextMenu {
+                            AssistantButtons()
+                        }
                 } else {
-                    MessageFilesView(message.files)
-                    if showsAssistantButtons {
-                        AssistantMessageContentView(message)
-                            .contextMenu {
-                                AssistantButtons()
-                            }
-                    } else {
-                        AssistantMessageContentView(message)
-                    }
-                    if showsAssistantButtons {
-                        AssistantButtons()
-                            .buttonStyle(.borderless)
-                            .opacity(isHovering ? 1 : 0)
-                    }
+                    AssistantMessageContentView(message)
+                }
+                if message.status == .new {
+                    ProgressView()
+                        .controlSize(.small)
+                }
+                if showsAssistantButtons {
+                    AssistantButtons()
+                        .buttonStyle(.borderless)
+                        .opacity(isHovering ? 1 : 0)
                 }
             }
             Spacer()
@@ -215,12 +211,14 @@ extension MessageView {
                     ImageGenerationToolRenderer(
                         toolCall: toolCall,
                         result: message.toolCallResult,
-                        status: message.toolCallStatus
+                        status: message.toolCallStatus,
+                        progress: message.imageGenerationProgress
                     )
                 } else {
                     ToolCallView(toolCall: toolCall,
                                  result: message.toolCallResult,
                                  status: message.toolCallStatus,
+                                 imageProgress: message.imageGenerationProgress,
                                  videoProgress: message.videoGenerationProgress)
                 }
             }
@@ -265,17 +263,6 @@ struct AssistantTurnView: View {
 
     let turn: AssistantTurn
 
-    private var generationInfo: (prefillTime: TimeInterval, tokensPerSecond: Double)? {
-        turn.messages.reversed().compactMap { message in
-            guard case .assistant = message.role,
-                  let prefillTime = message.prefillTime,
-                  let tokensPerSecond = message.tokensPerSecond else {
-                return nil
-            }
-            return (prefillTime, tokensPerSecond)
-        }.first
-    }
-
     @State private var isHovering = false
 
     @Environment(GlobalStore.self) private var globalStore
@@ -283,7 +270,7 @@ struct AssistantTurnView: View {
 
     var body: some View {
         HStack(alignment: .top) {
-            VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 4) {
                 ForEach(turn.contentItems) { item in
                     switch item {
                     case .message(let message):
@@ -293,14 +280,14 @@ struct AssistantTurnView: View {
                     }
                 }
 
-                if !turn.isWaitingForFirstToken {
+                if !turn.isWaitingForModelResponse {
                     AssistantButtons()
                         .buttonStyle(.borderless)
                         .opacity(isHovering ? 1 : 0)
                 }
             }
             .contextMenu {
-                if !turn.isWaitingForFirstToken {
+                if !turn.isWaitingForModelResponse {
                     AssistantButtons()
                 }
             }
@@ -314,14 +301,11 @@ struct AssistantTurnView: View {
     private func AssistantButtons() -> some View {
         HStack(alignment: .center) {
             CopyButton(style: .iconOnly) {
-                Pasteboard.general.setString(turn.content)
+                Pasteboard.setString(turn.content)
             }
 
-            if let info = generationInfo {
-                GenerationMetricsButton(
-                    prefillTime: info.prefillTime,
-                    tokensPerSecond: info.tokensPerSecond
-                )
+            if let prefillTime = turn.prefillTime {
+                GenerationMetricsButton(prefillTime: prefillTime)
             }
 
             Button {
@@ -352,7 +336,6 @@ struct AssistantTurnView: View {
 private struct GenerationMetricsButton: View {
 
     let prefillTime: TimeInterval
-    let tokensPerSecond: Double
 
     @State private var isPresented = false
 
@@ -368,11 +351,6 @@ private struct GenerationMetricsButton: View {
                 GridRow {
                     Text("Prefill Time")
                     Text("\(prefillTime.formatted(.number.precision(.fractionLength(2))))s")
-                        .monospacedDigit()
-                }
-                GridRow {
-                    Text("Speed")
-                    Text("\(tokensPerSecond.formatted(.number.precision(.fractionLength(2)))) tokens/s")
                         .monospacedDigit()
                 }
             }

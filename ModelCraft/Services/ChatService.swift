@@ -13,47 +13,38 @@ import Tokenizers
 
 @MainActor
 @Observable
-class ChatService {
+final class ChatService {
     
     private let chatModelActor = ChatModelActor(modelContainer: ModelContainer.shared)
     
-    let decisionCoordinator: DecisionCoordinator
+    let interactionCoordinator: UserInteractionCoordinator
     private let executor: AgentExecutor
     
     private var currentTask: Task<Void, any Error>? = nil
     private var metadataTask: Task<Void, Never>? = nil
-    private var contextUsageTask: Task<Void, Never>? = nil
     private var currentRequestID: UUID?
 
-    private(set) var contextUsage: ContextWindowUsage?
-    private(set) var isPreparingResponse = false
     private(set) var isCompacting = false
 
     private static let compressionTrigger = 0.75
     private static let summaryInputLimit = 0.70
+    private static let summaryOutputLimit = 0.20
+    private static let maximumSummaryOutputTokens = 4_096
 
     init() {
-        let decisionCoordinator = DecisionCoordinator()
-        self.decisionCoordinator = decisionCoordinator
-        self.executor = AgentExecutor { model, messages, tools in
-            try await LMService.shared.generate(
-                model: model,
-                messages: messages,
-                tools: tools)
-        } toolDispatcher: { toolCall in
-            try await ToolExecutor.shared.dispath(toolCall)
-        } decisionProvider: { request in
-            try await decisionCoordinator.request(request)
-        }
+        let interactionCoordinator = UserInteractionCoordinator()
+        self.interactionCoordinator = interactionCoordinator
+        self.executor = AgentExecutor(interactionCoordinator: interactionCoordinator)
     }
 
     private func cancelCurrentGeneration() async {
         guard let task = currentTask else { return }
-        currentTask = nil
-        currentRequestID = nil
-        isPreparingResponse = false
+        let requestID = currentRequestID
         task.cancel()
         _ = try? await task.value
+        guard currentRequestID == requestID else { return }
+        currentTask = nil
+        currentRequestID = nil
     }
     
     func deleteChat(_ chat: Chat) {
@@ -76,8 +67,6 @@ class ChatService {
         // inference queue (especially when regenerating immediately).
         metadataTask?.cancel()
         metadataTask = nil
-        contextUsageTask?.cancel()
-        contextUsageTask = nil
         await cancelCurrentGeneration()
 
         let requestID = UUID()
@@ -91,26 +80,23 @@ class ChatService {
                     model: model,
                     chat: chat,
                     question: message)
-                isPreparingResponse = false
-                try await executor.run(
-                    model: model,
-                    projectID: chat.project?.persistentModelID,
-                    chat: chat,
-                    messages: promptMessages(
-                        chat: chat,
-                        question: message),
-                    generationInfoHandler: { [weak self] info in
-                        self?.contextUsage = ContextWindowUsage(
-                            usedTokens: info.promptTokenCount + info.generationTokenCount,
-                            totalTokens: model.contextWindow)
-                    })
+            } catch is CancellationError {
+                throw CancellationError()
             } catch {
-                isPreparingResponse = false
+                ModelContainer.shared.mainContext.persist(Message(
+                    role: .assistant,
+                    chat: chat,
+                    content: error.localizedDescription,
+                    status: .failed))
                 throw error
             }
+            try await executor.run(
+                model: model,
+                chat: chat,
+                messages: promptMessages(
+                    chat: chat,
+                    question: message))
         }
-
-        isPreparingResponse = true
         currentTask = generationTask
         do {
             try await withTaskCancellationHandler {
@@ -169,28 +155,42 @@ class ChatService {
         chat: Chat
     ) async throws {
         guard currentTask == nil,
-              !isPreparingResponse,
               !chat.isGenerating else {
             return
         }
 
         metadataTask?.cancel()
         metadataTask = nil
-        contextUsageTask?.cancel()
-        contextUsageTask = nil
 
         let messages = chat.sortedMessages
         let startIndex = min(chat.lastSummaryIndex, messages.count)
         let messagesToSummarize = Array(messages.suffix(from: startIndex))
-        guard !messagesToSummarize.isEmpty else { return }
+        guard !messagesToSummarize.isEmpty,
+              !messagesToSummarize.contains(where: { $0.status == .generating }) else {
+            return
+        }
 
         isCompacting = true
         defer { isCompacting = false }
 
-        chat.summary = try await summarize(
+        let originalUsage = try await measureContextUsage(
+            model: model,
+            chat: chat,
+            question: Message(role: .user))
+        let summary = try await summarize(
             model: model,
             previousSummary: chat.summary,
             messages: messagesToSummarize)
+        let compactedUsage = try await measureContextUsage(
+            model: model,
+            chat: chat,
+            question: Message(role: .user),
+            historyStart: messages.count,
+            summary: summary)
+        guard compactedUsage.usedTokens < originalUsage.usedTokens else { return }
+        try ensureUsageFitsSelectedModel(compactedUsage)
+
+        chat.summary = summary
         chat.lastSummaryIndex = messages.count
         try ModelContainer.shared.mainContext.save()
     }
@@ -204,70 +204,14 @@ class ChatService {
         }
     }
     
-    func stopGenerating(chat: Chat) {
-        currentTask?.cancel()
-        decisionCoordinator.cancel()
+    func stopGenerating(chat: Chat) async {
+        interactionCoordinator.cancel()
         metadataTask?.cancel()
         metadataTask = nil
-        contextUsageTask?.cancel()
-        contextUsageTask = nil
-        currentRequestID = nil
-        isPreparingResponse = false
+        await cancelCurrentGeneration()
         if let currentMessage = chat.currentGeneratingAssistantMessage {
             currentMessage.status = .generated
         }
-    }
-
-    func scheduleContextUsage(
-        model: LocalModel?,
-        chat: Chat?
-    ) {
-        contextUsageTask?.cancel()
-        guard let model else {
-            contextUsage = nil
-            return
-        }
-        let hasConversationContext = chat?.messages.contains { message in
-            switch message.role {
-            case .assistant:
-                message.status == .generated
-            case .tool:
-                message.status != .generating
-            case .user, .system:
-                false
-            }
-        } == true || chat?.summary?.isEmpty == false
-        guard hasConversationContext else {
-            contextUsage = nil
-            return
-        }
-
-        contextUsageTask = Task { @MainActor in
-            do {
-                try await Task.sleep(for: .milliseconds(350))
-                guard chat?.isGenerating != true, !isPreparingResponse else { return }
-                try await refreshContextUsage(
-                    model: model,
-                    chat: chat)
-            } catch {
-                // Context usage is informational and must not affect chat.
-            }
-        }
-    }
-
-    private func refreshContextUsage(
-        model: LocalModel,
-        chat: Chat?
-    ) async throws {
-        let draft = Message(role: .user)
-        let usage = try await LMService.shared.contextUsage(
-            model: model,
-            messages: promptMessages(
-                chat: chat,
-                question: draft),
-            tools: availableTools(for: chat))
-        try Task.checkCancellation()
-        contextUsage = usage
     }
 
     private func compactContextIfNeeded(
@@ -275,46 +219,46 @@ class ChatService {
         chat: Chat,
         question: Message
     ) async throws {
-        var usage = try await measureContextUsage(
+        let usage = try await measureContextUsage(
             model: model,
             chat: chat,
             question: question)
 
         guard usage.fraction >= Self.compressionTrigger else { return }
 
-        while usage.fraction >= Self.compressionTrigger {
-            let messages = chat.sortedMessages
-            let startIndex = min(chat.lastSummaryIndex, messages.count)
-            let boundaries = messages.indices.filter {
-                $0 > startIndex && messages[$0].role == .user
-            }
-            guard !boundaries.isEmpty else {
-                try ensureUsageFitsSelectedModel(usage)
-                return
-            }
-            let compressionEnd = boundaries[boundaries.count - 1]
-
-            let messagesToSummarize = Array(messages[startIndex..<compressionEnd])
-            guard !messagesToSummarize.isEmpty,
-                  !messagesToSummarize.contains(where: { $0.status == .generating }) else {
-                return
-            }
-
-            let summary = try await summarize(
-                model: model,
-                previousSummary: chat.summary,
-                messages: messagesToSummarize)
-            try Task.checkCancellation()
-
-            chat.summary = summary
-            chat.lastSummaryIndex = compressionEnd
-            try ModelContainer.shared.mainContext.save()
-
-            usage = try await measureContextUsage(
-                model: model,
-                chat: chat,
-                question: question)
+        let messages = chat.sortedMessages
+        let startIndex = min(chat.lastSummaryIndex, messages.count)
+        let boundaries = messages.indices.filter {
+            $0 > startIndex && messages[$0].role == .user
         }
+        guard let compressionEnd = boundaries.last else {
+            try ensureUsageFitsSelectedModel(usage)
+            return
+        }
+
+        let messagesToSummarize = Array(messages[startIndex..<compressionEnd])
+        guard !messagesToSummarize.isEmpty,
+              !messagesToSummarize.contains(where: { $0.status == .generating }) else {
+            return
+        }
+
+        let summary = try await summarize(
+            model: model,
+            previousSummary: chat.summary,
+            messages: messagesToSummarize)
+        try Task.checkCancellation()
+        let compactedUsage = try await measureContextUsage(
+            model: model,
+            chat: chat,
+            question: question,
+            historyStart: compressionEnd,
+            summary: summary)
+        guard compactedUsage.usedTokens < usage.usedTokens else { return }
+        try ensureUsageFitsSelectedModel(compactedUsage)
+
+        chat.summary = summary
+        chat.lastSummaryIndex = compressionEnd
+        try ModelContainer.shared.mainContext.save()
     }
 
     private func summarize(
@@ -322,78 +266,123 @@ class ChatService {
         previousSummary: String?,
         messages: [Message]
     ) async throws -> String {
-        var summary = previousSummary
-        var batch: [Message] = []
-
+        var items: [String] = []
+        if let previousSummary, !previousSummary.isEmpty {
+            items.append(contentsOf: try await splitCompressionItem(
+                "<previous_summary>\(previousSummary)</previous_summary>",
+                model: model))
+        }
         for message in messages {
-            let candidate = batch + [message]
-            if try await summaryPromptFits(
-                model: model,
-                previousSummary: summary,
-                messages: candidate) {
-                batch = candidate
-                continue
+            let record = PromptBuilder.compressionText([message])
+            items.append(contentsOf: try await splitCompressionItem(
+                record,
+                model: model))
+        }
+
+        var summaries = try await summarizeItems(items, model: model)
+        while summaries.count > 1 {
+            let summaryItems = summaries.enumerated().map { index, summary in
+                "<summary_part index=\"\(index + 1)\">\(summary)</summary_part>"
+            }
+            summaries = try await summarizeItems(summaryItems, model: model)
+        }
+        return summaries.first ?? previousSummary ?? ""
+    }
+
+    private func summarizeItems(
+        _ items: [String],
+        model: LocalModel
+    ) async throws -> [String] {
+        var summaries: [String] = []
+        var startIndex = 0
+
+        while startIndex < items.count {
+            var lowerBound = startIndex + 1
+            var upperBound = items.count
+            var endIndex = startIndex
+
+            while lowerBound <= upperBound {
+                let middle = (lowerBound + upperBound) / 2
+                let conversation = items[startIndex..<middle].joined(separator: "\n")
+                if try await summaryPromptFits(model: model, conversation: conversation) {
+                    endIndex = middle
+                    lowerBound = middle + 1
+                } else {
+                    upperBound = middle - 1
+                }
             }
 
-            if !batch.isEmpty {
-                summary = try await generateSummary(
-                    model: model,
-                    previousSummary: summary,
-                    messages: batch)
-                batch.removeAll(keepingCapacity: true)
-            }
-
-            var singleMessageFits = try await summaryPromptFits(
-                model: model,
-                previousSummary: summary,
-                messages: [message])
-            if !singleMessageFits,
-               let existingSummary = summary,
-               !existingSummary.isEmpty,
-               try await summaryPromptFits(
-                    model: model,
-                    previousSummary: existingSummary,
-                    messages: []) {
-                summary = try await generateSummary(
-                    model: model,
-                    previousSummary: existingSummary,
-                    messages: [])
-                singleMessageFits = try await summaryPromptFits(
-                    model: model,
-                    previousSummary: summary,
-                    messages: [message])
-            }
-
-            guard singleMessageFits else {
+            guard endIndex > startIndex else {
                 throw NSError(
                     domain: "ContextCompression",
                     code: 1,
                     userInfo: [
                         NSLocalizedDescriptionKey:
-                            "A single conversation item exceeds the selected model's context window."
+                            "A conversation item exceeds the selected model's context window."
                     ])
             }
-            batch.append(message)
-        }
-
-        if !batch.isEmpty {
-            summary = try await generateSummary(
+            let conversation = items[startIndex..<endIndex].joined(separator: "\n")
+            summaries.append(try await generateSummary(
                 model: model,
-                previousSummary: summary,
-                messages: batch)
+                conversation: conversation))
+            startIndex = endIndex
+        }
+        return summaries
+    }
+
+    private func splitCompressionItem(
+        _ item: String,
+        model: LocalModel
+    ) async throws -> [String] {
+        if try await summaryPromptFits(model: model, conversation: item) {
+            return [item]
         }
 
-        return summary ?? ""
+        var fragments: [String] = []
+        var remaining = item[...]
+        while !remaining.isEmpty {
+            var lowerBound = 1
+            var upperBound = remaining.count
+            var fragmentLength = 0
+
+            while lowerBound <= upperBound {
+                let middle = (lowerBound + upperBound) / 2
+                let endIndex = remaining.index(
+                    remaining.startIndex,
+                    offsetBy: middle)
+                let fragment = "<conversation_fragment>\(remaining[..<endIndex])</conversation_fragment>"
+                if try await summaryPromptFits(model: model, conversation: fragment) {
+                    fragmentLength = middle
+                    lowerBound = middle + 1
+                } else {
+                    upperBound = middle - 1
+                }
+            }
+
+            guard fragmentLength > 0 else {
+                throw NSError(
+                    domain: "ContextCompression",
+                    code: 1,
+                    userInfo: [
+                        NSLocalizedDescriptionKey:
+                            "The selected model's context window is too small to create a summary."
+                    ])
+            }
+            let endIndex = remaining.index(
+                remaining.startIndex,
+                offsetBy: fragmentLength)
+            fragments.append(
+                "<conversation_fragment>\(remaining[..<endIndex])</conversation_fragment>")
+            remaining = remaining[endIndex...]
+        }
+        return fragments
     }
 
     private func summaryPromptFits(
         model: LocalModel,
-        previousSummary: String?,
-        messages: [Message]
+        conversation: String
     ) async throws -> Bool {
-        let prompt = PromptBuilder.summarize(
-            previousSummary: previousSummary,
-            messages: messages)
+        let prompt = PromptBuilder.summarize(conversation: conversation)
             .map { LMService.shared.toMessage($0) }
         let usage = try await LMService.shared.contextUsage(
             model: model,
@@ -404,14 +393,14 @@ class ChatService {
 
     private func generateSummary(
         model: LocalModel,
-        previousSummary: String?,
-        messages: [Message]
+        conversation: String
     ) async throws -> String {
         try await LMService.shared.generate(
             model: model,
-            messages: PromptBuilder.summarize(
-                previousSummary: previousSummary,
-                messages: messages))
+            messages: PromptBuilder.summarize(conversation: conversation),
+            maxTokens: min(
+                Self.maximumSummaryOutputTokens,
+                Int(Double(model.contextWindow) * Self.summaryOutputLimit)))
     }
 
     private func ensureUsageFitsSelectedModel(
@@ -430,38 +419,47 @@ class ChatService {
     private func measureContextUsage(
         model: LocalModel,
         chat: Chat,
-        question: Message
+        question: Message,
+        historyStart: Int? = nil,
+        summary: String? = nil
     ) async throws -> ContextWindowUsage {
         try await LMService.shared.contextUsage(
             model: model,
-            messages: promptMessages(chat: chat, question: question),
+            messages: promptMessages(
+                chat: chat,
+                question: question,
+                historyStart: historyStart,
+                summary: summary),
             tools: availableTools(for: chat))
     }
 
     private func promptMessages(
         chat: Chat?,
         question: Message,
-        historyStart: Int? = nil
+        historyStart: Int? = nil,
+        summary: String? = nil
     ) -> [MLXLMCommon.Chat.Message] {
         var history: [Message] = []
+        var messages = [PromptBuilder.agentSystemPrompt]
         if let chat {
+            if let project = chat.project {
+                messages.append(PromptBuilder.environment(project: project))
+            }
             let messages = chat.sortedMessages
             let startIndex = min(historyStart ?? chat.lastSummaryIndex, messages.count)
-            history = Array(messages.suffix(from: startIndex))
+            history = messages.suffix(from: startIndex).filter { $0.id != question.id }
         }
-        return ([PromptBuilder.multiStepAgentSystemPrompt]
-            + history
-            + [PromptBuilder.answerQuestion(
-                question: question.content,
-                summary: chat?.summary)])
-            .map { LMService.shared.toMessage($0) }
+        messages.append(contentsOf: history + [PromptBuilder.answerQuestion(
+            question: question.content,
+            summary: summary ?? chat?.summary)])
+        return messages.map { LMService.shared.toMessage($0) }
     }
 
     private func availableTools(for chat: Chat?) -> [ToolSpec] {
         var tools = ToolDefinition.allToolSchema
         if let projectID = chat?.project?.persistentModelID {
             tools.append(
-                SearchTool.searchRelevantDocuments(projectID: projectID).schema)
+                SearchTool.searchProject(projectID: projectID).schema)
         }
         return tools
     }
@@ -469,18 +467,39 @@ class ChatService {
 
 @MainActor
 @Observable
-final class DecisionCoordinator {
+final class UserInteractionCoordinator {
 
-    struct PendingDecision: Identifiable, Sendable {
+    struct PendingUserInput: Identifiable, Sendable {
         let id = UUID()
-        let request: RequestDecisionInput
+        let request: RequestUserInput
     }
 
-    private(set) var pendingDecision: PendingDecision?
-    @ObservationIgnored
-    private var continuation: CheckedContinuation<RequestDecisionOutput, any Error>?
+    struct PendingApproval: Identifiable, Sendable {
+        let id = UUID()
+        let request: ToolApprovalRequest
+    }
 
-    func request(_ request: RequestDecisionInput) async throws -> RequestDecisionOutput {
+    enum PendingInteraction: Identifiable, Sendable {
+        case userInput(PendingUserInput)
+        case approval(PendingApproval)
+
+        var id: UUID {
+            switch self {
+            case .userInput(let pendingUserInput):
+                pendingUserInput.id
+            case .approval(let pendingApproval):
+                pendingApproval.id
+            }
+        }
+    }
+
+    private(set) var pendingInteraction: PendingInteraction?
+    @ObservationIgnored
+    private var userInputContinuation: CheckedContinuation<RequestUserInputOutput, any Error>?
+    @ObservationIgnored
+    private var approvalContinuation: CheckedContinuation<Bool, any Error>?
+
+    func requestUserInput(_ request: RequestUserInput) async throws -> RequestUserInputOutput {
         try Task.checkCancellation()
         return try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { continuation in
@@ -488,8 +507,8 @@ final class DecisionCoordinator {
                     continuation.resume(throwing: CancellationError())
                     return
                 }
-                pendingDecision = PendingDecision(request: request)
-                self.continuation = continuation
+                pendingInteraction = .userInput(PendingUserInput(request: request))
+                userInputContinuation = continuation
             }
         } onCancel: {
             Task { @MainActor [weak self] in
@@ -498,17 +517,45 @@ final class DecisionCoordinator {
         }
     }
 
-    func submit(_ answers: [DecisionAnswer]) {
-        let continuation = self.continuation
-        self.continuation = nil
-        pendingDecision = nil
-        continuation?.resume(returning: RequestDecisionOutput(answers: answers))
+    func requestApproval(_ request: ToolApprovalRequest) async throws -> Bool {
+        try Task.checkCancellation()
+        return try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { continuation in
+                if Task.isCancelled {
+                    continuation.resume(throwing: CancellationError())
+                    return
+                }
+                pendingInteraction = .approval(PendingApproval(request: request))
+                approvalContinuation = continuation
+            }
+        } onCancel: {
+            Task { @MainActor [weak self] in
+                self?.cancel()
+            }
+        }
+    }
+
+    func submitUserInput(_ answers: [UserInputAnswer]) {
+        let continuation = userInputContinuation
+        userInputContinuation = nil
+        pendingInteraction = nil
+        continuation?.resume(returning: RequestUserInputOutput(answers: answers))
+    }
+
+    func resolveApproval(_ isApproved: Bool) {
+        let continuation = approvalContinuation
+        approvalContinuation = nil
+        pendingInteraction = nil
+        continuation?.resume(returning: isApproved)
     }
 
     func cancel() {
-        let continuation = self.continuation
-        self.continuation = nil
-        pendingDecision = nil
-        continuation?.resume(throwing: CancellationError())
+        let userInputContinuation = userInputContinuation
+        let approvalContinuation = approvalContinuation
+        self.userInputContinuation = nil
+        self.approvalContinuation = nil
+        pendingInteraction = nil
+        userInputContinuation?.resume(throwing: CancellationError())
+        approvalContinuation?.resume(throwing: CancellationError())
     }
 }

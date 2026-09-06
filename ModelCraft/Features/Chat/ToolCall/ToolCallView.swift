@@ -13,17 +13,20 @@ struct ToolCallView: View {
     let toolCall: ToolCall
     let result: CallToolResult?
     let status: ToolCallStatus
+    let imageProgress: StableDiffusionProgress?
     let videoProgress: LTXVideoProgress?
 
     init(
         toolCall: ToolCall,
         result: CallToolResult?,
         status: ToolCallStatus,
+        imageProgress: StableDiffusionProgress? = nil,
         videoProgress: LTXVideoProgress? = nil
     ) {
         self.toolCall = toolCall
         self.result = result
         self.status = status
+        self.imageProgress = imageProgress
         self.videoProgress = videoProgress
     }
 
@@ -74,7 +77,8 @@ struct ToolCallView: View {
             ImageGenerationToolRenderer(
                 toolCall: toolCall,
                 result: result,
-                status: status
+                status: status,
+                progress: imageProgress
             )
             
         case ToolNames.textToVideo:

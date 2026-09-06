@@ -7,56 +7,18 @@
 
 import Foundation
 import SwiftData
-import UniformTypeIdentifiers
 
 import MLXLMCommon
 import Tokenizers
 
-class AgentExecutor {
+final class AgentExecutor {
 
-    typealias GenerationProvider = @MainActor (
-        LocalModel,
-        [MLXLMCommon.Chat.Message],
-        [ToolSpec]
-    ) async throws -> AsyncStream<Generation>
+    private let interactionCoordinator: UserInteractionCoordinator
+    private var authorizationContext = ToolAuthorizationContext()
 
-    typealias ToolDispatcher = @MainActor (
-        ToolCall
-    ) async throws -> (CallToolResult, MLXLMCommon.Chat.Message)
-
-    typealias DecisionProvider = @MainActor (
-        RequestDecisionInput
-    ) async throws -> RequestDecisionOutput
-
-    typealias GenerationInfoHandler = @MainActor (
-        GenerateCompletionInfo
-    ) -> Void
-
-    private let generationProvider: GenerationProvider
-    private let toolDispatcher: ToolDispatcher
-    private let decisionProvider: DecisionProvider
-
-    init(
-        generationProvider: @escaping GenerationProvider = { model, messages, tools in
-            try await LMService.shared.generate(
-                model: model,
-                messages: messages,
-                tools: tools)
-        },
-        toolDispatcher: @escaping ToolDispatcher = { toolCall in
-            try await ToolExecutor.shared.dispath(toolCall)
-        },
-        decisionProvider: @escaping DecisionProvider = { _ in
-            throw AgentExecutorError.decisionProviderUnavailable
-        }
-    ) {
-        self.generationProvider = generationProvider
-        self.toolDispatcher = toolDispatcher
-        self.decisionProvider = decisionProvider
+    init(interactionCoordinator: UserInteractionCoordinator) {
+        self.interactionCoordinator = interactionCoordinator
     }
-    
-    /// Maximum number of tool invocations per user message (each recursion is one round).
-    private static let maxToolRounds = 15
     
     /// Stop offering tools after this many identical tool calls in a row (same name + arguments).
     private static let maxConsecutiveIdenticalToolCalls = 3
@@ -68,185 +30,143 @@ class AgentExecutor {
     @MainActor
     func run(
         model: LocalModel,
-        projectID: PersistentIdentifier?,
         chat: Chat,
-        messages: [MLXLMCommon.Chat.Message],
-        toolRound: Int = 0,
-        lastToolSignature: String? = nil,
-        consecutiveSameToolCalls: Int = 0,
-        temporarilyDisabledTool: String? = nil,
-        generationInfoHandler: GenerationInfoHandler? = nil
+        messages: [MLXLMCommon.Chat.Message]
     ) async throws -> Void {
         try Task.checkCancellation()
+        let project = chat.project
+        authorizationContext = ToolAuthorizationContext(
+            workingDirectory: project?.workingDirectory)
 
-        if toolRound >= Self.maxToolRounds {
-            let limitMessage = Message(
-                role: .assistant,
-                chat: chat,
-                content: "Tool calling stopped after reaching the \(Self.maxToolRounds)-step limit.",
-                status: .failed
-            )
-            ModelContainer.shared.mainContext.persist(limitMessage)
-            return
+        try await ProjectToolContext.$workingDirectory.withValue(project?.workingDirectory) {
+            try await ProjectToolContext.$readOnlyFiles.withValue(project?.resources ?? []) {
+                try await run(
+                    model: model,
+                    chat: chat,
+                    messages: messages,
+                    projectID: project?.persistentModelID,
+                    lastToolSignature: nil,
+                    consecutiveSameToolCalls: 0,
+                    temporarilyDisabledTool: nil)
+            }
         }
+    }
 
+    @MainActor
+    private func run(
+        model: LocalModel,
+        chat: Chat,
+        messages: [MLXLMCommon.Chat.Message],
+        projectID: PersistentIdentifier?,
+        lastToolSignature: String?,
+        consecutiveSameToolCalls: Int,
+        temporarilyDisabledTool: String?
+    ) async throws {
         var availableTools = ToolDefinition.allToolSchema
-        if let projectID = projectID {
-            availableTools.append(SearchTool.searchRelevantDocuments(projectID: projectID).schema)
+        if let projectID {
+            availableTools.append(SearchTool.searchProject(projectID: projectID).schema)
         }
         if let temporarilyDisabledTool {
             availableTools.removeAll { toolName(from: $0) == temporarilyDisabledTool }
         }
 
-        let assistantMessage = Message(role: .assistant, chat: chat, status: .generating)
+        let assistantMessage = Message(role: .assistant, chat: chat, status: .new)
         ModelContainer.shared.mainContext.persist(assistantMessage)
-        var isAssistantMessagePersisted = true
-        var persistedToolMessage: Message?
-
-        var nextTurn: (
-            toolCall: ToolCall,
-            toolRound: Int,
-            lastToolSignature: String?,
-            consecutiveSameToolCalls: Int
-        )?
-
-        do {
-            for await batch in try await generationProvider(
-                model, messages, availableTools) {
-                try Task.checkCancellation()
-                if let toolCall = batch.toolCall {
-                    print("ToolCall \(toolCall)")
-                    let signature = toolSignature(toolCall)
-                    let newConsecutive = (signature == lastToolSignature) ? consecutiveSameToolCalls + 1 : 1
-
-                    // Do not dispatch while the generation stream is active.
-                    // The LMService lease is held until the stream is
-                    // terminated; a model-backed tool would otherwise wait
-                    // for this lease while this turn waits for the tool
-                    // result.
-                    nextTurn = (
-                        toolCall: toolCall,
-                        toolRound: toolRound + 1,
-                        lastToolSignature: signature,
-                        consecutiveSameToolCalls: newConsecutive
-                    )
-                    continue
-                }
-
-                if let chunk = batch.chunk {
-                    assistantMessage.content.append(chunk)
-                }
-
-                if let info = batch.info {
-                    assistantMessage.prefillTime = info.promptTime
-                    assistantMessage.tokensPerSecond = info.tokensPerSecond
-                    generationInfoHandler?(info)
-                }
-            }
-            assistantMessage.status = .generated
-
-            if let nextTurn {
-                try Task.checkCancellation()
-                let protocolAssistantMessage = LMService.shared.toMessage(assistantMessage)
-
+        var allMessages = messages
+        for await batch in try await LMService.shared.generate(
+            model: model,
+            messages: messages,
+            tools: availableTools
+        ) {
+            try Task.checkCancellation()
+            
+            if let toolCall = batch.toolCall {
+                print("ToolCall \(toolCall)")
                 if assistantMessage.content.isEmpty {
                     ModelContainer.shared.mainContext.delete(assistantMessage)
-                    isAssistantMessagePersisted = false
+                } else {
+                    allMessages.append(LMService.shared.toMessage(assistantMessage))
                 }
-
-                let toolStorageMessage = Message(
+                
+                let toolMessage = Message(
                     role: .tool,
                     chat: chat,
-                    toolCall: nextTurn.toolCall,
-                    status: .generating
-                )
-                persistedToolMessage = toolStorageMessage
-                ModelContainer.shared.mainContext.persist(toolStorageMessage)
+                    toolCall: toolCall,
+                    status: .generating,
+                    prefillTime: batch.info?.promptTime,
+                    promptTokenCount: batch.info?.promptTokenCount,
+                    generationTokenCount: batch.info?.generationTokenCount)
+                ModelContainer.shared.mainContext.persist(toolMessage)
 
-                let duplicateCallBlocked = nextTurn.consecutiveSameToolCalls
+                let signature = toolCall.signature
+                let newConsecutiveSameToolCalls = signature == lastToolSignature
+                    ? consecutiveSameToolCalls + 1
+                    : 1
+                let duplicateCallBlocked = newConsecutiveSameToolCalls
                     >= Self.maxConsecutiveIdenticalToolCalls
-                let executionResult: (CallToolResult, MLXLMCommon.Chat.Message)
+                let result: (CallToolResult, MLXLMCommon.Chat.Message)
                 if duplicateCallBlocked {
-                    executionResult = (
+                    result = (
                         .error(Self.duplicateToolCallMessage),
-                        .tool(Self.duplicateToolCallMessage)
-                    )
-                } else if nextTurn.toolCall.function.name == ToolNames.requestDecision {
-                    executionResult = try await executeDecision(nextTurn.toolCall)
-                } else if nextTurn.toolCall.function.name == ToolNames.searchRelevantDocuments,
-                          let projectID {
-                    executionResult = try await executeDocumentSearch(
-                        nextTurn.toolCall,
-                        projectID: projectID)
+                        .tool(Self.duplicateToolCallMessage))
                 } else {
-                    executionResult = try await ToolExecutionProgressReporter.$videoGeneration.withValue(
-                        { progress in
-                            toolStorageMessage.content = progress.storedValue
-                        },
-                        operation: {
-                            try await toolDispatcher(nextTurn.toolCall)
-                        })
+                    result = try await executeToolCall(
+                        toolCall,
+                        signature: signature,
+                        projectID: projectID)
                 }
-                let (toolCallResult, protocolToolMessage) = executionResult
-                toolStorageMessage.content = protocolToolMessage.content
-                toolStorageMessage.toolCallResult = toolCallResult
-                toolStorageMessage.status = duplicateCallBlocked ? .failed : .generated
-                try Task.checkCancellation()
-                try await self.run(
+
+                toolMessage.content = result.1.content
+                toolMessage.toolCallResult = result.0
+                toolMessage.status = result.0.isError ? .failed : .generated
+                allMessages.append(result.1)
+                try await run(
                     model: model,
-                    projectID: projectID,
                     chat: chat,
-                    messages: messages
-                        + [protocolAssistantMessage, protocolToolMessage],
-                    toolRound: nextTurn.toolRound,
-                    lastToolSignature: nextTurn.lastToolSignature,
-                    consecutiveSameToolCalls: nextTurn.consecutiveSameToolCalls,
+                    messages: allMessages,
+                    projectID: projectID,
+                    lastToolSignature: signature,
+                    consecutiveSameToolCalls: newConsecutiveSameToolCalls,
                     temporarilyDisabledTool: duplicateCallBlocked
-                        ? nextTurn.toolCall.function.name
-                        : nil,
-                    generationInfoHandler: generationInfoHandler)
+                        ? toolCall.function.name
+                        : nil)
+            } else if let chunk = batch.chunk {
+                assistantMessage.status = .generating
+                assistantMessage.content.append(chunk)
             }
-        } catch is CancellationError {
-            // Stop/cancel leaves the partial answer visible instead of
-            // turning it into a permanent spinner in the chat UI.
-            if let persistedToolMessage,
-               persistedToolMessage.toolCallResult == nil {
-                persistedToolMessage.toolCallResult = .error("Cancelled")
-                persistedToolMessage.status = .generated
+            
+            if let info = batch.info {
+                assistantMessage.prefillTime = info.promptTime
+                assistantMessage.promptTokenCount = info.promptTokenCount
+                assistantMessage.generationTokenCount = info.generationTokenCount
             }
-            if isAssistantMessagePersisted && assistantMessage.status == .generating {
-                assistantMessage.status = .generated
-            }
-            throw CancellationError()
-        } catch {
-            if let persistedToolMessage,
-               persistedToolMessage.toolCallResult == nil {
-                let description = error.localizedDescription
-                persistedToolMessage.content = description.isEmpty
-                    ? "Generation failed"
-                    : description
-                persistedToolMessage.toolCallResult = .error(persistedToolMessage.content)
-                persistedToolMessage.status = .failed
-            } else if isAssistantMessagePersisted {
-                assistantMessage.status = .failed
-                if assistantMessage.content.isEmpty {
-                    let description = error.localizedDescription
-                    assistantMessage.content = description.isEmpty
-                        ? "Generation failed"
-                        : description
-                }
-            }
-            throw error
         }
+        assistantMessage.status = .generated
+        
     }
-    
-    private func toolSignature(_ toolCall: ToolCall) -> String {
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.sortedKeys]
-        let arguments = (try? encoder.encode(toolCall.function.arguments))
-            .flatMap { String(data: $0, encoding: .utf8) }
-            ?? String(describing: toolCall.function.arguments)
-        return "\(toolCall.function.name)|\(arguments)"
+
+    @MainActor
+    private func executeToolCall(
+        _ toolCall: ToolCall,
+        signature: String,
+        projectID: PersistentIdentifier?
+    ) async throws -> (CallToolResult, MLXLMCommon.Chat.Message) {
+        if toolCall.function.name == ToolNames.requestUserInput {
+            return try await executeUserInput(toolCall)
+        }
+
+        if toolCall.requiresUserApproval,
+           !authorizationContext.allows(toolCall, signature: signature) {
+            guard try await interactionCoordinator.requestApproval(
+                toolCall.approvalRequest)
+            else {
+                let message = "The user did not allow this action."
+                return (.error(message), .tool(message))
+            }
+            authorizationContext.authorize(toolCall, signature: signature)
+        }
+
+        return try await ToolExecutor.dispatch(toolCall, projectID: projectID)
     }
 
     private func toolName(from schema: ToolSpec) -> String? {
@@ -255,32 +175,144 @@ class AgentExecutor {
     }
 
     @MainActor
-    private func executeDecision(
+    private func executeUserInput(
         _ toolCall: ToolCall
     ) async throws -> (CallToolResult, MLXLMCommon.Chat.Message) {
-        let request = try await toolCall.execute(with: DecisionTool.requestDecision)
-        let output = try await decisionProvider(request)
+        let request = try await toolCall.execute(with: UserInputTool.requestUserInput)
+        let output = try await interactionCoordinator.requestUserInput(request)
+        authorizationContext.authorize(request: request, output: output)
         let data = try JSONEncoder().encode(output)
         let content = String(decoding: data, as: UTF8.self)
         var result = CallToolResult()
         result.content.append(.text(TextContent(text: content)))
         return (result, .tool(content))
     }
-
-    @MainActor
-    private func executeDocumentSearch(
-        _ toolCall: ToolCall,
-        projectID: PersistentIdentifier
-    ) async throws -> (CallToolResult, MLXLMCommon.Chat.Message) {
-        let output = try await toolCall.execute(
-            with: SearchTool.searchRelevantDocuments(projectID: projectID))
-        var result = CallToolResult()
-        result.content.append(.text(TextContent(text: output.toolResult)))
-        return (result, .tool(output.toolResult))
-    }
-    
 }
 
-enum AgentExecutorError: Error {
-    case decisionProviderUnavailable
+private struct ToolAuthorizationContext {
+
+    private struct FileScope {
+        let url: URL
+        let includesDescendants: Bool
+
+        func contains(_ candidate: URL) -> Bool {
+            guard includesDescendants else { return candidate == url }
+            return candidate.pathComponents.starts(with: url.pathComponents)
+        }
+    }
+
+    private var fileScopes: [FileScope] = []
+    private var applicationIDs: Set<String> = []
+    private var allowsScreenInteraction = false
+    private var approvedToolSignatures: Set<String> = []
+    private let workingDirectory: URL?
+
+    init(workingDirectory: URL? = nil) {
+        self.workingDirectory = workingDirectory
+        if let workingDirectory {
+            fileScopes.append(FileScope(
+                url: workingDirectory.standardizedFileURL.resolvingSymlinksInPath(),
+                includesDescendants: true))
+        }
+    }
+
+    func allows(_ toolCall: ToolCall, signature: String) -> Bool {
+        switch toolCall.function.name {
+        case ToolNames.writeFile, ToolNames.editFile:
+            guard let path = toolCall.function.arguments["path"]?.stringValue else {
+                return false
+            }
+            let candidate = normalizedURL(for: path)
+            return fileScopes.contains { $0.contains(candidate) }
+        case ToolNames.clickElement, ToolNames.typeText, ToolNames.pressKey:
+            guard let appID = toolCall.function.arguments["appID"]?.stringValue else {
+                return false
+            }
+            return applicationIDs.contains(appID)
+        case ToolNames.click, ToolNames.drag:
+            return allowsScreenInteraction
+        case ToolNames.executeCommand:
+            if approvedToolSignatures.contains(signature) {
+                return true
+            }
+            guard let command = toolCall.function.arguments["command"]?.stringValue,
+                  let targets = scopedFileCommandTargets(command)
+            else {
+                return false
+            }
+            return targets.allSatisfy { target in
+                let candidate = normalizedURL(for: target)
+                return fileScopes.contains { $0.contains(candidate) }
+            }
+        default:
+            return approvedToolSignatures.contains(signature)
+        }
+    }
+
+    mutating func authorize(_ toolCall: ToolCall, signature: String) {
+        switch toolCall.function.name {
+        case ToolNames.writeFile, ToolNames.editFile:
+            guard let path = toolCall.function.arguments["path"]?.stringValue else { return }
+            appendFileScope(path: path, includesDescendants: false)
+        case ToolNames.clickElement, ToolNames.typeText, ToolNames.pressKey:
+            guard let appID = toolCall.function.arguments["appID"]?.stringValue else { return }
+            applicationIDs.insert(appID)
+        case ToolNames.click, ToolNames.drag:
+            allowsScreenInteraction = true
+        default:
+            approvedToolSignatures.insert(signature)
+        }
+    }
+
+    mutating func authorize(request: RequestUserInput, output: RequestUserInputOutput) {
+        for field in request.fields where field.type == .file || field.type == .directory {
+            guard let answer = output.answers.first(where: { $0.fieldID == field.id }) else {
+                continue
+            }
+            for path in answer.values {
+                appendFileScope(
+                    path: path,
+                    includesDescendants: field.type == .directory)
+            }
+        }
+    }
+
+    private mutating func appendFileScope(path: String, includesDescendants: Bool) {
+        let scope = FileScope(
+            url: normalizedURL(for: path),
+            includesDescendants: includesDescendants)
+        guard !fileScopes.contains(where: {
+            $0.url == scope.url && $0.includesDescendants == scope.includesDescendants
+        }) else {
+            return
+        }
+        fileScopes.append(scope)
+    }
+
+    private func normalizedURL(for path: String) -> URL {
+        URL(
+            fileURLWithPath: path,
+            relativeTo: workingDirectory ?? .documentsDirectory
+        ).standardizedFileURL.resolvingSymlinksInPath()
+    }
+
+    private func scopedFileCommandTargets(_ command: String) -> [String]? {
+        let forbiddenCharacters = CharacterSet(charactersIn: "\n\r;|&><`*?[]")
+        guard command.rangeOfCharacter(from: forbiddenCharacters) == nil,
+              !command.contains("$("),
+              !command.contains("${")
+        else {
+            return nil
+        }
+
+        let arguments = command.split(whereSeparator: \.isWhitespace).map(String.init)
+        guard let first = arguments.first else { return nil }
+        let executable = (first as NSString).lastPathComponent
+        guard ["mkdir", "rm", "touch"].contains(executable) else { return nil }
+
+        let targets = arguments.dropFirst().filter { !$0.hasPrefix("-") }.map {
+            $0.trimmingCharacters(in: CharacterSet(charactersIn: "\"'"))
+        }
+        return targets.isEmpty ? nil : targets
+    }
 }

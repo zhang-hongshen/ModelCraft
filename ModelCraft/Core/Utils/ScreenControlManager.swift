@@ -10,36 +10,25 @@ import Foundation
 import UniformTypeIdentifiers
 import CoreGraphics
 
-#if canImport(AppKit)
 import AppKit
 import ScreenCaptureKit
-#elseif canImport(UIKit)
-import UIKit
-#endif
 
 
-class ScreenControlManager {
+final class ScreenControlManager {
 
     static let shared = ScreenControlManager()
 
     var screen: CGRect {
-        #if canImport(AppKit)
         NSScreen.screens
                 .map { $0.frame }
                 .reduce(CGRect.null) { $0.union($1) }
-        #else
-        UIApplication.shared.connectedScenes
-            .compactMap { $0 as? UIWindowScene }
-            .map { $0.screen.bounds }
-            .reduce(CGRect.null) { $0.union($1) }
-        #endif
     }
 
     // MARK: - Screenshot
     func takeFullScreenshot() async throws -> FullScreenshot? {
-        #if canImport(AppKit)
-
+        try Task.checkCancellation()
         let content = try await SCShareableContent.current
+        try Task.checkCancellation()
         guard !content.displays.isEmpty else { return nil }
         let captureFrame = content.displays
             .map(\.frame)
@@ -51,6 +40,7 @@ class ScreenControlManager {
         try await withThrowingTaskGroup(of: (CGImage, CGRect).self) { group in
             for display in content.displays {
                 group.addTask {
+                    try Task.checkCancellation()
                     let config = SCStreamConfiguration()
                     config.width = display.width
                     config.height = display.height
@@ -59,10 +49,12 @@ class ScreenControlManager {
 
                     let filter = SCContentFilter(display: display, excludingWindows: [])
                     let image = try await SCScreenshotManager.captureImage(contentFilter: filter, configuration: config)
+                    try Task.checkCancellation()
                     return (image, display.frame)
                 }
             }
             for try await result in group {
+                try Task.checkCancellation()
                 captures.append(result)
             }
         }
@@ -84,33 +76,21 @@ class ScreenControlManager {
         ctx.fill(CGRect(x: 0, y: 0, width: captureFrame.width, height: captureFrame.height))
 
         for (image, frame) in captures {
+            try Task.checkCancellation()
             let destX = frame.minX - captureFrame.minX
             let destY = captureFrame.maxY - frame.maxY
 
             let destRect = CGRect(x: destX, y: destY, width: frame.width, height: frame.height)
             ctx.draw(image, in: destRect)
         }
-
         return FullScreenshot(image: ctx.makeImage()!, size: captureFrame.size)
-        #elseif canImport(UIKit)
-        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-              let window = windowScene.windows.first(where: { $0.isKeyWindow }) else {
-            return nil
-        }
-        let renderer = UIGraphicsImageRenderer(bounds: window.bounds)
-        let image = renderer.image { _ in
-            window.drawHierarchy(in: window.bounds, afterScreenUpdates: true)
-        }
-        return FullScreenshot(image: image.cgImage!, size: screen.size)
-        #else
-        return nil
-        #endif
     }
 
     // MARK: - App Window Screenshot
     func takeAppWindowScreenshot(appID: String) async throws -> [AppWindowScreenshot] {
-        #if canImport(AppKit)
+        try Task.checkCancellation()
         let content = try await SCShareableContent.current
+        try Task.checkCancellation()
         guard !content.displays.isEmpty else { return [] }
         
         let targetWindows = content.windows.filter { window in
@@ -126,6 +106,7 @@ class ScreenControlManager {
         var results: [AppWindowScreenshot] = []
 
         for window in targetWindows {
+            try Task.checkCancellation()
             let filter = SCContentFilter(desktopIndependentWindow: window)
             let config = SCStreamConfiguration()
             
@@ -135,43 +116,31 @@ class ScreenControlManager {
             
             do {
                 let image = try await SCScreenshotManager.captureImage(contentFilter: filter, configuration: config)
+                try Task.checkCancellation()
                 results.append(AppWindowScreenshot(
                     image: image,
                     windowFrame: window.frame,
                     windowID: Int(window.windowID)
                 ))
+            } catch is CancellationError {
+                throw CancellationError()
             } catch {
                 continue
             }
         }
-
         return results
-        
-        #elseif canImport(UIKit)
-        guard let cgImage = try await takeFullScreenshot(),
-              let data = UIImage(cgImage: cgImage).pngData() else { return nil }
-        return AppWindowScreenshotOutput(imageData: data, mimeType: "image/png", windowFrame: screen)
-        
-        #else
-        return nil
-        #endif
     }
     
-    // MARK: - Mouse/Touch Movement
+    // MARK: - Mouse Movement
     func move(x: Double, y: Double) {
         let point = screenToSystemPoint(x: x, y: y)
-        #if canImport(AppKit)
         let moveEvent = CGEvent(mouseEventSource: nil, mouseType: .mouseMoved, mouseCursorPosition: point, mouseButton: .left)
         moveEvent?.post(tap: .cghidEventTap)
-        #elseif canImport(UIKit)
-        print("Moving virtual cursor to: \(point)")
-        #endif
     }
 
-    // MARK: - Click/Tap Action
+    // MARK: - Click Action
     func click(at: CGPoint) {
         let point = screenToSystemPoint(point: at)
-        #if canImport(AppKit)
         let source = CGEventSource(stateID: .combinedSessionState)
         let mouseDown = CGEvent(mouseEventSource: source, mouseType: .leftMouseDown, mouseCursorPosition: point, mouseButton: .left)
         let mouseUp = CGEvent(mouseEventSource: source, mouseType: .leftMouseUp, mouseCursorPosition: point, mouseButton: .left)
@@ -180,25 +149,6 @@ class ScreenControlManager {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
             mouseUp?.post(tap: .cghidEventTap)
         }
-
-        #elseif canImport(UIKit)
-        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-              let window = windowScene.windows.first(where: { $0.isKeyWindow }) else {
-            return
-        }
-
-        if let hitView = window.hitTest(point, with: nil) {
-            if let button = hitView as? UIButton {
-                button.sendActions(for: .touchUpInside)
-            } else {
-                hitView.gestureRecognizers?.forEach { gesture in
-                    if let tap = gesture as? UITapGestureRecognizer {
-                        print("Detected tap gesture on: \(type(of: hitView))")
-                    }
-                }
-            }
-        }
-        #endif
     }
     
     func click(x: Double, y: Double) {
@@ -206,7 +156,6 @@ class ScreenControlManager {
     }
 
     func scroll(deltaY: Int32) {
-        #if canImport(AppKit)
         guard let scrollEvent = CGEvent(
             scrollWheelEvent2Source: nil,
             units: .pixel,
@@ -217,7 +166,6 @@ class ScreenControlManager {
         ) else { return }
 
         scrollEvent.post(tap: .cghidEventTap)
-        #endif
     }
 
     func pressKey(keyCode: CGKeyCode, modifiers: [CGEventFlags] = []) {
@@ -260,7 +208,6 @@ class ScreenControlManager {
     func drag(from: CGPoint, to: CGPoint) {
         let start = screenToSystemPoint(point: from)
         let end = screenToSystemPoint(point: to)
-        #if canImport(AppKit)
         let source = CGEventSource(stateID: .combinedSessionState)
 
         CGEvent(
@@ -283,14 +230,13 @@ class ScreenControlManager {
             mouseCursorPosition: end,
             mouseButton: .left
         )?.post(tap: .cghidEventTap)
-
-        #endif
     }
 
     /// Types a string character-by-character using Unicode key events (handles any character, not just keyboard-mappable ones)
     func typeString(_ string: String) {
         let source = CGEventSource(stateID: .combinedSessionState)
         for scalar in string.unicodeScalars {
+            guard !Task.isCancelled else { return }
             let utf16Char = [UniChar](String(scalar).utf16)
             guard let down = CGEvent(keyboardEventSource: source, virtualKey: 0, keyDown: true),
                   let up = CGEvent(keyboardEventSource: source, virtualKey: 0, keyDown: false) else { continue }

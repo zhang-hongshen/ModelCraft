@@ -55,11 +55,6 @@ struct FileToolRenderer: View {
         if let url, let fileName = toolCall.fileDisplayName {
             HStack(spacing: 4) {
                 Image(systemName: toolCall.icon)
-                if status == .running {
-                    ProgressView()
-                        .controlSize(.small)
-                }
-
                 Text(actionDescription)
 
                 Button {

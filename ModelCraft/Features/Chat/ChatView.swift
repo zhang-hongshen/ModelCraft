@@ -8,6 +8,7 @@
 import SwiftUI
 import SwiftData
 import AppKit
+import UniformTypeIdentifiers
 
 
 struct ChatView: View {
@@ -22,7 +23,10 @@ struct ChatView: View {
     @State private var draft = Message(role: .user)
     @State private var voiceState: VoiceState = .idle
     @State private var composerHeight: CGFloat = 0
+    @State private var skillCommands: [ChatCommand] = []
     @State private var selectedCommand: ChatCommand = .compact
+    @State private var composerSelectionLocation = 0
+    @State private var slashCommandLocation: Int?
     @State private var projectEdition: Project?
     
     enum VoiceState {
@@ -50,18 +54,9 @@ struct ChatView: View {
                 guard globalStore.selectedModel == nil else { return }
                 globalStore.selectedModel = availableModels.first
             }
-            .onChange(of: globalStore.selectedModel, initial: true) {
-                refreshContextUsage()
-            }
-            .onChange(of: chat?.messages.count) {
-                refreshContextUsage()
-            }
-            .onChange(of: chat?.summary) {
-                refreshContextUsage()
-            }
-            .onChange(of: draft.content) {
-                if draft.content == "/" {
-                    selectedCommand = .compact
+            .onChange(of: slashCommandLocation) {
+                if slashCommandLocation != nil {
+                    reloadCommands()
                 }
             }
             .modifier(AudioLevelChangeModifier { transcript in
@@ -227,8 +222,10 @@ private extension ChatView {
     @ViewBuilder
     func StopGeneratingMessageButton() -> some View {
         Button {
-            if let chat = chat {
-                chatService.stopGenerating(chat: chat)
+            Task {
+                if let chat {
+                    await chatService.stopGenerating(chat: chat)
+                }
             }
         } label: {
             Image(systemName: "stop.fill")
@@ -303,15 +300,17 @@ private extension ChatView {
     @ViewBuilder
     func ComposerView(showsProjectPicker: Bool) -> some View {
         VStack(spacing: 8) {
-            if let pendingDecision = chatService.decisionCoordinator.pendingDecision {
-                DecisionRequestView(
-                    pendingDecision: pendingDecision,
-                    onConfirm: chatService.decisionCoordinator.submit)
-                .id(pendingDecision.id)
+            if let pendingInteraction = chatService.interactionCoordinator.pendingInteraction {
+                UserInteractionRequestView(
+                    pendingInteraction: pendingInteraction,
+                    onSubmitUserInput: chatService.interactionCoordinator.submitUserInput,
+                    onResolveApproval: chatService.interactionCoordinator.resolveApproval)
+                .id(pendingInteraction.id)
             }
 
             if isCommandPalettePresented {
                 ChatCommandPalette(
+                    skillCommands: skillCommands,
                     selectedCommand: selectedCommand,
                     isEnabled: isCommandEnabled,
                     onSelect: runCommand)
@@ -319,10 +318,18 @@ private extension ChatView {
 
             ChatInputView(
                 userInput: draft,
+                skillNames: skillCommands.compactMap(\.skillName),
+                selectionLocation: $composerSelectionLocation,
+                slashCommandLocation: $slashCommandLocation,
+                onCommand: handleComposerCommand,
                 trailing: {
                     HStack {
-                        if let contextUsage = chatService.contextUsage {
-                            ContextWindowProgressView(usage: contextUsage)
+                        if let usage = contextUsage {
+                            ProgressView(value: usage.fraction)
+                                .controlSize(.small)
+                                .help(String(localized: "\(usage.usedTokens.formatted()) of \(usage.totalTokens.formatted()) context tokens"))
+                                .accessibilityLabel("Context window usage")
+                                .accessibilityValue(Text(usage.fraction.formatted(.percent.precision(.fractionLength(0)))))
                         }
 
                         ModelPickerButton()
@@ -330,15 +337,12 @@ private extension ChatView {
                         if chatService.isCompacting {
                             ProgressView()
                                 .controlSize(.small)
-                        } else if isAgentExecuting {
-                            if !draft.content.isEmpty && !isCommandPalettePresented {
-                                SubmitMessageButton()
-                            }
-                            StopGeneratingMessageButton()
-                        } else if draft.content.isEmpty {
-                            voiceModeButton()
-                        } else {
+                        } else if !draft.content.isEmpty {
                             SubmitMessageButton()
+                        } else if chat?.isGenerating == true {
+                            StopGeneratingMessageButton()
+                        } else {
+                            voiceModeButton()
                         }
                     }
                 }
@@ -403,11 +407,15 @@ private extension ChatView {
 
     var isAgentExecuting: Bool {
         guard let chat else { return false }
-        return chat.isGenerating || chatService.isPreparingResponse
+        return chat.isGenerating
     }
 
     var isCommandPalettePresented: Bool {
-        draft.content == "/"
+        slashCommandLocation != nil
+    }
+
+    var commands: [ChatCommand] {
+        [.compact] + skillCommands
     }
 
     func isCommandEnabled(_ command: ChatCommand) -> Bool {
@@ -415,56 +423,90 @@ private extension ChatView {
         case .compact:
             return chat?.messages.isEmpty == false
                 && globalStore.selectedModel != nil
-                && !isAgentExecuting
+                && chat?.isGenerating != true
                 && !chatService.isCompacting
+        case .skill:
+            return true
         }
+    }
+
+    func reloadCommands() {
+        SkillManager.shared.loadSkills()
+        skillCommands = SkillManager.shared.skills.values
+            .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+            .map { .skill(name: $0.name, description: $0.description) }
+        selectedCommand = .compact
     }
 
     func handleCommandKeyPress(_ keyPress: KeyPress) -> KeyPress.Result {
-        guard isCommandPalettePresented else { return .ignored }
-
+        let command: ChatComposerCommand
         switch keyPress.key {
         case .upArrow:
-            selectPreviousCommand()
+            command = .previous
         case .downArrow:
-            selectNextCommand()
+            command = .next
         case .return:
-            runCommand(selectedCommand)
+            command = .select
         case .escape:
-            draft.content = ""
+            command = .dismiss
         default:
             return .ignored
         }
-        return .handled
+        return handleComposerCommand(command) ? .handled : .ignored
+    }
+
+    func handleComposerCommand(_ command: ChatComposerCommand) -> Bool {
+        guard isCommandPalettePresented else { return false }
+        switch command {
+        case .previous:
+            selectPreviousCommand()
+        case .next:
+            selectNextCommand()
+        case .select:
+            runCommand(selectedCommand)
+        case .dismiss:
+            replaceCommandSlash(with: "")
+        }
+        return true
     }
 
     func selectPreviousCommand() {
-        let commands = ChatCommand.allCases
         guard let index = commands.firstIndex(of: selectedCommand) else { return }
         selectedCommand = commands[(index - 1 + commands.count) % commands.count]
     }
 
     func selectNextCommand() {
-        let commands = ChatCommand.allCases
         guard let index = commands.firstIndex(of: selectedCommand) else { return }
         selectedCommand = commands[(index + 1) % commands.count]
     }
 
     func runCommand(_ command: ChatCommand) {
         guard isCommandEnabled(command) else { return }
-        draft.content = ""
 
         switch command {
         case .compact:
+            replaceCommandSlash(with: "")
             guard let model = globalStore.selectedModel,
                   let chat else {
                 return
             }
             Task {
                 try await chatService.compactContext(model: model, chat: chat)
-                refreshContextUsage()
             }
+        case .skill(let name, _):
+            replaceCommandSlash(with: "/\(name) ")
         }
+    }
+
+    func replaceCommandSlash(with replacement: String) {
+        guard let slashCommandLocation else { return }
+        let content = draft.content as NSString
+        guard slashCommandLocation < content.length else { return }
+        draft.content = content.replacingCharacters(
+            in: NSRange(location: slashCommandLocation, length: 1),
+            with: replacement)
+        composerSelectionLocation = slashCommandLocation + (replacement as NSString).length
+        self.slashCommandLocation = nil
     }
     
     func submitMessage(content: String, files: [URL]) -> Bool {
@@ -480,8 +522,11 @@ private extension ChatView {
             globalStore.currentTab = .chat(activeChat)
             globalStore.newChatProject = nil
         }
-        let message = Message(role: .user, chat: activeChat,
-                              content: content, files: files)
+        let message = Message(
+            role: .user,
+            chat: activeChat,
+            content: content,
+            files: files)
         Task {
             try await chatService.sendMessage(
                 model: model,
@@ -502,12 +547,22 @@ private extension ChatView {
     func clearDraft() {
         draft.content = ""
         draft.files = []
+        composerSelectionLocation = 0
+        slashCommandLocation = nil
     }
 
-    func refreshContextUsage() {
-        chatService.scheduleContextUsage(
-            model: globalStore.selectedModel,
-            chat: chat)
+    var contextUsage: ContextWindowUsage? {
+        guard let model = globalStore.selectedModel,
+              let message = chat?.sortedMessages.reversed().first(where: {
+                  $0.promptTokenCount != nil && $0.generationTokenCount != nil
+              }),
+              let promptTokenCount = message.promptTokenCount,
+              let generationTokenCount = message.generationTokenCount else {
+            return nil
+        }
+        return ContextWindowUsage(
+            usedTokens: promptTokenCount + generationTokenCount,
+            totalTokens: model.contextWindow)
     }
     
     func scrollToBottom(_ proxy: ScrollViewProxy, lastID: ConversationContentItem.ID?) {
@@ -518,58 +573,76 @@ private extension ChatView {
     }
 }
 
-private enum ChatCommand: String, CaseIterable, Identifiable {
+private enum ChatCommand: Identifiable, Equatable {
     case compact
+    case skill(name: String, description: String)
 
-    var id: Self { self }
-
-    var title: String {
-        "/\(rawValue)"
-    }
-
-    var description: LocalizedStringResource {
+    var id: String {
         switch self {
         case .compact:
-            "Compress conversation history to free context space."
+            "command:compact"
+        case .skill(let name, _):
+            "skill:\(name)"
+        }
+    }
+
+    var title: String {
+        switch self {
+        case .compact:
+            "/compact"
+        case .skill(let name, _):
+            "/\(name)"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .compact:
+            "arrow.down.right.and.arrow.up.left"
+        case .skill:
+            "cube"
+        }
+    }
+
+    var skillName: String? {
+        switch self {
+        case .compact:
+            nil
+        case .skill(let name, _):
+            name
         }
     }
 }
 
 private struct ChatCommandPalette: View {
 
+    let skillCommands: [ChatCommand]
     let selectedCommand: ChatCommand
     let isEnabled: (ChatCommand) -> Bool
     let onSelect: (ChatCommand) -> Void
 
     var body: some View {
-        VStack(spacing: 2) {
-            ForEach(ChatCommand.allCases) { command in
-                Button {
-                    onSelect(command)
-                } label: {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(command.title)
-                                .font(.body.monospaced())
-                            Text(command.description)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                        Spacer()
-                    }
-                    .contentShape(Rectangle())
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 8)
-                    .background(
-                        selectedCommand == command
-                            ? Color.accentColor.opacity(0.14)
-                            : Color.clear,
-                        in: RoundedRectangle(cornerRadius: 6))
+        ViewThatFits(in: .vertical) {
+            ChatCommandPaletteContent(
+                skillCommands: skillCommands,
+                selectedCommand: selectedCommand,
+                isEnabled: isEnabled,
+                onSelect: onSelect)
+
+            ScrollViewReader { proxy in
+                ScrollView {
+                    ChatCommandPaletteContent(
+                        skillCommands: skillCommands,
+                        selectedCommand: selectedCommand,
+                        isEnabled: isEnabled,
+                        onSelect: onSelect)
                 }
-                .buttonStyle(.plain)
-                .disabled(!isEnabled(command))
+                .onChange(of: selectedCommand) {
+                    proxy.scrollTo(selectedCommand.id, anchor: .center)
+                }
             }
         }
+        .frame(maxHeight: 320)
         .padding(6)
         .background(.background, in: RoundedRectangle(cornerRadius: 12))
         .overlay {
@@ -579,89 +652,127 @@ private struct ChatCommandPalette: View {
     }
 }
 
-private struct ContextWindowProgressView: View {
+private struct ChatCommandPaletteContent: View {
 
-    let usage: ContextWindowUsage
+    let skillCommands: [ChatCommand]
+    let selectedCommand: ChatCommand
+    let isEnabled: (ChatCommand) -> Bool
+    let onSelect: (ChatCommand) -> Void
 
     var body: some View {
-        ZStack {
-            Circle()
-                .stroke(Color.secondary.opacity(0.25), lineWidth: 2)
+        VStack(alignment: .leading, spacing: 6) {
+            ChatCommandSection(
+                commands: [.compact],
+                selectedCommand: selectedCommand,
+                isEnabled: isEnabled,
+                onSelect: onSelect)
 
-            Circle()
-                .trim(from: 0, to: usage.fraction)
-                .stroke(
-                    Color.accentColor,
-                    style: StrokeStyle(lineWidth: 2, lineCap: .round))
-                .rotationEffect(.degrees(-90))
+            if !skillCommands.isEmpty {
+                Text("Skills")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 10)
+                    .padding(.top, 4)
+
+                ChatCommandSection(
+                    commands: skillCommands,
+                    selectedCommand: selectedCommand,
+                    isEnabled: isEnabled,
+                    onSelect: onSelect)
+            }
         }
-        .frame(width: 16, height: 16)
-        .help(helpText)
-        .accessibilityLabel("Context window usage")
-        .accessibilityValue(Text(accessibilityValue))
-    }
-
-    private var helpText: String {
-        return String(localized: "\(usage.usedTokens.formatted()) of \(usage.totalTokens.formatted()) context tokens")
-    }
-
-    private var accessibilityValue: String {
-        return usage.fraction.formatted(.percent.precision(.fractionLength(0)))
+        .frame(maxWidth: .infinity)
     }
 }
 
-private struct DecisionRequestView: View {
+private struct ChatCommandSection: View {
 
-    let pendingDecision: DecisionCoordinator.PendingDecision
-    let onConfirm: ([DecisionAnswer]) -> Void
-
-    @State private var selectedOptionIDs: [String: String]
-    @State private var customQuestionIDs: Set<String> = []
-    @State private var customAnswers: [String: String] = [:]
-
-    init(
-        pendingDecision: DecisionCoordinator.PendingDecision,
-        onConfirm: @escaping ([DecisionAnswer]) -> Void
-    ) {
-        self.pendingDecision = pendingDecision
-        self.onConfirm = onConfirm
-        let selections = pendingDecision.request.questions.reduce(into: [String: String]()) {
-            selections, question in
-            guard let recommendedOptionID = question.recommendedOptionID,
-                  question.options.contains(where: { $0.id == recommendedOptionID }) else {
-                return
-            }
-            selections[question.id] = recommendedOptionID
-        }
-        self._selectedOptionIDs = State(initialValue: selections)
-    }
+    let commands: [ChatCommand]
+    let selectedCommand: ChatCommand
+    let isEnabled: (ChatCommand) -> Bool
+    let onSelect: (ChatCommand) -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 16) {
-                    ForEach(pendingDecision.request.questions) { question in
-                        DecisionQuestionView(
-                            question: question,
-                            selectedOptionID: selectedOptionBinding(for: question.id),
-                            isCustom: customBinding(for: question.id),
-                            customAnswer: customAnswerBinding(for: question.id)
-                        )
-                    }
+        VStack(spacing: 2) {
+            ForEach(commands) { command in
+                Button {
+                    onSelect(command)
+                } label: {
+                    ChatCommandRow(
+                        command: command,
+                        isSelected: selectedCommand == command)
                 }
-            }
-            .frame(maxHeight: 360)
-
-            HStack {
-                Spacer()
-                Button("Confirm") {
-                    onConfirm(answers)
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(!isComplete)
+                .buttonStyle(.plain)
+                .disabled(!isEnabled(command))
+                .id(command.id)
             }
         }
-        .padding()
+        .frame(maxWidth: .infinity)
+    }
+}
+
+private struct ChatCommandRow: View {
+
+    let command: ChatCommand
+    let isSelected: Bool
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: command.icon)
+                .frame(width: 18)
+                .foregroundStyle(.secondary)
+
+            Text(command.title)
+                .lineLimit(1)
+                .truncationMode(.tail)
+                .layoutPriority(1)
+
+            switch command {
+            case .compact:
+                Text(
+                    "Compress conversation history to free context space.",
+                    comment: "Description of the slash command that manually compacts chat context.")
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .foregroundStyle(.secondary)
+            case .skill(_, let description):
+                Text(description)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(Rectangle())
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .background(
+            isSelected ? Color.accentColor.opacity(0.14) : Color.clear,
+            in: RoundedRectangle(cornerRadius: 6))
+    }
+}
+
+private struct UserInteractionRequestView: View {
+
+    let pendingInteraction: UserInteractionCoordinator.PendingInteraction
+    let onSubmitUserInput: ([UserInputAnswer]) -> Void
+    let onResolveApproval: (Bool) -> Void
+
+    var body: some View {
+        VStack {
+            switch pendingInteraction {
+            case .userInput(let pendingUserInput):
+                UserInputRequestView(
+                    pendingUserInput: pendingUserInput,
+                    onConfirm: onSubmitUserInput)
+            case .approval(let pendingApproval):
+                ToolApprovalRequestView(
+                    request: pendingApproval.request,
+                    onResolve: onResolveApproval)
+            }
+        }
         .frame(maxWidth: 560)
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
         .overlay {
@@ -669,115 +780,214 @@ private struct DecisionRequestView: View {
                 .stroke(.separator.opacity(0.5))
         }
     }
+}
 
-    private var isComplete: Bool {
-        pendingDecision.request.questions.allSatisfy { question in
-            if customQuestionIDs.contains(question.id) {
-                return !(customAnswers[question.id] ?? "")
-                    .trimmingCharacters(in: .whitespacesAndNewlines)
-                    .isEmpty
-            }
-            return selectedOptionIDs[question.id] != nil
-        }
-    }
+private struct UserInputRequestView: View {
 
-    private var answers: [DecisionAnswer] {
-        pendingDecision.request.questions.map { question in
-            if customQuestionIDs.contains(question.id) {
-                return DecisionAnswer(
-                    questionID: question.id,
-                    selectedOptionID: nil,
-                    customAnswer: customAnswers[question.id]?.trimmingCharacters(in: .whitespacesAndNewlines))
-            }
-            return DecisionAnswer(
-                questionID: question.id,
-                selectedOptionID: selectedOptionIDs[question.id],
-                customAnswer: nil)
-        }
-    }
+    let pendingUserInput: UserInteractionCoordinator.PendingUserInput
+    let onConfirm: ([UserInputAnswer]) -> Void
 
-    private func selectedOptionBinding(for questionID: String) -> Binding<String?> {
-        Binding(
-            get: { selectedOptionIDs[questionID] },
-            set: { selectedOptionID in
-                selectedOptionIDs[questionID] = selectedOptionID
-            })
-    }
+    @State private var form = UserInputFormModel()
+    @State private var fileImporterPresented = false
+    @State private var importingFieldID: String?
+    @State private var fileImportError: String?
 
-    private func customBinding(for questionID: String) -> Binding<Bool> {
-        Binding(
-            get: { customQuestionIDs.contains(questionID) },
-            set: { isCustom in
-                if isCustom {
-                    customQuestionIDs.insert(questionID)
-                    selectedOptionIDs[questionID] = nil
-                } else {
-                    customQuestionIDs.remove(questionID)
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 16) {
+                    ForEach(pendingUserInput.request.fields) { field in
+                        UserInputFieldView(
+                            field: field,
+                            form: form,
+                            onChooseFiles: presentFileImporter)
+                    }
                 }
-            })
+            }
+            .frame(maxHeight: 360)
+
+            if let fileImportError {
+                Text(fileImportError)
+                    .font(.caption)
+                    .foregroundStyle(.red)
+            }
+
+            HStack {
+                Spacer()
+                Button("Confirm") {
+                    onConfirm(form.answers(for: pendingUserInput.request.fields))
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(!form.isComplete(fields: pendingUserInput.request.fields))
+            }
+        }
+        .padding()
+        .fileImporter(
+            isPresented: $fileImporterPresented,
+            allowedContentTypes: importerContentTypes,
+            allowsMultipleSelection: importerAllowsMultipleSelection
+        ) { result in
+            guard let importingFieldID else { return }
+            switch result {
+            case .success(let urls):
+                form.setFiles(urls, for: importingFieldID)
+                fileImportError = nil
+            case .failure(let error):
+                fileImportError = error.localizedDescription
+            }
+            self.importingFieldID = nil
+        }
     }
 
-    private func customAnswerBinding(for questionID: String) -> Binding<String> {
-        Binding(
-            get: { customAnswers[questionID] ?? "" },
-            set: { customAnswers[questionID] = $0 })
+    private var importingField: UserInputField? {
+        pendingUserInput.request.fields.first { $0.id == importingFieldID }
+    }
+
+    private var importerContentTypes: [UTType] {
+        importingField?.type == .directory ? [.folder] : [.item]
+    }
+
+    private var importerAllowsMultipleSelection: Bool {
+        importingField?.allowsMultipleSelection == true
+    }
+
+    private func presentFileImporter(_ field: UserInputField) {
+        importingFieldID = field.id
+        fileImporterPresented = true
     }
 }
 
-private struct DecisionQuestionView: View {
+private struct UserInputFieldView: View {
 
-    let question: DecisionQuestion
-    @Binding var selectedOptionID: String?
-    @Binding var isCustom: Bool
-    @Binding var customAnswer: String
+    let field: UserInputField
+    let form: UserInputFormModel
+    let onChooseFiles: (UserInputField) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(question.question)
-                .font(.headline)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(field.label)
+                    .font(.headline)
+                if let description = field.description, !description.isEmpty {
+                    Text(description)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
 
-            ForEach(question.options) { option in
+            switch field.type {
+            case .singleChoice, .multipleChoice:
+                UserInputChoiceFieldView(field: field, form: form)
+            case .text:
+                UserInputTextFieldView(field: field, form: form, isMultiline: false)
+            case .multilineText:
+                UserInputTextFieldView(field: field, form: form, isMultiline: true)
+            case .file, .directory:
+                UserInputFileFieldView(
+                    field: field,
+                    selectedURLs: form.files(for: field.id),
+                    onChoose: { onChooseFiles(field) })
+            }
+        }
+    }
+}
+
+private struct UserInputChoiceFieldView: View {
+
+    let field: UserInputField
+    let form: UserInputFormModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            ForEach(field.options ?? []) { option in
                 Button {
-                    isCustom = false
-                    selectedOptionID = option.id
+                    form.select(option.id, in: field)
                 } label: {
-                    DecisionOptionLabel(
+                    UserInputOptionLabel(
                         option: option,
-                        isSelected: !isCustom && selectedOptionID == option.id,
-                        isRecommended: question.recommendedOptionID == option.id)
+                        selectionType: field.type,
+                        isSelected: form.isSelected(option.id, in: field.id),
+                        isRecommended: field.recommendedOptionID == option.id)
                 }
                 .buttonStyle(.plain)
             }
 
-            Button {
-                isCustom = true
-            } label: {
-                HStack(spacing: 8) {
-                    Image(systemName: isCustom ? "largecircle.fill.circle" : "circle")
-                    Text("Custom")
+            if field.allowsCustomAnswer == true {
+                Button {
+                    form.selectCustomAnswer(in: field.id)
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: form.isCustom(field.id) ? "largecircle.fill.circle" : "circle")
+                        Text("Custom")
+                    }
+                    .contentShape(Rectangle())
                 }
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
+                .buttonStyle(.plain)
 
-            if isCustom {
-                TextField("Enter your answer", text: $customAnswer, axis: .vertical)
-                    .lineLimit(1...3)
-                    .textFieldStyle(.roundedBorder)
+                if form.isCustom(field.id) {
+                    UserInputTextFieldView(field: field, form: form, isMultiline: false)
+                }
             }
         }
     }
 }
 
-private struct DecisionOptionLabel: View {
+private struct UserInputTextFieldView: View {
 
-    let option: DecisionOption
+    let field: UserInputField
+    let form: UserInputFormModel
+    let isMultiline: Bool
+
+    var body: some View {
+        @Bindable var form = form
+        TextField(
+            field.placeholder ?? String(localized: "Enter your answer"),
+            text: $form[textFor: field.id],
+            axis: .vertical)
+        .lineLimit(isMultiline ? 3...8 : 1...1)
+        .textFieldStyle(.roundedBorder)
+    }
+}
+
+private struct UserInputFileFieldView: View {
+
+    let field: UserInputField
+    let selectedURLs: [URL]
+    let onChoose: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            ForEach(selectedURLs, id: \.self) { url in
+                Label(url.lastPathComponent, systemImage: field.type == .directory ? "folder" : "doc")
+                    .font(.caption)
+            }
+
+            Button(action: onChoose) {
+                Text(pickerTitle)
+            }
+        }
+    }
+
+    private var pickerTitle: LocalizedStringResource {
+        switch (field.type, field.allowsMultipleSelection == true) {
+        case (.directory, true): "Choose Folders"
+        case (.directory, false): "Choose Folder"
+        case (.file, true): "Choose Files"
+        default: "Choose File"
+        }
+    }
+}
+
+private struct UserInputOptionLabel: View {
+
+    let option: UserInputOption
+    let selectionType: UserInputFieldType
     let isSelected: Bool
     let isRecommended: Bool
 
     var body: some View {
         HStack(alignment: .top, spacing: 8) {
-            Image(systemName: isSelected ? "largecircle.fill.circle" : "circle")
+            Image(systemName: selectionImageName)
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 6) {
                     Text(option.label)
@@ -796,6 +1006,133 @@ private struct DecisionOptionLabel: View {
             Spacer(minLength: 0)
         }
         .contentShape(Rectangle())
+    }
+
+    private var selectionImageName: String {
+        switch selectionType {
+        case .multipleChoice:
+            isSelected ? "checkmark.square.fill" : "square"
+        default:
+            isSelected ? "largecircle.fill.circle" : "circle"
+        }
+    }
+}
+
+private struct ToolApprovalRequestView: View {
+
+    let request: ToolApprovalRequest
+    let onResolve: (Bool) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Allow this action?")
+                .font(.headline)
+
+            Text(request.title)
+            if let detail = request.detail, !detail.isEmpty {
+                Text(detail)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .textSelection(.enabled)
+            }
+
+            HStack {
+                Spacer()
+                Button("Don't Allow") {
+                    onResolve(false)
+                }
+                Button("Allow for This Task") {
+                    onResolve(true)
+                }
+                .buttonStyle(.borderedProminent)
+            }
+        }
+        .padding()
+    }
+}
+
+@MainActor
+@Observable
+private final class UserInputFormModel {
+
+    private var selectedOptionIDs: [String: Set<String>] = [:]
+    private var customFieldIDs: Set<String> = []
+    private var textAnswers: [String: String] = [:]
+    private var selectedFiles: [String: [URL]] = [:]
+
+    subscript(textFor fieldID: String) -> String {
+        get { textAnswers[fieldID] ?? "" }
+        set { textAnswers[fieldID] = newValue }
+    }
+
+    func select(_ optionID: String, in field: UserInputField) {
+        customFieldIDs.remove(field.id)
+        if field.type == .multipleChoice {
+            var selections = selectedOptionIDs[field.id] ?? []
+            if selections.contains(optionID) {
+                selections.remove(optionID)
+            } else {
+                selections.insert(optionID)
+            }
+            selectedOptionIDs[field.id] = selections
+        } else {
+            selectedOptionIDs[field.id] = [optionID]
+        }
+    }
+
+    func selectCustomAnswer(in fieldID: String) {
+        customFieldIDs.insert(fieldID)
+        selectedOptionIDs[fieldID] = []
+    }
+
+    func isSelected(_ optionID: String, in fieldID: String) -> Bool {
+        !customFieldIDs.contains(fieldID)
+            && selectedOptionIDs[fieldID]?.contains(optionID) == true
+    }
+
+    func isCustom(_ fieldID: String) -> Bool {
+        customFieldIDs.contains(fieldID)
+    }
+
+    func setFiles(_ urls: [URL], for fieldID: String) {
+        selectedFiles[fieldID] = urls
+    }
+
+    func files(for fieldID: String) -> [URL] {
+        selectedFiles[fieldID] ?? []
+    }
+
+    func isComplete(fields: [UserInputField]) -> Bool {
+        fields.allSatisfy { !values(for: $0).isEmpty }
+    }
+
+    func answers(for fields: [UserInputField]) -> [UserInputAnswer] {
+        fields.map { field in
+            UserInputAnswer(fieldID: field.id, values: values(for: field))
+        }
+    }
+
+    private func values(for field: UserInputField) -> [String] {
+        switch field.type {
+        case .singleChoice, .multipleChoice:
+            if customFieldIDs.contains(field.id) {
+                return trimmedText(for: field.id).map { [$0] } ?? []
+            }
+            let selections = selectedOptionIDs[field.id] ?? []
+            return (field.options ?? []).compactMap { option in
+                selections.contains(option.id) ? option.id : nil
+            }
+        case .text, .multilineText:
+            return trimmedText(for: field.id).map { [$0] } ?? []
+        case .file, .directory:
+            return (selectedFiles[field.id] ?? []).map(\.path)
+        }
+    }
+
+    private func trimmedText(for fieldID: String) -> String? {
+        let value = (textAnswers[fieldID] ?? "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return value.isEmpty ? nil : value
     }
 }
 

@@ -13,16 +13,20 @@ struct AppDetailView: View {
     
     var body: some View {
         switch tab {
-        case .chat(let chat):
+        case .chat, .none:
+            let chat = selectedChat
             ChatView(chat: chat)
-                .navigationTitle(chat.title ?? String(localized: "New Chat"))
+                .navigationTitle(chat?.title ?? String(localized: "New Chat"))
         case .modelStore:
             ModelStore().navigationTitle("Model Store")
         case .downloadedModels:
             DownloadedModelsView().navigationTitle("Downloaded Models")
-        case .none:
-            ChatView(chat: nil)
         }
+    }
+
+    private var selectedChat: Chat? {
+        guard case .chat(let chat) = tab else { return nil }
+        return chat
     }
 }
 

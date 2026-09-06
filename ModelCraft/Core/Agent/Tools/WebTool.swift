@@ -31,7 +31,7 @@ final class NetworkMonitor {
     }
 }
 
-class WebTool {
+enum WebTool {
 
     private static let maximumResponseBytes = 2_000_000
     private static let maximumContentLength = 40_000
@@ -43,6 +43,7 @@ class WebTool {
             .required("url", type: .string, description: "The complete absolute HTTP or HTTPS URL, including its scheme and host.")
         ]
     ) { input in
+        try Task.checkCancellation()
         guard let url = URL(string: input.url),
               let scheme = url.scheme?.lowercased(),
               ["http", "https"].contains(scheme),
@@ -50,15 +51,19 @@ class WebTool {
             throw WebFetchError.invalidURL
         }
 
-        let response = await AF.request(
+        let request = AF.request(
             url,
             headers: [.userAgent("ModelCraft/1.0")],
             requestModifier: { $0.timeoutInterval = 15 }
         )
         .validate(statusCode: 200..<300)
-        .serializingData()
-        .response
+        let response = await withTaskCancellationHandler {
+            await request.serializingData().response
+        } onCancel: {
+            request.cancel()
+        }
 
+        try Task.checkCancellation()
         let data = try response.result.get()
         guard data.count <= maximumResponseBytes else {
             throw WebFetchError.responseTooLarge
@@ -79,6 +84,7 @@ class WebTool {
         guard !cleanedContent.isEmpty else {
             throw WebFetchError.emptyContent
         }
+        try Task.checkCancellation()
 
         return WebFetchOutput(
             url: response.response?.url?.absoluteString ?? url.absoluteString,
