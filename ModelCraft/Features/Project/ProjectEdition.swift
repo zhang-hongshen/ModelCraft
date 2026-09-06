@@ -11,7 +11,8 @@ import SwiftData
 struct ProjectEdition: View {
     
     @Bindable var project: Project
-    @State private var fileImporterPresented: Bool = false
+    @State private var folderImporterPresented = false
+    @State private var resourceImporterPresented = false
     @State private var selectedFiles: Set<URL> = []
     
     @Environment(\.dismiss) private var dismiss
@@ -39,14 +40,50 @@ struct ProjectEdition: View {
             
             
             VStack(alignment: .leading, spacing: 8) {
+                Text("Working Folder")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fontWeight(.medium)
+
                 HStack {
-                    Text("Source Files")
+                    if let workingDirectory = project.workingDirectory {
+                        Label(workingDirectory.lastPathComponent, systemImage: "folder")
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                    } else {
+                        Label("No Folder", systemImage: "folder")
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Spacer()
+
+                    Button("Choose Folder") {
+                        folderImporterPresented = true
+                    }
+                    .controlSize(.small)
+
+                    if project.workingDirectory != nil {
+                        Button("Remove Folder", systemImage: "xmark") {
+                            project.workingDirectory = nil
+                        }
+                        .labelStyle(.iconOnly)
+                        .controlSize(.small)
+                        .accessibilityLabel("Remove Folder")
+                    }
+                }
+                .padding(Layout.padding)
+                .background(Color.primary.opacity(0.05))
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Text("Reference Files")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .fontWeight(.medium)
                     Spacer()
                     
-                    Text("\(project.files.count) items")
+                    Text("\(project.resources.count) items")
                         .font(.caption2)
                         .foregroundStyle(.tertiary)
                 }
@@ -59,7 +96,7 @@ struct ProjectEdition: View {
                                 .stroke(Color.primary.opacity(0.05), lineWidth: 1)
                         )
                     
-                    if project.files.isEmpty {
+                    if project.resources.isEmpty {
                         EmptyFilesView()
                     } else {
                         FilesList()
@@ -74,16 +111,25 @@ struct ProjectEdition: View {
         .background(.ultraThinMaterial)
         .toolbar(content: ToolbarItems)
         .fileImporter(
-            isPresented: $fileImporterPresented,
-            allowedContentTypes: [.data, .folder, .pdf, .text],
+            isPresented: $folderImporterPresented,
+            allowedContentTypes: [.folder],
+            allowsMultipleSelection: false
+        ) { result in
+            if case .success(let urls) = result {
+                project.workingDirectory = urls.first?.standardizedFileURL
+            }
+        }
+        .fileImporter(
+            isPresented: $resourceImporterPresented,
+            allowedContentTypes: [.data],
             allowsMultipleSelection: true
         ) { result in
             if case .success(let urls) = result {
-                project.addFiles(urls)
+                project.addResources(urls)
             }
         }
         .dropDestination(for: URL.self) { urls, _ in
-            project.addFiles(urls)
+            addDroppedItems(urls)
             return true
         }
     }
@@ -94,7 +140,7 @@ extension ProjectEdition {
     
     @ViewBuilder
     func FilesList() -> some View {
-        List(project.files, id: \.self, selection: $selectedFiles) { url in
+        List(project.resources, id: \.self, selection: $selectedFiles) { url in
             ListCell(url)
                 .listRowBackground(Color.clear)
                 .listRowSeparator(.visible, edges: .bottom)
@@ -109,10 +155,10 @@ extension ProjectEdition {
             Image(systemName: "doc.badge.plus")
                 .font(.largeTitle)
                 .foregroundStyle(.quaternary)
-            Text("No files added yet")
+            Text("No reference files added yet")
                 .font(.callout)
                 .foregroundStyle(.secondary)
-            Button("Browse Files") { fileImporterPresented = true }
+            Button("Browse Files") { resourceImporterPresented = true }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
         }
@@ -122,13 +168,13 @@ extension ProjectEdition {
     func OpearationButtons() -> some View {
         HStack {
             Button {
-                fileImporterPresented = true
+                resourceImporterPresented = true
             } label: {
                 Label("Add Files", systemImage: "plus")
             }
             
             Button(role: .destructive, action: {
-                project.removeFiles(selectedFiles)
+                project.removeResources(selectedFiles)
                 selectedFiles.removeAll()
             }) {
                 Label("Remove", systemImage: "trash")
@@ -169,6 +215,18 @@ extension ProjectEdition {
     func save() {
         dismiss()
         modelContext.persist(project)
+    }
+
+    private func addDroppedItems(_ urls: [URL]) {
+        var resources: [URL] = []
+        for url in urls {
+            if (try? url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true {
+                project.workingDirectory = url.standardizedFileURL
+            } else {
+                resources.append(url)
+            }
+        }
+        project.addResources(resources)
     }
     
 }

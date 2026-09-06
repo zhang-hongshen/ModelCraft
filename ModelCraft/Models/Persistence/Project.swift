@@ -16,12 +16,14 @@ class Project {
     
     @Relationship(deleteRule: .cascade, inverse: \Chat.project)
     var chats: [Chat] = []
+
+    var workingDirectory: URL?
+    var resources: [URL]
     
-    var files: [URL]
-    
-    init(title: String = "", files: [URL] = []) {
+    init(title: String = "", workingDirectory: URL? = nil, resources: [URL] = []) {
         self.title = title
-        self.files = files
+        self.workingDirectory = workingDirectory?.standardizedFileURL
+        self.resources = resources.map(\.standardizedFileURL)
     }
 }
 
@@ -43,213 +45,52 @@ extension Project {
         return folder.appendingPathComponent("\(id.uuidString).fts5").path
     }
         
-    func search(query: String, numOfResults: Int = 10) async -> [String] {
-        return KnowledgeIndexer(dbPath: dbPath).search(query: query, numOfResults: numOfResults)
-    }
-    
-    func createIndex(_ urls: [URL]) {
-        let engine = KnowledgeIndexer(dbPath: dbPath)
-        let fileManager = FileManager.default
-        
-        Task {
-            var docs: [String: String] = [:]
-            
-            await withTaskGroup(of: (String, String)?.self) { group in
-                for url in urls {
-                    group.addTask {
-                        guard url.startAccessingSecurityScopedResource(),
-                              fileManager.fileExists(at: url) else { return nil }
-                        
-                        defer { url.stopAccessingSecurityScopedResource() }
-                        
-                        if let doc = try? await url.readContent() {
-                            return (url.path(), doc)
-                        }
-                        return nil
-                    }
-                }
-                
-                for await result in group {
-                    if let (path, content) = result {
-                        docs[path] = content
-                    }
-                }
-            }
-            
-            if !docs.isEmpty {
-                engine.createIndex(docs: docs)
-            }
-        }
+    func search(
+        query: String,
+        purpose: ProjectSearchPurpose = .automatic,
+        numOfResults: Int = 10
+    ) async -> [ProjectSearchResult] {
+        await ProjectSearchIndex(dbPath: dbPath).search(
+            query: query,
+            purpose: purpose,
+            workingDirectory: workingDirectory,
+            resources: resources,
+            limit: numOfResults)
     }
     
     func clear() {
-        let engine = KnowledgeIndexer(dbPath: dbPath)
-        files.forEach { url in
-            engine.removeIndex(path: url.path())
-        }
+        deleteIndex()
     }
     
     func removeIndex<T>(_ urls: T) where T: Swift.Collection, T.Element == URL {
-        let engine = KnowledgeIndexer(dbPath: dbPath)
-        engine.removeIndex(paths: urls.compactMap{ $0.path() })
+        ProjectSearchIndex(dbPath: dbPath).remove(paths: urls.map(\.standardizedFileURL.path))
     }
     
-    func addFiles<T>(_ urls: T) where T: Swift.Collection, T.Element == URL {
-        var addedFiles: [URL] = []
-        let fileManager = FileManager.default
-        for url in urls {
-            let destinationURL = URL.documentsDirectory
-                .appendingPathComponent(UUID().uuidString)
-                .appendingPathExtension(url.pathExtension)
-            
-            do {
-                if fileManager.fileExists(atPath: destinationURL.path) {
-                    try fileManager.removeItem(at: destinationURL)
-                }
-                try fileManager.copyItem(at: url, to: destinationURL)
-                addedFiles.append(destinationURL)
-            } catch {
-                print("Moving File failed \(url.lastPathComponent): \(error)")
-            }
-        }
-        files.append(contentsOf: addedFiles)
-        Task {
-            createIndex(addedFiles)
-        }
+    func addResources<T>(_ urls: T) where T: Swift.Collection, T.Element == URL {
+        let addedResources = urls
+            .map(\.standardizedFileURL)
+            .filter { !resources.contains($0) }
+        resources.append(contentsOf: addedResources)
     }
     
 
-    func removeFiles(atOffsets: IndexSet) {
-        let urlsToRemove = atOffsets.map { files[$0] }
-        removeFiles(urlsToRemove)
+    func removeResources(atOffsets: IndexSet) {
+        let urlsToRemove = atOffsets.map { resources[$0] }
+        removeResources(urlsToRemove)
     }
     
-    func removeFiles<T>(_ urls: T) where T: Swift.Collection, T.Element == URL {
-        var removedFiles: [URL] = []
-        let fileManager = FileManager.default
-        for url in urls {
-            if fileManager.fileExists(atPath: url.path) {
-                do {
-                    try fileManager.removeItem(at: url)
-                } catch {
-                    print("Removing File failed \(url.lastPathComponent): \(error)")
-                }
-                removedFiles.append(url)
-            }
-        }
-        files.removeAll { removedFiles.contains($0) }
-        Task {
-            removeIndex(removedFiles)
-        }
+    func removeResources<T>(_ urls: T) where T: Swift.Collection, T.Element == URL {
+        let removedResources = urls.map(\.standardizedFileURL)
+        resources.removeAll { removedResources.contains($0) }
+        removeIndex(removedResources)
     }
 
-    func deleteStoredResources() {
+    func deleteIndex() {
         let fileManager = FileManager.default
-        for url in files where fileManager.fileExists(atPath: url.path) {
-            try? fileManager.removeItem(at: url)
-        }
-        files.removeAll()
-
         for path in [dbPath, dbPath + "-shm", dbPath + "-wal"]
         where fileManager.fileExists(atPath: path) {
             try? fileManager.removeItem(atPath: path)
         }
     }
     
-}
-
-
-import SQLite3
-class KnowledgeIndexer {
-    private var db: OpaquePointer?
-    
-    init(dbPath: String) {
-        sqlite3_open(dbPath, &db)
-        let setup = "CREATE VIRTUAL TABLE IF NOT EXISTS docs USING fts5(file_path, content, tokenize='porter');"
-        sqlite3_exec(db, setup, nil, nil, nil)
-    }
-    
-    func createIndex(path: String, content: String) {
-        let sql = "INSERT INTO docs (file_path, content) VALUES (?, ?);"
-        var stmt: OpaquePointer?
-        if sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK {
-            sqlite3_bind_text(stmt, 1, (path as NSString).utf8String, -1, nil)
-            sqlite3_bind_text(stmt, 2, (content as NSString).utf8String, -1, nil)
-            sqlite3_step(stmt)
-        }
-        sqlite3_finalize(stmt)
-    }
-    
-    
-    func createIndex(docs: [String: String]) {
-        let sql = "INSERT INTO docs (file_path, content) VALUES (?, ?);"
-        var stmt: OpaquePointer?
-
-        sqlite3_exec(db, "BEGIN TRANSACTION;", nil, nil, nil)
-        
-        if sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK {
-            for (path, content) in docs {
-                sqlite3_bind_text(stmt, 1, (path as NSString).utf8String, -1, nil)
-                sqlite3_bind_text(stmt, 2, (content as NSString).utf8String, -1, nil)
-                
-                sqlite3_step(stmt)
-                
-                sqlite3_reset(stmt)
-                sqlite3_clear_bindings(stmt)
-            }
-        }
-        
-        sqlite3_finalize(stmt)
-        sqlite3_exec(db, "COMMIT;", nil, nil, nil)
-    }
-    
-    func removeIndex(path: String) {
-        let sql = "DELETE FROM docs WHERE file_path = ?;"
-        var stmt: OpaquePointer?
-        if sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK {
-            sqlite3_bind_text(stmt, 1, (path as NSString).utf8String, -1, nil)
-            sqlite3_step(stmt)
-        }
-        sqlite3_finalize(stmt)
-    }
-    
-    func removeIndex(paths: [String]) {
-        guard !paths.isEmpty else { return }
-        
-        sqlite3_exec(db, "BEGIN TRANSACTION;", nil, nil, nil)
-        
-        let sql = "DELETE FROM docs WHERE file_path = ?;"
-        var stmt: OpaquePointer?
-        
-        if sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK {
-            for path in paths {
-                sqlite3_bind_text(stmt, 1, (path as NSString).utf8String, -1, nil)
-                sqlite3_step(stmt)
-                sqlite3_reset(stmt)
-            }
-        }
-        sqlite3_finalize(stmt)
-        
-        sqlite3_exec(db, "COMMIT;", nil, nil, nil)
-        
-        sqlite3_exec(db, "INSERT INTO docs(docs) VALUES('optimize');", nil, nil, nil)
-    }
-    
-    func search(query: String, numOfResults: Int = 10) -> [String] {
-        let sql = "SELECT file_path, content FROM docs WHERE content MATCH ? LIMIT ?;"
-        var stmt: OpaquePointer?
-        var results: [String] = []
-        if sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK {
-            sqlite3_bind_text(stmt, 1, (query as NSString).utf8String, -1, nil)
-            sqlite3_bind_int(stmt, 2, Int32(numOfResults))
-            
-            while sqlite3_step(stmt) == SQLITE_ROW {
-                let path = String(cString: sqlite3_column_text(stmt, 0))
-                let content = String(cString: sqlite3_column_text(stmt, 1))
-                results.append("File: \(path)\nSnippet: \(content.prefix(100))...")
-            }
-        }
-        sqlite3_finalize(stmt)
-        return results
-    }
 }

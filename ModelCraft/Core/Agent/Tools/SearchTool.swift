@@ -11,13 +11,14 @@ import MapKit
 
 import MLXLMCommon
 
-class SearchTool {
+enum SearchTool {
     
     static let allTools: [any ToolProtocol] = [
         searchMap
     ]
     
     static func searchMap(query: String, useCurrentLocation: Bool = false, numOfResults: Int) async throws -> [MapPlace] {
+        try Task.checkCancellation()
         let request = MKLocalSearch.Request()
         request.naturalLanguageQuery = query
         if useCurrentLocation, let userLoc = LocationManager.shared.currentLocation?.coordinate {
@@ -27,7 +28,12 @@ class SearchTool {
         }
         
         let search = MKLocalSearch(request: request)
-        let response = try await search.start()
+        let response = try await withTaskCancellationHandler {
+            try await search.start()
+        } onCancel: {
+            search.cancel()
+        }
+        try Task.checkCancellation()
         let items = response.mapItems.prefix(numOfResults)
         
         if items.isEmpty {
@@ -36,9 +42,9 @@ class SearchTool {
         
         return items.map { item in
             var distanceInMeters: Double? = nil
-            if let userClloc = LocationManager.shared.currentLocation,
-               let itemClloc = item.placemark.location {
-                distanceInMeters = userClloc.distance(from: itemClloc)
+            if let userLocation = LocationManager.shared.currentLocation,
+               let itemLocation = item.placemark.location {
+                distanceInMeters = userLocation.distance(from: itemLocation)
             }
             
             return MapPlace(
@@ -73,21 +79,25 @@ class SearchTool {
         return SearchMapOutput(places: places)
     }
     
-    static func searchRelevantDocuments(projectID: PersistentIdentifier) -> Tool<SearchRelevantDocumentsInput, SearchRelevantDocumentsOutput>{
+    static func searchProject(projectID: PersistentIdentifier) -> Tool<SearchProjectInput, SearchProjectOutput> {
         return Tool(
-            name: "search_relevant_documents",
-            description: "Search the current project's indexed documents for passages relevant to a question. Use this to ground an answer in files the user added to the project; it returns matching text passages, not web results or arbitrary local files.",
+            name: ToolNames.searchProject,
+            description: "Search the current project's working folder and read-only reference files. Source code is parsed with SwiftSyntax or Tree-sitter and ranked using definitions, references, and caller-callee relationships; configuration and data files use structured keys; documents and transcripts use hybrid keyword and semantic retrieval. A local reranker combines those signals according to whether the task is understanding, locating, or editing. Use direct read_file instead when the exact path is already known. Results include absolute paths and precise line, section, or document locations so a matching source file can be read before editing. This is local project search, not web search.",
             parameters: [
-                .required("query", type: .string, description: "The specific question, concept, or keywords to match against the current project's indexed document content."),
-                .optional("numOfResults", type: .int, description: "The maximum number of results to return. Defaults to 10 if not specified.")
+                .required("query", type: .string, description: "A focused concept, filename, code symbol, configuration key, error text, or natural-language question to find in the project."),
+                .optional("purpose", type: .string, description: "How the results will be used: automatic, understand, locate, or edit. Defaults to automatic. Use understand for answering from project knowledge, locate for finding definitions or files, and edit before changing code."),
+                .optional("numOfResults", type: .int, description: "The maximum number of ranked results to return. Defaults to 10 if not specified.")
             ]
         ) { input in
+            try Task.checkCancellation()
             let actor = ProjectModelActor(modelContainer: SwiftData.ModelContainer.shared)
-            let docs = await actor.searchRelevantDocuments(
+            let results = await actor.searchProject(
                 projectID: projectID,
                 query: input.query,
+                purpose: ProjectSearchPurpose(rawValue: input.purpose ?? "") ?? .automatic,
                 numOfResults: input.numOfResults)
-            return SearchRelevantDocumentsOutput(docs: docs)
+            try Task.checkCancellation()
+            return SearchProjectOutput(results: results)
         }
     }
 }
@@ -103,11 +113,12 @@ struct SearchMapOutput: Codable {
     let places: [MapPlace]
 }
 
-struct SearchRelevantDocumentsInput: Codable {
+struct SearchProjectInput: Codable {
     let query: String
+    let purpose: String?
     let numOfResults: Int?
 }
 
-struct SearchRelevantDocumentsOutput: Codable {
-    let docs: [String]
+struct SearchProjectOutput: Codable {
+    let results: [ProjectSearchResult]
 }

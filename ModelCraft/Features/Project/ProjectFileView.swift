@@ -14,24 +14,35 @@ struct ProjectFileView: View {
     
     var body: some View {
         List(selection: $selectedFiles) {
-            ForEach(project.files, id: \.self) { url in
-                ListCell(url).tag(url)
+            if let workingDirectory = project.workingDirectory {
+                Section("Working Folder") {
+                    ListCell(workingDirectory)
+                        .contextMenu {
+                            Button("Remove Folder") {
+                                project.workingDirectory = nil
+                            }
+                        }
+                }
             }
-            .onDelete {
-                project.removeFiles(atOffsets: $0)
+
+            Section("Reference Files") {
+                ForEach(project.resources, id: \.self) { url in
+                    ListCell(url).tag(url)
+                }
+                .onDelete {
+                    project.removeResources(atOffsets: $0)
+                }
             }
         }
         .listStyle(.inset)
         .contextMenu {
             DeleteButton(style: .textOnly) {
-                project.removeFiles(selectedFiles)
+                project.removeResources(selectedFiles)
             }
         }
-        #if os(macOS)
         .onDeleteCommand {
-            project.removeFiles(selectedFiles)
+            project.removeResources(selectedFiles)
         }
-        #endif
     }
     
     @ViewBuilder

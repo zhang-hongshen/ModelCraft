@@ -16,7 +16,8 @@ struct ProjectView: View {
     
     @Bindable var project: Project
     
-    @State private var fileImporterPresented: Bool = false
+    @State private var folderImporterPresented = false
+    @State private var resourceImporterPresented = false
     @State private var selectedTab: ProjectViewTab = .chat
     @State private var projectEditionPresented: Bool = false
     
@@ -27,12 +28,19 @@ struct ProjectView: View {
         ContentView()
             .padding(.top)
             .toolbar(content: ToolbarItems)
-            .fileImporter(isPresented: $fileImporterPresented,
-                          allowedContentTypes: [.data, .folder],
+            .fileImporter(isPresented: $folderImporterPresented,
+                          allowedContentTypes: [.folder],
+                          allowsMultipleSelection: false) { result in
+                if case .success(let urls) = result {
+                    project.workingDirectory = urls.first?.standardizedFileURL
+                }
+            }
+            .fileImporter(isPresented: $resourceImporterPresented,
+                          allowedContentTypes: [.data],
                           allowsMultipleSelection: true) { result in
                 switch result {
                 case .success(let urls):
-                    project.addFiles(urls)
+                    project.addResources(urls)
                 case .failure(let error):
                     print(error.localizedDescription)
                 }
@@ -40,8 +48,8 @@ struct ProjectView: View {
             .sheet(isPresented: $projectEditionPresented){
               ProjectEdition(project: project)
             }
-            .dropDestination(for: URL.self) { items, location in
-                project.addFiles(items)
+            .dropDestination(for: URL.self) { items, _ in
+                addDroppedItems(items)
                 return true
             }
     }
@@ -53,8 +61,13 @@ extension ProjectView {
     func ToolbarItems() -> some ToolbarContent {
         
         ToolbarItemGroup(placement: .primaryAction){
-            Button("Add Files", systemImage: "doc.badge.plus") {
-                fileImporterPresented = true
+            Menu("Add", systemImage: "plus") {
+                Button("Choose Folder", systemImage: "folder") {
+                    folderImporterPresented = true
+                }
+                Button("Add Files", systemImage: "doc.badge.plus") {
+                    resourceImporterPresented = true
+                }
             }
             Menu {
                 
@@ -62,6 +75,7 @@ extension ProjectView {
                     projectEditionPresented = true
                 }
                 DeleteButton(style: .iconAndText) {
+                    project.deleteIndex()
                     modelContext.delete(project)
                     globalStore.currentTab = nil
                 }
@@ -87,13 +101,30 @@ extension ProjectView {
                 .tabItem{
                     Text("Files")
                 }.toolbar {
-                    Button("Add Files", systemImage: "doc.badge.plus") {
-                        fileImporterPresented = true
+                    Menu("Add", systemImage: "plus") {
+                        Button("Choose Folder", systemImage: "folder") {
+                            folderImporterPresented = true
+                        }
+                        Button("Add Files", systemImage: "doc.badge.plus") {
+                            resourceImporterPresented = true
+                        }
                     }
                 }
             
         }.tabViewStyle(.grouped)
         
+    }
+
+    private func addDroppedItems(_ urls: [URL]) {
+        var resources: [URL] = []
+        for url in urls {
+            if (try? url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true {
+                project.workingDirectory = url.standardizedFileURL
+            } else {
+                resources.append(url)
+            }
+        }
+        project.addResources(resources)
     }
 }
 

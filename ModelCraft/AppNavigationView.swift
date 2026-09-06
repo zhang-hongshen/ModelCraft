@@ -13,8 +13,10 @@ struct AppNavigationView: View {
     @State private var selectedProject: Project? = nil
     @State private var isProjectsExpanded = true
     @State private var isRecentsExpanded = true
+    @State private var chatToRename: Chat?
+    @State private var chatTitle = ""
+    @State private var isRenamePresented = false
 
-    @Query(Chat.fetchRecents()) private var chats: [Chat]
     @Query(Project.fetch()) private var projects: [Project]
 
     @Environment(\.modelContext) private var modelContext
@@ -42,19 +44,31 @@ struct AppNavigationView: View {
                 onCreateChat: globalStore.startNewChat,
                 onEditProject: editProject,
                 onDeleteProject: deleteProject,
-                onDeleteChat: deleteChat)
+                onDeleteChat: deleteChat,
+                onRenameChat: beginRenaming,
+                onMoveChat: moveChat)
 
             RecentChatsSection(
-                chats: chats,
                 projects: projects,
                 isExpanded: $isRecentsExpanded,
                 onDeleteChat: deleteChat,
+                onRenameChat: beginRenaming,
                 onMoveChat: moveChat)
         }
         .listStyle(.sidebar)
         .sheet(item: $selectedProject) { project in
             ProjectEdition(project: project)
                 .presentationDetents([.medium, .large])
+        }
+        .alert("Rename Chat", isPresented: $isRenamePresented) {
+            TextField("Chat Title", text: $chatTitle)
+            Button("Cancel", role: .cancel) {
+                chatToRename = nil
+            }
+            Button("Rename") {
+                renameChat()
+            }
+            .disabled(chatTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         }
     }
 
@@ -71,7 +85,7 @@ struct AppNavigationView: View {
            chat.project == project {
             globalStore.startNewChat()
         }
-        project.deleteStoredResources()
+        project.deleteIndex()
         modelContext.delete(project)
         try? modelContext.save()
     }
@@ -84,7 +98,20 @@ struct AppNavigationView: View {
         try? modelContext.save()
     }
 
-    private func moveChat(_ chat: Chat, to project: Project) {
+    private func beginRenaming(_ chat: Chat) {
+        chatToRename = chat
+        chatTitle = chat.title ?? ""
+        isRenamePresented = true
+    }
+
+    private func renameChat() {
+        guard let chatToRename else { return }
+        chatToRename.title = chatTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        try? modelContext.save()
+        self.chatToRename = nil
+    }
+
+    private func moveChat(_ chat: Chat, to project: Project?) {
         chat.project = project
         try? modelContext.save()
     }
@@ -99,16 +126,21 @@ private struct ProjectSidebarSection: View {
     let onEditProject: (Project) -> Void
     let onDeleteProject: (Project) -> Void
     let onDeleteChat: (Chat) -> Void
+    let onRenameChat: (Chat) -> Void
+    let onMoveChat: (Chat, Project?) -> Void
 
     var body: some View {
         Section(isExpanded: $isExpanded) {
             ForEach(projects) { project in
                 ProjectSidebarRow(
                     project: project,
+                    projects: projects,
                     onCreateChat: { onCreateChat(project) },
                     onEdit: { onEditProject(project) },
                     onDelete: { onDeleteProject(project) },
-                    onDeleteChat: onDeleteChat)
+                    onDeleteChat: onDeleteChat,
+                    onRenameChat: onRenameChat,
+                    onMoveChat: onMoveChat)
             }
         } header: {
             HStack {
@@ -130,26 +162,35 @@ private struct ProjectSidebarSection: View {
 private struct ProjectSidebarRow: View {
 
     let project: Project
+    let projects: [Project]
     let onCreateChat: () -> Void
     let onEdit: () -> Void
     let onDelete: () -> Void
     let onDeleteChat: (Chat) -> Void
+    let onRenameChat: (Chat) -> Void
+    let onMoveChat: (Chat, Project?) -> Void
 
     @State private var isExpanded = true
     @Query private var chats: [Chat]
 
     init(
         project: Project,
+        projects: [Project],
         onCreateChat: @escaping () -> Void,
         onEdit: @escaping () -> Void,
         onDelete: @escaping () -> Void,
-        onDeleteChat: @escaping (Chat) -> Void
+        onDeleteChat: @escaping (Chat) -> Void,
+        onRenameChat: @escaping (Chat) -> Void,
+        onMoveChat: @escaping (Chat, Project?) -> Void
     ) {
         self.project = project
+        self.projects = projects
         self.onCreateChat = onCreateChat
         self.onEdit = onEdit
         self.onDelete = onDelete
         self.onDeleteChat = onDeleteChat
+        self.onRenameChat = onRenameChat
+        self.onMoveChat = onMoveChat
 
         let projectID = project.id
         _chats = Query(
@@ -167,6 +208,14 @@ private struct ProjectSidebarRow: View {
                     .lineLimit(1)
                     .tag(AppNavigationTab.chat(chat))
                     .contextMenu {
+                        Button("Rename") {
+                            onRenameChat(chat)
+                        }
+
+                        ChatProjectMenu(projects: projects, currentProject: project) {
+                            onMoveChat(chat, $0)
+                        }
+
                         DeleteButton(style: .textOnly) {
                             onDeleteChat(chat)
                         }
@@ -195,11 +244,13 @@ private struct ProjectSidebarRow: View {
 
 private struct RecentChatsSection: View {
 
-    let chats: [Chat]
     let projects: [Project]
     @Binding var isExpanded: Bool
     let onDeleteChat: (Chat) -> Void
-    let onMoveChat: (Chat, Project) -> Void
+    let onRenameChat: (Chat) -> Void
+    let onMoveChat: (Chat, Project?) -> Void
+
+    @Query(Chat.fetchRecents()) private var chats: [Chat]
 
     var body: some View {
         Section("Recents", isExpanded: $isExpanded) {
@@ -208,20 +259,56 @@ private struct RecentChatsSection: View {
                     .lineLimit(1)
                     .tag(AppNavigationTab.chat(chat))
                     .contextMenu {
+                        Button("Rename") {
+                            onRenameChat(chat)
+                        }
+
+                        ChatProjectMenu(projects: projects, currentProject: nil) {
+                            onMoveChat(chat, $0)
+                        }
+
                         DeleteButton(style: .textOnly) {
                             onDeleteChat(chat)
                         }
-
-                        if !projects.isEmpty {
-                            Menu("Move to project") {
-                                ForEach(projects) { project in
-                                    Button(project.title) {
-                                        onMoveChat(chat, project)
-                                    }
-                                }
-                            }
-                        }
                     }
+            }
+        }
+    }
+}
+
+private struct ChatProjectMenu: View {
+
+    let projects: [Project]
+    let currentProject: Project?
+    let onMove: (Project?) -> Void
+
+    private var availableProjects: [Project] {
+        guard let currentProject else { return projects }
+        return projects.filter { $0.id != currentProject.id }
+    }
+
+    var body: some View {
+        if currentProject != nil || !availableProjects.isEmpty {
+            Menu("Move to project") {
+                if let currentProject {
+                    Button {
+                        onMove(nil)
+                    } label: {
+                        Text("Remove from \(currentProject.title)")
+                    }
+
+                    if !availableProjects.isEmpty {
+                        Divider()
+                    }
+                }
+
+                ForEach(availableProjects) { project in
+                    Button {
+                        onMove(project)
+                    } label: {
+                        Text(project.title)
+                    }
+                }
             }
         }
     }
