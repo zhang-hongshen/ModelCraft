@@ -8,23 +8,21 @@
 import Foundation
 
 
-final class SkillDiscovery {
+enum SkillDiscovery {
     
-    func discoverSkills(at root: URL) -> [URL] {
-        
-        guard let enumerator = FileManager.default.enumerator(
+    static func discoverSkills(at root: URL) -> [URL] {
+        let directories = try? FileManager.default.contentsOfDirectory(
             at: root,
-            includingPropertiesForKeys: nil
-        ) else { return [] }
-        
-        var skills: [URL] = []
-        
-        for case let url as URL in enumerator {
-            if url.lastPathComponent == "SKILL.md" {
-                skills.append(url)
+            includingPropertiesForKeys: [.isDirectoryKey],
+            options: [.skipsHiddenFiles]
+        )
+
+        return (directories ?? [])
+            .filter {
+                (try? $0.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true
             }
-        }
-        
-        return skills
+            .map { $0.appendingPathComponent("SKILL.md") }
+            .filter { FileManager.default.fileExists(atPath: $0.path) }
+            .sorted { $0.path.localizedStandardCompare($1.path) == .orderedAscending }
     }
 }

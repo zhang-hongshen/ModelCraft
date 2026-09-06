@@ -7,33 +7,45 @@
 
 import Foundation
 
-class SkillManager {
+final class SkillManager {
     
     static let shared = SkillManager()
     
     private(set) var skills: [String: Skill] = [:]
     
-    private let discovery = SkillDiscovery()
-    private let parser = SkillParser()
-    
-    func loadSkills() async{
-        
-        let paths = [
-            Bundle.main.resourceURL!.appendingPathComponent("Skills"),
-            URL.applicationSupportDirectory.appendingPathComponent("Skills")
-        ]
-        for path in paths {
-            
-            let skillFiles = discovery.discoverSkills(at: path)
-            
+    func loadSkills() {
+        var loadedSkills: [String: Skill] = [:]
+
+        for path in skillDirectories {
+            let skillFiles = SkillDiscovery.discoverSkills(at: path)
             for file in skillFiles {
                 do {
-                    let skill = try parser.parse(url: file)
-                    skills[skill.name] = skill
+                    let skill = try SkillParser.parse(url: file)
+                    loadedSkills[skill.name] = skill
                 } catch {
-                    print("skill parse error", error)
+                    print("Skill parse error at \(file.path): \(error.localizedDescription)")
                 }
             }
+        }
+
+        skills = loadedSkills
+    }
+
+    private var skillDirectories: [URL] {
+        var directories: [URL] = []
+
+        if let resourceURL = Bundle.main.resourceURL {
+            directories.append(resourceURL.appendingPathComponent("Skills"))
+        }
+
+        directories.append(UserDefaultSettings.skillDirectory)
+        directories.append(contentsOf: UserDefaults.standard
+            .stringArray(forKey: UserDefaults.customSkillDirectories)?
+            .map { URL(fileURLWithPath: $0).standardizedFileURL } ?? [])
+
+        var seenPaths: Set<String> = []
+        return directories.filter {
+            seenPaths.insert($0.standardizedFileURL.path).inserted
         }
     }
 }
@@ -42,7 +54,7 @@ extension SkillManager {
     
     func skillCatalogPrompt() -> String {
             
-        let skillCatalog = skills.values.map {
+        let skillCatalog = skills.values.sorted { $0.name < $1.name }.map {
                 """
                 <skill>
                     <name>\($0.name)</name>

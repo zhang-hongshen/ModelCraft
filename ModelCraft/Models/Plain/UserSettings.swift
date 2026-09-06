@@ -21,6 +21,41 @@ class UserSettings {
             )
         }
     }
+
+    var imageOutputDirectory = UserDefaults.standard.url(
+        forKey: UserDefaults.imageOutputDirectory
+    ) ?? UserDefaultSettings.imageOutputDirectory {
+        didSet {
+            UserDefaults.standard.set(imageOutputDirectory, forKey: UserDefaults.imageOutputDirectory)
+        }
+    }
+
+    var audioOutputDirectory = UserDefaults.standard.url(
+        forKey: UserDefaults.audioOutputDirectory
+    ) ?? UserDefaultSettings.audioOutputDirectory {
+        didSet {
+            UserDefaults.standard.set(audioOutputDirectory, forKey: UserDefaults.audioOutputDirectory)
+        }
+    }
+
+    var videoOutputDirectory = UserDefaults.standard.url(
+        forKey: UserDefaults.videoOutputDirectory
+    ) ?? UserDefaultSettings.videoOutputDirectory {
+        didSet {
+            UserDefaults.standard.set(videoOutputDirectory, forKey: UserDefaults.videoOutputDirectory)
+        }
+    }
+
+    var customSkillDirectories = UserDefaults.standard
+        .stringArray(forKey: UserDefaults.customSkillDirectories)?
+        .map { URL(fileURLWithPath: $0).standardizedFileURL } ?? [] {
+        didSet {
+            UserDefaults.standard.set(
+                customSkillDirectories.map(\.path),
+                forKey: UserDefaults.customSkillDirectories
+            )
+        }
+    }
     
     var appearance = UserDefaultSettings.appearance {
         didSet { UserDefaults.standard.set(appearance.rawValue, forKey: UserDefaults.appearance) }

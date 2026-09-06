@@ -15,6 +15,9 @@ struct GeneralView: View {
     @Environment(UserSettings.self) private var userSettings
 
     @State private var isChoosingModelDirectory = false
+    @State private var isChoosingMediaDirectory = false
+    @State private var isChoosingSkillDirectory = false
+    @State private var selectedMediaDirectory: MediaDirectory?
     @State private var isMovingModels = false
     @State private var moveError: String?
     
@@ -74,6 +77,21 @@ struct GeneralView: View {
                 }
             }
 
+            SkillDirectoriesSection(
+                customDirectories: $userSettings.customSkillDirectories
+            ) {
+                isChoosingSkillDirectory = true
+            }
+
+            MediaStorageSection(
+                imageDirectory: $userSettings.imageOutputDirectory,
+                audioDirectory: $userSettings.audioOutputDirectory,
+                videoDirectory: $userSettings.videoOutputDirectory
+            ) { directory in
+                selectedMediaDirectory = directory
+                isChoosingMediaDirectory = true
+            }
+
         }
         .formStyle(.grouped)
         .fileImporter(
@@ -82,6 +100,38 @@ struct GeneralView: View {
         ) { result in
             guard case .success(let url) = result else { return }
             changeModelDownloadDirectory(to: url)
+        }
+        .fileImporter(
+            isPresented: $isChoosingMediaDirectory,
+            allowedContentTypes: [.folder]
+        ) { result in
+            defer { selectedMediaDirectory = nil }
+            guard case .success(let url) = result,
+                  let selectedMediaDirectory else { return }
+            let directory = url.standardizedFileURL
+            switch selectedMediaDirectory {
+            case .image:
+                userSettings.imageOutputDirectory = directory
+            case .audio:
+                userSettings.audioOutputDirectory = directory
+            case .video:
+                userSettings.videoOutputDirectory = directory
+            }
+        }
+        .fileImporter(
+            isPresented: $isChoosingSkillDirectory,
+            allowedContentTypes: [.folder]
+        ) { result in
+            guard case .success(let url) = result else { return }
+            let directory = url.standardizedFileURL
+            guard directory != UserDefaultSettings.skillDirectory.standardizedFileURL,
+                  !userSettings.customSkillDirectories.contains(directory) else {
+                return
+            }
+            userSettings.customSkillDirectories.append(directory)
+        }
+        .onChange(of: userSettings.customSkillDirectories) {
+            SkillManager.shared.loadSkills()
         }
         .alert("Unable to Move Models", isPresented: .init(
             get: { moveError != nil },
@@ -124,6 +174,130 @@ struct GeneralView: View {
                 moveError = error.localizedDescription
             }
             isMovingModels = false
+        }
+    }
+}
+
+private struct SkillDirectoriesSection: View {
+    @Binding var customDirectories: [URL]
+    let onChoose: () -> Void
+
+    var body: some View {
+        Section("Skill Directories") {
+            SkillDirectoryRow(
+                directory: UserDefaultSettings.skillDirectory,
+                isDefault: true
+            )
+
+            ForEach(customDirectories, id: \.self) { directory in
+                SkillDirectoryRow(directory: directory) {
+                    customDirectories.removeAll { $0 == directory }
+                }
+            }
+
+            Button(action: onChoose) {
+                Label("Add Skill Directory…", systemImage: "plus")
+            }
+        }
+    }
+}
+
+private struct SkillDirectoryRow: View {
+    let directory: URL
+    var isDefault = false
+    var onRemove: (() -> Void)?
+
+    var body: some View {
+        HStack {
+            Image(systemName: "folder")
+                .foregroundStyle(.secondary)
+
+            Text(directory.path)
+                .lineLimit(1)
+                .truncationMode(.middle)
+                .textSelection(.enabled)
+
+            Spacer()
+
+            if isDefault {
+                Text("Default")
+                    .foregroundStyle(.secondary)
+            } else if let onRemove {
+                Button(role: .destructive, action: onRemove) {
+                    Label("Remove Skill Directory", systemImage: "minus.circle")
+                        .labelStyle(.iconOnly)
+                }
+            }
+        }
+    }
+}
+
+private enum MediaDirectory {
+    case image
+    case audio
+    case video
+}
+
+private struct MediaStorageSection: View {
+    @Binding var imageDirectory: URL
+    @Binding var audioDirectory: URL
+    @Binding var videoDirectory: URL
+    let onChoose: (MediaDirectory) -> Void
+
+    var body: some View {
+        Section("Media Storage") {
+            MediaStorageLocationRow(
+                title: "Images",
+                directory: $imageDirectory,
+                defaultDirectory: UserDefaultSettings.imageOutputDirectory
+            ) {
+                onChoose(.image)
+            }
+            MediaStorageLocationRow(
+                title: "Audio",
+                directory: $audioDirectory,
+                defaultDirectory: UserDefaultSettings.audioOutputDirectory
+            ) {
+                onChoose(.audio)
+            }
+            MediaStorageLocationRow(
+                title: "Video",
+                directory: $videoDirectory,
+                defaultDirectory: UserDefaultSettings.videoOutputDirectory
+            ) {
+                onChoose(.video)
+            }
+        }
+    }
+}
+
+private struct MediaStorageLocationRow: View {
+    let title: LocalizedStringKey
+    @Binding var directory: URL
+    let defaultDirectory: URL
+    let onChoose: () -> Void
+
+    var body: some View {
+        LabeledContent(title) {
+            HStack {
+                Text(directory.path)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                    .textSelection(.enabled)
+
+                Button(action: onChoose) {
+                    Label("Choose Folder…", systemImage: "folder")
+                        .labelStyle(.iconOnly)
+                }
+
+                Button {
+                    directory = defaultDirectory
+                } label: {
+                    Label("Restore Default", systemImage: "arrow.clockwise")
+                        .labelStyle(.iconOnly)
+                }
+                .disabled(directory.standardizedFileURL == defaultDirectory.standardizedFileURL)
+            }
         }
     }
 }
