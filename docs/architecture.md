@@ -18,7 +18,7 @@ Read this before changing agent execution, inference, persistence, project knowl
 | UI/application state | `Models/Plain/`, `GlobalStore`, feature services | Non-persistent selection, settings, and observable state |
 | Chat orchestration | `ChatService` | Request ownership, cancellation, compaction, title/context metadata, and agent invocation |
 | Agent loop | `Core/Agent/AgentExecutor.swift` | Model steps, tool-call limits, tool execution, results, and continuation |
-| Model inference | `LMService`, `InferenceRuntimeCoordinator`, `Core/Models/` | Prompt execution, runtime leases, cache coordination, and model-family implementations |
+| Model inference | `LMService`, `Core/Models/` | Prompt execution, cache ownership, and model-family implementations |
 | Tools | `Core/Agent/Tools/`, `ToolExecutor` | Model-visible schemas, typed execution, structured results, and platform actions |
 | Project knowledge | `Project`, `KnowledgeIndexer`, `SearchTool` | Project-owned documents, indexing, and retrieval available to project chats |
 
@@ -28,11 +28,11 @@ Read this before changing agent execution, inference, persistence, project knowl
    Promoting the new-chat landing view to its newly persisted `Chat` preserves the same `ChatView` identity so its in-flight `ChatService` and user-interaction coordinator remain attached to the visible conversation.
 2. `ChatService` cancels superseded generation and metadata work, compacts context when required, assembles protocol messages, and invokes `AgentExecutor` with the selected `LocalModel`.
 3. `AgentExecutor` requests a stream from `LMService` using the current model-visible tool schemas. Text chunks update a generating assistant message; final generation information settles timing and context usage.
-4. A model tool call is persisted as a tool message only after the model stream releases its inference lease. `ToolExecutor` or a special coordinator executes it and returns both a structured `CallToolResult` and a model-facing tool message.
+4. A model tool call is persisted as a tool message after the model stream completes. `ToolExecutor` or a special coordinator executes it and returns both a structured `CallToolResult` and a model-facing tool message.
 5. The result is persisted before the next model step. The next request receives the prior assistant tool call and tool result in protocol order.
 6. `ChatContentBuilder`, `MessageView`, and tool renderers project persisted messages into UI. Presentation grouping must preserve the underlying assistant and tool sequence.
 
-Cancellation leaves partial assistant content visible and settles any in-progress tool message. Optional title and context-usage work must not sit ahead of a newer user request in the shared inference queue.
+Cancellation leaves partial assistant content visible and settles any in-progress tool message. Optional title and context-usage work must not delay a newer user request.
 
 ## Tool boundary
 
@@ -50,7 +50,7 @@ Conversation builders and tool-call summaries are projections for display. They 
 
 ## Inference and media runtimes
 
-`LMService` is the shared language-model entry point. `InferenceRuntimeCoordinator` serializes or coordinates memory-intensive local workloads; callers must acquire and release work through the established service path rather than loading a competing runtime directly.
+`LMService` is the shared language-model entry point. Inference requests are not globally serialized: each chat and media request enters its model runtime independently, while model-specific loading, caches, and memory profiles remain owned by that model's service or implementation. Resource exhaustion is reported as an inference failure rather than prevented by an application-wide lease.
 
 Model-family implementations live under `Core/Models/`. Shared orchestration belongs in services; architecture, tensor rules, decoding, and runtime profiles that are specific to one model family stay in that model's directory. UI consumes service state and generated artifacts rather than importing model internals.
 

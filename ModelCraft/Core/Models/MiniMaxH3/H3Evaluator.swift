@@ -317,20 +317,12 @@ public actor H3Evaluator {
         try request.validate()
         if Task.isCancelled { throw CancellationError() }
 
-        let lease = try await InferenceRuntimeCoordinator.shared.acquire()
-        do {
         let configuration = switch request.task {
         case .fl2va: H3Configuration.presetH3BaseFL2VA
         case .ref2va: H3Configuration.presetH3BaseRef2VA
         }
         let model = try await factory.load(configuration: configuration)
         if Task.isCancelled { throw CancellationError() }
-        let result = try await model.generate(request: request)
-        await lease.release()
-        return result
-        } catch {
-            await lease.release()
-            throw error
-        }
+        return try await model.generate(request: request)
     }
 }

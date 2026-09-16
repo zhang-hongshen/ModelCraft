@@ -72,9 +72,6 @@ final class StableDiffusionEvaluator: @unchecked Sendable {
         progress: @escaping StableDiffusionProgressHandler = { _ in }
     ) async throws
         -> AsyncThrowingStream<CGImage, Error> {
-        let lease = try await InferenceRuntimeCoordinator.shared.acquire()
-
-        do {
             let container = try await modelFactory.load(progress: progress)
             let releasesComponentsBetweenStages =
                 modelFactory.releasesComponentsBetweenStages
@@ -132,12 +129,10 @@ final class StableDiffusionEvaluator: @unchecked Sendable {
                         }
                         progressContinuation.finish()
                         await progressTask.value
-                        await lease.release()
                         continuation.finish()
                     } catch {
                         progressContinuation.finish()
                         progressTask.cancel()
-                        await lease.release()
                         continuation.finish(throwing: error)
                     }
                 }
@@ -145,10 +140,6 @@ final class StableDiffusionEvaluator: @unchecked Sendable {
                     task.cancel()
                 }
             }
-        } catch {
-            await lease.release()
-            throw error
-        }
     }
 }
 

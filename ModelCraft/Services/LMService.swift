@@ -14,15 +14,6 @@ import MLXVLM
 import Hub
 import Tokenizers
 
-struct ContextWindowUsage: Equatable, Sendable {
-    let usedTokens: Int
-    let totalTokens: Int
-
-    var fraction: Double {
-        guard totalTokens > 0 else { return 0 }
-        return min(Double(usedTokens) / Double(totalTokens), 1)
-    }
-}
 
 /// A service class that manages machine learning models for text and vision-language tasks.
 /// This class handles model loading, caching, and text generation using various LLM and VLM models.
@@ -61,27 +52,16 @@ final class LMService {
         return container
     }
 
-    func contextUsage(
+    func tokenCount(
         model: LocalModel,
         messages: [MLXLMCommon.Chat.Message],
         tools: [ToolSpec] = []
-    ) async throws -> ContextWindowUsage {
-        let lease = try await InferenceRuntimeCoordinator.shared.acquire()
-
-        do {
-            let modelContainer = try await load(model: model)
-            let usedTokens = try await modelContainer.perform { context in
-                let input = try await context.processor.prepare(
-                    input: UserInput(chat: messages, tools: tools))
-                return input.text.tokens.size
-            }
-            await lease.release()
-            return ContextWindowUsage(
-                usedTokens: usedTokens,
-                totalTokens: model.contextWindow)
-        } catch {
-            await lease.release()
-            throw error
+    ) async throws -> Int {
+        let modelContainer = try await load(model: model)
+        return try await modelContainer.perform { context in
+            let input = try await context.processor.prepare(
+                input: UserInput(chat: messages, tools: tools))
+            return input.text.tokens.size
         }
     }
     
@@ -98,9 +78,6 @@ final class LMService {
         tools: [ToolSpec] = [],
         maxTokens: Int? = nil
     ) async throws -> AsyncStream<Generation> {
-        let lease = try await InferenceRuntimeCoordinator.shared.acquire()
-
-        do {
             let modelContainer = try await load(model: model)
             let userInput = UserInput(
                 chat: messages,
@@ -226,13 +203,9 @@ final class LMService {
 
                     // `AsyncStream` can finish before the producer task has
                     // released its iterator/cache. Cancel on early stop and
-                    // wait for the producer before making the global lease
-                    // available to another model. Finishing the outer stream
-                    // last also prevents an immediate regenerate from
-                    // observing completion while the lease is still held.
+                    // wait for the producer before reporting completion.
                     inner.1.cancel()
                     await inner.1.value
-                    await lease.release()
                     continuation.finish()
                 }
                 continuation.onTermination = { _ in
@@ -240,10 +213,6 @@ final class LMService {
                     inner.1.cancel()
                 }
             }
-        } catch {
-            await lease.release()
-            throw error
-        }
     }
     
     /// Generates text based on the provided messages using the specified model.

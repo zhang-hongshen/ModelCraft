@@ -15,20 +15,13 @@ final class MusicGenEvaluator {
     
     func generate(prompt: String) async throws -> MLXArray {
         try Task.checkCancellation()
-        let lease = try await InferenceRuntimeCoordinator.shared.acquire()
-        do {
-            let model = try await modelFactory.load()
-            try Task.checkCancellation()
-            var parameters = modelFactory.configuration.defaultParameters()
-            parameters.prompt = prompt
-            let result = try model.generate(parameters)
-            try Task.checkCancellation()
-            await lease.release()
-            return result
-        } catch {
-            await lease.release()
-            throw error
-        }
+        let model = try await modelFactory.load()
+        try Task.checkCancellation()
+        var parameters = modelFactory.configuration.defaultParameters()
+        parameters.prompt = prompt
+        let result = try model.generate(parameters)
+        try Task.checkCancellation()
+        return result
     }
     
     func saveAudio(to url: URL, audio: MLXArray) throws {

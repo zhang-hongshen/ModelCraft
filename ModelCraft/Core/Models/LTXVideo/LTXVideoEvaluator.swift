@@ -20,18 +20,15 @@ actor LTXVideoEvaluator {
         try Task.checkCancellation()
         await progress(.preparing)
         try Task.checkCancellation()
-        let lease = try await InferenceRuntimeCoordinator.shared.acquire()
         do {
             let model = try await modelFactory.load()
             try Task.checkCancellation()
             let parameters = model.configuration.makeParameters(
                 prompt, ratio, resolution, duration)
             let result = try await model.generate(parameters, progress: progress)
-            await lease.release()
             return result
         } catch {
             await modelFactory.cleanup()
-            await lease.release()
             throw error
         }
     }
