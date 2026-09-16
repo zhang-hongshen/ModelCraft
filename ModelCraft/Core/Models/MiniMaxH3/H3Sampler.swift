@@ -175,7 +175,7 @@ final class H3Sampler {
             let sigma = Float(sigmas[index])
             let sigmaNext = Float(sigmas[index + 1])
             let previousSigma = index > 0 ? Float(sigmas[index - 1]) : nil
-            let velocity = try model.velocity(
+            let step = try model.embed(
                 videoLatent: currentVideo,
                 audioLatent: currentAudio,
                 textEmbeddings: conditioning.textEmbeddings,
@@ -185,6 +185,7 @@ final class H3Sampler {
                 condVideo: conditions.videoRows,
                 condAudio: conditions.audioRows,
                 renderState: renderState)
+            let velocity = try model.runStack(step)
 
             let videoDenoised = currentVideo - velocity.video * MLXArray(sigma)
             let audioDenoised = currentAudio - velocity.audio * MLXArray(sigma)

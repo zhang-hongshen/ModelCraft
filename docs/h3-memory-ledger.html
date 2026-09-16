@@ -1,0 +1,1010 @@
+<title>MiniMax H3 显存账本</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+
+<style>
+:root{
+  --ground:#F3F5F4;
+  --surface:#FFFFFF;
+  --surface-2:#EBEEED;
+  --ink:#151A19;
+  --ink-2:#5B6663;
+  --ink-3:#8A9491;
+  --rule:#DBE1DF;
+  --rule-strong:#C2CBC8;
+  --accent:#0F5C4A;
+  --accent-soft:#E1EFEA;
+  --warn:#8A5210;
+  --warn-soft:#F6EDDD;
+  --crit:#9B2C1F;
+  --crit-soft:#F8E7E3;
+  --data:#39443F;
+  --shadow:0 1px 2px rgba(20,30,28,.05), 0 8px 24px -16px rgba(20,30,28,.18);
+
+  --f-display:"Archivo","Helvetica Neue",Helvetica,Arial,sans-serif;
+  --f-body:"IBM Plex Sans","Helvetica Neue",Helvetica,Arial,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+
+  --measure:68ch;
+  --wide:1080px;
+  --r:3px;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#0E1211;
+    --surface:#161B1A;
+    --surface-2:#1D2423;
+    --ink:#E7EBE9;
+    --ink-2:#98A29F;
+    --ink-3:#6E7A77;
+    --rule:#28302E;
+    --rule-strong:#3A4441;
+    --accent:#63C2A8;
+    --accent-soft:#14302A;
+    --warn:#D8A05C;
+    --warn-soft:#2C2317;
+    --crit:#E38A78;
+    --crit-soft:#2F1B17;
+    --data:#B9C3C0;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.7);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#0E1211;
+  --surface:#161B1A;
+  --surface-2:#1D2423;
+  --ink:#E7EBE9;
+  --ink-2:#98A29F;
+  --ink-3:#6E7A77;
+  --rule:#28302E;
+  --rule-strong:#3A4441;
+  --accent:#63C2A8;
+  --accent-soft:#14302A;
+  --warn:#D8A05C;
+  --warn-soft:#2C2317;
+  --crit:#E38A78;
+  --crit-soft:#2F1B17;
+  --data:#B9C3C0;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.7);
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0;
+  background:var(--ground);
+  color:var(--ink);
+  font-family:var(--f-body);
+  font-size:15.5px;
+  line-height:1.62;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:var(--wide);margin:0 auto;padding:0 28px 96px}
+.col{max-width:var(--measure)}
+
+/* ---------- masthead ---------- */
+.masthead{padding:64px 0 0;border-bottom:1px solid var(--rule)}
+.eyebrow{
+  font-family:var(--f-mono);font-size:11.5px;font-weight:500;
+  letter-spacing:.14em;text-transform:uppercase;color:var(--accent);
+  display:flex;gap:14px;align-items:center;flex-wrap:wrap;
+}
+.eyebrow .sep{color:var(--rule-strong)}
+h1{
+  font-family:var(--f-display);font-weight:700;font-size:clamp(30px,5vw,46px);
+  letter-spacing:-.025em;line-height:1.08;margin:18px 0 0;text-wrap:balance;
+}
+.standfirst{
+  max-width:56ch;color:var(--ink-2);font-size:17px;margin:18px 0 0;
+}
+.headline-figs{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+  gap:1px;background:var(--rule);border:1px solid var(--rule);
+  margin:36px 0 0;border-radius:var(--r);overflow:hidden;
+}
+.hf{background:var(--surface);padding:16px 18px 18px}
+.hf dt{
+  font-family:var(--f-mono);font-size:10.5px;letter-spacing:.11em;
+  text-transform:uppercase;color:var(--ink-3);margin:0;
+}
+.hf dd{
+  margin:8px 0 0;font-family:var(--f-mono);font-weight:600;
+  font-size:23px;letter-spacing:-.02em;font-variant-numeric:tabular-nums;
+}
+.hf dd small{font-size:12px;font-weight:400;color:var(--ink-2);margin-left:3px}
+.hf.is-crit dd{color:var(--crit)}
+.hf.is-ok dd{color:var(--accent)}
+
+/* ---------- sections ---------- */
+section{padding-top:60px}
+h2{
+  font-family:var(--f-display);font-weight:600;font-size:24px;
+  letter-spacing:-.015em;margin:0 0 6px;text-wrap:balance;
+  display:flex;gap:12px;align-items:baseline;
+}
+h2 .num{
+  font-family:var(--f-mono);font-size:12px;font-weight:500;
+  color:var(--accent);letter-spacing:.08em;flex:none;
+  border:1px solid var(--accent);border-radius:100px;
+  padding:1px 8px;transform:translateY(-3px);
+}
+h3{
+  font-family:var(--f-display);font-weight:600;font-size:16px;
+  letter-spacing:-.005em;margin:34px 0 10px;
+}
+p{margin:0 0 14px}
+.dek{color:var(--ink-2);max-width:var(--measure);margin:0 0 22px}
+a{color:var(--accent)}
+code{
+  font-family:var(--f-mono);font-size:.875em;
+  background:var(--surface-2);padding:1.5px 5px;border-radius:2px;
+  color:var(--data);word-break:break-word;
+}
+strong{font-weight:600}
+em{font-style:normal;color:var(--crit);font-weight:500}
+
+/* ---------- tables ---------- */
+.scroll{
+  overflow-x:auto;border:1px solid var(--rule);border-radius:var(--r);
+  background:var(--surface);box-shadow:var(--shadow);margin:0 0 8px;
+}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+caption{
+  caption-side:top;text-align:left;padding:12px 16px 0;
+  font-family:var(--f-mono);font-size:10.5px;letter-spacing:.11em;
+  text-transform:uppercase;color:var(--ink-3);
+}
+th,td{padding:9px 14px;text-align:left;border-bottom:1px solid var(--rule);vertical-align:top}
+thead th{
+  font-family:var(--f-mono);font-size:10.5px;font-weight:500;
+  letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3);
+  white-space:nowrap;border-bottom:1px solid var(--rule-strong);
+  background:var(--surface);position:sticky;top:0;
+}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover{background:var(--surface-2)}
+.num,td.num,th.num{
+  font-family:var(--f-mono);font-variant-numeric:tabular-nums;
+  text-align:right;white-space:nowrap;
+}
+td.num{color:var(--data)}
+tr.total td{
+  border-top:1px solid var(--rule-strong);font-weight:600;
+  background:var(--surface-2);
+}
+tr.total td.num{color:var(--ink)}
+.path{font-family:var(--f-mono);font-size:12px;color:var(--ink-2);word-break:break-all}
+.dim{color:var(--ink-3)}
+.lead-cell{font-weight:600}
+
+.pill{
+  display:inline-block;font-family:var(--f-mono);font-size:10.5px;
+  font-weight:500;letter-spacing:.05em;padding:1.5px 7px;border-radius:100px;
+  white-space:nowrap;border:1px solid transparent;
+}
+.pill.ok{background:var(--accent-soft);color:var(--accent);border-color:var(--accent)}
+.pill.warn{background:var(--warn-soft);color:var(--warn);border-color:var(--warn)}
+.pill.crit{background:var(--crit-soft);color:var(--crit);border-color:var(--crit)}
+.pill.flat{background:var(--surface-2);color:var(--ink-2);border-color:var(--rule-strong)}
+
+/* capacity bar inside table */
+.bar{
+  position:relative;height:9px;min-width:110px;border-radius:1px;
+  background:var(--surface-2);overflow:hidden;
+}
+.bar i{position:absolute;inset:0 auto 0 0;display:block;border-radius:1px}
+.bar i.ok{background:var(--accent)}
+.bar i.warn{background:var(--warn)}
+.bar i.crit{background:var(--crit)}
+.barwrap{display:flex;align-items:center;gap:10px;justify-content:flex-end}
+.barwrap .v{font-family:var(--f-mono);font-variant-numeric:tabular-nums;font-size:13px;white-space:nowrap}
+
+/* ---------- pipeline ---------- */
+.stages{display:flex;flex-direction:column;gap:0;margin:0 0 10px;
+  border:1px solid var(--rule);border-radius:var(--r);overflow:hidden;background:var(--surface)}
+.stage{display:grid;grid-template-columns:34px 1fr auto;gap:0 18px;
+  padding:15px 18px;border-bottom:1px solid var(--rule);align-items:start}
+.stage:last-child{border-bottom:none}
+.stage .idx{
+  font-family:var(--f-mono);font-size:12px;font-weight:600;color:var(--accent);
+  padding-top:2px;
+}
+.stage .body h4{
+  font-family:var(--f-display);font-weight:600;font-size:14.5px;margin:0 0 3px;
+  letter-spacing:-.005em;
+}
+.stage .body p{margin:0;font-size:13.5px;color:var(--ink-2)}
+.stage .body p + p{margin-top:5px}
+.stage .cost{
+  font-family:var(--f-mono);font-variant-numeric:tabular-nums;font-size:12.5px;
+  color:var(--data);text-align:right;white-space:nowrap;padding-top:2px;
+}
+.stage .cost b{display:block;font-weight:600;color:var(--ink);font-size:14px}
+.release{
+  font-family:var(--f-mono);font-size:11px;color:var(--accent);
+  display:inline-block;margin-top:6px;
+}
+.release::before{content:"▸ "}
+
+/* ---------- blockers ---------- */
+.findings{display:flex;flex-direction:column;gap:12px;margin:0}
+.finding{
+  background:var(--surface);border:1px solid var(--rule);
+  border-left:3px solid var(--crit);border-radius:var(--r);
+  padding:15px 18px;box-shadow:var(--shadow);
+}
+.finding.warn{border-left-color:var(--warn)}
+.finding.note{border-left-color:var(--rule-strong)}
+.finding h4{
+  font-family:var(--f-display);font-weight:600;font-size:14.5px;
+  margin:0 0 5px;letter-spacing:-.005em;
+}
+.finding p{margin:0;font-size:13.5px;color:var(--ink-2)}
+.finding p + p{margin-top:7px}
+.finding .loc{
+  font-family:var(--f-mono);font-size:11.5px;color:var(--ink-3);
+  display:block;margin-top:7px;
+}
+
+/* ---------- callout ---------- */
+.callout{
+  background:var(--warn-soft);border:1px solid var(--warn);
+  border-radius:var(--r);padding:17px 20px;margin:22px 0;
+  max-width:var(--measure);
+}
+.callout p{margin:0;font-size:14.5px;color:var(--ink)}
+.callout p + p{margin-top:9px}
+.callout .lbl{
+  font-family:var(--f-mono);font-size:10.5px;letter-spacing:.11em;
+  text-transform:uppercase;color:var(--warn);display:block;margin-bottom:6px;
+}
+.formula{
+  font-family:var(--f-mono);font-size:12.5px;color:var(--data);
+  background:var(--surface-2);border-radius:var(--r);
+  padding:11px 14px;margin:10px 0 0;overflow-x:auto;white-space:pre;
+}
+ul,ol{max-width:var(--measure);padding-left:20px;margin:0 0 14px}
+li{margin-bottom:7px}
+li::marker{color:var(--ink-3)}
+footer{
+  margin-top:72px;padding-top:20px;border-top:1px solid var(--rule);
+  font-family:var(--f-mono);font-size:11.5px;color:var(--ink-3);
+  max-width:var(--measure);
+}
+@media (max-width:640px){
+  .wrap{padding:0 18px 64px}
+  .stage{grid-template-columns:24px 1fr;gap:0 12px}
+  .stage .cost{grid-column:2;text-align:left;padding-top:8px}
+}
+</style>
+
+<div class="wrap">
+
+<header class="masthead">
+  <div class="eyebrow">
+    <span>MiniMaxAI / MiniMax-H3</span>
+    <span class="sep">·</span>
+    <span>权重实测</span>
+    <span class="sep">·</span>
+    <span>2026-09-12</span>
+  </div>
+  <h1>MiniMax H3 显存账本</h1>
+  <p class="standfirst">
+    一次 FL2VA 生成要同时用到文本编码器、DiT、视频 VAE、音频 VAE 共 <strong>144 GB</strong> 权重。
+    这份账本把每个组件的体积拆到<em>可以单独搬运的最小单位</em>——DiT 的一块 1291 MB，
+    文本编码器的一层 975 MB——以及把 16 GB 机器跑起来的四根杠杆各自要付多少代价。
+  </p>
+
+  <dl class="headline-figs">
+    <div class="hf is-crit"><dt>单次生成权重总量</dt><dd>144.0<small>GB</small></dd></div>
+    <div class="hf is-crit"><dt>16 GB 机器的缺口</dt><dd>9.0<small>×</small></dd></div>
+    <div class="hf is-ok"><dt>DiT 单块（bf16）</dt><dd>1291<small>MB</small></dd></div>
+    <div class="hf is-ok"><dt>文本编码器单层</dt><dd>975<small>MB</small></dd></div>
+    <div class="hf"><dt>分片数 / 13</dt><dd>4–5<small>块每片</small></dd></div>
+  </dl>
+</header>
+
+<!-- ============================================================ -->
+<section>
+  <h2><span class="num">01</span> 组件总账</h2>
+  <p class="dek">
+    仓库 <code class="path">MiniMaxAI/MiniMax-H3</code> 里同一份权重存在多套副本，
+    总量 498 GB，但一次生成真正要用的是下面这五件。数字来自各 safetensors 文件头的
+    <code>data_offsets</code> 实测求和，不是按参数量估算的。
+  </p>
+
+  <div class="scroll">
+    <table>
+      <caption>一次 FL2VA 生成的实际工作集</caption>
+      <thead>
+        <tr>
+          <th>组件</th><th>仓库路径</th><th class="num">体积</th>
+          <th class="num">占比</th><th>备注</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="lead-cell">文本编码器</td>
+          <td class="path">text_encoder/model-*-of-00014</td>
+          <td class="num">66.71 GB</td><td class="num">46%</td>
+          <td>Qwen3-VL·64 层语言模型 + 27 层视觉塔</td>
+        </tr>
+        <tr>
+          <td class="lead-cell">DiT（FL2VA）</td>
+          <td class="path">FL2VA/transformer/model-*-of-00013</td>
+          <td class="num">66.28 GB</td><td class="num">46%</td>
+          <td>50 块同构 transformer</td>
+        </tr>
+        <tr>
+          <td class="lead-cell">DiT（Ref2VA）</td>
+          <td class="path">Ref2VA/transformer/model-*-of-00013</td>
+          <td class="num">66.28 GB</td><td class="num">—</td>
+          <td>与 FL2VA 互斥，有参考素材时替换前者</td>
+        </tr>
+        <tr>
+          <td class="lead-cell">视频 VAE</td>
+          <td class="path">FL2VA/video_vae/source/model.safetensors</td>
+          <td class="num">10.42 GB</td><td class="num">7%</td>
+          <td>36 层 ViT 解码器占 93%</td>
+        </tr>
+        <tr>
+          <td class="lead-cell">音频 VAE</td>
+          <td class="path">audio_vae/diffusion_pytorch_model.safetensors</td>
+          <td class="num">0.61 GB</td><td class="num">&lt;1%</td>
+          <td>Streaming-DAC，小到不值得优化</td>
+        </tr>
+        <tr>
+          <td class="lead-cell">分词器 / 处理器</td>
+          <td class="path">tokenizer/, processor/</td>
+          <td class="num">0.02 GB</td><td class="num">&lt;1%</td>
+          <td>常驻，可忽略</td>
+        </tr>
+        <tr class="total">
+          <td colspan="2">单次生成峰值需求</td>
+          <td class="num">144.02 GB</td><td class="num">100%</td>
+          <td>16 GB 机器缺 9 倍</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="dek" style="margin-top:14px">
+    注意 DiT 变体是<strong>互斥</strong>的：FL2VA 与 Ref2VA 是两份独立的 66 GB 权重，
+    按请求类型二选一。总账里只能算一份。
+  </p>
+</section>
+
+<!-- ============================================================ -->
+<section>
+  <h2><span class="num">02</span> DiT：每块 1291 MB</h2>
+  <p class="dek">
+    这是整个方案的关键数字。50 块结构完全相同，单块 1291 MB —— 哪怕 bf16 全精度，
+    一块也远小于 16 GB。你"分层塞进显存"的直觉在这里是成立的。
+  </p>
+
+  <div class="scroll">
+    <table>
+      <caption>单个 DiT block 的张量明细</caption>
+      <thead>
+        <tr><th>张量</th><th>形状</th><th class="num">大小</th><th class="num">占块</th><th>类别</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="path">adaln_proj.linear.weight</td>
+          <td class="path">[96768, 2688]</td>
+          <td class="num">520.22 MB</td><td class="num">40.3%</td>
+          <td>调制（6×3 模态 × 5376）</td>
+        </tr>
+        <tr>
+          <td class="path">ff.net.0.proj.weight</td>
+          <td class="path">[28672, 5376]</td>
+          <td class="num">308.28 MB</td><td class="num">23.9%</td>
+          <td>FFN gate+up 融合</td>
+        </tr>
+        <tr>
+          <td class="path">ff.net.2.weight</td>
+          <td class="path">[5376, 14336]</td>
+          <td class="num">154.14 MB</td><td class="num">11.9%</td>
+          <td>FFN down</td>
+        </tr>
+        <tr>
+          <td class="path">attn.to_q / to_k / to_v</td>
+          <td class="path">[7168, 5376] ×3</td>
+          <td class="num">231.21 MB</td><td class="num">17.9%</td>
+          <td>注意力 QKV</td>
+        </tr>
+        <tr>
+          <td class="path">attn.to_out.0.weight</td>
+          <td class="path">[5376, 7168]</td>
+          <td class="num">77.07 MB</td><td class="num">6.0%</td>
+          <td>注意力输出</td>
+        </tr>
+        <tr>
+          <td class="path">norm1 / norm2 / attn.norm_q / norm_k</td>
+          <td class="path">[5376] ×2, [128] ×2</td>
+          <td class="num">0.01 MB</td><td class="num">—</td>
+          <td>RMSNorm</td>
+        </tr>
+        <tr>
+          <td class="path">adaln_proj.linear.bias</td>
+          <td class="path">[96768]</td>
+          <td class="num">0.19 MB</td><td class="num">—</td>
+          <td>调制偏置</td>
+        </tr>
+        <tr class="total">
+          <td colspan="2">单块合计 × 50 块</td>
+          <td class="num">1291.14 MB</td><td class="num">100%</td>
+          <td>= 64.56 GB</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p class="dek" style="margin-top:14px">
+    块外的全局张量只有 1.72 GB（token refiner 两块 1.54 GB、时间嵌入 0.06 GB、
+    final layer 0.06 GB、投影 0.06 GB），<strong>97.4% 的体积在块里</strong>。
+    这意味着按块流式加载的粒度几乎完美——你不需要处理任何跨块的大张量。
+  </p>
+
+  <h3>分片边界已经替你切好了</h3>
+  <p class="dek">
+    官方把 50 块切成 13 个分片，每片 4–5 块。这个边界天然就是 I/O 单位：
+    比单块读（1.29 GB）有更好的顺序性，又不需要在一步之内回溯已读数据。
+  </p>
+  <div class="scroll">
+    <table>
+      <caption>FL2VA/transformer 分片 → 块映射</caption>
+      <thead>
+        <tr><th>分片</th><th class="num">大小</th><th>覆盖块</th><th class="num">块数</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="path">model-00001-of-00013</td><td class="num">5.23 GB</td><td class="path">0 – 2</td><td class="num">3</td></tr>
+        <tr><td class="path">model-00002 … 00012（各）</td><td class="num">5.16 GB</td><td class="path">+4 递增</td><td class="num">5</td></tr>
+        <tr><td class="path">model-00013-of-00013</td><td class="num">4.24 GB</td><td class="path">46 – 49</td><td class="num">4</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<section>
+  <h2><span class="num">03</span> 文本编码器：每层 975 MB</h2>
+  <p class="dek">
+    组件清单里它叫"text_encoder"，实际是一个完整的 Qwen3-VL 32B 级模型：
+    64 层语言模型（hidden 5120）+ 一个 27 层的视觉塔。它只在流水线第一步跑一次前向，
+    之后就完全是死重——这也是最该被卸载的组件。
+  </p>
+
+  <div class="scroll">
+    <table>
+      <caption>文本编码器结构分解</caption>
+      <thead>
+        <tr><th>部分</th><th>构成</th><th class="num">体积</th><th>是否必需</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="lead-cell">64 层语言模型</td>
+          <td class="path">layers.0–63</td>
+          <td class="num">62.41 GB</td>
+          <td><span class="pill ok">必需</span></td>
+        </tr>
+        <tr>
+          <td class="lead-cell">词嵌入</td>
+          <td class="path">model.language_model.embed_tokens</td>
+          <td class="num">1.56 GB</td>
+          <td><span class="pill ok">必需</span></td>
+        </tr>
+        <tr>
+          <td class="lead-cell">视觉塔</td>
+          <td class="path">model.visual.*（27 层 + merger）</td>
+          <td class="num">1.19 GB</td>
+          <td><span class="pill warn">仅 Ref2VA</span></td>
+        </tr>
+        <tr>
+          <td class="lead-cell">输出头</td>
+          <td class="path">lm_head.weight</td>
+          <td class="num">1.56 GB</td>
+          <td><span class="pill crit">从不使用</span></td>
+        </tr>
+        <tr>
+          <td class="lead-cell">末端 norm</td>
+          <td class="path">model.language_model.norm</td>
+          <td class="num">&lt;0.01 GB</td>
+          <td><span class="pill flat">按实现定</span></td>
+        </tr>
+        <tr class="total">
+          <td colspan="2">合计（纯文本条件时实际需要 63.96 GB）</td>
+          <td class="num">66.71 GB</td><td></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>单层明细</h3>
+  <div class="scroll">
+    <table>
+      <caption>layer N（64 层同构）</caption>
+      <thead>
+        <tr><th>张量</th><th>形状</th><th class="num">大小</th><th>说明</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="path">mlp.gate_proj / up_proj / down_proj</td><td class="path">[25600, 5120] ×2, [5120, 25600]</td><td class="num">786.42 MB</td><td>三层各 262.14 MB</td></tr>
+        <tr><td class="path">self_attn.q_proj / o_proj</td><td class="path">[8192, 5120], [5120, 8192]</td><td class="num">167.78 MB</td><td>64 个注意力头</td></tr>
+        <tr><td class="path">self_attn.k_proj / v_proj</td><td class="path">[1024, 5120] ×2</td><td class="num">20.98 MB</td><td>GQA，仅 8 个 KV 头</td></tr>
+        <tr><td class="path">input/post_attn layernorm, q_norm, k_norm</td><td class="path">[5120] ×2, [128] ×2</td><td class="num">0.02 MB</td><td>—</td></tr>
+        <tr class="total"><td colspan="2">单层 × 64 层</td><td class="num">975.20 MB</td><td>= 62.41 GB</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="dek" style="margin-top:14px">
+    MLP 占单层的 81%。以 975 MB 为单位流式加载，16 GB 机器一次装好几层都绰绰有余，
+    而且这一趟前向只需要跑一次——<strong>文本编码器应该纯流式，永不常驻</strong>。
+  </p>
+</section>
+
+<!-- ============================================================ -->
+<section>
+  <h2><span class="num">04</span> 两个 VAE</h2>
+  <p class="dek">
+    视频 VAE 的体积几乎全在解码器上——编码器只占 0.72 GB，而且只在有首尾帧或参考图时才会用到。
+    这是最容易被忽略的一次免费卸载。
+  </p>
+
+  <div class="scroll">
+    <table>
+      <caption>视频 VAE（10.42 GB）内外拆分</caption>
+      <thead>
+        <tr><th>部分</th><th>结构</th><th class="num">体积</th><th>何时需要</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="lead-cell">解码器 transformer</td>
+          <td class="path">decoder.transformer_blocks × 36</td>
+          <td class="num">9.669 GB</td>
+          <td><span class="pill ok">每次生成末尾</span></td>
+        </tr>
+        <tr>
+          <td class="lead-cell">编码器下采样</td>
+          <td class="path">encoder.down_blocks</td>
+          <td class="num">0.716 GB</td>
+          <td><span class="pill warn">仅首尾帧/参考图</span></td>
+        </tr>
+        <tr>
+          <td class="lead-cell">其余</td>
+          <td class="path">proj_in / proj_out / norm_out / quant_conv</td>
+          <td class="num">0.033 GB</td>
+          <td>—</td>
+        </tr>
+        <tr class="total">
+          <td colspan="2">单个解码器 block</td>
+          <td class="num">268.6 MB</td>
+          <td>36 层同构，可逐层流式</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="scroll" style="margin-top:22px">
+    <table>
+      <caption>音频 VAE（0.61 GB）— 小到不必优化</caption>
+      <thead>
+        <tr><th>部分</th><th class="num">体积</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="path">encoder.block</td><td class="num">294.86 MB</td></tr>
+        <tr><td class="path">decoder.resblocks</td><td class="num">176.45 MB</td></tr>
+        <tr><td class="path">decoder.conv_pre + ups</td><td class="num">83.03 MB</td></tr>
+        <tr><td class="path">pre_block.attn + proj + mlp</td><td class="num">50.66 MB</td></tr>
+        <tr class="total"><td>合计</td><td class="num">605.43 MB</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<section>
+  <h2><span class="num">05</span> 流水线与卸载点</h2>
+  <p class="dek">
+    各阶段严格串行，且<strong>没有两个阶段需要同时持有权重</strong>。
+    这意味着"阶段间卸载"是零成本的——它不改变任何计算结果，纯粹是释放引用。
+    当前代码恰恰没有做这件事。
+  </p>
+
+  <div class="stages">
+    <div class="stage">
+      <div class="idx">1</div>
+      <div class="body">
+        <h4>分词 + 文本编码</h4>
+        <p>提示词（及参考素材）过 Qwen3-VL 前向，产出 5120 维条件嵌入。</p>
+        <p>按层流式：一次只驻留 1–2 层（975 MB/层）。</p>
+        <span class="release">整段可完全释放：66.71 GB</span>
+      </div>
+      <div class="cost"><b>66.71 GB</b>流式后 ≈ 2 GB</div>
+    </div>
+    <div class="stage">
+      <div class="idx">2</div>
+      <div class="body">
+        <h4>视觉/音频条件编码</h4>
+        <p>仅当有首尾帧或参考素材时执行。视频 VAE 编码器 0.72 GB、音频 VAE 编码器 0.30 GB。</p>
+        <span class="release">整段可完全释放：1.02 GB</span>
+      </div>
+      <div class="cost"><b>1.02 GB</b>常驻即可</div>
+    </div>
+    <div class="stage">
+      <div class="idx">3</div>
+      <div class="body">
+        <h4>DiT 去噪采样</h4>
+        <p>唯一需要反复执行的重头戏：50 块 × steps 次。默认 20 步即 1000 次块前向。</p>
+        <p>块粒度流式，或按量化后的精度整体常驻。</p>
+        <span class="release">采样结束后释放：66.28 GB</span>
+      </div>
+      <div class="cost"><b>66.28 GB</b>流式后 ≈ 3 GB</div>
+    </div>
+    <div class="stage">
+      <div class="idx">4</div>
+      <div class="body">
+        <h4>音频解码</h4>
+        <p>0.61 GB，直接解码成波形。</p>
+      </div>
+      <div class="cost"><b>0.61 GB</b>常驻即可</div>
+    </div>
+    <div class="stage">
+      <div class="idx">5</div>
+      <div class="body">
+        <h4>视频解码 + 封装</h4>
+        <p>36 层解码器逐层流式（268.6 MB/层），输出帧序列并写盘。</p>
+        <span class="release">整段可完全释放：10.42 GB</span>
+      </div>
+      <div class="cost"><b>10.42 GB</b>流式后 ≈ 1 GB</div>
+    </div>
+  </div>
+
+  <p class="dek" style="margin-top:16px">
+    仅做阶段间卸载（不流式、不量化），峰值就从 144 GB 降到 <strong>66.71 GB</strong> ——
+    2.2 倍收益，零成本，零精度损失。这是第一件该做的事，但它一个人不够。
+  </p>
+</section>
+
+<!-- ============================================================ -->
+<section>
+  <h2><span class="num">06</span> 四根杠杆</h2>
+  <p class="dek">
+    它们可以叠加。收益从大到小，代价从高到低排列如下。
+  </p>
+
+  <div class="scroll">
+    <table>
+      <caption>按"信息量 vs 代价"排列</caption>
+      <thead>
+        <tr><th>杠杆</th><th>做法</th><th class="num">收益</th><th>代价</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="lead-cell">① 砍掉用不上的</td>
+          <td>不加载 <code>lm_head</code>（1.56 GB）、纯文本任务跳过视觉塔（1.19 GB）、无首尾帧时跳过 VAE 编码器（0.72 GB）</td>
+          <td class="num">−3.5 GB</td>
+          <td><span class="pill ok">零</span></td>
+        </tr>
+        <tr>
+          <td class="lead-cell">② 阶段间卸载</td>
+          <td>每个阶段结束把权重引用置空，MLX 即可回收</td>
+          <td class="num">144 → 66.7 GB</td>
+          <td><span class="pill ok">零</span></td>
+        </tr>
+        <tr>
+          <td class="lead-cell">③ 量化</td>
+          <td>一次性离线转换成 MLX 量化权重，之后每次加载都受益</td>
+          <td class="num">66.3 → 14.5 GB</td>
+          <td><span class="pill warn">一次性转换 + 精度</span></td>
+        </tr>
+        <tr>
+          <td class="lead-cell">④ 块级流式</td>
+          <td>按块/层从磁盘搬进搬出，用时间换容量</td>
+          <td class="num">峰值 → 3 GB</td>
+          <td><span class="pill crit">每步重读 66 GB</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>量化后的实际体积</h3>
+  <p class="dek">
+    MLX 仿射量化下，每参数字节数 = <code>bits/8 + 4/groupSize</code>。
+    转换必须<strong>离线做一次</strong>——运行时先读 66 GB bf16 再量化，磁盘开销一分不少。
+  </p>
+  <div class="scroll">
+    <table>
+      <caption>各精度下的常驻需求</caption>
+      <thead>
+        <tr>
+          <th>精度</th><th class="num">字节/参数</th>
+          <th class="num">DiT (66.28)</th><th class="num">文本编码器 (63.96)</th>
+          <th class="num">VVAE 解码器 (9.67)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>bf16（原始）</td><td class="num">2.000</td><td class="num">66.28 GB</td><td class="num">63.96 GB</td><td class="num">9.67 GB</td></tr>
+        <tr><td>8-bit / group32</td><td class="num">1.125</td><td class="num">37.28 GB</td><td class="num">35.98 GB</td><td class="num">5.44 GB</td></tr>
+        <tr><td>4-bit / group64</td><td class="num">0.5625</td><td class="num">18.64 GB</td><td class="num">17.99 GB</td><td class="num">2.72 GB</td></tr>
+        <tr><td>3-bit / group64</td><td class="num">0.4375</td><td class="num">14.50 GB</td><td class="num">13.99 GB</td><td class="num">2.11 GB</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout">
+    <span class="lbl">流式的真实账单</span>
+    <p>
+      如果 DiT 每个采样步都完整重读一遍 bf16 权重：
+      20 步 × 66.28 GB = <strong>1.33 TB 磁盘读取</strong>。
+      按内建 SSD 持续 2.8–5 GB/s 算，纯 I/O 约 <strong>4.5–8 分钟</strong>。
+    </p>
+    <p>
+      但量化后 DiT 只剩 18.6 GB——<strong>4-bit 下 50 块可以全部常驻 24 GB 机器</strong>，
+      代价是零次重读。所以正确顺序是「先量化，再决定要不要流式」，
+      而不是「先流式，再考虑量化」。
+    </p>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<section>
+  <h2><span class="num">07</span> 各档位适配矩阵</h2>
+  <p class="dek">
+    按 32k 序列长度估算，bf16 下激活值约需 3 GB（残差流 344 MB + 每块 QKV/注意力中间量约 1.8 GB），
+    量化后按比例下降。下表是各配置的峰值需求与四个档位的匹配情况。
+  </p>
+
+  <div class="scroll">
+    <table>
+      <caption>峰值显存需求 vs 设备档位</caption>
+      <thead>
+        <tr>
+          <th>阶段 / 配置</th><th class="num" style="min-width:170px">峰值需求</th>
+          <th class="num">16 GB</th><th class="num">24 GB</th>
+          <th class="num">48 GB</th><th class="num">64 GB</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="lead-cell">文本编码器 · bf16 流式</td>
+          <td class="num"><div class="barwrap"><span class="v">3.0 GB</span><div class="bar"><i class="ok" style="width:9%"></i></div></div></td>
+          <td class="num"><span class="pill ok">可以</span></td><td class="num"><span class="pill ok">可以</span></td>
+          <td class="num"><span class="pill ok">可以</span></td><td class="num"><span class="pill ok">可以</span></td>
+        </tr>
+        <tr>
+          <td class="lead-cell">文本编码器 · bf16 常驻</td>
+          <td class="num"><div class="barwrap"><span class="v">67.0 GB</span><div class="bar"><i class="crit" style="width:100%"></i></div></div></td>
+          <td class="num"><span class="pill crit">否</span></td><td class="num"><span class="pill crit">否</span></td>
+          <td class="num"><span class="pill crit">否</span></td><td class="num"><span class="pill crit">否</span></td>
+        </tr>
+        <tr>
+          <td class="lead-cell">DiT · bf16 全部常驻</td>
+          <td class="num"><div class="barwrap"><span class="v">69.3 GB</span><div class="bar"><i class="crit" style="width:100%"></i></div></div></td>
+          <td class="num"><span class="pill crit">否</span></td><td class="num"><span class="pill crit">否</span></td>
+          <td class="num"><span class="pill crit">否</span></td><td class="num"><span class="pill crit">否</span></td>
+        </tr>
+        <tr>
+          <td class="lead-cell">DiT · bf16 留 8 块 + 流式</td>
+          <td class="num"><div class="barwrap"><span class="v">13.3 GB</span><div class="bar"><i class="warn" style="width:18%"></i></div></div></td>
+          <td class="num"><span class="pill warn">勉强</span></td><td class="num"><span class="pill ok">可以</span></td>
+          <td class="num"><span class="pill ok">可以</span></td><td class="num"><span class="pill ok">可以</span></td>
+        </tr>
+        <tr>
+          <td class="lead-cell">DiT · 8-bit 常驻</td>
+          <td class="num"><div class="barwrap"><span class="v">40.3 GB</span><div class="bar"><i class="crit" style="width:58%"></i></div></div></td>
+          <td class="num"><span class="pill crit">否</span></td><td class="num"><span class="pill crit">否</span></td>
+          <td class="num"><span class="pill ok">可以</span></td><td class="num"><span class="pill ok">可以</span></td>
+        </tr>
+        <tr>
+          <td class="lead-cell">DiT · 4-bit 常驻</td>
+          <td class="num"><div class="barwrap"><span class="v">21.6 GB</span><div class="bar"><i class="warn" style="width:31%"></i></div></div></td>
+          <td class="num"><span class="pill crit">否</span></td><td class="num"><span class="pill warn">勉强</span></td>
+          <td class="num"><span class="pill ok">可以</span></td><td class="num"><span class="pill ok">可以</span></td>
+        </tr>
+        <tr>
+          <td class="lead-cell">DiT · 3-bit 常驻</td>
+          <td class="num"><div class="barwrap"><span class="v">17.5 GB</span><div class="bar"><i class="warn" style="width:25%"></i></div></div></td>
+          <td class="num"><span class="pill warn">勉强</span></td><td class="num"><span class="pill ok">可以</span></td>
+          <td class="num"><span class="pill ok">可以</span></td><td class="num"><span class="pill ok">可以</span></td>
+        </tr>
+        <tr>
+          <td class="lead-cell">DiT · 4-bit 块级流式</td>
+          <td class="num"><div class="barwrap"><span class="v">3.4 GB</span><div class="bar"><i class="ok" style="width:9%"></i></div></div></td>
+          <td class="num"><span class="pill ok">可以</span></td><td class="num"><span class="pill ok">可以</span></td>
+          <td class="num"><span class="pill ok">可以</span></td><td class="num"><span class="pill ok">可以</span></td>
+        </tr>
+        <tr>
+          <td class="lead-cell">视频 VAE 解码器 · 4-bit 常驻</td>
+          <td class="num"><div class="barwrap"><span class="v">5.7 GB</span><div class="bar"><i class="ok" style="width:9%"></i></div></div></td>
+          <td class="num"><span class="pill ok">可以</span></td><td class="num"><span class="pill ok">可以</span></td>
+          <td class="num"><span class="pill ok">可以</span></td><td class="num"><span class="pill ok">可以</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p class="dek" style="margin-top:16px">
+    两条硬结论：<strong>文本编码器在任何档位都不能常驻</strong>——即使 64 GB 也装不下 66.7 GB；
+    <strong>16 GB 档位没有任何"整体常驻"的可行配置</strong>，必须靠块级流式把峰值压到 3–4 GB。
+  </p>
+</section>
+
+<!-- ============================================================ -->
+<section>
+  <h2><span class="num">08</span> 时间成本：先量再改</h2>
+  <p class="dek">
+    容量可以靠流式解决，算力不能。这个模型是 33B DiT 级别，序列长度约 32k，
+    下面是量级估算——请在动手写流式层<strong>之前</strong>用一次单步采样校准它。
+  </p>
+
+  <div class="formula">几何       5 秒 × 24 fps = 120 帧 → 对齐 17k+5 格点 = 124 帧
+潜变量    t=124/4=31, h=768/16=48, w=1344/16=84
+patchify  [1,2,2] → 视频 token = 31 × 24 × 42 = 31,248
+          音频 token = 200 帧 × 2 通道 = 400
+          S ≈ 32k
+
+每步算力  块线性层   50 × 385.4M 有效参数 × 32k token × 2 ≈ 1.23 PFLOP
+          注意力     50 × 2 × S² × 7168 × 2        ≈ 1.47 PFLOP
+          合计       ≈ 2.7 PFLOP / 步
+
+20 步总计 ≈ 54 PFLOP</div>
+
+  <p class="dek" style="margin-top:16px">
+    拿这台机器的实测有效算力去除，就是答案。iGPU 在 bf16 密算上的<em>持续</em>吞吐
+    通常只有峰值的 30–50%，按 1.5–2 TFLOPS 估，20 步约 7.5–10 小时；
+    4 步则降到 1.5–2 小时。所以"20 分钟"这个预算对满配 20 步 768p 是不成立的——
+    但如果目标是<strong>先跑通、能出画</strong>，把 steps 压到 2–4 是可实现的。
+  </p>
+
+  <div class="callout">
+    <span class="lbl">量化在这里是双重收益</span>
+    <p>
+      它不只省显存。Apple Silicon 上这类矩阵乘是<strong>内存带宽受限</strong>的，
+      权重从 2 字节/参数降到 0.56 字节/参数，同带宽下吞吐可以提升接近 2–3 倍。
+      时间问题的主要解法是量化 + 减步数，不是流式——流式反而<strong>增加</strong>时间。
+    </p>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<section>
+  <h2><span class="num">09</span> 代码侧阻塞项</h2>
+  <p class="dek">
+    在实际动手优化之前，当前代码有若干问题会让流水线根本跑不起来，
+    以及让上面所有优化无处落地。按修复顺序排列。
+  </p>
+
+  <div class="findings">
+    <div class="finding">
+      <h4>权重路径指向了错误的权重分布 —— 模型当前无法加载<span class="pill ok" style="margin-left:8px">已修复</span></h4>
+      <p>
+        仓库里同一份 DiT 存在两套命名：仓库根的 <code>transformer/</code> 用
+        <code>attn.to_q</code> / <code>ff.net.0.proj</code> / <code>proj_in</code> / <code>context_embedder</code>；
+        而 <code>FL2VA/transformer/</code> 用 <code>attn.qkv_proj</code> / <code>mlp.fc1</code> /
+        <code>video_patch_proj</code> / <code>condition_proj</code>。
+        <code>H3OmniTransformer.init(weights:)</code> 读的是<strong>后者</strong>，
+        但 <code>H3Configuration</code> 里 <code>.transformerWeights</code> 配的是<strong>前者</strong>。
+      </p>
+      <p>
+        结果是 <code>H3BaseWeights.deriveConfig</code> 在第一步就抛
+        <code>video_patch_proj.weight … are required</code>。
+        更糟的是 <code>FL2VA/transformer/</code> 没被写进 <code>files</code> 字典，
+        所以 <code>download()</code> 也从不会去取它。视频 VAE 有一模一样的问题：
+        <code>vae/</code> 是 <code>decoder.proj_in</code>，代码要的是
+        <code>FL2VA/video_vae/source/</code> 里的 <code>decoder.x_embedder</code>。
+      </p>
+      <span class="loc">H3Configuration.swift:112–118, 143–148 · H3Loader.swift:365–368</span>
+    </div>
+
+    <div class="finding">
+      <h4><code>H3BaseWeights.tensor(_:)</code> 并不懒加载</h4>
+      <p>
+        第一次调用 <code>tensor()</code> 就把全部 13 个分片读进 <code>all</code> 字典并永久保留，
+        也就是一次性吃掉 66 GB。名字里的"indexed accessor"和实际行为不符。
+      </p>
+      <p>
+        好消息：同一个文件里的 <code>SafeTensors.Archive</code> 已经把每个张量的
+        <code>begin</code>/<code>end</code> 字节偏移解析出来了，<strong>且不读张量字节</strong>。
+        块级流式所需的元数据已经现成，只差一个按偏移量 <code>pread</code> 的读取路径。
+      </p>
+      <span class="loc">H3Loader.swift:432–449，对照 :172–273</span>
+    </div>
+
+    <div class="finding">
+      <h4><code>H3Base.init</code> 一次性把所有组件加载完，且没有任何清理路径</h4>
+      <p>
+        tokenizer、文本编码器、视频 VAE 编解码器、音频 VAE 编解码器、DiT 全在
+        <code>init</code> 里急切构造，没有 <code>cleanup()</code>、没有 optional 字段、
+        也没有运行时档位配置。相比之下 <code>LTXVideo</code> 把四个组件都做成 optional
+        并支持 <code>releasesComponentsBetweenStages</code>，
+        <code>StableDiffusion</code> 和 <code>LTXVideo</code> 各有自己的
+        <code>*RuntimeProfile</code>——<strong>H3 是唯一缺这一层的模型族</strong>。
+      </p>
+      <span class="loc">H3Base.swift:30–52</span>
+    </div>
+
+    <div class="finding note">
+      <h4>编解码器共用一次加载，导致条件编码阶段就付了解码器的显存</h4>
+      <p>
+        <code>H3Base.init</code> 把<strong>同一个</strong> <code>[String: MLXArray]</code>
+        同时传给 <code>H3VisualVAEEncoder</code> 和 <code>H3VisualVAE</code>，
+        音频 VAE 同理。这里需要说清楚一件事：<em>字典本身不会钉住权重</em>——
+        <code>get</code> 是个局部函数，每个模块只保留自己取出的那几个 <code>MLXArray</code>，
+        字典作为 <code>init</code> 的临时局部变量随即释放。
+      </p>
+      <p>
+        真正的问题是两个方向被<strong>同时构造</strong>：只做首尾帧编码（只需 0.72 GB 编码器）的请求，
+        在这一刻要同时持有 9.67 GB 的解码器。分阶段惰性加载即可解决。
+      </p>
+      <span class="loc">H3Base.swift:36–48 · H3VisualVAE.swift:256–320</span>
+    </div>
+
+    <div class="finding warn">
+      <h4><code>Memory.cacheLimit</code> 目前没有任何写入点</h4>
+      <p>
+        被删除的 <code>InferenceRuntimeCoordinator</code> 是唯一一处按设备内存分档设置
+        cache limit 的地方（≤18 GB → 128 MB，否则 256 MB）。它删除后没有替代者，
+        所以在 16 GB 机器上 MLX 会按默认值缓存空闲缓冲。
+        MLX 的 <code>clearCache()</code> 只释放<strong>空闲</strong>缓冲，
+        对仍然被引用的权重毫无作用——这也解释了为什么 <code>H3Base</code> 里那几处
+        <code>clearCache()</code> 调用给人一种"已经在省内存"的错觉。
+      </p>
+      <span class="loc">docs/architecture.md:53 · MusicGenEvaluator.swift:48 是唯一读取 memoryLimit 处</span>
+    </div>
+
+    <div class="finding note">
+      <h4><code>lm_head.weight</code> 被加载但从未使用</h4>
+      <p>
+        1.56 GB 白读。H3Encoder 的注释里已经写明"这是条件编码路径，没有 final norm 也没有 lm_head"，
+        但加载器并不区分。
+      </p>
+      <span class="loc">H3Encoder.swift:474 · 张量位于 text_encoder/model-00014</span>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<section>
+  <h2><span class="num">10</span> 建议的推进顺序</h2>
+  <ol>
+    <li>
+      <strong>先修路径</strong><span class="pill ok" style="margin-left:8px">已完成</span>
+      <br>两个 preset 的 Transformer 与视频 VAE 已指向各自的 <code>FL2VA/</code> / <code>Ref2VA/</code>
+      目录；共享组件（tokenizer、text encoder、audio VAE）保持指向仓库根，切换任务不会重复下载 67 GB。
+    </li>
+    <li>
+      <strong>量一次单步耗时</strong>（约一天）。用最小配置（steps=2、一个短提示词）
+      跑通 DiT 采样，记录每步墙钟时间。第 08 节的估算需要被这个数字替换，
+      后面所有取舍都取决于它。
+    </li>
+    <li>
+      <strong>加 <code>H3RuntimeProfile</code></strong><span class="pill ok" style="margin-left:8px">已完成</span>
+      <br>本轮的 profile 只做阶段间卸载，峰值 144 → 66.7 GB，零精度损失。
+      "按需跳过"（视觉塔、lm_head、VAE 编码器）<strong>没有做</strong>——它们要么收益很小，
+      要么需要改写 <code>H3Encoder</code> 的结构，留到量化那一轮一起处理。
+    </li>
+    <li>
+      <strong>离线量化</strong>（约两天）。产出一份 4-bit/group64 的 MLX 权重，
+      顺带把 <code>lm_head</code> 从输出里剔掉。这一步同时解决容量和速度两个问题。
+    </li>
+    <li>
+      <strong>块级流式</strong>（约三到五天）。只在量化后仍装不下的档位需要。
+      复用 <code>SafeTensors.Archive</code> 已有的字节偏移元数据做按块 <code>pread</code>，
+      配合双缓冲把 I/O 藏在计算后面。
+    </li>
+  </ol>
+
+  <p class="dek" style="margin-top:22px">
+    前三步加起来能让 24 GB 及以上档位完整跑通且不需要流式；
+    16 GB 档位需要走到第四步，并且要把 steps 压到 2–4 才在时间上可接受。
+    <strong>16 GB 是"能跑通"，不是"能用"</strong>——这一点应该早点对齐预期。
+  </p>
+</section>
+
+<footer>
+  体积数据取自主仓库各 safetensors 文件头的 <code>data_offsets</code> 实测值（638 / 1087 / 703 个张量全量求和），
+  与 <code>index.json</code> 的 <code>total_size</code> 一致。参数形状取自各 <code>config.json</code>。
+  DiT 单块、文本编码器单层、VAE 编解码拆分均为逐张量实测，非估算。
+  时间与激活值为量级估算，需实测校准。
+</footer>
+
+</div>

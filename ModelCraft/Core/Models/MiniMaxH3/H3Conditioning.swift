@@ -484,7 +484,7 @@ struct H3Conditions {
 enum H3Conditioning {
     static func encodeFL2VAVisual(
         keyframes: [H3EvaluatorKeyframe],
-        encoder: H3VisualVAEEncoder,
+        vae: H3VisualVAE,
         width: Int,
         height: Int
     ) throws -> [MLXArray] {
@@ -494,7 +494,7 @@ enum H3Conditioning {
             let pixels = try H3IO.image(
                 at: keyframe.image.path,
                 fit: (width, height))
-            let latent = encoder.encode(pixels)
+            let latent = try vae.encode(pixels)
             eval(latent)
             return latent
         }
@@ -582,9 +582,7 @@ extension H3Conditioning {
             switch try H3IO.decode(reference) {
             case .image(let image):
                 pictureIndex += 1
-                let (block, grid) = try visionBlock(
-                    pixels: image.encoderPixels,
-                    tower: encoder.visionEncoder)
+                let (block, grid) = try encoder.encodeVisual(pixels: image.encoderPixels)
                 elements.append(.text("<Picture \(pictureIndex)>: "))
                 elements.append(.vision(block, grid))
 
@@ -601,57 +599,27 @@ extension H3Conditioning {
                 videoIndex += 1
                 elements.append(.text("<Video \(videoIndex)>: "))
                 let sampled = try sampledVideoFrames(video.frames)
-                let frameTensor = concatenated(sampled.frames, axis: 0)
-                let config = H3VisionEncoderConfiguration()
-                let (_, _, imageGrid) = H3VisionPreprocess.grid(
-                    width: frameTensor.dim(2),
-                    height: frameTensor.dim(1),
-                    config: config)
-                let grid = H3VisionGrid(
-                    t: (sampled.frames.count + temporalPatch - 1) / temporalPatch,
-                    h: imageGrid.h,
-                    w: imageGrid.w)
-                let patches = try H3VisionPreprocess.patches(
-                    video: frameTensor,
-                    grid: grid,
-                    config: config)
-                let encoded = encoder.visionEncoder(patches: patches, grid: grid)
-                let tokensPerBlock = encoded.merged.dim(0) / grid.t
-
-                for blockIndex in 0 ..< grid.t {
+                let encoded = try encoder.encodeVideo(frames: sampled.frames)
+                for (blockIndex, group) in encoded.enumerated() {
                     elements.append(.text(
                         "<\(timestamp(sampled.blockTimestamps[blockIndex])) seconds>"))
-                    elements.append(.vision(
-                        slice(
-                            encoded,
-                            blockIndex: blockIndex,
-                            tokensPerBlock: tokensPerBlock),
-                        H3VisionGrid(t: 1, h: grid.h, w: grid.w)))
+                    elements.append(.vision(group.block, group.grid))
                 }
             }
         }
 
         elements.append(.text(prompt))
-        let assembled = H3Presentation.assemble(
-            elements: elements,
-            tokenizer: tokenizer,
-            encoder: encoder.textEncoder)
-        let encoded = encoder.textEncoder(
-            embeds: assembled.embeds,
-            computeDType: .float32,
-            positionIds: assembled.positionIds,
-            visualSpans: assembled.spans.map { (start: $0.start, count: $0.size) },
-            deepstack: assembled.deepstack)
-        eval(encoded)
+        let encoded = try encoder.encodeText(elements: elements, tokenizer: tokenizer)
+        eval(encoded.conditioning)
         return H3TextConditioningData(
-            textEmbeddings: encoded,
-            tags: assembled.tags)
+            textEmbeddings: encoded.conditioning,
+            tags: encoded.tags)
     }
 
     static func encodeReferences(
         references: [URL],
-        visualEncoder: H3VisualVAEEncoder,
-        audioEncoder: H3AudioVAEEncoder,
+        vae: H3VisualVAE,
+        audioVae: H3AudioVAE,
         configuration: H3Configuration,
         seed: UInt64
     ) throws -> H3Conditions {
@@ -664,7 +632,7 @@ extension H3Conditioning {
             let decoded = try H3IO.decode(reference)
             switch decoded {
             case .image(let image):
-                let latent = visualEncoder.encode(
+                let latent = try vae.encode(
                     image.visualVAEPixels,
                     seed: conditionEncodeSeed)
                 eval(latent)
@@ -674,7 +642,7 @@ extension H3Conditioning {
                     visual: geometry(of: latent)))
 
             case .audio(let audio):
-                let rows = audioConditionRows(audio, encoder: audioEncoder)
+                let rows = try audioConditionRows(audio, vae: audioVae)
                 eval(rows)
                 audioRows.append(rows)
                 blocks.append(H3ReferenceSequenceBlock(
@@ -688,14 +656,14 @@ extension H3Conditioning {
                     dim: 2,
                     start: 0,
                     end: frameCount)
-                let latent = visualEncoder.encode(
+                let latent = try vae.encode(
                     pixels,
                     seed: conditionEncodeSeed)
                 eval(latent)
                 visualLatents.append(latent)
 
-                let soundtrackRows = video.audio.map {
-                    audioConditionRows($0, encoder: audioEncoder)
+                let soundtrackRows = try video.audio.map {
+                    try audioConditionRows($0, vae: audioVae)
                 }
                 if let soundtrackRows {
                     eval(soundtrackRows)
@@ -717,39 +685,6 @@ extension H3Conditioning {
             audioRows: audioRows.isEmpty ? nil : concatenated(audioRows, axis: 0),
             keyframes: [],
             references: blocks)
-    }
-
-    private static func visionBlock(
-        pixels: MLXArray,
-        tower: H3VisionEncoder
-    ) throws -> (H3Presentation.VisionBlock, H3VisionGrid) {
-        let (width, height, grid) = H3VisionPreprocess.grid(
-            width: pixels.dim(2),
-            height: pixels.dim(1))
-        guard width == pixels.dim(2), height == pixels.dim(1) else {
-            throw H3EvaluatorError.mediaOffCanvas(
-                path: "Ref2VA image reference",
-                size: "\(pixels.dim(2))x\(pixels.dim(1))",
-                remedy: "decode the reference on H3's 32-pixel vision grid.")
-        }
-        let patches = try H3VisionPreprocess.patches(image: pixels, grid: grid)
-        let encoded = tower(patches: patches, grid: grid)
-        return (
-            H3Presentation.VisionBlock(
-                merged: encoded.merged,
-                deepstack: encoded.deepstack),
-            grid)
-    }
-
-    private static func slice(
-        _ encoded: H3VisionEncoder.Output,
-        blockIndex: Int,
-        tokensPerBlock: Int
-    ) -> H3Presentation.VisionBlock {
-        let range = (blockIndex * tokensPerBlock) ..< ((blockIndex + 1) * tokensPerBlock)
-        return H3Presentation.VisionBlock(
-            merged: encoded.merged[range],
-            deepstack: encoded.deepstack.map { $0[range] })
     }
 
     private static func sampledVideoFrames(
@@ -786,12 +721,12 @@ extension H3Conditioning {
 
     private static func audioConditionRows(
         _ audio: H3DecodedAudio,
-        encoder: H3AudioVAEEncoder
-    ) -> MLXArray {
+        vae: H3AudioVAE
+    ) throws -> MLXArray {
         let length = min(audio.samples[0].count, audio.samples[1].count)
         let samples = audio.samples.flatMap { Array($0.prefix(length)) }
         let waveform = MLXArray(samples, [1, 2, length])
-        return H3Packing.packAudio(encoder.encode(waveform))
+        return try H3Packing.packAudio(vae.encode(waveform))
     }
 
     private static func geometry(

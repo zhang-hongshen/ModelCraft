@@ -35,7 +35,7 @@ actor H3ModelFactory {
         case .idle:
             let task = Task<H3Base, Error> {
                 try await configuration.download(hub: hub, progressHandler: progressHandler)
-                return try H3Base(hub: hub, configuration: configuration)
+                return H3Base(hub: hub, configuration: configuration)
             }
             states[configuration.task] = .loading(task)
             do {
@@ -47,5 +47,18 @@ actor H3ModelFactory {
                 throw error
             }
         }
+    }
+
+    /// Drops the cached model for a task and gives its weights back.
+    ///
+    /// A cached H3 Base holds every component it has loaded, up to the full
+    /// 144 GB working set, so a caller that is done with H3 — or that needs the
+    /// memory for another model family — releases it here instead of waiting for
+    /// the process to exit.
+    func evict(_ task: H3Configuration.Task) {
+        if case .loaded(let model) = states[task] {
+            model.cleanup()
+        }
+        states[task] = .idle
     }
 }

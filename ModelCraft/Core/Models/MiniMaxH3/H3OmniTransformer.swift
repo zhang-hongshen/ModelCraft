@@ -12,6 +12,474 @@ import MLX
 import MLXFast
 import MLXNN
 
+/// The Omni Transformer: the DiT that denoises video and audio together.
+///
+/// A `Module` whose parts are declared under the checkpoint's own names, so
+/// ``H3Loader/loadOmniTransformer(hub:configuration:computeDType:report:)``
+/// fills them with `update(parameters:)`. The names are the diffusers export's,
+/// which nests a one-element list and a two-stage feed-forward where the model
+/// has a projection and an MLP; the loader folds those differences before the
+/// parameters reach this module.
+///
+/// The layer stack is the exception and is not declared here. Its 50 layers are
+/// 64.56 GB, so ``layers`` holds a slot per layer and nothing more:
+/// ``runStack(_:)`` reads each one as a step reaches it.
+final class H3OmniTransformer: Module {
+    /// Immutable tensors shared by every denoise step of one render.
+    ///
+    /// The conditioning projection/refiner and RoPE table depend on the prompt
+    /// and packed geometry, not on sigma or the evolving latents. Keeping them
+    /// alive avoids rebuilding the position table and re-reading the refiner's
+    /// weights on every step. It is deliberately supplied by the caller rather
+    /// than kept as mutable state on the model: one model may serve multiple
+    /// prompts or geometries without a stale-cache hazard.
+    final class RenderState: @unchecked Sendable {
+        fileprivate let layout: H3Sequence
+        fileprivate let textTokenCount: Int
+        fileprivate let textStates: MLXArray
+        fileprivate let refined: MLXArray
+        fileprivate let ropeTable: MLXArray
+
+        fileprivate init(layout: H3Sequence, textTokenCount: Int,
+                         textStates: MLXArray, refined: MLXArray, ropeTable: MLXArray) {
+            self.layout = layout
+            self.textTokenCount = textTokenCount
+            self.textStates = textStates
+            self.refined = refined
+            self.ropeTable = ropeTable
+        }
+    }
+
+    let config: H3Configuration
+
+    /// Everything outside the layer stack, declared one level per level of the
+    /// checkpoint's names. 1.72 GB, read once per render.
+    @ModuleInfo(key: "context_embedder") var conditionProj: H3Projection
+    @ModuleInfo(key: "proj_in") var videoPatchProj: H3Projection
+    @ModuleInfo(key: "audio_proj_in") var audioPatchProj: H3Projection
+    @ModuleInfo(key: "token_refiner") var tokenRefiner: TokenRefiner
+    @ModuleInfo(key: "time_embedder") var timeEmbedder: TimeEmbedder
+    /// `norm_out` — the output norm and the AdaLN that modulates it.
+    @ModuleInfo(key: "norm_out") var outputLayer: H3OutputLayer
+    /// The two output heads. They sit beside `norm_out` rather than under it.
+    @ModuleInfo(key: "proj_out") var videoOut: H3Projection
+    @ModuleInfo(key: "audio_proj_out") var audioOut: H3Projection
+
+    /// The rotation frequencies. The diffusers export does not carry them — the
+    /// reference builds them from `rope_freq_dim` and `rope_theta`, and this does
+    /// the same arithmetic in double precision so the result is the tensor the
+    /// task export stores, to the last bit of its fp32 rounding.
+    let ropeInvFreq: MLXArray
+
+    /// Where the transformer lives, and which file of it this is — the task
+    /// preset decides which, so the URL is resolved when a read needs it.
+    private let hub: HubApi
+    let configuration: H3Configuration
+    private var url: URL {
+        get throws { try H3Loader.resolve(
+            hub: hub, configuration: configuration, key: .transformerWeights) }
+    }
+    /// The layer stack. `layers[i]` is layer `i` while it is in memory and `nil`
+    /// when it is not.
+    ///
+    /// The stack is 64.56 GB and is walked in full on each of the 20 denoise
+    /// steps, so no machine this app targets holds it. ``runStack(_:)`` reads each
+    /// layer as the step reaches it and gives it back on the way past, unless
+    /// ``releasesLayersAfterUse`` says this machine can afford to keep what it
+    /// has already read.
+    private var layers: [H3OmniTransformerLayer?]
+    /// Whether a step gives its layers back or keeps them for the next one.
+    ///
+    /// False at every tier this app has a preset for — see ``H3RuntimeProfile``.
+    let releasesLayersAfterUse: Bool
+    /// The dtype the layer stack runs in. H3 Base uses BF16 for its encoded
+    /// conditions and denoising path.
+    let computeDType: DType
+
+    /// The declaration, with every parameter present but unread, and no layer
+    /// built: the stack is read by ``runStack(_:)`` as a step reaches each layer,
+    /// unless the machine's profile keeps it whole.
+    ///
+    /// The caller fills what is declared here from the checkpoint and then hands
+    /// the model to the sampler — see
+    /// ``H3Loader/loadOmniTransformer(hub:configuration:computeDType:report:)``.
+    init(
+        config: H3Configuration,
+        hub: HubApi,
+        configuration: H3Configuration,
+        releasesLayersAfterUse: Bool,
+        computeDType: DType = .bfloat16
+    ) {
+        self.config = config
+        self.hub = hub
+        self.configuration = configuration
+        self.layers = Array(repeating: nil, count: config.numLayers)
+        self.releasesLayersAfterUse = releasesLayersAfterUse
+        self.computeDType = computeDType
+
+        // The residual stream is the encoder's width, so the patch projections
+        // lift a latent's patch features into it and the conditioning lifts the
+        // text encoder's hidden state.
+        self._conditionProj.wrappedValue = H3Projection(
+            inputDimensions: config.textDim, outputDimensions: config.hiddenSize)
+        self._videoPatchProj.wrappedValue = H3Projection(
+            inputDimensions: config.videoLatentDim * config.patchVolume,
+            outputDimensions: config.hiddenSize)
+        self._audioPatchProj.wrappedValue = H3Projection(
+            inputDimensions: config.audioLatentDim, outputDimensions: config.hiddenSize)
+        self._tokenRefiner.wrappedValue = TokenRefiner(config: config)
+        self._timeEmbedder.wrappedValue = TimeEmbedder(config: config)
+        self._outputLayer.wrappedValue = H3OutputLayer(config: config)
+        self._videoOut.wrappedValue = H3Projection(
+            inputDimensions: config.hiddenSize,
+            outputDimensions: config.videoLatentDim * config.patchVolume)
+        self._audioOut.wrappedValue = H3Projection(
+            inputDimensions: config.hiddenSize,
+            outputDimensions: config.audioLatentDim)
+        self.ropeInvFreq = MLXArray((0 ..< config.ropeInvFreqLen).map { i in
+            Float(1.0 / pow(config.ropeTheta, Double(2 * i) / Double(2 * config.ropeInvFreqLen)))
+        })
+    }
+
+    /// Precompute the exact prompt- and geometry-invariant DiT inputs for one
+    /// render. Call once before the sampler loop and pass the result to every
+    /// ``embed(videoLatent:audioLatent:textEmbeddings:sigmaVideo:geometry:textTags:condVideo:condAudio:renderState:)``
+    /// in that loop.
+    func prepareRender(
+        textEmbeddings: MLXArray,
+        layout: H3Sequence
+    ) throws -> RenderState {
+        precondition(layout.textTokens == textEmbeddings.dim(1))
+        let textStates = conditionProj(textEmbeddings[0].asType(computeDType))
+        let refined = tokenRefiner(textStates)
+        let pos = MLXArray(layout.positionIds.map { Float($0) }, [layout.totalTokens, 3])
+        let rope = H3RoPE.rotationTable(
+            angles: H3RoPE.angles(positionIds: pos, invFreq: ropeInvFreq)
+        ).asType(computeDType)
+        return RenderState(layout: layout, textTokenCount: textEmbeddings.dim(1), textStates: textStates,
+                           refined: refined, ropeTable: rope)
+    }
+
+    /// One denoise step's layers and everything they read from.
+    ///
+    /// The timestep embedding, modulation rows and RoPE table all come from sigma
+    /// and the packed geometry, so they cannot outlive the step that built them.
+    /// Handing the whole carrier to `run` means a caller walking the stack one
+    /// layer at a time recomputes none of it.
+    struct Step {
+        /// The packed rows entering the stack, `[layout.totalTokens, hidden]`.
+        let h: MLXArray
+        fileprivate let tEmb: MLXArray
+        fileprivate let index: ModulationIndex
+        fileprivate let table: MLXArray
+        fileprivate let layout: H3Sequence
+        fileprivate let plan: TimestepPlan
+        fileprivate let geometry: H3LatentGeometry
+    }
+
+    /// Opens one denoise step: everything before the layer stack.
+    ///
+    /// Conditions the prompt through the refiner, patchifies the latents, and
+    /// builds the timestep embedding and RoPE table every layer reads.
+    ///
+    /// - Parameters:
+    ///   - videoLatent: `[1,24,T,H,W]`
+    ///   - audioLatent: `[1,32,2,audioT]`
+    ///   - textEmbeddings: `[1, textLen, textDim]` — output of the H3 Encoder
+    ///   - renderState: carries the segment table and `[S,3]` position ids
+    func embed(videoLatent: MLXArray, audioLatent: MLXArray,
+                       textEmbeddings: MLXArray, sigmaVideo: Double,
+                       geometry: H3LatentGeometry, textTags: [Int]? = nil,
+                       condVideo: MLXArray? = nil,
+                       condAudio: MLXArray? = nil,
+                       renderState: RenderState? = nil) throws -> Step {
+        guard let renderState else {
+            throw H3EvaluatorError.invalidRequest(
+                rule: "missing H3 render layout",
+                detail: "embed was called before the task-specific packed sequence was prepared",
+                remedy: "prepare the FL2VA or Ref2VA render state before sampling.")
+        }
+        let layout = renderState.layout
+        let plan = TimestepPlan(sigmaVideo: sigmaVideo, segments: layout.segments)
+        let index = ModulationIndex(layout: layout, plan: plan, textTags: textTags)
+
+        // Text conditioning is projected in the transformer's working dtype.
+        precondition(renderState.textTokenCount == textEmbeddings.dim(1),
+                     "RenderState does not match this render's text length")
+        let refined = renderState.refined
+        // media path — patch projections are part of the fp32 island, so the
+        // rows go in as fp32 and the result is cast down to the compute dtype.
+        let videoRows = H3Packing.patchifyVideo(videoLatent.asType(.float32),
+                                                patch: config.patchSize)
+        let audioRows = H3Packing.packAudio(audioLatent.asType(.float32))
+
+        var allVideoRows = [MLXArray]()
+        var condVideoOffset = 0
+        for s in layout.segments {
+            if s.kind == .visualCondition {
+                // The layout says there are conditioning rows and the caller did
+                // not supply them. Reachable from ordinary wrong input — a
+                // keyframe declared but never encoded — so it refuses rather
+                // than trapping.
+                guard let condVideo = condVideo else {
+                    throw H3EvaluatorError.invalidRequest(
+                        rule: "missing conditioning rows",
+                        detail: "the packed layout declares a \(s.kind.rawValue) segment of "
+                              + "\(s.count) row(s), and no conditioning video was supplied",
+                        remedy: "encode every declared condition before sampling; the layout "
+                              + "and the rows are built from the same latents for this reason.")
+                }
+                let slice = condVideo[condVideoOffset ..< (condVideoOffset + s.count)]
+                allVideoRows.append(slice)
+                condVideoOffset += s.count
+            } else if s.kind == .video {
+                allVideoRows.append(videoRows)
+            }
+        }
+        let videoEmbed = videoPatchProj(concatenated(allVideoRows, axis: 0))
+
+        var allAudioRows = [MLXArray]()
+        var condAudioOffset = 0
+        for segment in layout.segments where segment.kind.isAudioStream {
+            if segment.kind == .audioCondition {
+                guard let condAudio else {
+                    throw H3EvaluatorError.invalidRequest(
+                        rule: "missing audio reference rows",
+                        detail: "the Ref2VA layout declares \(segment.count) audio condition row(s)",
+                        remedy: "encode every audio-bearing reference before sampling.")
+                }
+                let slice = condAudio[condAudioOffset ..< (condAudioOffset + segment.count)]
+                allAudioRows.append(slice)
+                condAudioOffset += segment.count
+            } else {
+                allAudioRows.append(audioRows)
+            }
+        }
+        let audioEmbed = audioPatchProj(concatenated(allAudioRows, axis: 0))
+
+        // pack segments in the layout's segment table order
+        let dtype = computeDType
+        var hSegments = [MLXArray]()
+        var vEmbedOffset = 0
+        var aEmbedOffset = 0
+
+        for s in layout.segments {
+            switch s.kind {
+            case .text:
+                hSegments.append(refined.asType(dtype))
+            case .visualCondition, .video:
+                let slice = videoEmbed[vEmbedOffset ..< (vEmbedOffset + s.count)].asType(dtype)
+                hSegments.append(slice)
+                vEmbedOffset += s.count
+            case .audioCondition, .audio:
+                let slice = audioEmbed[aEmbedOffset ..< (aEmbedOffset + s.count)].asType(dtype)
+                hSegments.append(slice)
+                aEmbedOffset += s.count
+            }
+        }
+        let h = concatenated(hSegments, axis: 0)
+
+        precondition(h.dim(0) == layout.totalTokens,
+                     "packed \(h.dim(0)) rows, layout says \(layout.totalTokens)")
+
+        let tEmb = timeEmbedder(MLXArray(plan.values)).asType(dtype)
+
+        return Step(h: h, tEmb: tEmb, index: index, table: renderState.ropeTable,
+                    layout: layout, plan: plan, geometry: geometry)
+    }
+
+    /// Runs one layer of the stack on the step's hidden state.
+    ///
+    /// This is the only place a layer is invoked, so there is no second
+    /// arithmetic path for a layer to disagree with itself about.
+    private func run(_ layer: H3OmniTransformerLayer, _ step: Step, h: MLXArray) -> MLXArray {
+        layer(h, tEmb: step.tEmb, index: step.index, ropeTable: step.table)
+    }
+
+    /// Runs the whole stack for one denoise step, reading each layer as the step
+    /// reaches it.
+    ///
+    /// A layer already in memory costs nothing; one that is not reads its
+    /// checkpoint file. Whether the step keeps what it read is the machine's
+    /// decision, not a second code path: see ``releasesLayersAfterUse``.
+    func runStack(_ step: Step) throws -> (video: MLXArray, audio: MLXArray) {
+        var h = step.h
+        for index in 0 ..< config.numLayers {
+            if layers[index] == nil {
+                layers[index] = try H3Loader.loadTransformerLayer(
+                    index: index, url: try url, config: config)
+            }
+            h = run(layers[index]!, step, h: h)
+            if releasesLayersAfterUse {
+                // The next step starts at layer 0 again, and a layer beyond this
+                // one is 1.29 GB nothing is going to ask for in between.
+                layers[index] = nil
+            }
+        }
+        return finish(h, step)
+    }
+
+    /// Closes one denoise step: the final layer, then the latent-shaped velocity
+    /// for both streams.
+    ///
+    /// Returns exactly what the reference does. Two sign conventions are baked in
+    /// and neither is cosmetic: **both streams are negated**, and audio is
+    /// additionally scaled by `d(sigma_a)/d(sigma_v)` so that the single flat ODE
+    /// the sampler integrates is each stream's true ODE on its own shifted
+    /// schedule.
+    func finish(_ h: MLXArray, _ step: Step) -> (video: MLXArray, audio: MLXArray) {
+        let layout = step.layout
+        let plan = step.plan
+
+        // The final layer's AdaLN has one modality, so these rows are timestep
+        // rows — not the `row * 3 + tag` a layer uses.
+        let videoSeg = ModSegment(start: layout.videoRange.lowerBound,
+                                  stop: layout.videoRange.upperBound, row: plan.row(for: .video))
+        let audioSeg = ModSegment(start: layout.audioRange.lowerBound,
+                                  stop: layout.audioRange.upperBound, row: plan.row(for: .audio))
+        let m = outputLayer.adaln(step.tEmb)
+        precondition(m.count == 2, "the output AdaLN must expand to 2, got \(m.count)")
+        let shift = m[0], scale = m[1]
+
+        /// The heads are the export's fp32 island, so the whole head runs there
+        /// rather than in the block's working dtype.
+        func head(_ seg: ModSegment, _ out: H3Projection) -> MLXArray {
+            let slice = h.ndim == 3 ? h[0..., seg.start ..< seg.stop] : h[seg.start ..< seg.stop]
+            let sc = scale[seg.row].expandedDimensions(axis: 0)
+            let sh = shift[seg.row].expandedDimensions(axis: 0)
+            let x = (outputLayer.norm(slice) * (1.0 + sc) + sh).asType(.float32)
+            return matmul(x, out.weight.asType(.float32).T) + out.bias.asType(.float32)
+        }
+        let (v, a) = (head(videoSeg, videoOut), head(audioSeg, audioOut))
+
+        let geometry = step.geometry
+        let video = H3Packing.unpatchifyVideo(v, t: geometry.latentT,
+                                              h: geometry.latentH / config.patchSize[1],
+                                              w: geometry.latentW / config.patchSize[2],
+                                              channels: config.videoLatentDim,
+                                              patch: config.patchSize)
+        let audio = H3Packing.unpackAudio(a)
+        return (-video, MLXArray(-plan.audioSlope) * audio)
+    }
+
+}
+
+
+/// One layer of the Omni Transformer's stack.
+///
+/// The stack is 50 of these. Each is 1.29 GB, so which ones are in memory at a
+/// given moment is the whole memory question, and a layer is therefore the unit
+/// a caller loads, runs and lets go of.
+///
+/// A `Module` whose parts are declared one level per level of the checkpoint's
+/// names, so ``H3Loader/loadTransformerLayer(index:url:config:)`` builds one by
+/// filling this declaration from the tensors whose names start `blocks.<index>.`:
+/// the names and the structure are the same statement. That matters here — a
+/// mis-wiring would not fail to load, it would produce a plausible-looking wrong
+/// video.
+final class H3OmniTransformerLayer: Module {
+    @ModuleInfo var norm1: H3RMSNorm
+    @ModuleInfo var norm2: H3RMSNorm
+    @ModuleInfo var attn: AttentionLayer
+    @ModuleInfo(key: "ff") var ff: H3FeedForward
+    @ModuleInfo(key: "adaln_proj") var adaln: AdalnProj
+
+    /// The declaration, with every parameter present but unread.
+    ///
+    /// `adaln_proj` expands to 6 because a block modulates three streams — video,
+    /// text and audio — with a shift and a scale each.
+    init(config: H3Configuration, fp32Attention: Bool = false) {
+        self._norm1.wrappedValue = H3RMSNorm(dimensions: config.hiddenSize, eps: config.normEps)
+        self._norm2.wrappedValue = H3RMSNorm(dimensions: config.hiddenSize, eps: config.normEps)
+        self._attn.wrappedValue = AttentionLayer(config: config, fp32Attention: fp32Attention)
+        self._ff.wrappedValue = H3FeedForward(config: config)
+        self._adaln.wrappedValue = AdalnProj(
+            expand: 6, modalities: 3, hidden: config.hiddenSize,
+            inputDim: config.timeEmbedDim)
+    }
+
+    func callAsFunction(_ x: MLXArray, tEmb: MLXArray, index: ModulationIndex,
+                               ropeTable: MLXArray?) -> MLXArray {
+        let m = adaln(tEmb)
+        precondition(m.count == 6, "H3OmniTransformerLayer AdaLN must expand to 6, got \(m.count)")
+
+        func norm(_ v: MLXArray, _ n: H3RMSNorm, _ shift: MLXArray,
+                  _ scale: MLXArray) -> MLXArray {
+            modScaleShift(n(v), shift: shift, scale: scale, index: index)
+        }
+        func gated(_ v: MLXArray, _ gate: MLXArray, _ other: MLXArray) -> MLXArray {
+            modGate(v, gate: gate, other: other, index: index)
+        }
+
+        let h1 = norm(x, norm1, m[0], m[1])
+        let x1 = gated(x, m[2], attn(h1, ropeTable: ropeTable))
+        let h2 = norm(x1, norm2, m[3], m[4])
+        return gated(x1, m[5], ff(h2))
+    }
+}
+
+/// Two pre-norm blocks with plain residuals, then a final RMSNorm. No AdaLN,
+/// no RoPE — the refiner sees text only.
+final class TokenRefiner: Module {
+    /// One of the two: the same attention and MLP a DiT block has, without the
+    /// modulation.
+    final class Block: Module {
+        @ModuleInfo var norm1: H3RMSNorm
+        @ModuleInfo var norm2: H3RMSNorm
+        @ModuleInfo var attn: AttentionLayer
+        @ModuleInfo(key: "ff") var ff: H3FeedForward
+
+        init(config: H3Configuration) {
+            self._norm1.wrappedValue = H3RMSNorm(
+                dimensions: config.hiddenSize, eps: config.normEps)
+            self._norm2.wrappedValue = H3RMSNorm(
+                dimensions: config.hiddenSize, eps: config.normEps)
+            self._attn.wrappedValue = AttentionLayer(config: config)
+            self._ff.wrappedValue = H3FeedForward(config: config)
+        }
+
+        func callAsFunction(_ x: MLXArray) -> MLXArray {
+            let a = attn(norm1(x), ropeTable: nil) + x
+            return ff(norm2(a)) + a
+        }
+    }
+
+    @ModuleInfo(key: "refiner_blocks") var blocks: [Block]
+    @ModuleInfo(key: "final_norm") var finalNorm: H3RMSNorm
+
+    init(config: H3Configuration) {
+        self._blocks.wrappedValue = (0 ..< config.tokenRefinerLayers).map { _ in
+            Block(config: config)
+        }
+        self._finalNorm.wrappedValue = H3RMSNorm(
+            dimensions: config.hiddenSize, eps: config.finalNormEps)
+    }
+
+    func callAsFunction(_ x: MLXArray) -> MLXArray {
+        var h = x
+        for b in blocks { h = b(h) }
+        return finalNorm(h)
+    }
+}
+
+/// `norm_out` — the output norm and the AdaLN that modulates it.
+///
+/// The same shape a block's AdaLN has, with one modality and two expansions
+/// instead of three and six, so its rows are timestep rows rather than
+/// `timestepRow * 3 + tag`.
+final class H3OutputLayer: Module {
+    @ModuleInfo var norm: H3RMSNorm
+    @ModuleInfo(key: "linear") var adaln: H3Projection
+
+    init(config: H3Configuration) {
+        self._norm.wrappedValue = H3RMSNorm(
+            dimensions: config.hiddenSize, eps: config.finalNormEps)
+        self._adaln.wrappedValue = H3Projection(
+            inputDimensions: config.timeEmbedDim,
+            outputDimensions: config.finalAdalnOutFeatures)
+    }
+}
+
 
 struct ModSegment: Sendable, Equatable {
     let start: Int
@@ -92,12 +560,23 @@ func modGate(_ x: MLXArray, gate: MLXArray, other: MLXArray,
 /// RMSNorm over the last axis: `x * rsqrt(mean(x^2) + eps) * weight`.
 ///
 /// Computed in fp32 and cast back to the input dtype.
-struct H3RMSNorm {
-    let weight: MLXArray
+///
+/// A `Module` so the layer stacks can declare one and let `update(parameters:)`
+/// fill it by path. The tensor-taking initializer stays for callers that already
+/// hold the weight; `dimensions` allocates the shape that lookup replaces, which
+/// is what a declaration needs, since a parameter is filled by being found in the
+/// module's own structure.
+final class H3RMSNorm: Module {
+    @ParameterInfo var weight: MLXArray
     let eps: Float
     init(weight: MLXArray, eps: Float) {
-        self.weight = weight
         self.eps = eps
+        self._weight.wrappedValue = weight
+    }
+
+    init(dimensions: Int, eps: Float) {
+        self.eps = eps
+        self._weight.wrappedValue = MLXArray.ones([dimensions])
     }
 
     func callAsFunction(_ x: MLXArray) -> MLXArray {
@@ -114,42 +593,39 @@ struct H3RMSNorm {
 /// tensors of `[M * modalities, hidden]`. The reshape interleaves modalities
 /// **within** each timestep, which is what makes the row index
 /// `timestepRow * modalities + modalityTag`.
-struct AdalnProj {
-    let weight: MLXArray      // [expand * hidden * modalities, tDim]
-    let bias: MLXArray?
+final class AdalnProj: Module {
+    @ModuleInfo(key: "linear") var linear: H3Projection   // [expand * hidden * modalities, tDim]
     let expand: Int
     let modalities: Int
     let hidden: Int
     let applySiLU: Bool
-    /// Compute the projection in fp32 when requested and cast the result back to
-    /// the model's working dtype.
+    /// Compute the projection in fp32 and cast the result back to the model's
+    /// working dtype.
+    ///
+    /// The AdaLN matrices are the largest in a layer and the modulation they
+    /// produce is small, so the extra precision is nearly free.
     let computeFP32: Bool
-    /// Optional persistent fp32 copy for callers that prefer stable residency
-    /// over repeated conversion of the AdaLN matrices.
-    let residentFP32Weight: MLXArray?
 
-    init(weight: MLXArray, bias: MLXArray?, expand: Int, modalities: Int,
-                hidden: Int, applySiLU: Bool = true, computeFP32: Bool = true,
-                keepFP32Resident: Bool = false) {
-        self.weight = weight
-        self.bias = bias
+    init(expand: Int, modalities: Int, hidden: Int, inputDim: Int,
+         applySiLU: Bool = true, computeFP32: Bool = true) {
         self.expand = expand
         self.modalities = modalities
         self.hidden = hidden
         self.applySiLU = applySiLU
         self.computeFP32 = computeFP32
-        self.residentFP32Weight = keepFP32Resident && computeFP32 ? weight.asType(.float32) : nil
+        self._linear.wrappedValue = H3Projection(
+            inputDimensions: inputDim, outputDimensions: expand * hidden * modalities)
     }
 
     /// Returns `expand` tensors of `[M * modalities, hidden]`, in the weight's
     /// dtype whatever the internal precision.
     func callAsFunction(_ tEmb: MLXArray) -> [MLXArray] {
-        let out = weight.dtype
+        let out = linear.weight.dtype
         let dt: DType = computeFP32 ? .float32 : out
         let input = applySiLU ? silu(tEmb.asType(dt)) : tEmb.asType(dt)
-        let projectionWeight = dt == .float32 ? (residentFP32Weight ?? weight.asType(dt)) : weight
-        var x = matmul(input, projectionWeight.T)
-        if let bias { x = x + bias.asType(dt) }
+        let weight = dt == .float32 ? linear.weight.asType(dt) : linear.weight
+        var x = matmul(input, weight.T)
+        x = x + linear.bias.asType(dt)
         x = x.reshaped([x.dim(0) * modalities, expand * hidden]).asType(out)
         return (0 ..< expand).map { x[0..., ($0 * hidden) ..< (($0 + 1) * hidden)] }
     }
@@ -193,27 +669,35 @@ enum SplitHalfRoPE {
 /// Named `AttentionLayer` rather than `H3Attention` because `H3Attention` is the
 /// module that owns the backend protocol, and a type that shadows its own
 /// module's name reads as a mistake even when it compiles.
-struct AttentionLayer {
-    let qkvWeight: MLXArray     // [3 * inner, hidden], no bias
-    let outWeight: MLXArray     // [hidden, inner], no bias
-    let qNorm: H3RMSNorm
-    let kNorm: H3RMSNorm
+final class AttentionLayer: Module {
+    /// Separate projections, and none of them carries a bias — which is why the
+    /// export has a `weight` for each and no `bias`.
+    @ModuleInfo(key: "to_q") var toQ: Linear
+    @ModuleInfo(key: "to_k") var toK: Linear
+    @ModuleInfo(key: "to_v") var toV: Linear
+    @ModuleInfo(key: "to_out") var toOut: H3Projection   // `to_out.0`, a one-element list
+    @ModuleInfo(key: "q_norm") var qNorm: H3RMSNorm
+    @ModuleInfo(key: "k_norm") var kNorm: H3RMSNorm
     let heads: Int
     let headDim: Int
     /// Run the attention operation in fp32 while the rest of the block stays in
     /// the model's working dtype.
     let fp32Attention: Bool
 
-    init(qkvWeight: MLXArray, outWeight: MLXArray,
-                qNormWeight: MLXArray, kNormWeight: MLXArray,
-                heads: Int, headDim: Int, eps: Float, fp32Attention: Bool = false) {
-        self.qkvWeight = qkvWeight
-        self.outWeight = outWeight
-        self.qNorm = H3RMSNorm(weight: qNormWeight, eps: eps)
-        self.kNorm = H3RMSNorm(weight: kNormWeight, eps: eps)
-        self.heads = heads
-        self.headDim = headDim
+    init(config: H3Configuration, fp32Attention: Bool = false) {
+        // Attention widens past the residual: 56 heads of 128 is 7168 while the
+        // block's hidden size is 5376, and the output projection brings it back.
+        let inner = config.numHeads * config.headDim
+        self.heads = config.numHeads
+        self.headDim = config.headDim
         self.fp32Attention = fp32Attention
+        self._toQ.wrappedValue = Linear(config.hiddenSize, inner, bias: false)
+        self._toK.wrappedValue = Linear(config.hiddenSize, inner, bias: false)
+        self._toV.wrappedValue = Linear(config.hiddenSize, inner, bias: false)
+        self._toOut.wrappedValue = H3Projection(
+            inputDimensions: inner, outputDimensions: config.hiddenSize)
+        self._qNorm.wrappedValue = H3RMSNorm(dimensions: config.headDim, eps: config.qkNormEps)
+        self._kNorm.wrappedValue = H3RMSNorm(dimensions: config.headDim, eps: config.qkNormEps)
     }
 
     /// Scaled dot-product attention over `[S, heads, headDim]` or
@@ -242,13 +726,10 @@ struct AttentionLayer {
     /// `x` is `[S, hidden]` or `[B, S, hidden]`.
     ///
     func callAsFunction(_ x: MLXArray, ropeTable: MLXArray?) -> MLXArray {
-        let qkv = matmul(x, qkvWeight.T)
-        let qkvParts = qkv.split(parts: 3, axis: -1)
-
-        let targetShape = qkvParts[0].shape.dropLast() + [heads, headDim]
-        var q = qkvParts[0].reshaped(targetShape)
-        var k = qkvParts[1].reshaped(targetShape)
-        let v = qkvParts[2].reshaped(targetShape)
+        let targetShape = x.shape.dropLast() + [heads, headDim]
+        var q = toQ(x).reshaped(targetShape)
+        var k = toK(x).reshaped(targetShape)
+        let v = toV(x).reshaped(targetShape)
 
         // RMSNorm is applied per head BEFORE rope, as the fused kernel does.
         q = qNorm(q)
@@ -264,81 +745,65 @@ struct AttentionLayer {
             v: v,
             headDim: headDim,
             fp32: fp32Attention)
-        return matmul(merged, outWeight.T)
+        return toOut(merged)
     }
 }
 
 /// `fc2(silu(gate) * up)` where `fc1` emits `2 * ffn` and gate is the first
 /// half of the split.
-struct H3MLP {
-    let fc1: MLXArray   // [2 * ffn, hidden]
-    let fc2: MLXArray   // [hidden, ffn]
+final class H3FeedForward: Module {
+    /// `w1` emits twice the feed-forward width and the first half is the gate.
+    @ModuleInfo var w1: Linear   // [2 * ffn, hidden]
+    @ModuleInfo var w2: Linear   // [hidden, ffn]
 
-    init(fc1: MLXArray, fc2: MLXArray) {
-        self.fc1 = fc1
-        self.fc2 = fc2
+    init(config: H3Configuration) {
+        self._w1.wrappedValue = Linear(config.hiddenSize, 2 * config.ffnHidden, bias: false)
+        self._w2.wrappedValue = Linear(config.ffnHidden, config.hiddenSize, bias: false)
     }
 
     func callAsFunction(_ x: MLXArray) -> MLXArray {
-        let h = matmul(x, fc1.T)
-        let parts = h.split(parts: 2, axis: -1)
-        let gate = parts[0]
-        let up = parts[1]
-        return matmul(silu(gate) * up, fc2.T)
+        let parts = w1(x).split(parts: 2, axis: -1)
+        return w2(silu(parts[0]) * parts[1])
     }
 }
 
-/// One transformer block.
+/// A `weight` and a `bias` under one name: the shape most of this checkpoint's
+/// affine maps take, in the DiT and in the Visual VAE both.
 ///
-///     shift_msa, scale_msa, gate_msa, shift_mlp, scale_mlp, gate_mlp = adaln(t_emb)
-///     h = modScaleShift(norm1(x), shift_msa, scale_msa)
-///     x = modGate(x, gate_msa, attn(h))
-///     h = modScaleShift(norm2(x), shift_mlp, scale_mlp)
-///     x = modGate(x, gate_mlp, mlp(h))
-///
-/// The reference mutates `x` in place and returns the same object. We return a
-/// new array — functionally identical, and MLX has no in-place residual to
-/// preserve.
-struct H3TransformerBlock {
-    let norm1: H3RMSNorm
-    let norm2: H3RMSNorm
-    let attn: AttentionLayer
-    let mlp: H3MLP
-    let adaln: AdalnProj
+/// Held rather than given to MLX as a `Linear` because the callers choose their
+/// own arithmetic dtype per call — the AdaLN projection projects in fp32 and
+/// reshapes its output into `expand` tensors, the final layer's heads are the
+/// export's fp32 island, and the VAE's `post_quant_conv` flattens a convolution's
+/// weight before using it. A `Linear` would decide all three for them.
+final class H3Projection: Module {
+    @ParameterInfo var weight: MLXArray
+    @ParameterInfo var bias: MLXArray
 
-    init(norm1: H3RMSNorm, norm2: H3RMSNorm, attn: AttentionLayer,
-                mlp: H3MLP, adaln: AdalnProj) {
-        self.norm1 = norm1
-        self.norm2 = norm2
-        self.attn = attn
-        self.mlp = mlp
-        self.adaln = adaln
+    init(weight: MLXArray, bias: MLXArray) {
+        self._weight.wrappedValue = weight
+        self._bias.wrappedValue = bias
     }
 
-    func callAsFunction(_ x: MLXArray, tEmb: MLXArray, index: ModulationIndex,
-                               ropeTable: MLXArray?) -> MLXArray {
-        let m = adaln(tEmb)
-        precondition(m.count == 6, "H3TransformerBlock AdaLN must expand to 6, got \(m.count)")
+    /// The declaration's placeholder — the shapes `update` replaces.
+    init(inputDimensions: Int, outputDimensions: Int) {
+        self._weight.wrappedValue = MLXArray.zeros([outputDimensions, inputDimensions])
+        self._bias.wrappedValue = MLXArray.zeros([outputDimensions])
+    }
 
-        func norm(_ v: MLXArray, _ n: H3RMSNorm, _ shift: MLXArray,
-                  _ scale: MLXArray) -> MLXArray {
-            modScaleShift(n(v), shift: shift, scale: scale, index: index)
-        }
-        func gated(_ v: MLXArray, _ gate: MLXArray, _ other: MLXArray) -> MLXArray {
-            modGate(v, gate: gate, other: other, index: index)
-        }
+    /// The declaration's placeholder where the weight is not `[out, in]`.
+    ///
+    /// A checkpoint that stores its convolutions PyTorch-style keeps the kernel
+    /// axes: a 1x1x1 is `[out, in, 1, 1, 1]`, and the caller flattens it where it
+    /// is used because the stride equals the kernel.
+    init(weightShape: [Int], biasShape: [Int]) {
+        self._weight.wrappedValue = MLXArray.zeros(weightShape)
+        self._bias.wrappedValue = MLXArray.zeros(biasShape)
+    }
 
-        let h1 = norm(x, norm1, m[0], m[1])
-        let x1 = gated(x, m[2], attn(h1, ropeTable: ropeTable))
-        let h2 = norm(x1, norm2, m[3], m[4])
-        return gated(x1, m[5], mlp(h2))
+    func callAsFunction(_ x: MLXArray) -> MLXArray {
+        matmul(x, weight.T) + bias
     }
 }
-
-
-// Construction from the indexed SafeTensors checkpoint lives beside the
-// Transformer implementation. This keeps the paper-facing component a single
-// source of truth: no separate builder layer is needed.
 
 /// Packing helpers. These decide the ROW ORDER of the packed sequence, so an
 /// error here misaligns every downstream tap while keeping all the shapes
@@ -414,30 +879,24 @@ enum H3RoPE {
 /// Sinusoidal-style timestep embedding: `proj_out(silu(proj_in(t)))`.
 /// Only used when the model export has no `adaln_t_table`; H3 Base does not, which
 /// the inventory confirms by deriving `timestepInputDim` from `proj_in`.
-struct TimeEmbedder {
-    let projInWeight: MLXArray
-    let projInBias: MLXArray?
-    let projOutWeight: MLXArray
-    let projOutBias: MLXArray?
+final class TimeEmbedder: Module {
+    @ModuleInfo(key: "linear_1") var projIn: H3Projection
+    @ModuleInfo(key: "linear_2") var projOut: H3Projection
     let inputDim: Int
 
-    init(projInWeight: MLXArray, projInBias: MLXArray?,
-                projOutWeight: MLXArray, projOutBias: MLXArray?, inputDim: Int) {
-        self.projInWeight = projInWeight
-        self.projInBias = projInBias
-        self.projOutWeight = projOutWeight
-        self.projOutBias = projOutBias
-        self.inputDim = inputDim
+    init(config: H3Configuration) {
+        self.inputDim = config.timestepInputDim
+        self._projIn.wrappedValue = H3Projection(
+            inputDimensions: config.timestepInputDim,
+            outputDimensions: config.timeEmbedHidden)
+        self._projOut.wrappedValue = H3Projection(
+            inputDimensions: config.timeEmbedHidden,
+            outputDimensions: config.timeEmbedDim)
     }
 
     /// `t` is `[M]` timestep values in [0, 1].
     func callAsFunction(_ t: MLXArray) -> MLXArray {
-        var h = matmul(sinusoid(t), projInWeight.T)
-        if let projInBias { h = h + projInBias }
-        h = silu(h)
-        var o = matmul(h, projOutWeight.T)
-        if let projOutBias { o = o + projOutBias }
-        return o
+        projOut(silu(projIn(sinusoid(t))))
     }
 
     /// Standard half-cos/half-sin frequency embedding of width `inputDim`,
@@ -454,438 +913,5 @@ struct TimeEmbedder {
         let freqs = exp(MLXArray(0 ..< half).asType(.float32) * scale / Float(half))
         let a = t.asType(.float32).expandedDimensions(axis: -1) * freqs.reshaped([1, -1])
         return concatenated([cos(a), sin(a)], axis: -1)
-    }
-}
-
-/// Final layer: `video_out` / `audio_out` heads over the target segments.
-///
-/// The heads are the model export's **fp32 island**. Casting them to bf16 with
-/// everything else silently changes the output.
-///
-/// Its AdaLN has `modalities = 1`, unlike a block's 3 — so `ModSegment.row`
-/// here is the **timestep row alone**, not `timestepRow * 3 + tag`.
-struct FinalLayer {
-    let norm: H3RMSNorm
-    let adaln: AdalnProj
-    let videoOutWeight: MLXArray
-    let videoOutBias: MLXArray?
-    let audioOutWeight: MLXArray
-    let audioOutBias: MLXArray?
-
-    init(norm: H3RMSNorm, adaln: AdalnProj,
-                videoOutWeight: MLXArray, videoOutBias: MLXArray?,
-                audioOutWeight: MLXArray, audioOutBias: MLXArray?) {
-        self.norm = norm
-        self.adaln = adaln
-        self.videoOutWeight = videoOutWeight
-        self.videoOutBias = videoOutBias
-        self.audioOutWeight = audioOutWeight
-        self.audioOutBias = audioOutBias
-    }
-
-    /// `seg` entries are `(start, stop, modRow)`.
-    func callAsFunction(_ h: MLXArray, tEmb: MLXArray,
-                               videoSeg: ModSegment, audioSeg: ModSegment)
-        -> (video: MLXArray, audio: MLXArray) {
-        let m = adaln(tEmb)
-        precondition(m.count == 2, "FinalLayer AdaLN must expand to 2, got \(m.count)")
-        let shift = m[0], scale = m[1]
-
-        func head(_ seg: ModSegment, _ w: MLXArray, _ b: MLXArray?) -> MLXArray {
-            let slice = h.ndim == 3 ? h[0..., seg.start ..< seg.stop] : h[seg.start ..< seg.stop]
-            let sc = scale[seg.row].expandedDimensions(axis: 0)
-            let sh = shift[seg.row].expandedDimensions(axis: 0)
-            let x = (norm(slice) * (1.0 + sc) + sh).asType(.float32)
-            var o = matmul(x, w.asType(.float32).T)
-            if let b { o = o + b.asType(.float32) }
-            return o
-        }
-        return (head(videoSeg, videoOutWeight, videoOutBias),
-                head(audioSeg, audioOutWeight, audioOutBias))
-    }
-}
-
-/// The assembled H3 Base Omni Transformer. The tokenizer, text encoder and two
-/// VAEs remain separate paper components and are connected by H3Base.
-struct H3OmniTransformer {
-    /// Immutable tensors shared by every denoise step of one render.
-    ///
-    /// The conditioning projection/refiner and RoPE table depend on the prompt
-    /// and packed geometry, not on sigma or the evolving latents. Keeping them
-    /// alive avoids rebuilding the position table and re-reading the refiner's
-    /// weights on every step. It is deliberately supplied by the caller rather
-    /// than kept as mutable state on the model: one model may serve multiple
-    /// prompts or geometries without a stale-cache hazard.
-    final class RenderState: @unchecked Sendable {
-        fileprivate let layout: H3Sequence
-        fileprivate let textTokenCount: Int
-        fileprivate let textStates: MLXArray
-        fileprivate let refined: MLXArray
-        fileprivate let ropeTable: MLXArray
-
-        fileprivate init(layout: H3Sequence, textTokenCount: Int,
-                         textStates: MLXArray, refined: MLXArray, ropeTable: MLXArray) {
-            self.layout = layout
-            self.textTokenCount = textTokenCount
-            self.textStates = textStates
-            self.refined = refined
-            self.ropeTable = ropeTable
-        }
-    }
-
-    let config: H3Configuration
-    let conditionProj: (weight: MLXArray, bias: MLXArray?)
-    let videoPatchProj: (weight: MLXArray, bias: MLXArray?)
-    let audioPatchProj: (weight: MLXArray, bias: MLXArray?)
-    let tokenRefiner: TokenRefiner
-    let timeEmbedder: TimeEmbedder
-    let blocks: [H3TransformerBlock]
-    let finalLayer: FinalLayer
-    let ropeInvFreq: MLXArray
-    /// The dtype the block stack runs in. H3 Base uses BF16 for its encoded
-    /// conditions and denoising path.
-    let computeDType: DType
-
-    init(config: H3Configuration,
-                conditionProj: (weight: MLXArray, bias: MLXArray?),
-                videoPatchProj: (weight: MLXArray, bias: MLXArray?),
-                audioPatchProj: (weight: MLXArray, bias: MLXArray?),
-                tokenRefiner: TokenRefiner, timeEmbedder: TimeEmbedder,
-                blocks: [H3TransformerBlock], finalLayer: FinalLayer, ropeInvFreq: MLXArray,
-                computeDType: DType = .bfloat16) {
-        self.config = config
-        self.conditionProj = conditionProj
-        self.videoPatchProj = videoPatchProj
-        self.audioPatchProj = audioPatchProj
-        self.tokenRefiner = tokenRefiner
-        self.timeEmbedder = timeEmbedder
-        self.blocks = blocks
-        self.finalLayer = finalLayer
-        self.ropeInvFreq = ropeInvFreq
-        self.computeDType = computeDType
-    }
-
-    private func linear(_ x: MLXArray, _ p: (weight: MLXArray, bias: MLXArray?)) -> MLXArray {
-        var o = matmul(x, p.weight.T)
-        if let b = p.bias { o = o + b }
-        return o
-    }
-
-    /// Precompute the exact prompt- and geometry-invariant DiT inputs for one
-    /// render. Call once before the sampler loop and pass the result to every
-    /// velocity invocation in that loop.
-    func prepareRender(
-        textEmbeddings: MLXArray,
-        layout: H3Sequence
-    ) throws -> RenderState {
-        precondition(layout.textTokens == textEmbeddings.dim(1))
-        let textStates = linear(textEmbeddings[0].asType(computeDType), conditionProj)
-        let refined = tokenRefiner(textStates)
-        let pos = MLXArray(layout.positionIds.map { Float($0) }, [layout.totalTokens, 3])
-        let rope = H3RoPE.rotationTable(
-            angles: H3RoPE.angles(positionIds: pos, invFreq: ropeInvFreq)
-        ).asType(computeDType)
-        return RenderState(layout: layout, textTokenCount: textEmbeddings.dim(1), textStates: textStates,
-                           refined: refined, ropeTable: rope)
-    }
-
-    /// One forward pass, in packed-row space.
-    ///
-    /// Returns the final layer's raw video and audio head outputs. The public
-    /// velocity method reshapes those outputs back into latent tensors.
-    ///
-    /// - Parameters:
-    ///   - videoLatent:    ///   - audioLatent: `[1,32,2,audioT]`
-    ///   - textEmbeddings: `[1, textLen, textDim]` — output of the H3 Encoder
-    ///   - layout: carries the segment table and `[S,3]` position ids
-    func packedForward(videoLatent: MLXArray, audioLatent: MLXArray,
-                              textEmbeddings: MLXArray, layout: H3Sequence,
-                              plan: TimestepPlan, index: ModulationIndex,
-                              renderState: RenderState? = nil,
-                              condVideo: MLXArray? = nil,
-                              condAudio: MLXArray? = nil)
-        throws -> (video: MLXArray, audio: MLXArray) {
-
-        // Text conditioning is projected in the transformer's working dtype.
-        let textStates: MLXArray
-        let refined: MLXArray
-        if let renderState {
-            precondition(renderState.layout == layout && renderState.textTokenCount == textEmbeddings.dim(1),
-                         "RenderState does not match this render's sequence or text length")
-            refined = renderState.refined
-            textStates = renderState.textStates
-        } else {
-            textStates = linear(textEmbeddings[0].asType(computeDType), conditionProj)
-            refined = tokenRefiner(textStates)
-        }
-        // media path — patch projections are part of the fp32 island, so the
-        // rows go in as fp32 and the result is cast down to the compute dtype.
-        let videoRows = H3Packing.patchifyVideo(videoLatent.asType(.float32),
-                                                patch: config.patchSize)
-        let audioRows = H3Packing.packAudio(audioLatent.asType(.float32))
-
-        var allVideoRows = [MLXArray]()
-        var condVideoOffset = 0
-        for s in layout.segments {
-            if s.kind == .visualCondition {
-                // The layout says there are conditioning rows and the caller did
-                // not supply them. Reachable from ordinary wrong input — a
-                // keyframe declared but never encoded — so it refuses rather
-                // than trapping.
-                guard let condVideo = condVideo else {
-                    throw H3EvaluatorError.invalidRequest(
-                        rule: "missing conditioning rows",
-                        detail: "the packed layout declares a \(s.kind.rawValue) segment of "
-                              + "\(s.count) row(s), and no conditioning video was supplied",
-                        remedy: "encode every declared condition before sampling; the layout "
-                              + "and the rows are built from the same latents for this reason.")
-                }
-                let slice = condVideo[condVideoOffset ..< (condVideoOffset + s.count)]
-                allVideoRows.append(slice)
-                condVideoOffset += s.count
-            } else if s.kind == .video {
-                allVideoRows.append(videoRows)
-            }
-        }
-        let videoEmbed = linear(concatenated(allVideoRows, axis: 0), videoPatchProj)
-
-        var allAudioRows = [MLXArray]()
-        var condAudioOffset = 0
-        for segment in layout.segments where segment.kind.isAudioStream {
-            if segment.kind == .audioCondition {
-                guard let condAudio else {
-                    throw H3EvaluatorError.invalidRequest(
-                        rule: "missing audio reference rows",
-                        detail: "the Ref2VA layout declares \(segment.count) audio condition row(s)",
-                        remedy: "encode every audio-bearing reference before sampling.")
-                }
-                let slice = condAudio[condAudioOffset ..< (condAudioOffset + segment.count)]
-                allAudioRows.append(slice)
-                condAudioOffset += segment.count
-            } else {
-                allAudioRows.append(audioRows)
-            }
-        }
-        let audioEmbed = linear(concatenated(allAudioRows, axis: 0), audioPatchProj)
-
-        // pack segments in the layout's segment table order
-        let dtype = computeDType
-        var hSegments = [MLXArray]()
-        var vEmbedOffset = 0
-        var aEmbedOffset = 0
-
-        for s in layout.segments {
-            switch s.kind {
-            case .text:
-                hSegments.append(refined.asType(dtype))
-            case .visualCondition, .video:
-                let slice = videoEmbed[vEmbedOffset ..< (vEmbedOffset + s.count)].asType(dtype)
-                hSegments.append(slice)
-                vEmbedOffset += s.count
-            case .audioCondition, .audio:
-                let slice = audioEmbed[aEmbedOffset ..< (aEmbedOffset + s.count)].asType(dtype)
-                hSegments.append(slice)
-                aEmbedOffset += s.count
-            }
-        }
-        var h = concatenated(hSegments, axis: 0)
-
-        precondition(h.dim(0) == layout.totalTokens,
-                     "packed \(h.dim(0)) rows, layout says \(layout.totalTokens)")
-
-        let tEmbFP32 = timeEmbedder(MLXArray(plan.values))
-        let tEmb = tEmbFP32.asType(dtype)
-
-        let table: MLXArray
-        if let renderState {
-            table = renderState.ropeTable
-        } else {
-            let pos = MLXArray(layout.positionIds.map { Float($0) }, [layout.totalTokens, 3])
-            table = H3RoPE.rotationTable(
-                angles: H3RoPE.angles(positionIds: pos, invFreq: ropeInvFreq)).asType(dtype)
-        }
-
-        for block in blocks {
-            h = block(h, tEmb: tEmb, index: index, ropeTable: table)
-        }
-
-        // The final layer's AdaLN has one modality, so these rows are timestep
-        // rows — not the `row * 3 + tag` a block uses.
-        let videoSeg = ModSegment(start: layout.videoRange.lowerBound,
-                                  stop: layout.videoRange.upperBound, row: plan.row(for: .video))
-        let audioSeg = ModSegment(start: layout.audioRange.lowerBound,
-                                  stop: layout.audioRange.upperBound, row: plan.row(for: .audio))
-        let (v, a) = finalLayer(h, tEmb: tEmb, videoSeg: videoSeg, audioSeg: audioSeg)
-        return (v, a)
-    }
-
-    /// Latent-shaped velocity for one sampler step, matching the reference's
-    /// return value exactly.
-    ///
-    /// Two sign conventions are baked in and neither is cosmetic: **both streams
-    /// are negated**, and audio is additionally scaled by `d(sigma_a)/d(sigma_v)`
-    /// so that the single flat ODE the sampler integrates is each stream's true
-    /// ODE on its own shifted schedule.
-    func velocity(videoLatent: MLXArray, audioLatent: MLXArray,
-                          textEmbeddings: MLXArray, sigmaVideo: Double,
-                          geometry: H3LatentGeometry, textTags: [Int]? = nil,
-                          condVideo: MLXArray? = nil,
-                          condAudio: MLXArray? = nil,
-                          renderState: RenderState? = nil) throws -> (video: MLXArray, audio: MLXArray) {
-        guard let layout = renderState?.layout else {
-            throw H3EvaluatorError.invalidRequest(
-                rule: "missing H3 render layout",
-                detail: "velocity was called before the task-specific packed sequence was prepared",
-                remedy: "prepare the FL2VA or Ref2VA render state before sampling.")
-        }
-        let plan = TimestepPlan(sigmaVideo: sigmaVideo, segments: layout.segments)
-        let index = ModulationIndex(layout: layout, plan: plan, textTags: textTags)
-        let (v, a) = try packedForward(videoLatent: videoLatent, audioLatent: audioLatent,
-                                   textEmbeddings: textEmbeddings, layout: layout, plan: plan,
-                                   index: index,
-                                   renderState: renderState,
-                                   condVideo: condVideo,
-                                   condAudio: condAudio)
-        let video = H3Packing.unpatchifyVideo(v, t: geometry.latentT,
-                                              h: geometry.latentH / config.patchSize[1],
-                                              w: geometry.latentW / config.patchSize[2],
-                                              channels: config.videoLatentDim,
-                                              patch: config.patchSize)
-        let audio = H3Packing.unpackAudio(a)
-        return (-video, MLXArray(-plan.audioSlope) * audio)
-    }
-
-}
-
-/// Two pre-norm blocks with plain residuals, then a final RMSNorm. No AdaLN,
-/// no RoPE — the refiner sees text only.
-struct TokenRefiner {
-    struct Block {
-        let norm1: H3RMSNorm
-        let norm2: H3RMSNorm
-        let attn: AttentionLayer
-        let mlp: H3MLP
-        init(norm1: H3RMSNorm, norm2: H3RMSNorm, attn: AttentionLayer, mlp: H3MLP) {
-            self.norm1 = norm1
-            self.norm2 = norm2
-            self.attn = attn
-            self.mlp = mlp
-        }
-        func callAsFunction(_ x: MLXArray) -> MLXArray {
-            let a = attn(norm1(x), ropeTable: nil) + x
-            return mlp(norm2(a)) + a
-        }
-    }
-    let blocks: [Block]
-    let finalNorm: H3RMSNorm
-    init(blocks: [Block], finalNorm: H3RMSNorm) {
-        self.blocks = blocks
-        self.finalNorm = finalNorm
-    }
-    func callAsFunction(_ x: MLXArray) -> MLXArray {
-        var h = x
-        for b in blocks { h = b(h) }
-        return finalNorm(h)
-    }
-}
-
-/// Materializes the shared H3 Omni Transformer directly from the indexed
-/// SafeTensors checkpoint. Keeping this initializer here makes the model's
-/// construction path as explicit as its forward path.
-extension H3OmniTransformer {
-    /// - Parameter computeDType: dtype used by the Transformer blocks.
-    init(
-        weights: H3BaseWeights,
-        computeDType: DType = .bfloat16,
-        fp32Attention: Bool = false,
-        keepAdaLNFP32Resident: Bool = false
-    ) throws {
-        let c = weights.config
-        func w(_ name: String) throws -> MLXArray { try weights.tensor(name) }
-
-        func attention(_ prefix: String) throws -> AttentionLayer {
-            AttentionLayer(
-                qkvWeight: try w(prefix + "attn.qkv_proj.weight"),
-                outWeight: try w(prefix + "attn.out_proj.weight"),
-                qNormWeight: try w(prefix + "attn.q_norm.weight"),
-                kNormWeight: try w(prefix + "attn.k_norm.weight"),
-                heads: c.numHeads,
-                headDim: c.headDim,
-                eps: c.qkNormEps,
-                fp32Attention: fp32Attention)
-        }
-
-        func mlp(_ prefix: String) throws -> H3MLP {
-            H3MLP(
-                fc1: try w(prefix + "mlp.fc1.weight"),
-                fc2: try w(prefix + "mlp.fc2.weight"))
-        }
-
-        func norm(_ name: String, _ eps: Float) throws -> H3RMSNorm {
-            H3RMSNorm(weight: try w(name), eps: eps)
-        }
-
-        var blocks: [H3TransformerBlock] = []
-        blocks.reserveCapacity(c.numLayers)
-        for index in 0 ..< c.numLayers {
-            let prefix = "blocks.\(index)."
-            let adaln = AdalnProj(
-                weight: try w(prefix + "adaln_proj.linear.weight"),
-                bias: try w(prefix + "adaln_proj.linear.bias"),
-                expand: 6,
-                modalities: 3,
-                hidden: c.hiddenSize,
-                keepFP32Resident: keepAdaLNFP32Resident)
-            blocks.append(H3TransformerBlock(
-                norm1: try norm(prefix + "norm1.weight", c.normEps),
-                norm2: try norm(prefix + "norm2.weight", c.normEps),
-                attn: try attention(prefix),
-                mlp: try mlp(prefix),
-                adaln: adaln))
-        }
-
-        var refiner: [TokenRefiner.Block] = []
-        refiner.reserveCapacity(c.tokenRefinerLayers)
-        for index in 0 ..< c.tokenRefinerLayers {
-            let prefix = "token_refiner.blocks.\(index)."
-            refiner.append(TokenRefiner.Block(
-                norm1: try norm(prefix + "norm1.weight", c.normEps),
-                norm2: try norm(prefix + "norm2.weight", c.normEps),
-                attn: try attention(prefix),
-                mlp: try mlp(prefix)))
-        }
-
-        let finalAdaln = AdalnProj(
-            weight: try w("final_layer.adaln_proj.linear.weight"),
-            bias: try w("final_layer.adaln_proj.linear.bias"),
-            expand: 2,
-            modalities: 1,
-            hidden: c.hiddenSize)
-        let final = FinalLayer(
-            norm: try norm("final_layer.norm.weight", c.finalNormEps),
-            adaln: finalAdaln,
-            videoOutWeight: try w("final_layer.video_out.weight"),
-            videoOutBias: try w("final_layer.video_out.bias"),
-            audioOutWeight: try w("final_layer.audio_out.weight"),
-            audioOutBias: try w("final_layer.audio_out.bias"))
-
-        self.init(
-            config: c,
-            conditionProj: (try w("condition_proj.weight"), try w("condition_proj.bias")),
-            videoPatchProj: (try w("video_patch_proj.weight"), try w("video_patch_proj.bias")),
-            audioPatchProj: (try w("audio_patch_proj.weight"), try w("audio_patch_proj.bias")),
-            tokenRefiner: TokenRefiner(
-                blocks: refiner,
-                finalNorm: try norm("token_refiner.final_norm.weight", c.finalNormEps)),
-            timeEmbedder: TimeEmbedder(
-                projInWeight: try w("time_embedder.proj_in.weight"),
-                projInBias: try w("time_embedder.proj_in.bias"),
-                projOutWeight: try w("time_embedder.proj_out.weight"),
-                projOutBias: try w("time_embedder.proj_out.bias"),
-                inputDim: c.timestepInputDim),
-            blocks: blocks,
-            finalLayer: final,
-            ropeInvFreq: try w("rope.inv_freq"),
-            computeDType: computeDType)
     }
 }

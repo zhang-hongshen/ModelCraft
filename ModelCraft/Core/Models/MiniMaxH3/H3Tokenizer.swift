@@ -7,19 +7,8 @@
 
 
 import Foundation
-import Hub
 
 
-/// Qwen2 byte-level BPE — the tokenizer H3's conditioning encoder expects.
-///
-/// MiniMax-H3 uses it in its plainest form. `MiniMaxH3Tokenizer` in the
-/// reference calls `tok(text, add_special_tokens=False)` and adds **nothing**:
-/// no chat template, no BOS, no EOS. The `<|im_start|>user\n…` wrapper that
-/// other Qwen3-VL consumers apply is not used here, and adding it would shift
-/// every position and change the conditioning.
-///
-/// Empty input is the one special case: the reference substitutes a single pad
-/// token (151643) rather than an empty sequence.
 struct H3Tokenizer {
     let vocab: [String: Int]
     let ranks: [Pair: Int]
@@ -98,14 +87,6 @@ struct H3Tokenizer {
         }
         // Longest first so `<|im_start|>` wins over any prefix of it.
         self.specials = added.sorted { $0.0.count > $1.0.count }
-    }
-
-    init(hub: HubApi, configuration: H3Configuration) throws {
-        let vocabulary = try H3Loader.resolve(
-            hub: hub,
-            configuration: configuration,
-            key: .tokenizerVocabulary)
-        try self.init(directory: vocabulary.deletingLastPathComponent())
     }
 
     /// The pre-tokenizer split, from `transformers`' Qwen2 implementation.

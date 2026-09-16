@@ -70,13 +70,24 @@ enum H3IO {
         let frameCount = frames.dim(2)
         let frameHeight = frames.dim(3)
         let frameWidth = frames.dim(4)
+
+        // Quantise before the layout change and before alpha is added.
+        //
+        // The obvious order — transpose the fp32 frames, widen to four channels,
+        // then cast — holds three full-video fp32 buffers live at once, which for
+        // a five-second render is about 5.6 GB against a 16 GiB budget. Casting
+        // first makes the transposed and widened buffers a quarter the size, for
+        // byte-identical output: the clamp has already bounded every value to
+        // [0, 255], so the cast below is the same truncation the old code did,
+        // just earlier.
         let rgb = clip((frames + 1.0) * 127.5, min: 0.0, max: 255.0)
+            .asType(.uint8)
             .transposed(0, 2, 3, 4, 1)
             .reshaped([frameCount, frameHeight, frameWidth, 3])
         let alpha = MLXArray.full(
             [frameCount, frameHeight, frameWidth, 1],
-            values: MLXArray(255.0 as Float))
-        let argb = concatenated([alpha, rgb], axis: -1).asType(.uint8)
+            values: MLXArray(255.0 as Float)).asType(.uint8)
+        let argb = concatenated([alpha, rgb], axis: -1)
         eval(argb)
 
         do {
