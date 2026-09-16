@@ -4,12 +4,12 @@
     "" : {
 
     },
-    "%@ of %@ context tokens" : {
+    "%@ / %@ tokens used" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "%1$@ of %2$@ context tokens"
+            "value" : "%1$@ / %2$@ tokens used"
           }
         }
       }
@@ -18,6 +18,9 @@
 
     },
     "%lld items" : {
+
+    },
+    "%lld%% full" : {
 
     },
     ">" : {
@@ -288,6 +291,9 @@
     "Context window usage" : {
 
     },
+    "Context window:" : {
+
+    },
     "Copied" : {
       "localizations" : {
         "zh-Hans" : {
@@ -376,6 +382,18 @@
           }
         }
       }
+    },
+    "Deleted" : {
+
+    },
+    "Deleted %@" : {
+
+    },
+    "Deleting" : {
+
+    },
+    "Deleting %@" : {
+
     },
     "Deleting..." : {
       "localizations" : {
@@ -542,6 +560,12 @@
         }
       }
     },
+    "Failed to delete" : {
+
+    },
+    "Failed to delete %@" : {
+
+    },
     "Failed to edit" : {
 
     },
@@ -609,6 +633,7 @@
       }
     },
     "Failed to write into" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -619,6 +644,7 @@
       }
     },
     "Failed to write into %@" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -1422,6 +1448,7 @@
       }
     },
     "Writing into" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -1432,6 +1459,7 @@
       }
     },
     "Writing into %@" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -1463,6 +1491,7 @@
       }
     },
     "Wrote into" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -1473,6 +1502,7 @@
       }
     },
     "Wrote into %@" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {

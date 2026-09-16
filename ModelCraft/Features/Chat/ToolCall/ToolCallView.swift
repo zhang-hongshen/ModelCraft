@@ -64,8 +64,7 @@ struct ToolCallView: View {
             )
 
         case ToolNames.readFile,
-             ToolNames.writeFile,
-             ToolNames.editFile:
+             ToolNames.applyPatch:
 
             FileToolRenderer(
                 toolCall: toolCall,

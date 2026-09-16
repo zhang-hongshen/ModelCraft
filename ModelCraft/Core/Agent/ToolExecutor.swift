@@ -26,12 +26,8 @@ enum ToolExecutor {
                 let result = try await toolCall.execute(with: FileTool.readFile)
                 toolCallResult.content.append(.text(TextContent(text: result.content)))
                 message.content = result.toolResult
-            case ToolNames.writeFile:
-                let result = try await toolCall.execute(with: FileTool.writeFile)
-                toolCallResult.content.append(.text(TextContent(text: result.toolResult)))
-                message.content = result.toolResult
-            case ToolNames.editFile:
-                let result = try await toolCall.execute(with: FileTool.editFile)
+            case ToolNames.applyPatch:
+                let result = try await toolCall.execute(with: FileTool.applyPatch)
                 toolCallResult.content.append(.text(TextContent(text: result.toolResult)))
                 message.content = result.toolResult
             case ToolNames.listDirectory:

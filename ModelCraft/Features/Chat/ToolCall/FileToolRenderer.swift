@@ -16,35 +16,31 @@ struct FileToolRenderer: View {
     let result: CallToolResult?
     let status: ToolCallStatus
 
-    private var url: URL? {
-
-        guard let path = toolCall.function.arguments["path"]?.stringValue else {
-            return nil
+    private var readActionDescription: String {
+        switch status {
+        case .running:
+            return String(localized: "Reading")
+        case .completed:
+            return String(localized: "Read")
+        case .failed:
+            return String(localized: "Failed to read")
         }
-
-        return FileTool.fileURL(for: path)
     }
 
-    private var actionDescription: String {
-        switch (toolCall.function.name, status) {
-        case (ToolNames.writeFile, .running):
-            return String(localized: "Writing into")
-        case (ToolNames.writeFile, .completed):
-            return String(localized: "Wrote into")
-        case (ToolNames.writeFile, .failed):
-            return String(localized: "Failed to write into")
-        case (ToolNames.editFile, .running):
+    private func actionDescription(for action: PatchFileAction) -> String {
+        switch (action, status) {
+        case (.edit, .running):
             return String(localized: "Editing")
-        case (ToolNames.editFile, .completed):
+        case (.edit, .completed):
             return String(localized: "Edited")
-        case (ToolNames.editFile, .failed):
+        case (.edit, .failed):
             return String(localized: "Failed to edit")
-        case (ToolNames.readFile, .running):
-            return String(localized: "Reading")
-        case (ToolNames.readFile, .completed):
-            return String(localized: "Read")
-        default:
-            return String(localized: "Failed to read")
+        case (.delete, .running):
+            return String(localized: "Deleting")
+        case (.delete, .completed):
+            return String(localized: "Deleted")
+        case (.delete, .failed):
+            return String(localized: "Failed to delete")
         }
     }
 
@@ -52,18 +48,43 @@ struct FileToolRenderer: View {
     
     var body: some View {
 
-        if let url, let fileName = toolCall.fileDisplayName {
+        if toolCall.function.name == ToolNames.readFile,
+           let path = toolCall.function.arguments["path"]?.stringValue,
+           let fileName = toolCall.fileDisplayName {
             HStack(spacing: 4) {
                 Image(systemName: toolCall.icon)
-                Text(actionDescription)
+                Text(readActionDescription)
 
                 Button {
-                    previewURL = url
+                    previewURL = FileTool.fileURL(for: path)
                 } label: {
                     Text(fileName)
                         .underline()
                 }
                 .buttonStyle(.plain)
+            }
+            .foregroundStyle(.secondary)
+            .quickLookPreview($previewURL)
+        } else if toolCall.function.name == ToolNames.applyPatch {
+            VStack(alignment: .leading, spacing: 4) {
+                ForEach(toolCall.patchFileChanges) { change in
+                    HStack(spacing: 4) {
+                        Image(systemName: toolCall.icon)
+                        Text(actionDescription(for: change.action))
+
+                        if change.action == .edit {
+                            Button {
+                                previewURL = FileTool.fileURL(for: change.path)
+                            } label: {
+                                Text(change.fileName)
+                                    .underline()
+                            }
+                            .buttonStyle(.plain)
+                        } else {
+                            Text(change.fileName)
+                        }
+                    }
+                }
             }
             .foregroundStyle(.secondary)
             .quickLookPreview($previewURL)

@@ -16,8 +16,7 @@ struct ToolNames {
 
     // MARK: File Tool
     static let readFile = "read_file"
-    static let writeFile = "write_file"
-    static let editFile = "edit_file"
+    static let applyPatch = "apply_patch"
     static let listDirectory = "list_directory"
 
     // MARK: Command Tool
@@ -69,6 +68,19 @@ struct ToolApprovalRequest: Sendable {
     let toolName: String
     let title: String
     let detail: String?
+}
+
+enum PatchFileAction: Hashable {
+    case edit
+    case delete
+}
+
+struct PatchFileChange: Identifiable, Hashable {
+    let path: String
+    let action: PatchFileAction
+
+    var id: String { path }
+    var fileName: String { (path as NSString).lastPathComponent }
 }
 
 extension StableDiffusionProgress {
@@ -207,8 +219,7 @@ extension ToolCall {
     
     var requiresUserApproval: Bool {
         switch function.name {
-        case ToolNames.writeFile,
-             ToolNames.editFile,
+        case ToolNames.applyPatch,
              ToolNames.click,
              ToolNames.drag,
              ToolNames.clickElement,
@@ -238,8 +249,8 @@ extension ToolCall {
 
     private var approvalDetail: String? {
         switch function.name {
-        case ToolNames.writeFile, ToolNames.editFile:
-            function.arguments["path"]?.stringValue
+        case ToolNames.applyPatch:
+            patchFileChanges.map(\.path).formatted()
         case ToolNames.executeCommand:
             function.arguments["command"]?.stringValue
         case ToolNames.textToImage, ToolNames.textToVideo, ToolNames.textToAudio:
@@ -256,6 +267,38 @@ extension ToolCall {
             return nil
         }
         return (path as NSString).lastPathComponent
+    }
+
+    var patchFileChanges: [PatchFileChange] {
+        guard function.name == ToolNames.applyPatch,
+              let patch = function.arguments["patch"]?.stringValue
+        else {
+            return []
+        }
+
+        let directives: [(prefix: String, action: PatchFileAction)] = [
+            ("*** Add File: ", .edit),
+            ("*** Update File: ", .edit),
+            ("*** Delete File: ", .delete)
+        ]
+        var changes: [PatchFileChange] = []
+
+        for line in patch.components(separatedBy: "\n") {
+            guard let directive = directives.first(where: { line.hasPrefix($0.prefix) }) else {
+                continue
+            }
+            let path = String(line.dropFirst(directive.prefix.count))
+            guard !path.isEmpty else { continue }
+
+            let change = PatchFileChange(path: path, action: directive.action)
+            if let index = changes.firstIndex(where: { $0.path == path }) {
+                changes[index] = change
+            } else {
+                changes.append(change)
+            }
+        }
+
+        return changes
     }
 
     func compactDescription(_ status: ToolCallStatus) -> String {
@@ -295,25 +338,22 @@ extension ToolCall {
             case .failed:
                 return String(localized: "Failed to read \(fileName)")
             }
-        case ToolNames.writeFile:
-            let fileName = fileDisplayName ?? String(localized: "Unknown")
-            switch status {
-            case .running:
-                return String(localized: "Writing into \(fileName)")
-            case .completed:
-                return String(localized: "Wrote into \(fileName)")
-            case .failed:
-                return String(localized: "Failed to write into \(fileName)")
-            }
-        case ToolNames.editFile:
-            let fileName = fileDisplayName ?? String(localized: "Unknown")
-            switch status {
-            case .running:
+        case ToolNames.applyPatch:
+            let change = patchFileChanges.first
+            let fileName = change?.fileName ?? String(localized: "Unknown")
+            switch (change?.action ?? .edit, status) {
+            case (.edit, .running):
                 return String(localized: "Editing \(fileName)")
-            case .completed:
+            case (.edit, .completed):
                 return String(localized: "Edited \(fileName)")
-            case .failed:
+            case (.edit, .failed):
                 return String(localized: "Failed to edit \(fileName)")
+            case (.delete, .running):
+                return String(localized: "Deleting \(fileName)")
+            case (.delete, .completed):
+                return String(localized: "Deleted \(fileName)")
+            case (.delete, .failed):
+                return String(localized: "Failed to delete \(fileName)")
             }
         case ToolNames.listDirectory:
             switch status {
@@ -504,7 +544,7 @@ extension ToolCall {
         switch function.name {
         case ToolNames.requestUserInput: "questionmark.bubble"
         case ToolNames.readFile: "doc.text.magnifyingglass"
-        case ToolNames.writeFile, ToolNames.editFile: "square.and.pencil"
+        case ToolNames.applyPatch: "square.and.pencil"
         case ToolNames.listDirectory: "folder"
         case ToolNames.executeCommand : "apple.terminal"
         case ToolNames.searchMap: "map"

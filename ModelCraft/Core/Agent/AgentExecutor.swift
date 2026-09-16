@@ -218,12 +218,13 @@ private struct ToolAuthorizationContext {
 
     func allows(_ toolCall: ToolCall, signature: String) -> Bool {
         switch toolCall.function.name {
-        case ToolNames.writeFile, ToolNames.editFile:
-            guard let path = toolCall.function.arguments["path"]?.stringValue else {
-                return false
+        case ToolNames.applyPatch:
+            let paths = toolCall.patchFileChanges.map(\.path)
+            guard !paths.isEmpty else { return false }
+            return paths.allSatisfy { path in
+                let candidate = normalizedURL(for: path)
+                return fileScopes.contains { $0.contains(candidate) }
             }
-            let candidate = normalizedURL(for: path)
-            return fileScopes.contains { $0.contains(candidate) }
         case ToolNames.clickElement, ToolNames.typeText, ToolNames.pressKey:
             guard let appID = toolCall.function.arguments["appID"]?.stringValue else {
                 return false
@@ -251,9 +252,10 @@ private struct ToolAuthorizationContext {
 
     mutating func authorize(_ toolCall: ToolCall, signature: String) {
         switch toolCall.function.name {
-        case ToolNames.writeFile, ToolNames.editFile:
-            guard let path = toolCall.function.arguments["path"]?.stringValue else { return }
-            appendFileScope(path: path, includesDescendants: false)
+        case ToolNames.applyPatch:
+            for path in toolCall.patchFileChanges.map(\.path) {
+                appendFileScope(path: path, includesDescendants: false)
+            }
         case ToolNames.clickElement, ToolNames.typeText, ToolNames.pressKey:
             guard let appID = toolCall.function.arguments["appID"]?.stringValue else { return }
             applicationIDs.insert(appID)

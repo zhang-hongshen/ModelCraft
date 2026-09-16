@@ -227,8 +227,16 @@ struct ToolCallGroupSummary {
         count(named: ToolNames.readFile)
     }
 
-    var fileWriteCount: Int {
-        count(named: ToolNames.writeFile) + count(named: ToolNames.editFile)
+    private var patchFileChanges: [PatchFileChange] {
+        messages.flatMap { $0.toolCall?.patchFileChanges ?? [] }
+    }
+
+    var fileEditCount: Int {
+        patchFileChanges.filter { $0.action == .edit }.count
+    }
+
+    var fileDeleteCount: Int {
+        patchFileChanges.filter { $0.action == .delete }.count
     }
 
     var commandCount: Int {
@@ -237,11 +245,18 @@ struct ToolCallGroupSummary {
 
     var completedDescription: String {
         var descriptions: [String] = []
-        if fileWriteCount > 0 {
+        if fileEditCount > 0 {
             descriptions.append(countDescription(
-                fileWriteCount,
+                fileEditCount,
                 singular: "Edited one file",
                 plural: "Edited %lld files"
+            ))
+        }
+        if fileDeleteCount > 0 {
+            descriptions.append(countDescription(
+                fileDeleteCount,
+                singular: "Deleted one file",
+                plural: "Deleted %lld files"
             ))
         }
         if fileReadCount > 0 {

@@ -73,8 +73,17 @@ extension Chat {
                 role: .tool,
                 chat: chat,
                 toolCall: ToolCall(function: .init(
-                    name: ToolNames.writeFile,
-                    arguments: ["path": "Sources/App.swift"]
+                    name: ToolNames.applyPatch,
+                    arguments: [
+                        "patch": """
+                        *** Begin Patch
+                        *** Update File: Sources/App.swift
+                        @@
+                        -old content
+                        +new content
+                        *** End Patch
+                        """
+                    ]
                 )),
                 toolCallResult: .success()
             ),
