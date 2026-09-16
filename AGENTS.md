@@ -5,12 +5,15 @@ ModelCraft is a local-first SwiftUI personal AI assistant for macOS with multimo
 ## Standing orders
 
 - Read this file before every task, then only the linked documents whose trigger matches the change.
-- Inspect the relevant implementation first. Make the smallest complete change and preserve existing behavior, persisted data, public contracts, and supported macOS versions.
+- Infer the requested outcome and scope from the user's instructions and repository context. For answer, review, or diagnosis requests, inspect and report without editing unless a change is also requested.
+- For change or fix requests, inspect the relevant implementation and complete the safe in-scope local work without pausing for a plan or routine confirmation. Preserve existing behavior, persisted data, public contracts, and supported macOS versions.
+- Ask before destructive actions, external writes, purchases, or a material expansion of scope.
 - Prefer direct code and existing ownership. Do not introduce speculative abstractions, extra indirection, fallback layers, or defensive handling for impossible states.
 - Do not add a `Coordinator`, `Manager`, `Service`, protocol, wrapper, dependency-injection layer, or background task merely to move existing logic elsewhere. Add a new abstraction only when it owns a real boundary or is required by multiple concrete consumers.
 - Keep simple state and behavior with the type that owns it. Avoid asynchronous work when the value is already available from the current request, stream result, model state, or call path.
 - Preserve unrelated user changes. Never reset, overwrite, reformat, or clean files outside the requested scope.
 - Do not write unit tests or build the project.
+- Finish with the outcome, concrete evidence, and any remaining validation gap. Do not claim completion from an edit alone.
 - Code and configuration are the source of truth. Documentation records durable current contracts, not task history or reasoning.
 
 ## Critical product rules
