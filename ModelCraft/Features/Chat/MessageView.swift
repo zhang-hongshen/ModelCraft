@@ -52,13 +52,6 @@ extension MessageView {
             Pasteboard.setString(message.content)
         }
     }
-
-    @ViewBuilder
-    func GenerationInfoButton(_ message: Message) -> some View {
-        if let prefillTime = message.prefillTime {
-            GenerationMetricsButton(prefillTime: prefillTime)
-        }
-    }
     
     @ViewBuilder
     func MessageFilesView(_ attachments: [URL]) -> some View {
@@ -183,7 +176,6 @@ extension MessageView {
     func AssistantButtons() -> some View {
         HStack(alignment: .center) {
             CommonButtons(message)
-            GenerationInfoButton(message)
             
             Button {
                 regenerateAssistantMessage()
@@ -302,10 +294,6 @@ struct AssistantTurnView: View {
         HStack(alignment: .center) {
             CopyButton(style: .iconOnly) {
                 Pasteboard.setString(turn.content)
-            }
-
-            if let prefillTime = turn.prefillTime {
-                GenerationMetricsButton(prefillTime: prefillTime)
             }
 
             Button {

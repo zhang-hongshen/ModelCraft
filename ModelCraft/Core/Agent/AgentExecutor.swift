@@ -37,17 +37,15 @@ final class AgentExecutor {
         let project = chat.project
         authorizationContext = ToolAuthorizationContext(
             workingDirectory: project?.workingDirectory)
-
+        
         try await ProjectToolContext.$workingDirectory.withValue(project?.workingDirectory) {
             try await ProjectToolContext.$readOnlyFiles.withValue(project?.resources ?? []) {
                 try await run(
                     model: model,
                     chat: chat,
                     messages: messages,
-                    projectID: project?.persistentModelID,
                     lastToolSignature: nil,
-                    consecutiveSameToolCalls: 0,
-                    temporarilyDisabledTool: nil)
+                    consecutiveSameToolCalls: 0)
             }
         }
     }
@@ -57,19 +55,13 @@ final class AgentExecutor {
         model: LocalModel,
         chat: Chat,
         messages: [MLXLMCommon.Chat.Message],
-        projectID: PersistentIdentifier?,
         lastToolSignature: String?,
-        consecutiveSameToolCalls: Int,
-        temporarilyDisabledTool: String?
+        consecutiveSameToolCalls: Int
     ) async throws {
         var availableTools = ToolDefinition.allToolSchema
-        if let projectID {
-            availableTools.append(SearchTool.searchProject(projectID: projectID).schema)
+        if let project = chat.project {
+            availableTools.append(SearchTool.searchProject(projectID: project.persistentModelID).schema)
         }
-        if let temporarilyDisabledTool {
-            availableTools.removeAll { toolName(from: $0) == temporarilyDisabledTool }
-        }
-
         let assistantMessage = Message(role: .assistant, chat: chat, status: .new)
         ModelContainer.shared.mainContext.persist(assistantMessage)
         var allMessages = messages
@@ -79,6 +71,10 @@ final class AgentExecutor {
             tools: availableTools
         ) {
             try Task.checkCancellation()
+            
+            if let info = batch.info {
+                chat.tokenCount = info.promptTokenCount + info.generationTokenCount
+            }
             
             if let toolCall = batch.toolCall {
                 print("ToolCall \(toolCall)")
@@ -92,12 +88,9 @@ final class AgentExecutor {
                     role: .tool,
                     chat: chat,
                     toolCall: toolCall,
-                    status: .generating,
-                    prefillTime: batch.info?.promptTime,
-                    promptTokenCount: batch.info?.promptTokenCount,
-                    generationTokenCount: batch.info?.generationTokenCount)
+                    status: .generating)
                 ModelContainer.shared.mainContext.persist(toolMessage)
-
+                
                 let signature = toolCall.signature
                 let newConsecutiveSameToolCalls = signature == lastToolSignature
                     ? consecutiveSameToolCalls + 1
@@ -113,7 +106,7 @@ final class AgentExecutor {
                     result = try await executeToolCall(
                         toolCall,
                         signature: signature,
-                        projectID: projectID)
+                        projectID: chat.project?.persistentModelID)
                 }
 
                 toolMessage.content = result.1.content
@@ -124,21 +117,11 @@ final class AgentExecutor {
                     model: model,
                     chat: chat,
                     messages: allMessages,
-                    projectID: projectID,
                     lastToolSignature: signature,
-                    consecutiveSameToolCalls: newConsecutiveSameToolCalls,
-                    temporarilyDisabledTool: duplicateCallBlocked
-                        ? toolCall.function.name
-                        : nil)
+                    consecutiveSameToolCalls: newConsecutiveSameToolCalls)
             } else if let chunk = batch.chunk {
                 assistantMessage.status = .generating
                 assistantMessage.content.append(chunk)
-            }
-            
-            if let info = batch.info {
-                assistantMessage.prefillTime = info.promptTime
-                assistantMessage.promptTokenCount = info.promptTokenCount
-                assistantMessage.generationTokenCount = info.generationTokenCount
             }
         }
         assistantMessage.status = .generated

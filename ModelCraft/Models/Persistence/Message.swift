@@ -19,9 +19,6 @@ class Message {
     var role: MessageRole
     var content: String
     var files: [URL]
-    var prefillTime: TimeInterval?
-    var promptTokenCount: Int?
-    var generationTokenCount: Int?
     
     private var _toolCall: String?
     private var _toolCallResult: String?
@@ -69,16 +66,12 @@ class Message {
     
     init(role: MessageRole = .user, chat: Chat? = nil, content: String = "",
          files: [URL] = [], toolCall: ToolCall? = nil, toolCallResult: CallToolResult? = nil,
-         status: MessageStatus = .generated, prefillTime: TimeInterval? = nil,
-         promptTokenCount: Int? = nil, generationTokenCount: Int? = nil) {
+         status: MessageStatus = .generated) {
         self.chat = chat
         self.role = role
         self.content = content
         self.files = files
         self.status = status
-        self.prefillTime = prefillTime
-        self.promptTokenCount = promptTokenCount
-        self.generationTokenCount = generationTokenCount
         self.toolCall = toolCall
         self.toolCallResult = toolCallResult
     }

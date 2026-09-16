@@ -138,6 +138,7 @@ private extension ChatView {
         .menuStyle(.borderlessButton)
     }
 
+    
     @ViewBuilder
     func ProjectPickerButton() -> some View {
         Menu {
@@ -324,12 +325,8 @@ private extension ChatView {
                 onCommand: handleComposerCommand,
                 trailing: {
                     HStack {
-                        if let usage = contextUsage {
-                            ProgressView(value: usage.fraction)
-                                .controlSize(.small)
-                                .help(String(localized: "\(usage.usedTokens.formatted()) of \(usage.totalTokens.formatted()) context tokens"))
-                                .accessibilityLabel("Context window usage")
-                                .accessibilityValue(Text(usage.fraction.formatted(.percent.precision(.fractionLength(0)))))
+                        if let chat, let contextWindow = globalStore.selectedModel?.contextWindow, contextWindow > 0 {
+                            ContextWindowUsageView(tokenCount: chat.tokenCount, contextWindow: contextWindow)
                         }
 
                         ModelPickerButton()
@@ -549,20 +546,6 @@ private extension ChatView {
         draft.files = []
         composerSelectionLocation = 0
         slashCommandLocation = nil
-    }
-
-    var contextUsage: ContextWindowUsage? {
-        guard let model = globalStore.selectedModel,
-              let message = chat?.sortedMessages.reversed().first(where: {
-                  $0.promptTokenCount != nil && $0.generationTokenCount != nil
-              }),
-              let promptTokenCount = message.promptTokenCount,
-              let generationTokenCount = message.generationTokenCount else {
-            return nil
-        }
-        return ContextWindowUsage(
-            usedTokens: promptTokenCount + generationTokenCount,
-            totalTokens: model.contextWindow)
     }
     
     func scrollToBottom(_ proxy: ScrollViewProxy, lastID: ConversationContentItem.ID?) {

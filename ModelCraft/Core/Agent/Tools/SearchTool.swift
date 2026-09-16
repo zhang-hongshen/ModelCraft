@@ -80,26 +80,26 @@ enum SearchTool {
     }
     
     static func searchProject(projectID: PersistentIdentifier) -> Tool<SearchProjectInput, SearchProjectOutput> {
-        return Tool(
-            name: ToolNames.searchProject,
-            description: "Search the current project's working folder and read-only reference files. Source code is parsed with SwiftSyntax or Tree-sitter and ranked using definitions, references, and caller-callee relationships; configuration and data files use structured keys; documents and transcripts use hybrid keyword and semantic retrieval. A local reranker combines those signals according to whether the task is understanding, locating, or editing. Use direct read_file instead when the exact path is already known. Results include absolute paths and precise line, section, or document locations so a matching source file can be read before editing. This is local project search, not web search.",
-            parameters: [
-                .required("query", type: .string, description: "A focused concept, filename, code symbol, configuration key, error text, or natural-language question to find in the project."),
-                .optional("purpose", type: .string, description: "How the results will be used: automatic, understand, locate, or edit. Defaults to automatic. Use understand for answering from project knowledge, locate for finding definitions or files, and edit before changing code."),
-                .optional("numOfResults", type: .int, description: "The maximum number of ranked results to return. Defaults to 10 if not specified.")
-            ]
-        ) { input in
-            try Task.checkCancellation()
-            let actor = ProjectModelActor(modelContainer: SwiftData.ModelContainer.shared)
-            let results = await actor.searchProject(
-                projectID: projectID,
-                query: input.query,
-                purpose: ProjectSearchPurpose(rawValue: input.purpose ?? "") ?? .automatic,
-                numOfResults: input.numOfResults)
-            try Task.checkCancellation()
-            return SearchProjectOutput(results: results)
+            return Tool(
+                name: ToolNames.searchProject,
+                description: "Search the current project's working folder and read-only reference files. Source code is parsed with SwiftSyntax or Tree-sitter and ranked using definitions, references, and caller-callee relationships; configuration and data files use structured keys; documents and transcripts use hybrid keyword and semantic retrieval. A local reranker combines those signals according to whether the task is understanding, locating, or editing. Use direct read_file instead when the exact path is already known. Results include absolute paths and precise line, section, or document locations so a matching source file can be read before editing. This is local project search, not web search.",
+                parameters: [
+                    .required("query", type: .string, description: "A focused concept, filename, code symbol, configuration key, error text, or natural-language question to find in the project."),
+                    .optional("purpose", type: .string, description: "How the results will be used: automatic, understand, locate, or edit. Defaults to automatic. Use understand for answering from project knowledge, locate for finding definitions or files, and edit before changing code."),
+                    .optional("numOfResults", type: .int, description: "The maximum number of ranked results to return. Defaults to 10 if not specified.")
+                ]
+            ) { input in
+                try Task.checkCancellation()
+                let actor = ProjectModelActor(modelContainer: ModelContainer.shared)
+                let results = await actor.searchProject(
+                    projectID: projectID,
+                    query: input.query,
+                    purpose: ProjectSearchPurpose(rawValue: input.purpose ?? "") ?? .automatic,
+                    numOfResults: input.numOfResults)
+                try Task.checkCancellation()
+                return SearchProjectOutput(results: results)
+            }
         }
-    }
 }
 
 

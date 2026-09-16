@@ -26,6 +26,8 @@ class Chat {
     @Relationship(deleteRule: .cascade, inverse: \Message.chat)
     var messages: [Message] = []
     
+    var tokenCount: Int = 0
+    
     init(title: String? = nil, project: Project? = nil) {
         self.title = title
         self.project = project
@@ -146,10 +148,7 @@ struct AssistantTurn: Identifiable {
     var isWaitingForModelResponse: Bool {
         messages.last?.isWaitingForModelResponse ?? false
     }
-
-    var prefillTime: TimeInterval? {
-        messages.lazy.compactMap(\.prefillTime).first
-    }
+    
 }
 
 enum ConversationContentItem: Identifiable {
