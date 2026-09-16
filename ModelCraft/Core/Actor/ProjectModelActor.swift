@@ -7,6 +7,7 @@
 
 import SwiftData
 
+
 @ModelActor
 actor ProjectModelActor {
 
