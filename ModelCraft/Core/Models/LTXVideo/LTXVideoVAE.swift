@@ -2,6 +2,13 @@
 //  LTXVideoVAE.swift
 //  ModelCraft
 //
+//  Created by Hongshen on 28/8/26.
+//
+
+//
+//  LTXVideoVAE.swift
+//  ModelCraft
+//
 
 import Foundation
 

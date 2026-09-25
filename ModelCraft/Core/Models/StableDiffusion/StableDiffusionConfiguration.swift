@@ -1,11 +1,15 @@
-// Copyright © 2024 Apple Inc.
+//
+//  StableDiffusionConfiguration.swift
+//  ModelCraft
+//
+//  Created by Hongshen on 18/4/26.
+//
 
 import Foundation
 import Hub
 import MLX
 import MLXNN
 
-// port of https://github.com/ml-explore/mlx-examples/blob/main/stable_diffusion/stable_diffusion/config.py
 
 /// Configuration for ``Autoencoder``
 struct AutoencoderConfiguration: Codable {
@@ -270,7 +274,6 @@ public struct DiffusionConfiguration: Codable {
 }
 
 
-// port of https://github.com/ml-explore/mlx-examples/blob/main/stable_diffusion/stable_diffusion/model_io.py
 
 /// Configuration for loading stable diffusion weights.
 ///

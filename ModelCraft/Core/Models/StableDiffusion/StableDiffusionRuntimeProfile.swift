@@ -1,3 +1,10 @@
+//
+//  StableDiffusionRuntimeProfile.swift
+//  ModelCraft
+//
+//  Created by Hongshen on 31/8/26.
+//
+
 import Foundation
 
 public struct WeightQuantization: Equatable, Sendable {

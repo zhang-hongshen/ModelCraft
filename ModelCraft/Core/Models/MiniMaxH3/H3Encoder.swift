@@ -46,7 +46,7 @@ final class H3Encoder: @unchecked Sendable {
     /// The language half: the embedding table and the layer stack's tensor names.
     ///
     /// Read on first use. The language layers themselves are not here — they are
-    /// 62.41 GB and ``H3TextEncoder/encode(embeds:computeDType:positionIds:visualSpans:deepstack:)`` reads each one as the pass
+    /// 62.41 GB and ``H3TextEncoder/encode(embeds:positionIds:visualSpans:deepstack:)`` reads each one as the pass
     /// reaches it.
     private var textEncoder: H3TextEncoder?
     /// The vision half: the 27-block tower over an image or a sampled video.
@@ -59,9 +59,7 @@ final class H3Encoder: @unchecked Sendable {
     /// The three pieces are nil until something reads them. ``H3Loader/loadEncoder``
     /// passes all three when the machine's profile reads components whole, and
     /// passes none of them otherwise, so the first use of either half fills it —
-    /// see the four callers in ``encodeText(elements:tokenizer:)``,
-    /// ``encodePrompt(_:tokenizer:)``, ``encodeVisual(pixels:)`` and
-    /// ``encodeVideo(frames:)``.
+    /// see the text and visual encoding entry points below.
     init(
         hub: HubApi,
         configuration: H3Configuration,
@@ -78,14 +76,10 @@ final class H3Encoder: @unchecked Sendable {
 
     // MARK: - Text
 
-    /// The language stack over a Ref2VA prompt: references folded into the text
-    /// span in the order they were given.
-    ///
-    /// Ordering, embedding and the layer walk all happen here, so a caller
-    /// describes the prompt's pieces and never touches either half.
+    /// The language stack over text and vision pieces already tokenized and
+    /// ordered by H3 Base.
     func encodeText(
-        elements: [H3Presentation.Element],
-        tokenizer: H3Tokenizer
+        _ presentation: H3Presentation
     ) throws -> (conditioning: MLXArray, tags: [Int]) {
         let globals = try globals
             ?? H3Loader.loadEncoderGlobals(hub: hub, configuration: configuration)
@@ -95,44 +89,12 @@ final class H3Encoder: @unchecked Sendable {
         self.globals = globals
         self.textEncoder = textEncoder
 
-        let assembled = H3Presentation.assemble(
-            elements: elements, tokenizer: tokenizer, encoder: textEncoder)
+        let assembled = presentation.assemble(encoder: textEncoder)
         return try (run(assembled, on: textEncoder), assembled.tags)
     }
 
-    /// The language stack over an FL2VA prompt: `<Picture N>` + block(s) + prompt.
-    ///
-    /// The labelling is the whole of FL2VA's text layout; everything past it is
-    /// the same presentation the Ref2VA path builds.
-    func encodeText(
-        prompt: String,
-        blocks: [H3Presentation.VisionBlock],
-        tokenizer: H3Tokenizer,
-        gridPerImage: [H3VisionGrid]
-    ) throws -> (conditioning: MLXArray, tags: [Int]) {
-        precondition(
-            blocks.count == gridPerImage.count,
-            "\(blocks.count) vision block(s) but \(gridPerImage.count) grid(s)")
-
-        var elements: [H3Presentation.Element] = []
-        for (index, block) in blocks.enumerated() {
-            elements.append(.text("<Picture \(index + 1)>: "))
-            elements.append(.vision(block, gridPerImage[index]))
-        }
-        elements.append(.text(prompt))
-        return try encodeText(elements: elements, tokenizer: tokenizer)
-    }
-
-    /// The language stack over a bare prompt: no images, so no vision spans and
-    /// no deepstack.
-    ///
-    /// A prompt on its own is tokenised by the tokenizer's prompt path rather
-    /// than the plain text encoding the vision path uses, so this is not just
-    /// ``encodeText(elements:tokenizer:)`` with one element.
-    func encodePrompt(
-        _ prompt: String,
-        tokenizer: H3Tokenizer
-    ) throws -> (conditioning: MLXArray, tags: [Int]) {
+    /// The language stack over a bare token sequence prepared by H3 Base.
+    func encodeText(ids: [Int]) throws -> MLXArray {
         let globals = try globals
             ?? H3Loader.loadEncoderGlobals(hub: hub, configuration: configuration)
         let textEncoder = try self.textEncoder
@@ -141,9 +103,7 @@ final class H3Encoder: @unchecked Sendable {
         self.globals = globals
         self.textEncoder = textEncoder
 
-        let ids = tokenizer.encodePrompt(prompt)
-        return (try textEncoder.encode(embeds: textEncoder.embed(ids: ids)),
-                tokenizer.textTags(count: ids.count))
+        return try textEncoder.encode(embeds: textEncoder.embed(ids: ids))
     }
 
     /// The one place an assembled prompt becomes hidden state.
@@ -168,7 +128,7 @@ final class H3Encoder: @unchecked Sendable {
     func encodeVisual(
         pixels: MLXArray
     ) throws -> (block: H3Presentation.VisionBlock, grid: H3VisionGrid) {
-        let (width, height, grid) = H3VisionPreprocess.grid(
+        let (width, height, grid) = H3VisionPreprocess.imageGrid(
             width: pixels.dim(2),
             height: pixels.dim(1))
         guard width == pixels.dim(2), height == pixels.dim(1) else {
@@ -201,7 +161,7 @@ final class H3Encoder: @unchecked Sendable {
     ) throws -> [(block: H3Presentation.VisionBlock, grid: H3VisionGrid)] {
         let config = H3VisionEncoderConfiguration()
         let frameTensor = concatenated(frames, axis: 0)
-        let (_, _, imageGrid) = H3VisionPreprocess.grid(
+        let (_, _, imageGrid) = H3VisionPreprocess.videoGrid(
             width: frameTensor.dim(2),
             height: frameTensor.dim(1),
             config: config)
@@ -237,7 +197,7 @@ final class H3Encoder: @unchecked Sendable {
 /// The Qwen3-VL language stack, minus the layers themselves.
 ///
 /// 62.41 GB of the encoder's 66.71 GB is the 64 language layers, so ``layers``
-/// holds a slot per layer and nothing more: ``encode(embeds:computeDType:positionIds:visualSpans:deepstack:)`` fills the slot as
+/// holds a slot per layer and nothing more: ``encode(embeds:positionIds:visualSpans:deepstack:)`` fills the slot as
 /// the pass reaches it and empties it on the way past. What lives here — the
 /// embedding table and the tensor name prefix — is read once per render rather
 /// than once per layer.
@@ -259,7 +219,7 @@ final class H3TextEncoder {
     /// `nil` when it is not.
     ///
     /// The stack is 62.41 GB, so it is never all here. One pass walks it front to
-    /// back and never returns to a layer, so ``encode(embeds:computeDType:positionIds:visualSpans:deepstack:)`` gives each one back
+    /// back and never returns to a layer, so ``encode(embeds:positionIds:visualSpans:deepstack:)`` gives each one back
     /// as it moves on and at most one is resident at a time.
     private var layers: [H3TextEncoderLayer?]
 
@@ -283,16 +243,16 @@ final class H3TextEncoder {
     /// `[S, headDim]` cos and sin for positions `0 ..< count`.
     ///
     /// Plain RoPE. A pure-text prompt gets `arange(S)` as a single row, which is
-    /// what this computes; image prompts take ``mrope(positionIds:dtype:)``
+    /// what this computes; image prompts take ``mrope(positionIds:)``
     /// instead.
-    func rope(count: Int, dtype: DType) -> (cos: MLXArray, sin: MLXArray) {
+    func rope(count: Int) -> (cos: MLXArray, sin: MLXArray) {
         let half = config.headDim / 2
         let exponent = MLXArray(0 ..< half).asType(.float32) * (2.0 / Float(config.headDim))
         let invFreq = 1.0 / pow(MLXArray(config.ropeTheta), exponent)
         let pos = MLXArray(0 ..< count).asType(.float32).reshaped([count, 1])
         let freqs = pos * invFreq.reshaped([1, half])              // [S, half]
         let emb = concatenated([freqs, freqs], axis: -1)           // [S, headDim]
-        return (cos(emb).asType(dtype), sin(emb).asType(dtype))
+        return (cos(emb).asType(.bfloat16), sin(emb).asType(.bfloat16))
     }
 
     /// **Interleaved** mRoPE, for three rows of position ids.
@@ -308,7 +268,7 @@ final class H3TextEncoder {
     /// the Qwen2-VL layout. Both are present; only this one applies here.
     ///
     /// - Parameter positionIds: `[3, S]`, float-valued t/h/w rows.
-    func mrope(positionIds: MLXArray, dtype: DType) -> (cos: MLXArray, sin: MLXArray) {
+    func mrope(positionIds: MLXArray) -> (cos: MLXArray, sin: MLXArray) {
         let half = config.headDim / 2
         let s = positionIds.dim(1)
         let exponent = MLXArray(0 ..< half).asType(.float32) * (2.0 / Float(config.headDim))
@@ -329,7 +289,7 @@ final class H3TextEncoder {
         let laneIdx = broadcast(MLXArray(lane).reshaped([1, 1, half]), to: [1, s, half])
         let inter = takeAlong(freqs, laneIdx, axis: 0).squeezed(axis: 0)  // [S, half]
         let emb = concatenated([inter, inter], axis: -1)                // [S, headDim]
-        return (cos(emb).asType(dtype), sin(emb).asType(dtype))
+        return (cos(emb).asType(.bfloat16), sin(emb).asType(.bfloat16))
     }
 
     /// Split-half rotation on `[1, heads, S, headDim]`.
@@ -344,20 +304,20 @@ final class H3TextEncoder {
     /// Additive causal mask. The reference uses `finfo(dtype).min / 4` rather
     /// than -inf; both underflow to zero through softmax, and staying finite
     /// avoids NaN if a row were ever fully masked.
-    static func causalMask(_ n: Int, dtype: DType) -> MLXArray {
+    static func causalMask(_ n: Int) -> MLXArray {
         let idx = MLXArray(0 ..< n)
         let rows = idx.reshaped([n, 1]), cols = idx.reshaped([1, n])
         let blocked = cols .> rows
-        return MLX.where(blocked, MLXArray(-1e30 as Float), MLXArray(0 as Float)).asType(dtype)
+        return MLX.where(blocked, MLXArray(-1e30 as Float), MLXArray(0 as Float))
+            .asType(.bfloat16)
     }
 
     /// Token ids -> `[1, S, hiddenSize]` embeddings, the encoder's true input.
     ///
-    /// The embedding table is bf16 in the model export and the stack runs fp32,
-    /// so this upcasts once here rather than per layer.
+    /// The embedding table and the language stack use the original BF16 precision.
     func embed(ids: [Int]) -> MLXArray {
         let idx = MLXArray(ids.map { Int32($0) })
-        return embedTokens[idx].expandedDimensions(axis: 0).asType(.float32)
+        return embedTokens[idx].expandedDimensions(axis: 0).asType(.bfloat16)
     }
 
     /// One pass over the language stack, and everything the layers read from.
@@ -373,7 +333,6 @@ final class H3TextEncoder {
         fileprivate let scale: Float
         fileprivate let deepstack: [MLXArray]
         fileprivate let visualSpans: [(start: Int, count: Int)]
-        fileprivate let computeDType: DType
         /// The rows entering the stack, `[1, S, hiddenSize]`.
         let h: MLXArray
     }
@@ -390,14 +349,12 @@ final class H3TextEncoder {
     ///   state. No final norm: the H3 Base export does not carry one.
     func encode(
         embeds: MLXArray,
-        computeDType: DType = .float32,
         positionIds: MLXArray? = nil,
         visualSpans: [(start: Int, count: Int)] = [],
         deepstack: [MLXArray] = []
     ) throws -> MLXArray {
         try runStack(begin(
             embeds: embeds,
-            computeDType: computeDType,
             positionIds: positionIds,
             visualSpans: visualSpans,
             deepstack: deepstack))
@@ -405,30 +362,27 @@ final class H3TextEncoder {
 
     /// Opens the language stack over pre-computed token embeddings.
     ///
-    /// The encoder runs in fp32 by default while retaining the export's original
-    /// weight dtype in memory.
+    /// The encoder runs in the export's original BF16 precision.
     ///
     /// - Parameter embeds: `[1, S, hiddenSize]`
     private func begin(embeds: MLXArray,
-                       computeDType: DType = .float32,
                        positionIds: MLXArray? = nil,
                        visualSpans: [(start: Int, count: Int)] = [],
                        deepstack: [MLXArray] = []) -> Pass {
         let s = embeds.dim(1)
         // Three rows of position ids means an image is present; one row, or
         // none, is the text path.
-        let (rc, rs) = positionIds.map { mrope(positionIds: $0, dtype: computeDType) }
-                    ?? rope(count: s, dtype: computeDType)
+        let (rc, rs) = positionIds.map { mrope(positionIds: $0) }
+                    ?? rope(count: s)
         return Pass(
             s: s,
             rc: rc,
             rs: rs,
-            mask: Self.causalMask(s, dtype: computeDType),
+            mask: Self.causalMask(s),
             scale: 1.0 / Float(config.headDim).squareRoot(),
             deepstack: deepstack,
             visualSpans: visualSpans,
-            computeDType: computeDType,
-            h: embeds.asType(computeDType))
+            h: embeds.asType(.bfloat16))
     }
 
     /// Runs one layer of the stack on the pass's hidden state.
@@ -439,8 +393,7 @@ final class H3TextEncoder {
                      h: MLXArray) -> MLXArray {
         advance(layer, index: i, h: h, s: pass.s, rc: pass.rc, rs: pass.rs,
                 mask: pass.mask, scale: pass.scale,
-                deepstack: pass.deepstack, visualSpans: pass.visualSpans,
-                computeDType: pass.computeDType)
+                deepstack: pass.deepstack, visualSpans: pass.visualSpans)
     }
 
     /// Runs the whole language stack over one pass's embeddings, reading each
@@ -468,8 +421,7 @@ final class H3TextEncoder {
     private func advance(
         _ l: H3TextEncoderLayer, index i: Int, h: MLXArray, s: Int,
         rc: MLXArray, rs: MLXArray, mask: MLXArray?, scale: Float,
-        deepstack: [MLXArray], visualSpans: [(start: Int, count: Int)],
-        computeDType: DType
+        deepstack: [MLXArray], visualSpans: [(start: Int, count: Int)]
     ) -> MLXArray {
         // attention
         let attn = l.selfAttn
@@ -511,7 +463,7 @@ final class H3TextEncoder {
             for sp in visualSpans {
                 if sp.start > prev { parts.append(row[prev ..< sp.start]) }
                 parts.append(row[sp.start ..< (sp.start + sp.count)]
-                             + deepstack[i][off ..< (off + sp.count)].asType(computeDType))
+                             + deepstack[i][off ..< (off + sp.count)].asType(.bfloat16))
                 prev = sp.start + sp.count
                 off += sp.count
             }
@@ -594,15 +546,46 @@ final class H3TextEncoderMLP: Module {
 enum H3VisionPreprocess {
     static let mean: Float = 0.5
     static let std: Float = 0.5
+    static let imageMinPixels = 65_536
+    static let imageMaxPixels = 16_777_216
+    static let videoMinPixels = 4_096
+    static let videoMaxPixels = 25_165_824
 
-    /// Target patch grid for an image, given the reference's rounding rules.
-    ///
-    /// The min/max pixel clamps exist in the reference and are reproduced here,
-    /// but note the H3 path never approaches either: 3136 px is a 56x56 image
-    /// and 12.8 Mpx is larger than anything a prompt carries.
-    static func grid(width: Int, height: Int,
-                            config: H3VisionEncoderConfiguration = H3VisionEncoderConfiguration(),
-                            minPixels: Int = 3136, maxPixels: Int = 12_845_056)
+    /// Qwen3-VL image processor geometry from the released H3 checkpoint.
+    static func imageGrid(
+        width: Int,
+        height: Int,
+        config: H3VisionEncoderConfiguration = H3VisionEncoderConfiguration()
+    ) -> (width: Int, height: Int, grid: H3VisionGrid) {
+        grid(
+            width: width,
+            height: height,
+            config: config,
+            minPixels: imageMinPixels,
+            maxPixels: imageMaxPixels)
+    }
+
+    /// Qwen3-VL video processor geometry from the released H3 checkpoint.
+    static func videoGrid(
+        width: Int,
+        height: Int,
+        config: H3VisionEncoderConfiguration = H3VisionEncoderConfiguration()
+    ) -> (width: Int, height: Int, grid: H3VisionGrid) {
+        grid(
+            width: width,
+            height: height,
+            config: config,
+            minPixels: videoMinPixels,
+            maxPixels: videoMaxPixels)
+    }
+
+    private static func grid(
+        width: Int,
+        height: Int,
+        config: H3VisionEncoderConfiguration,
+        minPixels: Int,
+        maxPixels: Int
+    )
         -> (width: Int, height: Int, grid: H3VisionGrid) {
         let factor = config.patchSize * config.spatialMergeSize
         var hBar = Int((Double(height) / Double(factor)).rounded()) * factor
@@ -696,13 +679,6 @@ enum H3VisionPreprocess {
                    .transposed(0, 3, 6, 4, 7, 2, 1, 5, 8)
                    .reshaped([grid.tokens, ch * tp * p * p])
     }
-}
-
-
-struct H3VisionGrid: Sendable, Equatable {
-    let t: Int, h: Int, w: Int
-    init(t: Int = 1, h: Int, w: Int) { self.t = t; self.h = h; self.w = w }
-    var tokens: Int { t * h * w }
 }
 
 /// The Qwen3-VL vision tower: 27 blocks that turn an image into tokens for the
@@ -1039,102 +1015,42 @@ final class H3VisionPatchEmbed: Module {
     }
 }
 
-
-/// Builds the text-and-vision input consumed by the H3 Encoder in FL2VA.
-///
-/// A keyframe is sent through both Base condition paths: its semantic vision
-/// tokens are inserted into the text sequence, while its Visual VAE latent is
-/// inserted into the visual condition rows.
-enum H3Presentation {
-    private static let fallbackVisionStart = 151_652
-    private static let fallbackVisionEnd = 151_653
-
-    struct VisionBlock {
-        let merged: MLXArray
-        let deepstack: [MLXArray]
-
-        init(merged: MLXArray, deepstack: [MLXArray]) {
-            self.merged = merged
-            self.deepstack = deepstack
-        }
-
-        var tokens: Int { merged.dim(0) }
-    }
-
-    struct Span: Sendable, Equatable {
-        let start: Int
-        let size: Int
-        var end: Int { start + size }
-    }
-
-    struct Assembled {
-        let embeds: MLXArray
-        let spans: [Span]
-        let positionIds: MLXArray?
-        let visualMask: MLXArray?
-        let deepstack: [MLXArray]
-        let tags: [Int]
-    }
-
-    enum Element {
-        case text(String)
-        case vision(VisionBlock, H3VisionGrid)
-    }
-
+extension H3Presentation {
     /// Creates an arbitrary H3 Encoder presentation while keeping every
     /// vision span in the exact order in which its label appears.
-    static func assemble(
-        elements: [Element],
-        tokenizer: H3Tokenizer,
-        encoder: H3TextEncoder
-    ) -> Assembled {
-
-        // These ids are part of tokenizer_config.json in the H3 repository.
-        // Keep the historical ids only as a compatibility fallback for older
-        // local snapshots that predate the added-token entry.
-        let visionStart = tokenizer.tokenID(for: "<|vision_start|>")
-            ?? fallbackVisionStart
-        let visionEnd = tokenizer.tokenID(for: "<|vision_end|>")
-            ?? fallbackVisionEnd
-
+    func assemble(encoder: H3TextEncoder) -> Assembled {
         var pieces: [MLXArray] = []
         var spans: [Span] = []
         var grids: [H3VisionGrid] = []
         var visionBlocks: [VisionBlock] = []
         var cursor = 0
 
-        func appendText(_ text: String) {
-            let ids = tokenizer.encode(text)
+        func appendIds(_ ids: [Int]) {
             guard !ids.isEmpty else { return }
             pieces.append(encoder.embed(ids: ids)[0])
             cursor += ids.count
         }
 
-        func appendIds(_ ids: [Int]) {
-            pieces.append(encoder.embed(ids: ids)[0])
-            cursor += ids.count
-        }
-
         func appendVision(_ block: VisionBlock, grid: H3VisionGrid) {
-            appendIds([visionStart])
+            appendIds([visionStartToken])
             spans.append(Span(start: cursor, size: block.tokens))
             grids.append(grid)
             visionBlocks.append(block)
             pieces.append(block.merged.asType(.float32))
             cursor += block.tokens
-            appendIds([visionEnd])
+            appendIds([visionEndToken])
         }
 
         for element in elements {
             switch element {
-            case .text(let text):
-                appendText(text)
+            case .tokens(let ids):
+                appendIds(ids)
             case .vision(let block, let grid):
                 appendVision(block, grid: grid)
             }
         }
         if cursor == 0 {
-            appendIds([H3Tokenizer.padToken])
+            appendIds([padToken])
         }
 
         let embeds = concatenated(pieces, axis: 0).expandedDimensions(axis: 0)
@@ -1175,7 +1091,7 @@ enum H3Presentation {
         return Assembled(
             embeds: embeds,
             spans: spans,
-            positionIds: positionIds(
+            positionIds: H3Presentation.positionIds(
                 spans: spans,
                 grids: grids,
                 sequenceLength: sequenceLength),
@@ -1236,72 +1152,5 @@ enum H3Presentation {
         }
 
         return MLXArray(rows.flatMap { $0 }, [3, sequenceLength])
-    }
-}
-
-
-struct H3TextConditioningData {
-    let textEmbeddings: MLXArray
-    let tags: [Int]
-}
-
-/// Encodes the text prompt and optional FL2VA images for H3 Base.
-///
-/// The H3 Encoder and the vision tower are both part of the public FL2VA
-/// `text_encoder` component. A keyframe is represented twice, as required by
-/// H3 Base: semantic vision tokens enter this text stream and the same image's
-/// Visual VAE latent enters the visual condition stream.
-extension H3Conditioning {
-    static func encodeFL2VA(
-        prompt: String,
-        keyframes: [H3EvaluatorKeyframe],
-        encoder: H3Encoder,
-        tokenizer: H3Tokenizer
-    ) throws -> H3TextConditioningData {
-        let presented = keyframes.map(\.image)
-
-        let positive: (conditioning: MLXArray, tags: [Int])
-        if presented.isEmpty {
-            positive = try encoder.encodePrompt(prompt, tokenizer: tokenizer)
-        } else {
-            // A keyframe is presented twice: its vision tokens enter the text
-            // stream here, and its Visual VAE latent enters the condition rows.
-            positive = try presentedConditioning(
-                prompt: prompt,
-                images: presented,
-                encoder: encoder,
-                tokenizer: tokenizer)
-        }
-
-        eval(positive.conditioning)
-        return H3TextConditioningData(
-            textEmbeddings: positive.conditioning,
-            tags: positive.tags)
-    }
-
-    private static func presentedConditioning(
-        prompt: String,
-        images: [URL],
-        encoder: H3Encoder,
-        tokenizer: H3Tokenizer
-    ) throws -> (conditioning: MLXArray, tags: [Int]) {
-        var blocks: [H3Presentation.VisionBlock] = []
-        var grids: [H3VisionGrid] = []
-        for image in images {
-            let size = try H3IO.imageSize(at: image.path)
-            let (gridWidth, gridHeight, _) = H3VisionPreprocess.grid(
-                width: size.width,
-                height: size.height)
-            let pixels = try H3IO.imageHWC(
-                at: image.path,
-                width: gridWidth,
-                height: gridHeight)
-            let (block, grid) = try encoder.encodeVisual(pixels: pixels)
-            blocks.append(block)
-            grids.append(grid)
-        }
-
-        return try encoder.encodeText(
-            prompt: prompt, blocks: blocks, tokenizer: tokenizer, gridPerImage: grids)
     }
 }

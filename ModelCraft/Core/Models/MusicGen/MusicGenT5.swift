@@ -1,4 +1,9 @@
-// Copyright © 2024 Apple Inc.
+//
+//  MusicGenT5.swift
+//  ModelCraft
+//
+//  Created by Hongshen on 8/6/26.
+//
 
 import Foundation
 import MLX

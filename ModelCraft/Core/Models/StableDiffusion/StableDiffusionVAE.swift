@@ -1,10 +1,14 @@
-// Copyright © 2024 Apple Inc.
+//
+//  StableDiffusionVAE.swift
+//  ModelCraft
+//
+//  Created by Hongshen on 18/4/26.
+//
 
 import Foundation
 import MLX
 import MLXNN
 
-// port of https://github.com/ml-explore/mlx-examples/blob/main/stable_diffusion/stable_diffusion/vae.py
 
 class Attention: Module, UnaryLayer {
 

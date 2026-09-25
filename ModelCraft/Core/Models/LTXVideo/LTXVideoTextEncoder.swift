@@ -2,6 +2,13 @@
 //  LTXVideoTextEncoder.swift
 //  ModelCraft
 //
+//  Created by Hongshen on 28/8/26.
+//
+
+//
+//  LTXVideoTextEncoder.swift
+//  ModelCraft
+//
 
 import Foundation
 

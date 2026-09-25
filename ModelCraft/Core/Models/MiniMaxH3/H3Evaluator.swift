@@ -1,9 +1,13 @@
-// SPDX-License-Identifier: Apache-2.0
+//
+//  H3Evaluator.swift
+//  ModelCraft
+//
+//  Created by Hongshen on 28/8/26.
+//
 
 import Foundation
 import Hub
 
-// Copyright 2026 Sean Kammerich
 
 
 /// Errors that can be returned by the H3 Evaluator.

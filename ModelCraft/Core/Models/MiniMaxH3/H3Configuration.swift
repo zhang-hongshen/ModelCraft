@@ -9,49 +9,6 @@
 import Foundation
 import Hub
 
-/// Default generation values shared by the two H3 Base presets.
-public struct H3GenerationParameters: Sendable {
-    public var durationSeconds: Int
-    public var steps: Int
-    public var seed: UInt64?
-
-    public init(
-        durationSeconds: Int = 5,
-        steps: Int = 20,
-        seed: UInt64? = nil
-    ) {
-        self.durationSeconds = durationSeconds
-        self.steps = steps
-        self.seed = seed
-    }
-}
-
-/// File types used by ``H3Configuration/files``.
-///
-/// These keys describe the stable files in the official H3 repository. Keeping
-/// them typed prevents a misspelled string from silently selecting the wrong
-/// component while preserving the configuration-driven loading design used by
-/// Stable Diffusion.
-public enum H3FileKey: String, CaseIterable, Codable, Hashable, Sendable {
-    case modelIndex
-    case processor
-    case tokenizerFiles
-    case tokenizerVocabulary
-    case tokenizerMerges
-    case tokenizerConfig
-    case textEncoderConfig
-    case textEncoderWeights
-    case textEncoderShards
-    case transformerConfig
-    case transformerWeights
-    case transformerShards
-    case videoVAEConfig
-    case videoVAEWeights
-    case videoVAEShards
-    case audioVAEConfig
-    case audioVAEWeights
-}
-
 /// Configuration for one MiniMax H3 Base task checkpoint.
 ///
 /// Like ``StableDiffusionConfiguration``, this value owns the Hugging Face
@@ -117,16 +74,11 @@ public struct H3Configuration: Sendable {
         outputWidth: 1344,
         outputHeight: 768,
         files: [
-            .modelIndex: "model_index.json",
-            .processor: "processor/*",
-            .tokenizerFiles: "tokenizer/*",
             .tokenizerVocabulary: "tokenizer/vocab.json",
             .tokenizerMerges: "tokenizer/merges.txt",
             .tokenizerConfig: "tokenizer/tokenizer_config.json",
-            .textEncoderConfig: "text_encoder/config.json",
             .textEncoderWeights: "text_encoder/model.safetensors.index.json",
             .textEncoderShards: "text_encoder/model-*.safetensors",
-            .transformerConfig: "transformer/config.json",
             .transformerWeights: "transformer/diffusion_pytorch_model.safetensors.index.json",
             .transformerShards: "transformer/diffusion_pytorch_model-*.safetensors",
             .videoVAEConfig: "vae/config.json",
@@ -149,16 +101,11 @@ public struct H3Configuration: Sendable {
         outputWidth: 1344,
         outputHeight: 768,
         files: [
-            .modelIndex: "model_index.json",
-            .processor: "processor/*",
-            .tokenizerFiles: "tokenizer/*",
             .tokenizerVocabulary: "tokenizer/vocab.json",
             .tokenizerMerges: "tokenizer/merges.txt",
             .tokenizerConfig: "tokenizer/tokenizer_config.json",
-            .textEncoderConfig: "text_encoder/config.json",
             .textEncoderWeights: "text_encoder/model.safetensors.index.json",
             .textEncoderShards: "text_encoder/model-*.safetensors",
-            .transformerConfig: "transformer_ref/config.json",
             .transformerWeights: "transformer_ref/diffusion_pytorch_model.safetensors.index.json",
             .transformerShards: "transformer_ref/diffusion_pytorch_model-*.safetensors",
             .videoVAEConfig: "vae/config.json",
@@ -220,6 +167,11 @@ public struct H3Configuration: Sendable {
     /// profile to its own copy of the configuration.
     var runtimeProfile = H3RuntimeProfile.deviceDefault
 
+    // Fixed values from the released Diffusers transformer, text-encoder,
+    // processor and scheduler configs live here instead of downloading those
+    // small JSON files. The VAE configs remain files because their latent
+    // statistics are checkpoint data used directly during encode/decode.
+
     // H3 Omni Transformer configuration.
     public var hiddenSize = 5376
     public var numLayers = 50
@@ -259,22 +211,14 @@ public struct H3Configuration: Sendable {
 
     /// The Qwen3-VL-32B language stack that produces text conditioning.
     ///
-    /// Not public, with the three below it: these are the components' own
-    /// dimensions, and each is read out of the component's file where the
-    /// checkpoint states it rather than set from outside.
+    /// Not public, with the three below it: these are the released checkpoint's
+    /// fixed component dimensions rather than caller-selectable parameters.
     var textEncoder = H3TextEncoderConfiguration()
 
     /// The Qwen3-VL vision tower that turns an image reference into tokens.
     var visionEncoder = H3VisionEncoderConfiguration()
 
-    /// The video VAE, both directions. Every field here is one this checkpoint
-    /// states in `vae/config.json` — see
-    /// ``H3Loader/videoVAEConfiguration(at:)``, which reads them from there rather
-    /// than from a table in code.
     var videoVAE = H3VideoVAEConfiguration()
-
-    /// The audio VAE, both directions. Read from `audio_vae/config.json` the same
-    /// way — see ``H3Loader/audioVAEConfiguration(at:)``.
     var audioVAE = H3AudioVAEConfiguration()
 
     // H3 output and latent geometry.
@@ -413,10 +357,6 @@ struct H3VideoVAEConfiguration: Sendable, Equatable {
 
 /// The audio VAE, as the checkpoint's own `audio_vae/config.json` states it.
 ///
-/// Same rule as ``H3VideoVAEConfiguration``: every field is read from that file
-/// by ``H3Loader/audioVAEConfiguration(at:)``, so a re-export with different
-/// widths needs no code change. The names follow the file's.
-///
 /// Two of these deserve a note because the weights do **not** carry them, which
 /// is easy to assume they do: `latents_mean` and `latents_std` live in this file
 /// and not in the safetensors, exactly as the video VAE's do.
@@ -459,4 +399,42 @@ struct H3AudioVAEConfiguration: Sendable, Equatable {
     var numKernels: Int { resblockKernelSizes.count }
     /// Audio samples per latent frame — the encoder's rates multiplied out, 800.
     var hopLength: Int { encoderRates.reduce(1, *) }
+}
+
+/// Default generation values shared by the two H3 Base presets.
+public struct H3GenerationParameters: Sendable {
+    public var durationSeconds: Int
+    public var steps: Int
+    public var seed: UInt64?
+
+    public init(
+        durationSeconds: Int = 5,
+        steps: Int = 20,
+        seed: UInt64? = nil
+    ) {
+        self.durationSeconds = durationSeconds
+        self.steps = steps
+        self.seed = seed
+    }
+}
+
+/// File types used by ``H3Configuration/files``.
+///
+/// These keys describe the stable files in the official H3 repository. Keeping
+/// them typed prevents a misspelled string from silently selecting the wrong
+/// component while preserving the configuration-driven loading design used by
+/// Stable Diffusion.
+public enum H3FileKey: String, CaseIterable, Codable, Hashable, Sendable {
+    case tokenizerVocabulary
+    case tokenizerMerges
+    case tokenizerConfig
+    case textEncoderWeights
+    case textEncoderShards
+    case transformerWeights
+    case transformerShards
+    case videoVAEConfig
+    case videoVAEWeights
+    case videoVAEShards
+    case audioVAEConfig
+    case audioVAEWeights
 }

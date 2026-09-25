@@ -2,7 +2,7 @@
 //  DeleteButton.swift
 //  ModelCraft
 //
-//  Created by Hongshen on 4/4/2024.
+//  Created by Hongshen on 4/4/24.
 //
 
 import SwiftUI

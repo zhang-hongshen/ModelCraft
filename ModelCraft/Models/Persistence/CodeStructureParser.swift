@@ -2,6 +2,13 @@
 //  CodeStructureParser.swift
 //  ModelCraft
 //
+//  Created by Hongshen on 6/9/26.
+//
+
+//
+//  CodeStructureParser.swift
+//  ModelCraft
+//
 
 import Foundation
 import SwiftParser

@@ -1,3 +1,10 @@
+//
+//  StableDiffusionRuntimeTests.swift
+//  ModelCraft
+//
+//  Created by Hongshen on 31/8/26.
+//
+
 import Foundation
 import Testing
 @testable import ModelCraft

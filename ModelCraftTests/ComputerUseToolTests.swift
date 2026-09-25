@@ -1,6 +1,6 @@
 //
 //  ComputerUseToolTests.swift
-//  ModelCraftTests
+//  ModelCraft
 //
 //  Created by Hongshen on 13/6/26.
 //

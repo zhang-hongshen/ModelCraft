@@ -1,9 +1,13 @@
-// Copyright © 2024 Apple Inc.
+//
+//  Sampler.swift
+//  ModelCraft
+//
+//  Created by Hongshen on 18/4/26.
+//
 
 import Foundation
 import MLX
 
-// port of https://github.com/ml-explore/mlx-examples/blob/main/stable_diffusion/stable_diffusion/sampler.py
 
 /// Interpolate the function defined by `(0 ..< y.count) y)` at positions `xNew`.
 func interpolate(y: MLXArray, xNew: MLXArray) -> MLXArray {

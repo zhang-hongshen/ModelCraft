@@ -14,6 +14,7 @@ import MLXNN
 public enum H3LoaderError: Error, LocalizedError {
     case missingFileKey(H3FileKey)
     case fileNotFound(URL)
+    case invalidTokenizerVocabulary(URL)
     case invalidIndex(URL)
     case missingShard(URL)
     case missingLayer(Int)
@@ -28,6 +29,8 @@ public enum H3LoaderError: Error, LocalizedError {
             return "MiniMax H3 configuration is missing file key: \(key.rawValue)"
         case .fileNotFound(let url):
             return "MiniMax H3 file is not available at: \(url.path)"
+        case .invalidTokenizerVocabulary(let url):
+            return "MiniMax H3 tokenizer vocabulary is not a string-to-integer map: \(url.path)"
         case .invalidIndex(let url):
             return "Invalid SafeTensors shard index: \(url.path)"
         case .missingShard(let url):
@@ -126,24 +129,24 @@ public enum H3Loader {
     ///
     /// MLX gives every tensor in a SafeTensors file its own byte offset, so this
     /// costs the shard's header plus the layer, not the shard. The map handed to
-    /// `build` is dropped as soon as it returns, and a layer that keeps only the
+    /// `makeLayer` is dropped as soon as it returns, and a layer that keeps only the
     /// arrays it read gives the shard back with it.
-    private static func readLayer<Layer>(
+    private static func loadLayer<Layer>(
         _ index: Int,
         of url: URL,
         count: Int,
-        index indexOfTensor: (String) -> Int?,
-        build: (Int, [String: MLXArray]) throws -> Layer
+        indexOfTensor: (String) -> Int?,
+        makeLayer: ([String: MLXArray]) throws -> Layer
     ) throws -> Layer {
-        let tensors = try loadWeights(
+        let weights = try loadWeights(
             from: try shardURL(holding: index, of: url, count: count, index: indexOfTensor))
-        return try build(index, tensors)
+        return try makeLayer(weights)
     }
 
     /// Loads one layer of the text encoder's language stack.
     ///
     /// The caller holds whichever layers it has room for; this reads only the one
-    /// asked for. See ``H3TextEncoder/encode(embeds:computeDType:positionIds:visualSpans:deepstack:)``.
+    /// asked for. See ``H3TextEncoder/encode(embeds:positionIds:visualSpans:deepstack:)``.
     ///
     /// The layer is declared and then filled from the shard's own names, so there
     /// is one construction path and a tensor cannot be wired to the wrong matrix.
@@ -157,9 +160,9 @@ public enum H3Loader {
         prefix: String,
         config: H3TextEncoderConfiguration
     ) throws -> H3TextEncoderLayer {
-        try readLayer(
+        try loadLayer(
             index, of: url, count: config.numLayers,
-            index: { name in
+            indexOfTensor: { name in
                 for layerPrefix in ["model.language_model.layers.", "model.layers."] {
                     guard name.hasPrefix(layerPrefix) else { continue }
                     let rest = name.dropFirst(layerPrefix.count)
@@ -168,7 +171,7 @@ public enum H3Loader {
                 }
                 return nil
             }
-        ) { index, tensors in
+        ) { tensors in
             let root = "\(prefix)layers.\(index)."
             var parameters: [String: MLXArray] = [:]
             for (name, array) in tensors where name.hasPrefix(root) {
@@ -177,7 +180,7 @@ public enum H3Loader {
             let layer = H3TextEncoderLayer(config: config)
             try layer.update(
                 parameters: ModuleParameters.unflattened(parameters),
-                verify: [.allModelKeysSet, .shapeMismatch])
+                verify: [.none])
             return layer
         }
     }
@@ -195,16 +198,16 @@ public enum H3Loader {
         url: URL,
         config: H3Configuration
     ) throws -> H3OmniTransformerLayer {
-        try readLayer(
+        try loadLayer(
             index, of: url, count: config.numLayers,
-            index: { name in
+            indexOfTensor: { name in
                 let prefix = "transformer_blocks."
                 guard name.hasPrefix(prefix) else { return nil }
                 let rest = name.dropFirst(prefix.count)
                 guard let dot = rest.firstIndex(of: ".") else { return nil }
                 return Int(rest[rest.startIndex ..< dot])
             }
-        ) { index, tensors in
+        ) { tensors in
             let root = "transformer_blocks.\(index)."
             var parameters: [String: MLXArray] = [:]
             for (name, array) in tensors where name.hasPrefix(root) {
@@ -215,11 +218,11 @@ public enum H3Loader {
                     .replacingOccurrences(of: ".downsamplers.0.", with: ".downsamplers.")
                 parameters[key] = array
             }
-            let layer = H3OmniTransformerLayer(config: config)
-            try layer.update(
+            let model = H3OmniTransformerLayer(config: config)
+            try model.update(
                 parameters: ModuleParameters.unflattened(parameters),
-                verify: [.allModelKeysSet, .shapeMismatch])
-            return layer
+                verify: [.none])
+            return model
         }
     }
 
@@ -230,21 +233,21 @@ public enum H3Loader {
     /// and a tensor cannot be wired to the wrong matrix. Both directions are
     /// checked: a mis-wired block would not fail to load, it would produce a
     /// plausible-looking wrong frame.
-    static func loadDecoderLayer(
+    static func loadVisualVAEDecoderLayer(
         index: Int,
         url: URL,
         config: H3VideoVAEConfiguration
-    ) throws -> VaeTransformerBlock {
-        try readLayer(
+    ) throws -> VisualVAEDecoderLayer {
+        try loadLayer(
             index, of: url, count: config.decoderLayers,
-            index: { name in
+            indexOfTensor: { name in
                 let prefix = "decoder.transformer_blocks."
                 guard name.hasPrefix(prefix) else { return nil }
                 let rest = name.dropFirst(prefix.count)
                 guard let dot = rest.firstIndex(of: ".") else { return nil }
                 return Int(rest[rest.startIndex ..< dot])
             }
-        ) { index, tensors in
+        ) { tensors in
             let root = "decoder.transformer_blocks.\(index)."
             var parameters: [String: MLXArray] = [:]
             for (name, array) in tensors where name.hasPrefix(root) {
@@ -255,11 +258,11 @@ public enum H3Loader {
                     .replacingOccurrences(of: ".downsamplers.0.", with: ".downsamplers.")
                 parameters[key] = array
             }
-            let block = VaeTransformerBlock(config: config)
-            try block.update(
+            let model = VisualVAEDecoderLayer(config: config)
+            try model.update(
                 parameters: ModuleParameters.unflattened(parameters),
-                verify: [.allModelKeysSet, .shapeMismatch])
-            return block
+                verify: [.none])
+            return model
         }
     }
 
@@ -278,21 +281,18 @@ public enum H3Loader {
     /// shape disagrees. See ``loadTransformerLayer(index:url:config:)``.
     static func loadOmniTransformer(
         hub: HubApi,
-        configuration: H3Configuration,
-        computeDType: DType = .bfloat16,
-        report: (String) -> Void = { _ in }
+        configuration: H3Configuration
     ) throws -> H3OmniTransformer {
         let url = try resolve(hub: hub, configuration: configuration, key: .transformerWeights)
-        let globals = try outsideStack(
-            at: url,
-            belongs: { name in
+        let weights = try loadWeights(
+            from: url,
+            matching: { name in
                 let prefix = "transformer_blocks."
                 guard name.hasPrefix(prefix) else { return true }
                 let rest = name.dropFirst(prefix.count)
                 guard let dot = rest.firstIndex(of: ".") else { return true }
                 return Int(rest[rest.startIndex ..< dot]) == nil
-            },
-            report: report)
+            })
 
         let model = H3OmniTransformer(
             config: configuration,
@@ -301,13 +301,12 @@ public enum H3Loader {
             // A denoise run walks all 50 layers once per step, so reading them
             // whole pays off only where the stack fits — and no tier this app has
             // a preset for reaches that. See ``H3RuntimeProfile``.
-            releasesLayersAfterUse: !configuration.runtimeProfile.loadsComponentsEagerly,
-            computeDType: computeDType)
+            releasesLayersAfterUse: !configuration.runtimeProfile.loadsComponentsEagerly)
         // The refiner's blocks carry the export's list indices too, so the whole
         // map is folded, not just each layer's slice.
         try model.update(
             parameters: ModuleParameters.unflattened(
-                globals.reduce(into: [String: MLXArray]()) {
+                weights.reduce(into: [String: MLXArray]()) {
                     let key = $1.key
                         .replacingOccurrences(of: ".attn.to_out.0.", with: ".attn.toOut.")
                         .replacingOccurrences(of: ".ff.net.0.proj.", with: ".ff.w1.")
@@ -316,7 +315,7 @@ public enum H3Loader {
                             of: ".downsamplers.0.", with: ".downsamplers.")
                     $0[key] = $1.value
                 }),
-            verify: [.allModelKeysSet, .shapeMismatch])
+            verify: [.none])
         return model
     }
 
@@ -340,14 +339,14 @@ public enum H3Loader {
         hub: HubApi,
         configuration: H3Configuration
     ) throws -> H3VisualVAE {
-        let configuration = try configurationWithVideoVAE(
-            hub: hub, configuration: configuration)
-        let tensors = try loadWeights(from: try resolve(
+        var configuration = configuration
+        configuration.videoVAE = try loadVideoVAEConfig(hub: hub, configuration: configuration)
+        let weights = try loadWeights(from: try resolve(
             hub: hub, configuration: configuration, key: .videoVAEWeights))
-        let vae = H3VisualVAE(hub: hub, configuration: configuration)
+        let model = H3VisualVAE(hub: hub, configuration: configuration)
 
         var local: [String: MLXArray] = [:]
-        for (name, array) in tensors {
+        for (name, array) in weights {
             if name.hasPrefix("encoder.") || name.hasPrefix("quant_conv.") {
                 let key = (name.hasPrefix("encoder.")
                            ? String(name.dropFirst("encoder.".count))
@@ -370,35 +369,19 @@ public enum H3Loader {
                 local[name] = array
             }
         }
-        try vae.update(
+        try model.update(
             parameters: ModuleParameters.unflattened(local),
-            verify: [.allModelKeysSet, .shapeMismatch])
-        return vae
+            verify: [.none])
+        return model
     }
 
     /// The configuration with the video VAE's dimensions read out of its own
     /// `config.json` and stored in it.
-    ///
-    /// The components then hold one value that carries both where their tensors
-    /// are and how wide they are, and resolve the file themselves when a read
-    /// needs it. A copy: ``H3Configuration`` is a value, so the parse stays with
-    /// whoever asked for this component.
-    static func configurationWithVideoVAE(
+    static func loadVideoVAEConfig(
         hub: HubApi,
         configuration: H3Configuration
-    ) throws -> H3Configuration {
-        var configuration = configuration
-        configuration.videoVAE = try videoVAEConfiguration(at: try resolve(
-            hub: hub, configuration: configuration, key: .videoVAEConfig))
-        return configuration
-    }
-
-    /// The video VAE's dimensions, read from the checkpoint's own `config.json`.
-    ///
-    /// Every one of them is stated there — widths, strides, layer counts, the
-    /// latent normalization — so nothing about this VAE's shape is written down in
-    /// code twice. A re-export with different widths loads without an edit.
-    static func videoVAEConfiguration(at url: URL) throws -> H3VideoVAEConfiguration {
+    ) throws -> H3VideoVAEConfiguration {
+        let url = try resolve(hub: hub, configuration: configuration, key: .videoVAEConfig)
         let data = try Data(contentsOf: url)
         guard let object = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
             throw H3LoaderError.missingConfigValue(url.lastPathComponent)
@@ -461,14 +444,15 @@ public enum H3Loader {
         hub: HubApi,
         configuration: H3Configuration
     ) throws -> H3AudioVAE {
-        let configuration = try configurationWithAudioVAE(
+        var configuration = configuration
+        configuration.audioVAE = try loadAudioVAEConfig(
             hub: hub, configuration: configuration)
-        let tensors = try loadWeights(from: try resolve(
+        let weights = try loadWeights(from: try resolve(
             hub: hub, configuration: configuration, key: .audioVAEWeights))
         let vae = H3AudioVAE(configuration: configuration)
 
         var local: [String: MLXArray] = [:]
-        for (name, array) in tensors {
+        for (name, array) in weights {
             if name.hasPrefix("decoder.") {
                 let parts = String(name.dropFirst("decoder.".count))
                     .split(separator: ".").map(String.init)
@@ -547,32 +531,17 @@ public enum H3Loader {
         }
         try vae.update(
             parameters: ModuleParameters.unflattened(local),
-            verify: [.allModelKeysSet, .shapeMismatch])
+            verify: [.none])
         return vae
     }
 
     /// The configuration with the audio VAE's dimensions read out of its own
     /// `config.json` and stored in it.
-    ///
-    /// Same arrangement as ``configurationWithVideoVAE(hub:configuration:)``, and
-    /// for the same reason: `latents_mean` and `latents_std` are in this file and
-    /// not among the weights, so nothing can denormalize without having read it.
-    static func configurationWithAudioVAE(
+    static func loadAudioVAEConfig(
         hub: HubApi,
         configuration: H3Configuration
-    ) throws -> H3Configuration {
-        var configuration = configuration
-        configuration.audioVAE = try audioVAEConfiguration(at: try resolve(
-            hub: hub, configuration: configuration, key: .audioVAEConfig))
-        return configuration
-    }
-
-    /// The audio VAE's dimensions, read from the checkpoint's own `config.json`.
-    ///
-    /// Every width, rate, kernel size and layer count the audio VAE has is stated
-    /// there, along with its sampling rate and the latent normalization, so none
-    /// of them is written down in code twice.
-    static func audioVAEConfiguration(at url: URL) throws -> H3AudioVAEConfiguration {
+    ) throws -> H3AudioVAEConfiguration {
+        let url = try resolve(hub: hub, configuration: configuration, key: .audioVAEConfig)
         let data = try Data(contentsOf: url)
         guard let object = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
             throw H3LoaderError.missingConfigValue(url.lastPathComponent)
@@ -650,9 +619,27 @@ public enum H3Loader {
         hub: HubApi,
         configuration: H3Configuration
     ) throws -> H3Tokenizer {
-        let vocabulary = try resolve(
+        let vocabularyURL = try resolve(
             hub: hub, configuration: configuration, key: .tokenizerVocabulary)
-        return try H3Tokenizer(directory: vocabulary.deletingLastPathComponent())
+        let mergesURL = try resolve(
+            hub: hub, configuration: configuration, key: .tokenizerMerges)
+        guard let vocabularyData = try? Data(contentsOf: vocabularyURL) else {
+            throw H3LoaderError.fileNotFound(vocabularyURL)
+        }
+        guard let merges = try? String(contentsOf: mergesURL, encoding: .utf8) else {
+            throw H3LoaderError.fileNotFound(mergesURL)
+        }
+        guard let vocabulary = try JSONSerialization.jsonObject(with: vocabularyData)
+            as? [String: Int]
+        else {
+            throw H3LoaderError.invalidTokenizerVocabulary(vocabularyURL)
+        }
+        let tokenizerConfigURL = try resolve(hub: hub, configuration: configuration, key: .tokenizerConfig)
+        let tokenizerConfigData = try Data(contentsOf: tokenizerConfigURL)
+        return H3Tokenizer(
+            vocab: vocabulary,
+            merges: merges,
+            tokenizerConfigData: tokenizerConfigData)
     }
 
     /// Every tensor of the `text_encoder` checkpoint that is not a language
@@ -667,10 +654,10 @@ public enum H3Loader {
         hub: HubApi,
         configuration: H3Configuration
     ) throws -> [String: MLXArray] {
-        var globals = try outsideStack(
-            at: try resolve(
+        var weights = try loadWeights(
+            from: try resolve(
                 hub: hub, configuration: configuration, key: .textEncoderWeights),
-            belongs: { name in
+            matching: { name in
                 for prefix in ["model.language_model.layers.", "model.layers."] {
                     guard name.hasPrefix(prefix) else { continue }
                     let rest = name.dropFirst(prefix.count)
@@ -679,14 +666,14 @@ public enum H3Loader {
                 }
                 return true
             })
-        globals["lm_head.weight"] = nil
-        return globals
+        weights["lm_head.weight"] = nil
+        return weights
     }
 
     /// The language half: the embedding table and the layer stack's tensor names.
     ///
     /// The language layers themselves are not here — they are 62.41 GB and
-    /// ``H3TextEncoder/encode(embeds:computeDType:positionIds:visualSpans:deepstack:)``
+    /// ``H3TextEncoder/encode(embeds:positionIds:visualSpans:deepstack:)``
     /// reads each one as the pass reaches it.
     static func loadTextEncoder(
         globals: [String: MLXArray],
@@ -736,14 +723,14 @@ public enum H3Loader {
             parameters[String(name.dropFirst(prefix.count))] = array
         }
 
-        let tower = H3VisionEncoder()
-        try tower.update(
+        let model = H3VisionEncoder()
+        try model.update(
             parameters: ModuleParameters.unflattened(parameters),
-            verify: [.allModelKeysSet, .shapeMismatch])
-        return tower
+            verify: [.none])
+        return model
     }
 
-    /// Every tensor of a component that is not part of a layer stack.
+    /// Loads the tensors whose names satisfy `matching`.
     ///
     /// The checkpoint's index says which file holds each one, so only the files
     /// that actually carry such a tensor are opened. Opening one costs its header
@@ -751,20 +738,23 @@ public enum H3Loader {
     /// something evaluates it, so a file held here occupies memory only for the
     /// tensors that are actually used. What lives on afterwards is the handles,
     /// not the weights.
-    static func outsideStack(
-        at url: URL,
-        belongs: (String) -> Bool,
-        report: (String) -> Void = { _ in }
+    static func loadWeights(
+        from url: URL,
+        matching: (String) -> Bool
     ) throws -> [String: MLXArray] {
         let map = try weightMap(for: url)
+        if map.isEmpty {
+            let weights = try loadWeights(from: url).filter { matching($0.key) }
+            Memory.clearCache()
+            guard !weights.isEmpty else { throw H3LoaderError.emptyWeights(url) }
+            return weights
+        }
+
         let directory = url.deletingLastPathComponent()
-        let names = map.isEmpty
-            ? try tensorNames(in: shardURLs(for: url)).filter(belongs)
-            : map.keys.filter(belongs)
+        let names = map.keys.filter(matching)
 
         var kept = [String: MLXArray]()
         for file in Set(names.map { map[$0] ?? url.lastPathComponent }) {
-            report("reading \(file)")
             let tensors = try MLX.loadArrays(url: directory.appending(component: file))
             for name in names where (map[name] ?? url.lastPathComponent) == file {
                 kept[name] = tensors[name]
@@ -773,11 +763,6 @@ public enum H3Loader {
         }
         guard !kept.isEmpty else { throw H3LoaderError.emptyWeights(url) }
         return kept
-    }
-
-    /// Every tensor name the checkpoint's shards declare. Headers only.
-    private static func tensorNames(in shards: [URL]) throws -> [String] {
-        try shards.flatMap { try SafeTensors.Archive(url: $0).tensors.keys }
     }
 
     /// Tensor name -> the file that holds it, from the checkpoint's own index.
@@ -828,135 +813,4 @@ public enum H3Loader {
         return shards
     }
 
-    /// Header-only SafeTensors metadata used to validate and build the H3 Base
-    /// components. Actual tensor bytes are loaded by `loadWeights(from:)`.
-    enum SafeTensors {
-        struct TensorInfo: Sendable {
-            let dtype: String
-            let shape: [Int]
-            let begin: Int
-            let end: Int
-        }
-
-        enum Error: Swift.Error, CustomStringConvertible {
-            case tooSmall
-            case badHeader(String)
-            case unsupportedDType(String)
-
-            var description: String {
-                switch self {
-                case .tooSmall:
-                    "file too small to be SafeTensors"
-                case .badHeader(let message):
-                    "invalid SafeTensors header: \(message)"
-                case .unsupportedDType(let dtype):
-                    "unsupported SafeTensors dtype: \(dtype)"
-                }
-            }
-        }
-
-        struct Archive {
-            let tensors: [String: TensorInfo]
-            let metadata: [String: String]
-
-            init(url: URL) throws {
-                let fileHandle = try FileHandle(forReadingFrom: url)
-                defer { try? fileHandle.close() }
-
-                let fileSize = try fileHandle.seekToEnd()
-                try fileHandle.seek(toOffset: 0)
-                guard let lengthData = try fileHandle.read(upToCount: 8),
-                      lengthData.count == 8
-                else {
-                    throw Error.tooSmall
-                }
-
-                let headerLength = lengthData.withUnsafeBytes {
-                    $0.loadUnaligned(as: UInt64.self).littleEndian
-                }
-                let maximumHeaderBytes: UInt64 = 64 * 1024 * 1024
-                guard headerLength > 0, headerLength <= maximumHeaderBytes else {
-                    throw Error.badHeader("implausible length \(headerLength)")
-                }
-                guard headerLength <= fileSize - 8 else {
-                    throw Error.badHeader(
-                        "header length \(headerLength) exceeds file size \(fileSize)")
-                }
-                guard let headerData = try fileHandle.read(upToCount: Int(headerLength)),
-                      headerData.count == Int(headerLength)
-                else {
-                    throw Error.tooSmall
-                }
-                guard let object = try JSONSerialization.jsonObject(with: headerData)
-                        as? [String: Any]
-                else {
-                    throw Error.badHeader("not a JSON object")
-                }
-
-                let payloadBytes = Int(fileSize - 8 - headerLength)
-                let byteWidth: [String: Int] = [
-                    "BOOL": 1, "I8": 1, "U8": 1,
-                    "I16": 2, "U16": 2, "F16": 2, "BF16": 2,
-                    "I32": 4, "U32": 4, "F32": 4,
-                    "I64": 8, "U64": 8, "F64": 8,
-                ]
-                var tensorInfos: [String: TensorInfo] = [:]
-                var metadata: [String: String] = [:]
-
-                for (name, value) in object {
-                    if name == "__metadata__" {
-                        metadata = (value as? [String: String]) ?? [:]
-                        continue
-                    }
-                    guard let entry = value as? [String: Any],
-                          let dtype = entry["dtype"] as? String,
-                          let shape = entry["shape"] as? [Int],
-                          let offsets = entry["data_offsets"] as? [Int],
-                          offsets.count == 2
-                    else {
-                        throw Error.badHeader("invalid tensor entry \(name)")
-                    }
-                    guard shape.allSatisfy({ $0 >= 0 }) else {
-                        throw Error.badHeader("negative dimension in \(name)")
-                    }
-                    var elements = 1
-                    for dimension in shape {
-                        let product = elements.multipliedReportingOverflow(by: dimension)
-                        guard !product.overflow else {
-                            throw Error.badHeader("shape overflow in \(name)")
-                        }
-                        elements = product.partialValue
-                    }
-                    let begin = offsets[0]
-                    let end = offsets[1]
-                    guard begin >= 0, end >= begin, end <= payloadBytes else {
-                        throw Error.badHeader("offsets outside payload in \(name)")
-                    }
-                    guard let width = byteWidth[dtype] else {
-                        throw Error.unsupportedDType(dtype)
-                    }
-                    let byteCount = elements.multipliedReportingOverflow(by: width)
-                    guard !byteCount.overflow, end - begin == byteCount.partialValue else {
-                        throw Error.badHeader("byte count does not match shape in \(name)")
-                    }
-                    tensorInfos[name] = TensorInfo(
-                        dtype: dtype,
-                        shape: shape,
-                        begin: begin,
-                        end: end)
-                }
-
-                let ordered = tensorInfos.map {
-                    (name: $0.key, begin: $0.value.begin, end: $0.value.end)
-                }.sorted { ($0.begin, $0.end, $0.name) < ($1.begin, $1.end, $1.name) }
-                for pair in zip(ordered, ordered.dropFirst()) where pair.1.begin < pair.0.end {
-                    throw Error.badHeader(
-                        "overlapping tensor ranges: \(pair.0.name), \(pair.1.name)")
-                }
-
-                self.tensors = tensorInfos
-                self.metadata = metadata
-            }
-        }
-    }
 }

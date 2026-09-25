@@ -164,7 +164,7 @@ final class H3Sampler {
                 geometry: geometry,
                 references: conditions.references)
         }
-        let renderState = try model.prepareRender(
+        let prepared = model.prepareRender(
             textEmbeddings: conditioning.textEmbeddings,
             layout: layout)
         let videoSampler = H3Sampler()
@@ -178,13 +178,14 @@ final class H3Sampler {
             let step = try model.embed(
                 videoLatent: currentVideo,
                 audioLatent: currentAudio,
-                textEmbeddings: conditioning.textEmbeddings,
                 sigmaVideo: Double(sigma),
                 geometry: geometry,
+                layout: layout,
+                refinedText: prepared.refinedText,
+                ropeTable: prepared.ropeTable,
                 textTags: conditioning.tags,
                 condVideo: conditions.videoRows,
-                condAudio: conditions.audioRows,
-                renderState: renderState)
+                condAudio: conditions.audioRows)
             let velocity = try model.runStack(step)
 
             let videoDenoised = currentVideo - velocity.video * MLXArray(sigma)

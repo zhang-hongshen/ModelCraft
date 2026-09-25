@@ -2,7 +2,7 @@
 //  TextSplitter.swift
 //  ModelCraft
 //
-//  Created by Hongshen on 23/9/25.
+//  Created by Hongshen on 11/4/24.
 //
 
 public protocol TextSplitter {

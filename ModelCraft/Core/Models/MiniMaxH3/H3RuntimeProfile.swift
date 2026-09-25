@@ -54,7 +54,7 @@ struct H3RuntimeProfile: Equatable, Sendable {
     /// - ``H3Loader/loadEncoder(hub:configuration:)`` — true builds both halves of
     ///   the H3 Encoder before returning; false returns the container with neither
     ///   half read, and each is built the first time a render asks for it.
-    /// - ``H3Loader/loadOmniTransformer(hub:configuration:computeDType:report:)`` —
+    /// - ``H3Loader/loadOmniTransformer(hub:configuration:)`` —
     ///   true passes `releasesLayersAfterUse: false` to ``H3OmniTransformer``, so
     ///   the first step's walk leaves all 50 layers resident; false gives each
     ///   layer back as the walk leaves it.

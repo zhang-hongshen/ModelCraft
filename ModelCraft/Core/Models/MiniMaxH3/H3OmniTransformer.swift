@@ -15,7 +15,7 @@ import MLXNN
 /// The Omni Transformer: the DiT that denoises video and audio together.
 ///
 /// A `Module` whose parts are declared under the checkpoint's own names, so
-/// ``H3Loader/loadOmniTransformer(hub:configuration:computeDType:report:)``
+/// ``H3Loader/loadOmniTransformer(hub:configuration:)``
 /// fills them with `update(parameters:)`. The names are the diffusers export's,
 /// which nests a one-element list and a two-stage feed-forward where the model
 /// has a projection and an MLP; the loader folds those differences before the
@@ -25,31 +25,6 @@ import MLXNN
 /// 64.56 GB, so ``layers`` holds a slot per layer and nothing more:
 /// ``runStack(_:)`` reads each one as a step reaches it.
 final class H3OmniTransformer: Module {
-    /// Immutable tensors shared by every denoise step of one render.
-    ///
-    /// The conditioning projection/refiner and RoPE table depend on the prompt
-    /// and packed geometry, not on sigma or the evolving latents. Keeping them
-    /// alive avoids rebuilding the position table and re-reading the refiner's
-    /// weights on every step. It is deliberately supplied by the caller rather
-    /// than kept as mutable state on the model: one model may serve multiple
-    /// prompts or geometries without a stale-cache hazard.
-    final class RenderState: @unchecked Sendable {
-        fileprivate let layout: H3Sequence
-        fileprivate let textTokenCount: Int
-        fileprivate let textStates: MLXArray
-        fileprivate let refined: MLXArray
-        fileprivate let ropeTable: MLXArray
-
-        fileprivate init(layout: H3Sequence, textTokenCount: Int,
-                         textStates: MLXArray, refined: MLXArray, ropeTable: MLXArray) {
-            self.layout = layout
-            self.textTokenCount = textTokenCount
-            self.textStates = textStates
-            self.refined = refined
-            self.ropeTable = ropeTable
-        }
-    }
-
     let config: H3Configuration
 
     /// Everything outside the layer stack, declared one level per level of the
@@ -92,30 +67,24 @@ final class H3OmniTransformer: Module {
     ///
     /// False at every tier this app has a preset for — see ``H3RuntimeProfile``.
     let releasesLayersAfterUse: Bool
-    /// The dtype the layer stack runs in. H3 Base uses BF16 for its encoded
-    /// conditions and denoising path.
-    let computeDType: DType
-
     /// The declaration, with every parameter present but unread, and no layer
     /// built: the stack is read by ``runStack(_:)`` as a step reaches each layer,
     /// unless the machine's profile keeps it whole.
     ///
     /// The caller fills what is declared here from the checkpoint and then hands
     /// the model to the sampler — see
-    /// ``H3Loader/loadOmniTransformer(hub:configuration:computeDType:report:)``.
+    /// ``H3Loader/loadOmniTransformer(hub:configuration:)``.
     init(
         config: H3Configuration,
         hub: HubApi,
         configuration: H3Configuration,
-        releasesLayersAfterUse: Bool,
-        computeDType: DType = .bfloat16
+        releasesLayersAfterUse: Bool
     ) {
         self.config = config
         self.hub = hub
         self.configuration = configuration
         self.layers = Array(repeating: nil, count: config.numLayers)
         self.releasesLayersAfterUse = releasesLayersAfterUse
-        self.computeDType = computeDType
 
         // The residual stream is the encoder's width, so the patch projections
         // lift a latent's patch features into it and the conditioning lifts the
@@ -141,31 +110,27 @@ final class H3OmniTransformer: Module {
         })
     }
 
-    /// Precompute the exact prompt- and geometry-invariant DiT inputs for one
-    /// render. Call once before the sampler loop and pass the result to every
-    /// ``embed(videoLatent:audioLatent:textEmbeddings:sigmaVideo:geometry:textTags:condVideo:condAudio:renderState:)``
-    /// in that loop.
+    /// Precompute the prompt- and geometry-invariant tensors once per render.
     func prepareRender(
         textEmbeddings: MLXArray,
         layout: H3Sequence
-    ) throws -> RenderState {
+    ) -> (refinedText: MLXArray, ropeTable: MLXArray) {
         precondition(layout.textTokens == textEmbeddings.dim(1))
-        let textStates = conditionProj(textEmbeddings[0].asType(computeDType))
+        let textStates = conditionProj(textEmbeddings[0].asType(.bfloat16))
         let refined = tokenRefiner(textStates)
         let pos = MLXArray(layout.positionIds.map { Float($0) }, [layout.totalTokens, 3])
         let rope = H3RoPE.rotationTable(
             angles: H3RoPE.angles(positionIds: pos, invFreq: ropeInvFreq)
-        ).asType(computeDType)
-        return RenderState(layout: layout, textTokenCount: textEmbeddings.dim(1), textStates: textStates,
-                           refined: refined, ropeTable: rope)
+        ).asType(.bfloat16)
+        return (refined, rope)
     }
 
     /// One denoise step's layers and everything they read from.
     ///
-    /// The timestep embedding, modulation rows and RoPE table all come from sigma
-    /// and the packed geometry, so they cannot outlive the step that built them.
+    /// The timestep embedding and modulation rows depend on sigma. The RoPE table
+    /// depends only on packed geometry and is prepared once for the render.
     /// Handing the whole carrier to `run` means a caller walking the stack one
-    /// layer at a time recomputes none of it.
+    /// layer at a time recomputes none of the step-specific values.
     struct Step {
         /// The packed rows entering the stack, `[layout.totalTokens, hidden]`.
         let h: MLXArray
@@ -179,36 +144,21 @@ final class H3OmniTransformer: Module {
 
     /// Opens one denoise step: everything before the layer stack.
     ///
-    /// Conditions the prompt through the refiner, patchifies the latents, and
-    /// builds the timestep embedding and RoPE table every layer reads.
+    /// Patchifies the latents and builds the timestep embedding every layer reads.
     ///
     /// - Parameters:
     ///   - videoLatent: `[1,24,T,H,W]`
     ///   - audioLatent: `[1,32,2,audioT]`
-    ///   - textEmbeddings: `[1, textLen, textDim]` — output of the H3 Encoder
-    ///   - renderState: carries the segment table and `[S,3]` position ids
     func embed(videoLatent: MLXArray, audioLatent: MLXArray,
-                       textEmbeddings: MLXArray, sigmaVideo: Double,
-                       geometry: H3LatentGeometry, textTags: [Int]? = nil,
-                       condVideo: MLXArray? = nil,
-                       condAudio: MLXArray? = nil,
-                       renderState: RenderState? = nil) throws -> Step {
-        guard let renderState else {
-            throw H3EvaluatorError.invalidRequest(
-                rule: "missing H3 render layout",
-                detail: "embed was called before the task-specific packed sequence was prepared",
-                remedy: "prepare the FL2VA or Ref2VA render state before sampling.")
-        }
-        let layout = renderState.layout
+               sigmaVideo: Double, geometry: H3LatentGeometry,
+               layout: H3Sequence, refinedText: MLXArray, ropeTable: MLXArray,
+               textTags: [Int]? = nil, condVideo: MLXArray? = nil,
+               condAudio: MLXArray? = nil) throws -> Step {
         let plan = TimestepPlan(sigmaVideo: sigmaVideo, segments: layout.segments)
         let index = ModulationIndex(layout: layout, plan: plan, textTags: textTags)
 
-        // Text conditioning is projected in the transformer's working dtype.
-        precondition(renderState.textTokenCount == textEmbeddings.dim(1),
-                     "RenderState does not match this render's text length")
-        let refined = renderState.refined
-        // media path — patch projections are part of the fp32 island, so the
-        // rows go in as fp32 and the result is cast down to the compute dtype.
+        // Media path — patch projections are part of the fp32 island, so the
+        // rows go in as fp32 and the result returns to the model's BF16 precision.
         let videoRows = H3Packing.patchifyVideo(videoLatent.asType(.float32),
                                                 patch: config.patchSize)
         let audioRows = H3Packing.packAudio(audioLatent.asType(.float32))
@@ -258,7 +208,6 @@ final class H3OmniTransformer: Module {
         let audioEmbed = audioPatchProj(concatenated(allAudioRows, axis: 0))
 
         // pack segments in the layout's segment table order
-        let dtype = computeDType
         var hSegments = [MLXArray]()
         var vEmbedOffset = 0
         var aEmbedOffset = 0
@@ -266,13 +215,15 @@ final class H3OmniTransformer: Module {
         for s in layout.segments {
             switch s.kind {
             case .text:
-                hSegments.append(refined.asType(dtype))
+                hSegments.append(refinedText.asType(.bfloat16))
             case .visualCondition, .video:
-                let slice = videoEmbed[vEmbedOffset ..< (vEmbedOffset + s.count)].asType(dtype)
+                let slice = videoEmbed[vEmbedOffset ..< (vEmbedOffset + s.count)]
+                    .asType(.bfloat16)
                 hSegments.append(slice)
                 vEmbedOffset += s.count
             case .audioCondition, .audio:
-                let slice = audioEmbed[aEmbedOffset ..< (aEmbedOffset + s.count)].asType(dtype)
+                let slice = audioEmbed[aEmbedOffset ..< (aEmbedOffset + s.count)]
+                    .asType(.bfloat16)
                 hSegments.append(slice)
                 aEmbedOffset += s.count
             }
@@ -282,9 +233,9 @@ final class H3OmniTransformer: Module {
         precondition(h.dim(0) == layout.totalTokens,
                      "packed \(h.dim(0)) rows, layout says \(layout.totalTokens)")
 
-        let tEmb = timeEmbedder(MLXArray(plan.values)).asType(dtype)
+        let tEmb = timeEmbedder(MLXArray(plan.values)).asType(.bfloat16)
 
-        return Step(h: h, tEmb: tEmb, index: index, table: renderState.ropeTable,
+        return Step(h: h, tEmb: tEmb, index: index, table: ropeTable,
                     layout: layout, plan: plan, geometry: geometry)
     }
 
@@ -388,10 +339,10 @@ final class H3OmniTransformerLayer: Module {
     ///
     /// `adaln_proj` expands to 6 because a block modulates three streams — video,
     /// text and audio — with a shift and a scale each.
-    init(config: H3Configuration, fp32Attention: Bool = false) {
+    init(config: H3Configuration) {
         self._norm1.wrappedValue = H3RMSNorm(dimensions: config.hiddenSize, eps: config.normEps)
         self._norm2.wrappedValue = H3RMSNorm(dimensions: config.hiddenSize, eps: config.normEps)
-        self._attn.wrappedValue = AttentionLayer(config: config, fp32Attention: fp32Attention)
+        self._attn.wrappedValue = AttentionLayer(config: config)
         self._ff.wrappedValue = H3FeedForward(config: config)
         self._adaln.wrappedValue = AdalnProj(
             expand: 6, modalities: 3, hidden: config.hiddenSize,
@@ -680,17 +631,12 @@ final class AttentionLayer: Module {
     @ModuleInfo(key: "k_norm") var kNorm: H3RMSNorm
     let heads: Int
     let headDim: Int
-    /// Run the attention operation in fp32 while the rest of the block stays in
-    /// the model's working dtype.
-    let fp32Attention: Bool
-
-    init(config: H3Configuration, fp32Attention: Bool = false) {
+    init(config: H3Configuration) {
         // Attention widens past the residual: 56 heads of 128 is 7168 while the
         // block's hidden size is 5376, and the output projection brings it back.
         let inner = config.numHeads * config.headDim
         self.heads = config.numHeads
         self.headDim = config.headDim
-        self.fp32Attention = fp32Attention
         self._toQ.wrappedValue = Linear(config.hiddenSize, inner, bias: false)
         self._toK.wrappedValue = Linear(config.hiddenSize, inner, bias: false)
         self._toV.wrappedValue = Linear(config.hiddenSize, inner, bias: false)
@@ -704,8 +650,8 @@ final class AttentionLayer: Module {
     /// `[B, S, heads, headDim]` inputs. A backend may handle the unbatched H3
     /// path; batched text refinement uses the dense MLX operation.
     static func sdpa(q: MLXArray, k: MLXArray, v: MLXArray,
-                            headDim: Int, fp32: Bool = false) -> MLXArray {
-        let at: DType = fp32 ? .float32 : q.dtype
+                            headDim: Int) -> MLXArray {
+        let at = q.dtype
         let hasBatch = q.ndim == 4
         let qh = hasBatch ? q.transposed(0, 2, 1, 3).asType(at) : q.transposed(1, 0, 2).expandedDimensions(axis: 0).asType(at)
         let kh = hasBatch ? k.transposed(0, 2, 1, 3).asType(at) : k.transposed(1, 0, 2).expandedDimensions(axis: 0).asType(at)
@@ -743,8 +689,7 @@ final class AttentionLayer: Module {
             q: q,
             k: k,
             v: v,
-            headDim: headDim,
-            fp32: fp32Attention)
+            headDim: headDim)
         return toOut(merged)
     }
 }

@@ -1,10 +1,14 @@
-// Copyright © 2024 Apple Inc.
+//
+//  StableDiffusionUNet.swift
+//  ModelCraft
+//
+//  Created by Hongshen on 18/4/26.
+//
 
 import Foundation
 import MLX
 import MLXNN
 
-// port of https://github.com/ml-explore/mlx-examples/blob/main/stable_diffusion/stable_diffusion/unet.py
 
 func upsampleNearest(_ x: MLXArray, scale: Int = 2) -> MLXArray {
     precondition(x.ndim == 4)

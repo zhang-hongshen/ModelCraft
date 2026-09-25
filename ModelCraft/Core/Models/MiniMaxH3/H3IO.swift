@@ -558,7 +558,10 @@ extension H3IO {
         at url: URL,
         fit: (width: Int, height: Int)?
     ) throws -> H3DecodedImage {
-        let size = try fittedImageSize(at: url, fit: fit)
+        let fitted = try fittedImageSize(at: url, fit: fit)
+        let size = H3VisionPreprocess.imageGrid(
+            width: fitted.width,
+            height: fitted.height)
         let encoderPixels = try H3IO.imageHWC(at: url.path, width: size.width, height: size.height)
         let visualVAEPixels = (encoderPixels * 2.0 - 1.0)
             .squeezed(axis: 0)
@@ -576,7 +579,10 @@ extension H3IO {
             throw H3EvaluatorError.unreadable(path: url.path, reason: "no decodable video track")
         }
         let duration = try validateDuration(of: asset, path: url.path, kind: "video")
-        let size = try fittedVideoSize(track: track, path: url.path, fit: fit)
+        let fitted = try fittedVideoSize(track: track, path: url.path, fit: fit)
+        let size = H3VisionPreprocess.videoGrid(
+            width: fitted.width,
+            height: fitted.height)
         let reportedFrameRate = reportedFrameRate(for: track)
         let decodedAudio = try asset.tracks(withMediaType: .audio).first.map {
             try audio(from: asset, track: $0, path: url.path)

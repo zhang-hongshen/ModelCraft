@@ -27,13 +27,13 @@ final class H3VisualVAE: Module {
     @ModuleInfo(key: "post_quant_conv") var postQuantConv: H3Projection
     @ModuleInfo var encoder: H3VisualVAEEncoder
     @ModuleInfo var decoder: H3VisualVAEDecoder
-    
+
     /// The latent normalization, which this checkpoint keeps in `vae/config.json`
     /// rather than among its weights. Swift arrays, not `MLXArray`s: a `Module`
     /// walks its `MLXArray` ivars as the weights a load fills.
     let latentsMean: [Float]
     let latentsStd: [Float]
-    
+
 
     /// ImageNet statistics, the VAE's own convention. Not from the checkpoint, so
     /// computed rather than stored: a `Module` walks its `MLXArray` ivars as the
@@ -642,8 +642,8 @@ final class H3VisualVAEDecoder: Module {
     @ParameterInfo(key: "register_tokens") var registerTokens: MLXArray
     @ModuleInfo(key: "norm_out") var normOut: VaeLayerNorm
     @ModuleInfo(key: "proj_out") var projOut: H3Projection
-    private var layers: [VaeTransformerBlock?]
-    
+    private var layers: [VisualVAEDecoderLayer?]
+
     /// Built here rather than read: `decoder_rope_theta` and
     /// `decoder_rope_dim_ratio` state it — a quarter of each head's width is left
     /// unrotated.
@@ -718,7 +718,7 @@ final class H3VisualVAEDecoder: Module {
 
         for index in 0 ..< config.decoderLayers {
             if layers[index] == nil {
-                layers[index] = try H3Loader.loadDecoderLayer(
+                layers[index] = try H3Loader.loadVisualVAEDecoderLayer(
                     index: index, url: try url, config: config)
             }
             h = layers[index]!(h, rotaryPosEmb: rotaryPosEmb)
@@ -1217,10 +1217,10 @@ final class VaeFeedForward: Module {
 /// residual scaled by a learned scalar.
 ///
 /// A `Module` whose parts are declared under the checkpoint's names, so
-/// ``H3Loader/loadDecoderLayer(index:url:)`` builds one by filling this from the
+/// ``H3Loader/loadVisualVAEDecoderLayer(index:url:)`` builds one by filling this from the
 /// tensors whose names start `decoder.transformer_blocks.<index>.`. A mis-wiring
 /// would not fail to load, it would produce a plausible-looking wrong frame.
-final class VaeTransformerBlock: Module {
+final class VisualVAEDecoderLayer: Module {
     @ModuleInfo var norm1: VaeRMSNorm
     @ModuleInfo var norm2: VaeRMSNorm
     @ModuleInfo var attn: VaeAttention

@@ -2,6 +2,13 @@
 //  ProjectSearchIndex.swift
 //  ModelCraft
 //
+//  Created by Hongshen on 6/9/26.
+//
+
+//
+//  ProjectSearchIndex.swift
+//  ModelCraft
+//
 
 import AppKit
 import Foundation

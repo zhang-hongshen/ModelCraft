@@ -2,7 +2,7 @@
 //  NSImage+.swift
 //  ModelCraft
 //
-//  Created by Hongshen on 24/3/2024.
+//  Created by Hongshen on 24/3/24.
 //
 
 import AppKit

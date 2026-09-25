@@ -2,7 +2,7 @@
 //  FixedLengthTextSplitter.swift
 //  ModelCraft
 //
-//  Created by Hongshen on 11/4/2024.
+//  Created by Hongshen on 11/4/24.
 //
 
 import Foundation

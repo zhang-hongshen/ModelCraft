@@ -10,24 +10,18 @@ import Foundation
 
 
 struct H3Tokenizer {
+    private static let fallbackVisionStart = 151_652
+    private static let fallbackVisionEnd = 151_653
+
     let vocab: [String: Int]
     let ranks: [Pair: Int]
     /// Added/special tokens, longest first so `<|im_start|>` wins over `<`.
     let specials: [(text: String, id: Int)]
-    static let padToken = 151_643
+    private static let padToken = 151_643
 
     struct Pair: Hashable {
         let a: String, b: String
         init(_ a: String, _ b: String) { self.a = a; self.b = b }
-    }
-
-    enum Error: Swift.Error, CustomStringConvertible {
-        case missing(String)
-        var description: String {
-            switch self {
-            case .missing(let p): "tokenizer file not found: \(p)"
-            }
-        }
     }
 
     /// GPT-2's byte-to-unicode table: every byte becomes a printable code point
@@ -44,23 +38,12 @@ struct H3Tokenizer {
         return map
     }()
 
-    init(directory: URL) throws {
-        let vocabURL = directory.appendingPathComponent("vocab.json")
-        let mergesURL = directory.appendingPathComponent("merges.txt")
-        guard let vd = try? Data(contentsOf: vocabURL) else {
-            throw Error.missing(vocabURL.path)
-        }
-        guard let raw = try? String(contentsOf: mergesURL, encoding: .utf8) else {
-            throw Error.missing(mergesURL.path)
-        }
-        guard let v = try JSONSerialization.jsonObject(with: vd) as? [String: Int] else {
-            throw Error.missing("vocab.json is not a {string: int} map")
-        }
-        self.vocab = v
+    init(vocab: [String: Int], merges: String, tokenizerConfigData: Data) {
+        self.vocab = vocab
 
         var r: [Pair: Int] = [:]
         var i = 0
-        for line in raw.split(separator: "\n", omittingEmptySubsequences: true) {
+        for line in merges.split(separator: "\n", omittingEmptySubsequences: true) {
             if line.hasPrefix("#version") { continue }
             let parts = line.split(separator: " ", maxSplits: 1)
             guard parts.count == 2 else { continue }
@@ -74,9 +57,8 @@ struct H3Tokenizer {
         // Filtering vocab.json for <|…|> finds nothing, and "<|im_start|>" then
         // byte-splits into 6 ordinary tokens instead of one.
         var added: [(String, Int)] = []
-        let cfgURL = directory.appendingPathComponent("tokenizer_config.json")
-        if let cd = try? Data(contentsOf: cfgURL),
-           let cfg = try? JSONSerialization.jsonObject(with: cd) as? [String: Any],
+        if let cfg = try? JSONSerialization.jsonObject(with: tokenizerConfigData)
+               as? [String: Any],
            let decoder = cfg["added_tokens_decoder"] as? [String: Any] {
             for (idString, entry) in decoder {
                 guard let id = Int(idString),
@@ -163,23 +145,32 @@ struct H3Tokenizer {
         return ids
     }
 
-    /// What the reference feeds the encoder: the prompt's ids, or a single pad
-    /// token when the prompt is empty.
-    func encodePrompt(_ text: String) -> [Int] {
+    /// What H3 Base feeds the text encoder for a bare prompt.
+    func encodePrompt(_ text: String) -> (ids: [Int], tags: [Int]) {
         let ids = encode(text)
-        return ids.isEmpty ? [Self.padToken] : ids
+        let promptIDs = ids.isEmpty ? [Self.padToken] : ids
+        return (promptIDs, textTags(count: promptIDs.count))
+    }
+
+    /// Special token ids used by a multimodal presentation.
+    var presentationTokens: (visionStart: Int, visionEnd: Int, pad: Int) {
+        (
+            tokenID(for: "<|vision_start|>") ?? Self.fallbackVisionStart,
+            tokenID(for: "<|vision_end|>") ?? Self.fallbackVisionEnd,
+            Self.padToken
+        )
     }
 
     /// Returns an id from the downloaded tokenizer configuration. H3's vision
     /// boundary tokens are added tokens rather than ordinary vocabulary
     /// entries, so callers must not assume their numeric ids are portable
     /// across tokenizer revisions.
-    func tokenID(for content: String) -> Int? {
+    private func tokenID(for content: String) -> Int? {
         specials.first(where: { $0.text == content })?.id ?? vocab[content]
     }
 
     /// Modality tag per token. A pure-text prompt is all 1 (text); vision pads
     /// would carry 0 (video), which is why this is a per-token array and not a
     /// constant.
-    func textTags(count: Int) -> [Int] { Array(repeating: 1, count: count) }
+    private func textTags(count: Int) -> [Int] { Array(repeating: 1, count: count) }
 }

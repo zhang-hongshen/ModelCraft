@@ -1,3 +1,10 @@
+//
+//  PromptCacheKey.swift
+//  ModelCraft
+//
+//  Created by Hongshen on 29/8/26.
+//
+
 import Foundation
 import MLXLMCommon
 import Tokenizers

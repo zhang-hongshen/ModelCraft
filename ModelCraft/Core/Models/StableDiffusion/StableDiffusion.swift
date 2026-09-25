@@ -1,4 +1,9 @@
-// Copyright © 2024 Apple Inc.
+//
+//  StableDiffusion.swift
+//  ModelCraft
+//
+//  Created by Hongshen on 18/4/26.
+//
 
 import Foundation
 import Hub

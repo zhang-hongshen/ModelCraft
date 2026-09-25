@@ -2,7 +2,7 @@
 //  RandomAccessCollection+.swift
 //  ModelCraft
 //
-//  Created by Hongshen on 1/3/2024.
+//  Created by Hongshen on 1/3/24.
 //
 
 import Foundation
