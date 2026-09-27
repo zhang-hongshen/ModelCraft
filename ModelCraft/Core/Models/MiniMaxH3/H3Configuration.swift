@@ -66,7 +66,7 @@ public struct H3Configuration: Sendable {
     ///
     /// The two exports name the same weights differently — the task directories
     /// spell a fused `attn.qkv_proj` and `mlp.fc1`, diffusers spells
-    /// `attn.to_q`/`to_k`/`to_v` and `ff.net.0.proj`/`ff.net.2` — and the layers
+    /// `attn.to_q`/`to_k`/`to_v` and `ff.net.0.proj`/`ff.net.2` — and the blocks
     /// declare the diffusers names. The loader reconciles the difference.
     public static let presetH3BaseFL2VA = H3Configuration(
         id: "MiniMaxAI/MiniMax-H3",
@@ -127,7 +127,7 @@ public struct H3Configuration: Sendable {
         },
         factory: @escaping @Sendable (HubApi, H3Configuration) throws -> H3Base = {
             hub, configuration in
-            H3Base(hub: hub, configuration: configuration)
+            try H3Base(hub: hub, configuration: configuration)
         }
     ) {
         self.id = id
@@ -174,7 +174,7 @@ public struct H3Configuration: Sendable {
 
     // H3 Omni Transformer configuration.
     public var hiddenSize = 5376
-    public var numLayers = 50
+    public var numTransformerBlocks = 50
     public var tokenRefinerLayers = 2
     public var numHeads = 56
     public var headDim = 128
@@ -206,8 +206,8 @@ public struct H3Configuration: Sendable {
     // they are all reachable from here, so one value carries everything a render
     // needs and every knob is visible in one place. They stay separate types
     // rather than being flattened: the DiT and the encoder share field names
-    // (`headDim`, `numLayers`) with unrelated meanings, and a flat struct would
-    // make one silently change with the other.
+    // (`headDim`, block/layer counts) with unrelated meanings, and a flat struct
+    // would make one silently change with the other.
 
     /// The Qwen3-VL-32B language stack that produces text conditioning.
     ///

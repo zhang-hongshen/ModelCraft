@@ -35,7 +35,7 @@ actor H3ModelFactory {
         case .idle:
             let task = Task<H3Base, Error> {
                 try await configuration.download(hub: hub, progressHandler: progressHandler)
-                return H3Base(hub: hub, configuration: configuration)
+                return try H3Base(hub: hub, configuration: configuration)
             }
             states[configuration.task] = .loading(task)
             do {

@@ -14,20 +14,19 @@ import MLXNN
 
 /// The Omni Transformer: the DiT that denoises video and audio together.
 ///
-/// A `Module` whose parts are declared under the checkpoint's own names, so
-/// ``H3Loader/loadOmniTransformer(hub:configuration:)``
-/// fills them with `update(parameters:)`. The names are the diffusers export's,
+/// A `Module` whose parts are declared under the checkpoint's own names, so its
+/// initializer asks ``H3Loader`` to fill them with `update(parameters:)`. The names are the diffusers export's,
 /// which nests a one-element list and a two-stage feed-forward where the model
 /// has a projection and an MLP; the loader folds those differences before the
 /// parameters reach this module.
 ///
-/// The layer stack is the exception and is not declared here. Its 50 layers are
-/// 64.56 GB, so ``layers`` holds a slot per layer and nothing more:
-/// ``runStack(_:)`` reads each one as a step reaches it.
+/// The block stack is the exception and is not declared here. Its 50 blocks are
+/// 64.56 GB, so ``runStack(_:)`` streams one SafeTensors file at a time and runs
+/// every complete block that file makes available.
 final class H3OmniTransformer: Module {
     let config: H3Configuration
 
-    /// Everything outside the layer stack, declared one level per level of the
+    /// Everything outside the block stack, declared one level per level of the
     /// checkpoint's names. 1.72 GB, read once per render.
     @ModuleInfo(key: "context_embedder") var conditionProj: H3Projection
     @ModuleInfo(key: "proj_in") var videoPatchProj: H3Projection
@@ -54,37 +53,19 @@ final class H3OmniTransformer: Module {
         get throws { try H3Loader.resolve(
             hub: hub, configuration: configuration, key: .transformerWeights) }
     }
-    /// The layer stack. `layers[i]` is layer `i` while it is in memory and `nil`
-    /// when it is not.
+    /// The declaration, with every non-block parameter present but unread. The
+    /// block stack is read by ``runStack(_:)`` one checkpoint file at a time.
     ///
-    /// The stack is 64.56 GB and is walked in full on each of the 20 denoise
-    /// steps, so no machine this app targets holds it. ``runStack(_:)`` reads each
-    /// layer as the step reaches it and gives it back on the way past, unless
-    /// ``releasesLayersAfterUse`` says this machine can afford to keep what it
-    /// has already read.
-    private var layers: [H3OmniTransformerLayer?]
-    /// Whether a step gives its layers back or keeps them for the next one.
-    ///
-    /// False at every tier this app has a preset for — see ``H3RuntimeProfile``.
-    let releasesLayersAfterUse: Bool
-    /// The declaration, with every parameter present but unread, and no layer
-    /// built: the stack is read by ``runStack(_:)`` as a step reaches each layer,
-    /// unless the machine's profile keeps it whole.
-    ///
-    /// The caller fills what is declared here from the checkpoint and then hands
-    /// the model to the sampler — see
-    /// ``H3Loader/loadOmniTransformer(hub:configuration:)``.
+    /// The root weights are loaded before initialization completes. The block
+    /// stack remains streamed one checkpoint file at a time by `runStack(_:)`.
     init(
         config: H3Configuration,
         hub: HubApi,
-        configuration: H3Configuration,
-        releasesLayersAfterUse: Bool
-    ) {
+        configuration: H3Configuration
+    ) throws {
         self.config = config
         self.hub = hub
         self.configuration = configuration
-        self.layers = Array(repeating: nil, count: config.numLayers)
-        self.releasesLayersAfterUse = releasesLayersAfterUse
 
         // The residual stream is the encoder's width, so the patch projections
         // lift a latent's patch features into it and the conditioning lifts the
@@ -108,6 +89,9 @@ final class H3OmniTransformer: Module {
         self.ropeInvFreq = MLXArray((0 ..< config.ropeInvFreqLen).map { i in
             Float(1.0 / pow(config.ropeTheta, Double(2 * i) / Double(2 * config.ropeInvFreqLen)))
         })
+
+        super.init()
+        try H3Loader.loadRoot(into: self, hub: hub, configuration: configuration)
     }
 
     /// Precompute the prompt- and geometry-invariant tensors once per render.
@@ -125,12 +109,12 @@ final class H3OmniTransformer: Module {
         return (refined, rope)
     }
 
-    /// One denoise step's layers and everything they read from.
+    /// One denoise step's blocks and everything they read from.
     ///
     /// The timestep embedding and modulation rows depend on sigma. The RoPE table
     /// depends only on packed geometry and is prepared once for the render.
     /// Handing the whole carrier to `run` means a caller walking the stack one
-    /// layer at a time recomputes none of the step-specific values.
+    /// block at a time recomputes none of the step-specific values.
     struct Step {
         /// The packed rows entering the stack, `[layout.totalTokens, hidden]`.
         let h: MLXArray
@@ -142,9 +126,9 @@ final class H3OmniTransformer: Module {
         fileprivate let geometry: H3LatentGeometry
     }
 
-    /// Opens one denoise step: everything before the layer stack.
+    /// Opens one denoise step: everything before the block stack.
     ///
-    /// Patchifies the latents and builds the timestep embedding every layer reads.
+    /// Patchifies the latents and builds the timestep embedding every block reads.
     ///
     /// - Parameters:
     ///   - videoLatent: `[1,24,T,H,W]`
@@ -239,38 +223,29 @@ final class H3OmniTransformer: Module {
                     layout: layout, plan: plan, geometry: geometry)
     }
 
-    /// Runs one layer of the stack on the step's hidden state.
+    /// Runs one Transformer block on the step's hidden state.
     ///
-    /// This is the only place a layer is invoked, so there is no second
-    /// arithmetic path for a layer to disagree with itself about.
-    private func run(_ layer: H3OmniTransformerLayer, _ step: Step, h: MLXArray) -> MLXArray {
-        layer(h, tEmb: step.tEmb, index: step.index, ropeTable: step.table)
+    /// This is the only place a block is invoked, so there is no second
+    /// arithmetic path for a block to disagree with itself about.
+    private func run(_ block: H3OmniTransformerBlock, _ step: Step, h: MLXArray) -> MLXArray {
+        block(h, tEmb: step.tEmb, index: step.index, ropeTable: step.table)
     }
 
-    /// Runs the whole stack for one denoise step, reading each layer as the step
-    /// reaches it.
-    ///
-    /// A layer already in memory costs nothing; one that is not reads its
-    /// checkpoint file. Whether the step keeps what it read is the machine's
-    /// decision, not a second code path: see ``releasesLayersAfterUse``.
+    /// Runs the whole stack for one denoise step, one SafeTensors shard at a
+    /// time. A shard commonly supplies several complete consecutive blocks; a
+    /// block split across two files runs only after the second file completes it.
     func runStack(_ step: Step) throws -> (video: MLXArray, audio: MLXArray) {
         var h = step.h
-        for index in 0 ..< config.numLayers {
-            if layers[index] == nil {
-                layers[index] = try H3Loader.loadTransformerLayer(
-                    index: index, url: try url, config: config)
+        try H3Loader.loadTransformerBlocks(url: try url, config: config) { blocks in
+            for block in blocks {
+                h = run(block, step, h: h)
             }
-            h = run(layers[index]!, step, h: h)
-            if releasesLayersAfterUse {
-                // The next step starts at layer 0 again, and a layer beyond this
-                // one is 1.29 GB nothing is going to ask for in between.
-                layers[index] = nil
-            }
+            eval(h)
         }
         return finish(h, step)
     }
 
-    /// Closes one denoise step: the final layer, then the latent-shaped velocity
+    /// Closes one denoise step: the output layer, then the latent-shaped velocity
     /// for both streams.
     ///
     /// Returns exactly what the reference does. Two sign conventions are baked in
@@ -282,8 +257,8 @@ final class H3OmniTransformer: Module {
         let layout = step.layout
         let plan = step.plan
 
-        // The final layer's AdaLN has one modality, so these rows are timestep
-        // rows — not the `row * 3 + tag` a layer uses.
+        // The output layer's AdaLN has one modality, so these rows are timestep
+        // rows — not the `row * 3 + tag` a Transformer block uses.
         let videoSeg = ModSegment(start: layout.videoRange.lowerBound,
                                   stop: layout.videoRange.upperBound, row: plan.row(for: .video))
         let audioSeg = ModSegment(start: layout.audioRange.lowerBound,
@@ -316,19 +291,18 @@ final class H3OmniTransformer: Module {
 }
 
 
-/// One layer of the Omni Transformer's stack.
+/// One block of the Omni Transformer's stack.
 ///
-/// The stack is 50 of these. Each is 1.29 GB, so which ones are in memory at a
-/// given moment is the whole memory question, and a layer is therefore the unit
-/// a caller loads, runs and lets go of.
+/// The stack is 50 of these. The loader groups them by their SafeTensors shard
+/// so several consecutive blocks can remain available for one streaming pass.
 ///
 /// A `Module` whose parts are declared one level per level of the checkpoint's
-/// names, so ``H3Loader/loadTransformerLayer(index:url:config:)`` builds one by
+/// names, so ``H3Loader/loadTransformerBlocks(url:config:body:)`` builds one by
 /// filling this declaration from the tensors whose names start `blocks.<index>.`:
 /// the names and the structure are the same statement. That matters here — a
 /// mis-wiring would not fail to load, it would produce a plausible-looking wrong
 /// video.
-final class H3OmniTransformerLayer: Module {
+final class H3OmniTransformerBlock: Module {
     @ModuleInfo var norm1: H3RMSNorm
     @ModuleInfo var norm2: H3RMSNorm
     @ModuleInfo var attn: AttentionLayer
@@ -352,7 +326,7 @@ final class H3OmniTransformerLayer: Module {
     func callAsFunction(_ x: MLXArray, tEmb: MLXArray, index: ModulationIndex,
                                ropeTable: MLXArray?) -> MLXArray {
         let m = adaln(tEmb)
-        precondition(m.count == 6, "H3OmniTransformerLayer AdaLN must expand to 6, got \(m.count)")
+        precondition(m.count == 6, "H3OmniTransformerBlock AdaLN must expand to 6, got \(m.count)")
 
         func norm(_ v: MLXArray, _ n: H3RMSNorm, _ shift: MLXArray,
                   _ scale: MLXArray) -> MLXArray {
@@ -512,7 +486,7 @@ func modGate(_ x: MLXArray, gate: MLXArray, other: MLXArray,
 ///
 /// Computed in fp32 and cast back to the input dtype.
 ///
-/// A `Module` so the layer stacks can declare one and let `update(parameters:)`
+/// A `Module` so the block stacks can declare one and let `update(parameters:)`
 /// fill it by path. The tensor-taking initializer stays for callers that already
 /// hold the weight; `dimensions` allocates the shape that lookup replaces, which
 /// is what a declaration needs, since a parameter is filled by being found in the
@@ -553,7 +527,7 @@ final class AdalnProj: Module {
     /// Compute the projection in fp32 and cast the result back to the model's
     /// working dtype.
     ///
-    /// The AdaLN matrices are the largest in a layer and the modulation they
+    /// The AdaLN matrices are the largest in a block and the modulation they
     /// produce is small, so the extra precision is nearly free.
     let computeFP32: Bool
 
@@ -717,7 +691,7 @@ final class H3FeedForward: Module {
 ///
 /// Held rather than given to MLX as a `Linear` because the callers choose their
 /// own arithmetic dtype per call — the AdaLN projection projects in fp32 and
-/// reshapes its output into `expand` tensors, the final layer's heads are the
+/// reshapes its output into `expand` tensors, the output layer's heads are the
 /// export's fp32 island, and the VAE's `post_quant_conv` flattens a convolution's
 /// weight before using it. A `Linear` would decide all three for them.
 final class H3Projection: Module {

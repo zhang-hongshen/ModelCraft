@@ -18,6 +18,7 @@ public enum H3LoaderError: Error, LocalizedError {
     case invalidIndex(URL)
     case missingShard(URL)
     case missingLayer(Int)
+    case missingTransformerBlock(Int)
     case missingTensor(String)
     case duplicateTensor(String)
     case emptyWeights(URL)
@@ -37,6 +38,8 @@ public enum H3LoaderError: Error, LocalizedError {
             return "SafeTensors shard is missing: \(url.path)"
         case .missingLayer(let index):
             return "No SafeTensors shard holds layer \(index)"
+        case .missingTransformerBlock(let index):
+            return "No SafeTensors shard sequence completes Transformer block \(index)"
         case .missingTensor(let name):
             return "MiniMax H3 weights have no tensor named \(name)"
         case .duplicateTensor(let name):
@@ -73,11 +76,9 @@ public enum H3Loader {
     /// Loads a single SafeTensors file or all shards referenced by its
     /// `.index.json` file.
     ///
-    /// This is the bottom of the weight stack: the only function in the H3 family
-    /// that reads tensor bytes. Everything above it — the encoder's embedding
-    /// table and vision tower, the Omni Transformer, both VAE directions, and the
-    /// three layer stacks through the `load…Layer` readers below — is handed what
-    /// it needs from here and never opens the checkpoint itself.
+    /// This is the general whole-checkpoint weight path. Component loaders use it
+    /// when they need one file or a filtered set across all shards; streamed block
+    /// stacks open their current shard directly instead.
     ///
     /// The map it returns is cheap and lazy. MLX holds the file open and gives
     /// each tensor its own byte offset, so a returned array costs a descriptor
@@ -185,45 +186,104 @@ public enum H3Loader {
         }
     }
 
-    /// Loads one layer of the Omni Transformer's stack.
+    /// Walks the Omni Transformer's blocks one SafeTensors file at a time.
     ///
-    /// Declared and then filled from the slice of the shard whose names start
-    /// `blocks.<index>.`, so there is one construction path and a tensor cannot be
-    /// wired to the wrong matrix. Every declared parameter has to arrive and every
-    /// shape has to agree: a mis-wired layer would not fail to load, it would
-    /// denoise to a plausible-looking wrong video, and this is the only place that
-    /// can tell the difference.
-    static func loadTransformerLayer(
-        index: Int,
+    /// A shard normally completes several consecutive blocks. If the checkpoint
+    /// splits one block across a file boundary, its first tensors remain in
+    /// `pending` until the next shard supplies the rest. The caller runs every
+    /// completed block and evaluates its hidden state before this function moves
+    /// on, so the current shard can leave memory before the next one opens.
+    static func loadTransformerBlocks(
         url: URL,
-        config: H3Configuration
-    ) throws -> H3OmniTransformerLayer {
-        try loadLayer(
-            index, of: url, count: config.numLayers,
-            indexOfTensor: { name in
-                let prefix = "transformer_blocks."
-                guard name.hasPrefix(prefix) else { return nil }
-                let rest = name.dropFirst(prefix.count)
-                guard let dot = rest.firstIndex(of: ".") else { return nil }
-                return Int(rest[rest.startIndex ..< dot])
+        config: H3Configuration,
+        body: ([H3OmniTransformerBlock]) throws -> Void
+    ) throws {
+        let weightMap = try weightMap(for: url)
+        let shards = try shardURLs(for: url)
+        var expectedNames = [Int: Set<String>]()
+
+        if !weightMap.isEmpty {
+            for name in weightMap.keys {
+                guard let index = transformerBlockIndex(name) else { continue }
+                expectedNames[index, default: []].insert(name)
             }
-        ) { tensors in
-            let root = "transformer_blocks.\(index)."
-            var parameters: [String: MLXArray] = [:]
-            for (name, array) in tensors where name.hasPrefix(root) {
-                let key = String(name.dropFirst(root.count))
-                    .replacingOccurrences(of: ".attn.to_out.0.", with: ".attn.toOut.")
-                    .replacingOccurrences(of: ".ff.net.0.proj.", with: ".ff.w1.")
-                    .replacingOccurrences(of: ".ff.net.2.", with: ".ff.w2.")
-                    .replacingOccurrences(of: ".downsamplers.0.", with: ".downsamplers.")
-                parameters[key] = array
-            }
-            let model = H3OmniTransformerLayer(config: config)
-            try model.update(
-                parameters: ModuleParameters.unflattened(parameters),
-                verify: [.none])
-            return model
         }
+
+        var pending = [Int: [String: MLXArray]]()
+        var nextBlock = 0
+
+        for shard in shards {
+            var blocks = [H3OmniTransformerBlock]()
+            do {
+                let tensors = try MLX.loadArrays(url: shard)
+                if weightMap.isEmpty && expectedNames.isEmpty {
+                    for name in tensors.keys {
+                        guard let index = transformerBlockIndex(name) else { continue }
+                        expectedNames[index, default: []].insert(name)
+                    }
+                }
+
+                for (name, array) in tensors {
+                    guard let index = transformerBlockIndex(name) else { continue }
+                    guard pending[index]?[name] == nil else {
+                        throw H3LoaderError.duplicateTensor(name)
+                    }
+                    pending[index, default: [:]][name] = array
+                }
+
+                while nextBlock < config.numTransformerBlocks {
+                    guard let expected = expectedNames[nextBlock],
+                          let parameters = pending[nextBlock],
+                          Set(parameters.keys).isSuperset(of: expected)
+                    else { break }
+                    blocks.append(try makeTransformerBlock(
+                        index: nextBlock,
+                        tensors: parameters,
+                        config: config))
+                    pending[nextBlock] = nil
+                    nextBlock += 1
+                }
+            }
+            if !blocks.isEmpty {
+                try body(blocks)
+            }
+            blocks.removeAll(keepingCapacity: false)
+            Memory.clearCache()
+        }
+
+        guard nextBlock == config.numTransformerBlocks else {
+            throw H3LoaderError.missingTransformerBlock(nextBlock)
+        }
+    }
+
+    private static func transformerBlockIndex(_ name: String) -> Int? {
+        let prefix = "transformer_blocks."
+        guard name.hasPrefix(prefix) else { return nil }
+        let rest = name.dropFirst(prefix.count)
+        guard let dot = rest.firstIndex(of: ".") else { return nil }
+        return Int(rest[rest.startIndex ..< dot])
+    }
+
+    private static func makeTransformerBlock(
+        index: Int,
+        tensors: [String: MLXArray],
+        config: H3Configuration
+    ) throws -> H3OmniTransformerBlock {
+        let root = "transformer_blocks.\(index)."
+        var parameters: [String: MLXArray] = [:]
+        for (name, array) in tensors where name.hasPrefix(root) {
+            let key = String(name.dropFirst(root.count))
+                .replacingOccurrences(of: ".attn.to_out.0.", with: ".attn.toOut.")
+                .replacingOccurrences(of: ".ff.net.0.proj.", with: ".ff.w1.")
+                .replacingOccurrences(of: ".ff.net.2.", with: ".ff.w2.")
+                .replacingOccurrences(of: ".downsamplers.0.", with: ".downsamplers.")
+            parameters[key] = array
+        }
+        let block = H3OmniTransformerBlock(config: config)
+        try block.update(
+            parameters: ModuleParameters.unflattened(parameters),
+            verify: [.none])
+        return block
     }
 
     /// Loads one block of the video VAE's decoder stack.
@@ -266,23 +326,24 @@ public enum H3Loader {
         }
     }
 
-    /// Loads the Omni Transformer: everything outside its layer stack.
+    /// Loads the Omni Transformer's root weights into its declared root modules.
     ///
-    /// 1.72 GB of refiner, time embedder, final layer and projections, held once
-    /// per render rather than read once per step. The 50 layers are not loaded
-    /// here — they are 64.56 GB and are read by
-    /// ``H3OmniTransformer/runStack(_:)`` as the step reaches each of them, unless
-    /// the machine's profile keeps a whole component resident.
+    /// 1.72 GB of refiner, time embedder, output layer and projections, held once
+    /// per render rather than read once per step. The 50 Transformer blocks are
+    /// not loaded here — they are 64.56 GB and are streamed by SafeTensors file
+    /// in ``H3OmniTransformer/runStack(_:)``.
     ///
-    /// The model is declared empty and filled by name; the names need no
-    /// translating, since the checkpoint already spells them the way the
-    /// declaration reads. Both directions are checked: a parameter the
-    /// declaration has and the checkpoint does not is named, and so is one whose
-    /// shape disagrees. See ``loadTransformerLayer(index:url:config:)``.
-    static func loadOmniTransformer(
+    /// The root modules are filled by name; the names need no translating, since
+    /// the checkpoint already spells them the way the declaration reads. Both
+    /// directions are checked: a parameter the declaration has and the
+    /// checkpoint does not is named, and so is one whose shape disagrees. The
+    /// Transformer calls this from its initializer. Its block stack is loaded by
+    /// ``loadTransformerBlocks(url:config:body:)`` while sampling.
+    static func loadRoot(
+        into transformer: H3OmniTransformer,
         hub: HubApi,
         configuration: H3Configuration
-    ) throws -> H3OmniTransformer {
+    ) throws {
         let url = try resolve(hub: hub, configuration: configuration, key: .transformerWeights)
         let weights = try loadWeights(
             from: url,
@@ -294,17 +355,9 @@ public enum H3Loader {
                 return Int(rest[rest.startIndex ..< dot]) == nil
             })
 
-        let model = H3OmniTransformer(
-            config: configuration,
-            hub: hub,
-            configuration: configuration,
-            // A denoise run walks all 50 layers once per step, so reading them
-            // whole pays off only where the stack fits — and no tier this app has
-            // a preset for reaches that. See ``H3RuntimeProfile``.
-            releasesLayersAfterUse: !configuration.runtimeProfile.loadsComponentsEagerly)
         // The refiner's blocks carry the export's list indices too, so the whole
-        // map is folded, not just each layer's slice.
-        try model.update(
+        // map is folded, not just each block's slice.
+        try transformer.update(
             parameters: ModuleParameters.unflattened(
                 weights.reduce(into: [String: MLXArray]()) {
                     let key = $1.key
@@ -316,7 +369,6 @@ public enum H3Loader {
                     $0[key] = $1.value
                 }),
             verify: [.none])
-        return model
     }
 
     /// Loads the video VAE, both directions.

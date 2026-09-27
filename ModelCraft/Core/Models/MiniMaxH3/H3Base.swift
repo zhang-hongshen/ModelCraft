@@ -12,16 +12,16 @@ import MLX
 
 /// The composed MiniMax H3 Base model.
 ///
-/// **Nothing is loaded in `init`.** H3's four components total roughly 144 GB
-/// while its largest single one — the 66.7 GB text encoder — exceeds every
-/// memory tier this app targets, so a render cannot hold the pipeline at once
-/// even on a 64 GiB machine. Components therefore load on first use, and the two
-/// halves of ``H3RuntimeProfile`` decide how much of each stage is read at once
-/// and whether a finished stage hands its weights back before the next one
-/// starts.
+/// The tokenizer and 0.61 GB Audio VAE load with the model and stay resident.
+/// The remaining components total roughly 143 GB while the largest single one
+/// — the 66.7 GB text encoder — exceeds every memory tier this app targets, so a
+/// render cannot hold those stages at once even on a 64 GiB machine. They load
+/// on first use, and the two halves of ``H3RuntimeProfile`` decide how much of
+/// each stage is read at once and whether a finished stage hands its weights
+/// back before the next one starts.
 ///
 /// The release only reclaims memory if nothing else still references the stage.
-/// Each private stage helper below is written so that its encoder, tokenizer or
+/// Each private stage helper below is written so that a releasable encoder or
 /// decoder stays a local of that helper, which dies before the caller runs the
 /// matching `release…Stage()`. Holding one of those components in a caller local
 /// across the release would keep tens of gigabytes alive and turn the release
@@ -45,16 +45,18 @@ public final class H3Base: @unchecked Sendable {
 
     private let hub: HubApi
 
-    private var tokenizer: H3Tokenizer?
+    private let tokenizer: H3Tokenizer
     private var encoder: H3Encoder?
     private var visualVAE: H3VisualVAE?
-    private var audioVAE: H3AudioVAE?
+    private let audioVAE: H3AudioVAE
     private var omniTransformer: H3OmniTransformer?
 
-    public init(hub: HubApi, configuration: H3Configuration) {
+    public init(hub: HubApi, configuration: H3Configuration) throws {
         self.hub = hub
         self.configuration = configuration
         self.scheduler = H3Scheduler(shift: configuration.videoSigmaShift)
+        self.tokenizer = try H3Loader.loadTokenizer(hub: hub, configuration: configuration)
+        self.audioVAE = try H3Loader.loadAudioVAE(hub: hub, configuration: configuration)
     }
 
     /// Clears MLX's free-buffer pool only after the stage's weights have been
@@ -62,7 +64,6 @@ public final class H3Base: @unchecked Sendable {
     private func releaseTextStage() {
         guard configuration.runtimeProfile.releasesComponentsBetweenStages else { return }
         encoder = nil
-        tokenizer = nil
         Memory.clearCache()
     }
 
@@ -79,18 +80,15 @@ public final class H3Base: @unchecked Sendable {
 
     private func releaseVAEStage() {
         guard configuration.runtimeProfile.releasesComponentsBetweenStages else { return }
-        audioVAE = nil
         visualVAE = nil
         Memory.clearCache()
     }
 
-    /// Drops every component. Generation releases stage by stage as it goes;
-    /// this is for the factory when it evicts a task outright.
+    /// Drops every releasable component before the factory evicts this task.
+    /// The resident tokenizer and Audio VAE are released with the instance.
     public func cleanup() {
-        tokenizer = nil
         encoder = nil
         visualVAE = nil
-        audioVAE = nil
         omniTransformer = nil
         Memory.clearCache()
     }
@@ -158,10 +156,7 @@ public final class H3Base: @unchecked Sendable {
     ) throws -> H3TextConditioningData {
         let encoder = try self.encoder
             ?? H3Loader.loadEncoder(hub: hub, configuration: configuration)
-        let tokenizer = try self.tokenizer
-            ?? H3Loader.loadTokenizer(hub: hub, configuration: configuration)
         self.encoder = encoder
-        self.tokenizer = tokenizer
         let presentationTokens = tokenizer.presentationTokens
 
         switch configuration.task {
@@ -251,8 +246,8 @@ public final class H3Base: @unchecked Sendable {
     }
 
     /// Encodes first/last frames or ordered Ref2VA media. H3 Base keeps the
-    /// Visual VAE and Audio VAE as optional owned components and coordinates
-    /// both when a reference render needs them.
+    /// optional Visual VAE and resident Audio VAE, and coordinates both
+    /// when a reference render needs them.
     private func encodeReferences(
         for request: H3EvaluatorRequest,
         geometry: H3LatentGeometry,
@@ -286,10 +281,6 @@ public final class H3Base: @unchecked Sendable {
                 references: [])
 
         case .ref2va:
-            let audioVAE = try self.audioVAE
-                ?? H3Loader.loadAudioVAE(hub: hub, configuration: configuration)
-            self.audioVAE = audioVAE
-
             var visualLatents: [MLXArray] = []
             var audioRows: [MLXArray] = []
             var blocks: [H3ReferenceSequenceBlock] = []
@@ -412,9 +403,6 @@ public final class H3Base: @unchecked Sendable {
     }
 
     private func audioConditionRows(_ audio: H3DecodedAudio) throws -> MLXArray {
-        let audioVAE = try self.audioVAE
-            ?? H3Loader.loadAudioVAE(hub: hub, configuration: configuration)
-        self.audioVAE = audioVAE
         let length = min(audio.samples[0].count, audio.samples[1].count)
         let samples = audio.samples.flatMap { Array($0.prefix(length)) }
         let waveform = MLXArray(samples, [1, 2, length])
@@ -444,8 +432,10 @@ public final class H3Base: @unchecked Sendable {
         steps: Int,
         seed: UInt64
     ) throws -> H3Sampler.Output {
-        let model = try omniTransformer ?? H3Loader.loadOmniTransformer(
-            hub: hub, configuration: configuration)
+        let model = try omniTransformer ?? H3OmniTransformer(
+            config: configuration,
+            hub: hub,
+            configuration: configuration)
         omniTransformer = model
         return try H3Sampler().sample(
             model: model,
@@ -458,10 +448,7 @@ public final class H3Base: @unchecked Sendable {
     }
 
     private func decodeAudio(_ latent: MLXArray) throws -> MLXArray {
-        let vae = try audioVAE
-            ?? H3Loader.loadAudioVAE(hub: hub, configuration: configuration)
-        audioVAE = vae
-        let waveform = try vae.decode(latent)
+        let waveform = try audioVAE.decode(latent)
         eval(waveform)
         return waveform
     }

@@ -49,17 +49,14 @@ struct H3RuntimeProfile: Equatable, Sendable {
     /// Read a component whole as its stage starts, instead of a piece at a time
     /// as the stage reaches it.
     ///
-    /// Read by the two components that have pieces to read, both in ``H3Loader``:
+    /// Read by the H3 Encoder loader:
     ///
-    /// - ``H3Loader/loadEncoder(hub:configuration:)`` — true builds both halves of
-    ///   the H3 Encoder before returning; false returns the container with neither
-    ///   half read, and each is built the first time a render asks for it.
-    /// - ``H3Loader/loadOmniTransformer(hub:configuration:)`` —
-    ///   true passes `releasesLayersAfterUse: false` to ``H3OmniTransformer``, so
-    ///   the first step's walk leaves all 50 layers resident; false gives each
-    ///   layer back as the walk leaves it.
+    /// ``H3Loader/loadEncoder(hub:configuration:)`` uses true to build both halves
+    /// of the H3 Encoder before returning; false returns the container with neither
+    /// half read, and each is built the first time a render asks for it.
     ///
-    /// It deliberately does not reach the other three stacks: the text encoder's
+    /// It deliberately does not reach the other stacks: the Omni Transformer is
+    /// always streamed one SafeTensors shard at a time; the text encoder's
     /// pass reads each language layer once and never comes back to it, so holding
     /// one would only keep 975 MB alive; the VAE decoder is walked many times
     /// inside a single lazy graph and so holds its blocks whatever this says; and
@@ -67,12 +64,8 @@ struct H3RuntimeProfile: Equatable, Sendable {
     /// a layered stack at all. The two VAEs are read whole inside the loader at
     /// every tier: neither has a stack to stream.
     ///
-    /// False at every tier this app has a preset for. The transformer stack alone
-    /// is 64.56 GB, larger than the total memory of anything under 96 GiB, and
-    /// reading it whole is only worth it when its layers then stay cached across
-    /// all 20 denoise steps — which is exactly what a smaller machine cannot
-    /// promise. It is a field rather than a constant because the choice is a
-    /// device property.
+    /// False below the tier where both encoder halves fit together. It is a field
+    /// rather than a constant because the choice is a device property.
     ///
     /// Reading a component whole means building its parts and attaching the
     /// tensors to them, not paging the bytes in: a returned array costs a
