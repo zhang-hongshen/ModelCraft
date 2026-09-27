@@ -54,7 +54,7 @@ struct ModelCraftApp: App {
             Settings {
                 SettingsView().background(.ultraThinMaterial)
                     .applyUserSettings()
-                    .frame(minWidth: 200, minHeight: 200)
+                    .frame(minWidth: 560, idealWidth: 640, maxWidth: 760, minHeight: 200)
             }
         }
         .modelContainer(.shared)

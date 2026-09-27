@@ -20,6 +20,9 @@
     "%lld items" : {
 
     },
+    "%lld%%" : {
+
+    },
     "%lld%% full" : {
 
     },
@@ -183,9 +186,17 @@
 
     },
     "Choose Folder" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "选择文件夹"
+          }
+        }
+      }
     },
     "Choose Folder…" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -241,6 +252,9 @@
       }
     },
     "Clicking an element" : {
+
+    },
+    "Close File Preview" : {
 
     },
     "Command failed" : {
@@ -383,6 +397,26 @@
         }
       }
     },
+    "Delete Model" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "删除模型"
+          }
+        }
+      }
+    },
+    "Delete this model? Its downloaded files will be removed." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "确定删除此模型吗？已下载的模型文件也会删除。"
+          }
+        }
+      }
+    },
     "Deleted" : {
 
     },
@@ -407,6 +441,16 @@
     },
     "Don't Allow" : {
 
+    },
+    "Download" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "下载"
+          }
+        }
+      }
     },
     "Download Location" : {
       "localizations" : {
@@ -660,6 +704,9 @@
     "Fetching web page" : {
 
     },
+    "File Preview" : {
+
+    },
     "Files" : {
       "localizations" : {
         "zh-Hans" : {
@@ -669,6 +716,9 @@
           }
         }
       }
+    },
+    "Folder" : {
+
     },
     "Full screenshot captured" : {
 
@@ -760,6 +810,16 @@
         }
       }
     },
+    "Image Generation Model" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "图像生成模型"
+          }
+        }
+      }
+    },
     "Images" : {
 
     },
@@ -831,6 +891,16 @@
     "Loading skill %@" : {
 
     },
+    "LTX Video" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "LTX Video"
+          }
+        }
+      }
+    },
     "Map search failed" : {
       "localizations" : {
         "zh-Hans" : {
@@ -841,10 +911,50 @@
         }
       }
     },
-    "Media Storage" : {
-
+    "Media" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "媒体"
+          }
+        }
+      }
+    },
+    "MiniMax H3" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MiniMax H3"
+          }
+        }
+      }
+    },
+    "Model" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "模型"
+          }
+        }
+      }
+    },
+    "Model Operation Failed" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "模型操作失败"
+          }
+        }
+      }
     },
     "Model Storage" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -860,6 +970,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "模型商店"
+          }
+        }
+      }
+    },
+    "Models" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "模型"
           }
         }
       }
@@ -919,6 +1039,9 @@
           }
         }
       }
+    },
+    "No File Selected" : {
+
     },
     "No Folder" : {
 
@@ -1138,7 +1261,18 @@
         }
       }
     },
+    "Reset" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重置"
+          }
+        }
+      }
+    },
     "Restore Default" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -1222,9 +1356,6 @@
         }
       }
     },
-    "Skill Directories" : {
-
-    },
     "Skill loading failed" : {
 
     },
@@ -1260,12 +1391,32 @@
         }
       }
     },
+    "Stable Diffusion XL Turbo" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stable Diffusion XL Turbo"
+          }
+        }
+      }
+    },
     "Stopped" : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "暂停"
+          }
+        }
+      }
+    },
+    "Storage" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "存储"
           }
         }
       }
@@ -1390,6 +1541,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "视频生成失败"
+          }
+        }
+      }
+    },
+    "Video Generation Model" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "视频生成模型"
           }
         }
       }

@@ -46,6 +46,22 @@ class UserSettings {
         }
     }
 
+    var imageGenerationModelID = UserDefaults.standard.string(
+        forKey: UserDefaults.imageGenerationModelID
+    ) ?? "sdxl-turbo" {
+        didSet {
+            UserDefaults.standard.set(imageGenerationModelID, forKey: UserDefaults.imageGenerationModelID)
+        }
+    }
+
+    var videoGenerationModelID = UserDefaults.standard.string(
+        forKey: UserDefaults.videoGenerationModelID
+    ) ?? "ltx-video" {
+        didSet {
+            UserDefaults.standard.set(videoGenerationModelID, forKey: UserDefaults.videoGenerationModelID)
+        }
+    }
+
     var customSkillDirectories = UserDefaults.standard
         .stringArray(forKey: UserDefaults.customSkillDirectories)?
         .map { URL(fileURLWithPath: $0).standardizedFileURL } ?? [] {

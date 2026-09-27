@@ -14,9 +14,12 @@ import MLXLMCommon
 
 enum ImageTool {
     
-    static let allTools: [any ToolProtocol] = [
-        textToImage
-    ]
+    static var allTools: [any ToolProtocol] {
+        guard UserDefaults.standard.string(forKey: UserDefaults.imageGenerationModelID) != "" else {
+            return []
+        }
+        return [textToImage]
+    }
     
     static let textToImage = Tool<TextToImageInput, TextToImageOutput>(
             name: "text_to_image",

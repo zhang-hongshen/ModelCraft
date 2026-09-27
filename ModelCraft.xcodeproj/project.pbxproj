@@ -7,7 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		70008A2D2F6725B7006593CA /* KVCacheManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70008A2C2F6725B3006593CA /* KVCacheManager.swift */; };
+		91B50E0C0B834320A0205004 /* StorageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91B50E0C0B834320A0205003 /* StorageView.swift */; };
+		91B50E0C0B834320A0205002 /* ModelsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91B50E0C0B834320A0205001 /* ModelsView.swift */; };
 		7001D9B02EC10DEB00047F6B /* ChatInputView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7001D9AF2EC10DEB00047F6B /* ChatInputView.swift */; };
 		7008FD8F2E80414200D62EF6 /* NLEmbedding+.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7008FD8E2E80413E00D62EF6 /* NLEmbedding+.swift */; };
 		70097F7F2D6C04BB00DDDEDF /* MessageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70097F7E2D6C04BB00DDDEDF /* MessageView.swift */; };
@@ -87,7 +88,6 @@
 		7097F96B2BB02DD2001A91E3 /* ModelTask.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7097F96A2BB02DD2001A91E3 /* ModelTask.swift */; };
 		70981A0B2F60676D004E1A38 /* ToolExecutor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70981A0A2F606768004E1A38 /* ToolExecutor.swift */; };
 		70A0000B2FFF00000000000B /* ToolCallGroupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70A0000C2FFF00000000000C /* ToolCallGroupView.swift */; };
-		70A1F0052F00000100000001 /* PromptCacheKey.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70A1F0042F00000100000001 /* PromptCacheKey.swift */; };
 		70A1F0092F00000100000001 /* StableDiffusionRuntimeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70A1F0082F00000100000001 /* StableDiffusionRuntimeTests.swift */; };
 		70A2B0022FFF100000000001 /* SwiftStreamingMarkdown in Frameworks */ = {isa = PBXBuildFile; productRef = 70A2B0012FFF100000000001 /* SwiftStreamingMarkdown */; };
 		70A2B0042FFF100000000004 /* MarkdownRenderConfig+ModelCraft.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70A2B0032FFF100000000003 /* MarkdownRenderConfig+ModelCraft.swift */; };
@@ -213,7 +213,8 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		70008A2C2F6725B3006593CA /* KVCacheManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KVCacheManager.swift; sourceTree = "<group>"; };
+		91B50E0C0B834320A0205003 /* StorageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StorageView.swift; sourceTree = "<group>"; };
+		91B50E0C0B834320A0205001 /* ModelsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelsView.swift; sourceTree = "<group>"; };
 		7001D9AF2EC10DEB00047F6B /* ChatInputView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatInputView.swift; sourceTree = "<group>"; };
 		7008FD8E2E80413E00D62EF6 /* NLEmbedding+.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NLEmbedding+.swift"; sourceTree = "<group>"; };
 		70097F7E2D6C04BB00DDDEDF /* MessageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageView.swift; sourceTree = "<group>"; };
@@ -285,7 +286,6 @@
 		7097F96A2BB02DD2001A91E3 /* ModelTask.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelTask.swift; sourceTree = "<group>"; };
 		70981A0A2F606768004E1A38 /* ToolExecutor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolExecutor.swift; sourceTree = "<group>"; };
 		70A0000C2FFF00000000000C /* ToolCallGroupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolCallGroupView.swift; sourceTree = "<group>"; };
-		70A1F0042F00000100000001 /* PromptCacheKey.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptCacheKey.swift; sourceTree = "<group>"; };
 		70A1F0082F00000100000001 /* StableDiffusionRuntimeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StableDiffusionRuntimeTests.swift; sourceTree = "<group>"; };
 		70A2B0032FFF100000000003 /* MarkdownRenderConfig+ModelCraft.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MarkdownRenderConfig+ModelCraft.swift"; sourceTree = "<group>"; };
 		70A574A92BB07264008E3750 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
@@ -363,6 +363,7 @@
 		70A000032FFF000000000003 /* LTXVideo */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = LTXVideo; sourceTree = "<group>"; };
 		70A000042FFF000000000004 /* MiniMaxH3 */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = MiniMaxH3; sourceTree = "<group>"; };
 		70A8D84C3041C5D000D2859A /* MusicGen */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = MusicGen; sourceTree = "<group>"; };
+		70D5E40130D5E40100D5E401 /* DeepSeekFlash */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = DeepSeekFlash; sourceTree = "<group>"; };
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -439,6 +440,7 @@
 		7021D7672F8513C200A2F684 /* Models */ = {
 			isa = PBXGroup;
 			children = (
+				70D5E40130D5E40100D5E401 /* DeepSeekFlash */,
 				70A8D84C3041C5D000D2859A /* MusicGen */,
 				7021D7722F8513D100A2F684 /* StableDiffusion */,
 				70A000032FFF000000000003 /* LTXVideo */,
@@ -459,9 +461,7 @@
 		706D729D2BB6B076004ACF35 /* Services */ = {
 			isa = PBXGroup;
 			children = (
-				70A1F0042F00000100000001 /* PromptCacheKey.swift */,
 				70E0BA8E2F8371980095DED1 /* STTService.swift */,
-				70008A2C2F6725B3006593CA /* KVCacheManager.swift */,
 				70823EC72F520F6F0011DF58 /* ModelService.swift */,
 				7078AA112F4B79DF00711940 /* LMService.swift */,
 				70FE039E2F13EF9D0061CCEB /* ChatService.swift */,
@@ -609,14 +609,13 @@
 		70CE60662BAD2D4500A2D0B0 /* ModelCraft */ = {
 			isa = PBXGroup;
 			children = (
-				70FD4803304C2D8900B70A9B /* Resources */,
 				70CE606F2BAD2D4600A2D0B0 /* ModelCraft.entitlements */,
 				7045BF462BB3FE0A00CE61D1 /* Info.plist */,
 				70321DD22FB8C04600A56C75 /* AppDetailView.swift */,
+				70321DD02FB8BEFA00A56C75 /* AppNavigationView.swift */,
 				70CE60692BAD2D4500A2D0B0 /* ContentView.swift */,
 				70CE60672BAD2D4500A2D0B0 /* ModelCraftApp.swift */,
 				70FB3AE92FB73CC90029EFDB /* RegularContentView.swift */,
-				70321DD02FB8BEFA00A56C75 /* AppNavigationView.swift */,
 				70CE606D2BAD2D4600A2D0B0 /* Assets.xcassets */,
 				70A574A92BB07264008E3750 /* Localizable.xcstrings */,
 				708C5EDE2F0B86F000127118 /* Core */,
@@ -624,6 +623,7 @@
 				70CE60C92BAD7A4700A2D0B0 /* Features */,
 				70FDA0262F20D32900F9DBD8 /* Models */,
 				70CE60702BAD2D4600A2D0B0 /* Preview Content */,
+				70FD4803304C2D8900B70A9B /* Resources */,
 				706D729D2BB6B076004ACF35 /* Services */,
 				708C5EDC2F0B858600127118 /* UI */,
 			);
@@ -702,6 +702,8 @@
 		70CE60CA2BAD7A4F00A2D0B0 /* Settings */ = {
 			isa = PBXGroup;
 			children = (
+				91B50E0C0B834320A0205003 /* StorageView.swift */,
+				91B50E0C0B834320A0205001 /* ModelsView.swift */,
 				70CE60C22BAD616600A2D0B0 /* GeneralView.swift */,
 				70CE60BD2BAD60AE00A2D0B0 /* SettingsView.swift */,
 			);
@@ -822,6 +824,7 @@
 				70A000032FFF000000000003 /* LTXVideo */,
 				70A000042FFF000000000004 /* MiniMaxH3 */,
 				70A8D84C3041C5D000D2859A /* MusicGen */,
+				70D5E40130D5E40100D5E401 /* DeepSeekFlash */,
 			);
 			name = ModelCraft;
 			packageProductDependencies = (
@@ -987,7 +990,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				70A1F0052F00000100000001 /* PromptCacheKey.swift in Sources */,
 				70FB39E02FB6C94D0029EFDB /* ExecuteCommandToolRenderer.swift in Sources */,
 				7078AB342BB514A9004B3819 /* ModelTaskView.swift in Sources */,
 				70FD4B93304E7A2F00B70A9B /* ProjectModelActor.swift in Sources */,
@@ -1036,7 +1038,6 @@
 				70321DD12FB8BEFA00A56C75 /* AppNavigationView.swift in Sources */,
 				7078AB142F4EDE9900711940 /* ToolDefinitions.swift in Sources */,
 				70C22FCC2BAEE24C002754C7 /* Image+.swift in Sources */,
-				70008A2D2F6725B7006593CA /* KVCacheManager.swift in Sources */,
 				705483F82BBE992800256094 /* DeleteButton.swift in Sources */,
 				70E2017B2BAE825A00CFE1D7 /* ChatView.swift in Sources */,
 				70E0BA8F2F83719C0095DED1 /* STTService.swift in Sources */,
@@ -1082,6 +1083,8 @@
 				70981A0B2F60676D004E1A38 /* ToolExecutor.swift in Sources */,
 				708EC0E52F49A27E0055D765 /* MapPlace.swift in Sources */,
 				70CE60C32BAD616600A2D0B0 /* GeneralView.swift in Sources */,
+				91B50E0C0B834320A0205002 /* ModelsView.swift in Sources */,
+				91B50E0C0B834320A0205004 /* StorageView.swift in Sources */,
 				703845832BB6674600E3128B /* Locale+.swift in Sources */,
 				70F78FF32FDE2DB9003C8737 /* UIManager.swift in Sources */,
 				702477B62F48B3E8003B72D5 /* Array+.swift in Sources */,

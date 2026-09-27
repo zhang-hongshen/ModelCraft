@@ -17,6 +17,8 @@ extension UserDefaults {
     static let audioOutputDirectory = "audioOutputDirectory"
     static let videoOutputDirectory = "videoOutputDirectory"
     static let customSkillDirectories = "customSkillDirectories"
+    static let imageGenerationModelID = "imageGenerationModelID"
+    static let videoGenerationModelID = "videoGenerationModelID"
     // Speaking
     static let speakingRate = "speakingRate"
     static let speakingVolume = "speakingVolume"

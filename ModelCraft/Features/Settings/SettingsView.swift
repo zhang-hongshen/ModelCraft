@@ -11,6 +11,8 @@ struct SettingsView: View {
     
     enum Tab: String, CaseIterable, Identifiable {
         case general
+        case models
+        case storage
         var id: Self { self }
     }
     
@@ -24,7 +26,16 @@ struct SettingsView: View {
                     Image(systemName: "gearshape")
                     Text("General")
                 }
+            ModelsView().tag(Tab.models as Tab?)
+                .tabItem {
+                    Image(systemName: "cube.box")
+                    Text("Models")
+                }
+            StorageView().tag(Tab.storage as Tab?)
+                .tabItem {
+                    Image(systemName: "externaldrive")
+                    Text("Storage")
+            }
         }
-        
     }
 }

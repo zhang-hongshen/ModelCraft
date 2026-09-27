@@ -12,54 +12,79 @@ import MLXLMCommon
 
 enum VideoTool {
     
-    static var allTools: [any ToolProtocol] { [textToVideo] }
+    static var allTools: [any ToolProtocol] {
+        selectedModelID.isEmpty ? [] : [textToVideo]
+    }
 
     private static let evaluator = LTXVideoEvaluator()
+    private static let h3Evaluator = H3Evaluator()
+    private static var selectedModelID: String {
+        UserDefaults.standard.string(forKey: UserDefaults.videoGenerationModelID) ?? "ltx-video"
+    }
+    private static var usesH3: Bool { selectedModelID == "minimax-h3" }
     
     static var textToVideo: Tool<TextToVideoInput, TextToVideoOutput> {
-        Tool<TextToVideoInput, TextToVideoOutput>(
-            name: "text_to_video",
-            description: "Generate a new MP4 video clip from a text description with the local video model. Before calling this tool, the user must explicitly choose the aspect ratio, long-edge resolution, and duration. If any choice is missing, first call request_user_input and present the schema-valid values as options. Mark a schema-recommended value as the recommended option instead of selecting it automatically. Saves the file in the configured video output directory and returns its file URL and MIME type.",
-            parameters: [
-                .required("prompt", type: .string, description: "Describe the subject, scene, visual style, camera behavior, and motion over time."),
+        let usesH3 = Self.usesH3
+        var parameters: [ToolParameter] = [
+            .required("prompt", type: .string, description: "Describe the subject, scene, visual style, camera behavior, and motion over time."),
+        ]
+        if !usesH3 {
+            parameters.append(contentsOf: [
                 .required(
                     "ratio",
                     type: .string,
                     description: "The output frame's width-to-height aspect ratio. Use one of the enumerated string values.",
-                    extraProperties: [
-                        "enum": LTXVideoAspectRatio.allCases.map(\.rawValue)
-                    ]),
+                    extraProperties: ["enum": LTXVideoAspectRatio.allCases.map(\.rawValue)]),
                 .required(
                     "resolution",
                     type: .int,
-                    description: "Approximate pixel count of the output frame's longer edge. Use an enumerated value. The recommended value identifies the recommended request_user_input option and is not an automatic default.",
+                    description: "Approximate pixel count of the output frame's longer edge. Use an enumerated value.",
                     extraProperties: [
                         "enum": LTXVideoResolution.allCases.map(\.rawValue),
                         "x-recommended": LTXVideoResolution.deviceRecommendation.rawValue,
                     ]),
-                .required(
-                    "duration",
-                    type: .int,
-                    description: "Requested output duration in whole seconds within the minimum and maximum declared by this schema.",
-                    extraProperties: [
-                        "minimum": LTXVideoEvaluateParameters.minimumDuration,
-                        "maximum": LTXVideoEvaluateParameters.maximumDuration,
-                    ])
-            ]
+            ])
+        }
+        parameters.append(.required(
+            "duration",
+            type: .int,
+            description: "Requested video duration in whole seconds.",
+            extraProperties: [
+                "minimum": usesH3 ? 5 : LTXVideoEvaluateParameters.minimumDuration,
+                "maximum": usesH3 ? 15 : LTXVideoEvaluateParameters.maximumDuration,
+            ]))
+
+        return Tool<TextToVideoInput, TextToVideoOutput>(
+            name: "text_to_video",
+            description: usesH3
+                ? "Generate an MP4 video with the selected MiniMax H3 model. H3 produces video at its supported 768p canvas. Saves the file in the configured video output directory and returns its file URL and MIME type."
+                : "Generate an MP4 video with the selected LTX Video model. Before calling this tool, the user must explicitly choose aspect ratio, long-edge resolution, and duration. Saves the file in the configured video output directory and returns its file URL and MIME type.",
+            parameters: parameters
         ) { input in
             let type = UTType.mpeg4Movie
             let outputDirectory = UserDefaults.standard.url(forKey: UserDefaults.videoOutputDirectory)
                 ?? UserDefaultSettings.videoOutputDirectory
             let url = outputDirectory.appendingPathComponent(UUID().uuidString, conformingTo: type)
-            guard let ratio = LTXVideoAspectRatio(rawValue: input.ratio) else {
-                throw LTXVideoToolError.unsupportedRatio(input.ratio)
-            }
-            guard let resolution = LTXVideoResolution(rawValue: input.resolution) else {
-                throw LTXVideoToolError.unsupportedResolution(input.resolution)
-            }
-            guard input.duration >= LTXVideoEvaluateParameters.minimumDuration,
-                  input.duration <= LTXVideoEvaluateParameters.maximumDuration else {
+            guard input.duration >= (usesH3 ? 5 : LTXVideoEvaluateParameters.minimumDuration),
+                  input.duration <= (usesH3 ? 15 : LTXVideoEvaluateParameters.maximumDuration) else {
                 throw LTXVideoToolError.unsupportedDuration(input.duration)
+            }
+            if usesH3 {
+                await ToolExecutionProgressReporter.videoGeneration?(.preparing)
+                let request = H3EvaluatorRequest(
+                    prompt: input.prompt,
+                    videoOutput: url,
+                    duration: input.duration)
+                _ = try await h3Evaluator.generate(request)
+                return TextToVideoOutput(videoURL: url, mimeType: type.preferredMIMEType!)
+            }
+            guard let ratioValue = input.ratio,
+                  let ratio = LTXVideoAspectRatio(rawValue: ratioValue) else {
+                throw LTXVideoToolError.unsupportedRatio(input.ratio ?? "")
+            }
+            guard let resolutionValue = input.resolution,
+                  let resolution = LTXVideoResolution(rawValue: resolutionValue) else {
+                throw LTXVideoToolError.unsupportedResolution(input.resolution ?? 0)
             }
             let frames = try await evaluator.generate(
                 prompt: input.prompt,
@@ -87,8 +112,8 @@ enum VideoTool {
 
 struct TextToVideoInput: Codable {
     let prompt: String
-    let ratio: String
-    let resolution: Int
+    let ratio: String?
+    let resolution: Int?
     let duration: Int
 
     enum CodingKeys: String, CodingKey {
