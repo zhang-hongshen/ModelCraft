@@ -65,7 +65,7 @@ final class AgentExecutor {
         let assistantMessage = Message(role: .assistant, chat: chat, status: .new)
         ModelContainer.shared.mainContext.persist(assistantMessage)
         var allMessages = messages
-        for await batch in try await LMService.shared.generate(
+        for try await batch in try await LMService.shared.generate(
             model: model,
             messages: messages,
             tools: availableTools

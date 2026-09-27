@@ -5,21 +5,21 @@
 //  Created by Hongshen on 23/2/26.
 //
 
+import Foundation
 import UniformTypeIdentifiers
 
 import MLX
-import MLXLLM
 import MLXLMCommon
-import MLXVLM
 import Hub
 import Tokenizers
-
 
 /// A service class that manages machine learning models for text and vision-language tasks.
 /// This class handles model loading, caching, and text generation using various LLM and VLM models.
 final class LMService {
     
     static let shared = LMService()
+
+    private let deepSeekFlashEvaluator = DeepSeekFlashEvaluator()
     
     /// Cache to store loaded model containers to avoid reloading.
     private let modelCache: NSCache<NSString, ModelContainer> = {
@@ -33,7 +33,7 @@ final class LMService {
     /// - Returns: A ModelContainer instance containing the loaded model
     /// - Throws: Errors that might occur during model loading
     private func load(hub: HubApi = .default, model: LocalModel) async throws -> ModelContainer {
-        
+
         // Return cached model if available to avoid reloading
         if let container = modelCache.object(forKey: model.id as NSString) {
             return container
@@ -52,11 +52,21 @@ final class LMService {
         return container
     }
 
+    private func isDeepSeekFlash(_ model: LocalModel) -> Bool {
+        model.id == DeepSeekFlashEvaluator.repositoryID
+    }
+
     func tokenCount(
         model: LocalModel,
         messages: [MLXLMCommon.Chat.Message],
         tools: [ToolSpec] = []
     ) async throws -> Int {
+        if isDeepSeekFlash(model) {
+            return try await deepSeekFlashEvaluator.tokenCount(
+                messages: messages,
+                tools: tools)
+        }
+
         let modelContainer = try await load(model: model)
         return try await modelContainer.perform { context in
             let input = try await context.processor.prepare(
@@ -64,157 +74,56 @@ final class LMService {
             return input.text.tokens.size
         }
     }
-    
+
     /// Generates text based on the provided messages using the specified model.
     /// - Parameters:
     ///   - model: The language model to use for generation
     ///   - messages: Array of chat messages including user, assistant, and system messages
     ///   - tools: Array of available tools
-    /// - Returns: An AsyncStream of generated text tokens
+    /// - Returns: An asynchronous stream of generated text tokens
     /// - Throws: Errors that might occur during generation
     func generate(
         model: LocalModel,
         messages: [MLXLMCommon.Chat.Message],
         tools: [ToolSpec] = [],
         maxTokens: Int? = nil
-    ) async throws -> AsyncStream<Generation> {
-            let modelContainer = try await load(model: model)
-            let userInput = UserInput(
-                chat: messages,
-                processing: .init(resize: .init(width: 1024, height: 1024)),
+    ) async throws -> AsyncThrowingStream<Generation, Error> {
+        if isDeepSeekFlash(model) {
+            return try await deepSeekFlashEvaluator.generate(
+                messages: messages,
                 tools: tools,
-            )
+                maximumSequenceLength: min(model.contextWindow, 65_536),
+                maximumNewTokens: maxTokens,
+                temperature: 0.7)
+        }
 
-            let inner = try await modelContainer.perform { (context: ModelContext) in
-                let fullInput = try await context.processor.prepare(input: userInput)
-                let availableTokens = max(
-                    model.contextWindow - fullInput.text.tokens.size,
-                    0)
-                let parameters = GenerateParameters(
-                    maxTokens: min(maxTokens ?? availableTokens, availableTokens),
-                    temperature: 0.7,
-                    prefillStepSize: 256)
-                let modelIdentity = ObjectIdentifier(context.model)
-                var generationInput = fullInput
-                var generationCache: [KVCache]?
-                var generationCacheKey: String?
+        let modelContainer = try await load(model: model)
+        let userInput = UserInput(
+            chat: messages,
+            processing: .init(resize: .init(width: 1024, height: 1024)),
+            tools: tools,
+        )
 
-                let canUsePrefixCache = fullInput.image == nil && fullInput.video == nil && messages.count > 1
-                if canUsePrefixCache {
-                    do {
-                        let history = Array(messages.dropLast())
-                        let historyInput = try await context.processor.prepare(
-                            input: UserInput(chat: history, tools: tools))
-                        if historyInput.image == nil && historyInput.video == nil {
-                            let fullTokens = fullInput.text.tokens.flattened().asArray(Int.self)
-                            let historyTokens = historyInput.text.tokens.flattened().asArray(Int.self)
-                            let sharedCount = min(fullTokens.count, historyTokens.count)
-                            var prefixCount = 0
-                            while prefixCount < sharedCount,
-                                  fullTokens[prefixCount] == historyTokens[prefixCount] {
-                                prefixCount += 1
-                            }
-                            if prefixCount > 0, prefixCount < fullTokens.count {
-                                let prefixTokens = Array(fullTokens.prefix(prefixCount))
-                                let key = PromptCacheKey.make(
-                                    modelID: model.id,
-                                    modelIdentity: modelIdentity,
-                                    prefixTokens: prefixTokens,
-                                    tools: tools)
+        let stream = try await modelContainer.perform { (context: ModelContext) in
+            let lmInput = try await context.processor.prepare(input: userInput)
+            let parameters = GenerateParameters(temperature: 0.7)
+            return try MLXLMCommon.generate(input: lmInput, parameters: parameters, context: context)
+        }
 
-                                if let cached = KVCacheManager.shared.cachedCopy(for: key) {
-                                    if !cached.isEmpty,
-                                       cached.allSatisfy({ $0.offset == prefixCount }) {
-                                        generationInput = LMInput(
-                                            text: .init(tokens: MLXArray(
-                                                Array(fullTokens[prefixCount...]))),
-                                            image: nil,
-                                            video: nil)
-                                        generationCache = cached
-                                        generationCacheKey = key
-                                    } else {
-                                        KVCacheManager.shared.clear(for: key)
-                                    }
-                                } else {
-                                    let built = context.model.newCache(parameters: parameters)
-                                    let prefixInput = LMInput(
-                                        text: .init(
-                                            tokens: MLXArray(prefixTokens)),
-                                        image: nil,
-                                        video: nil)
-                                    _ = try TokenIterator(
-                                        input: prefixInput,
-                                        model: context.model,
-                                        cache: built,
-                                        parameters: parameters)
-                                    eval(built)
-                                    KVCacheManager.shared.save(cache: built, for: key)
-                                    generationInput = LMInput(
-                                        text: .init(tokens: MLXArray(
-                                            Array(fullTokens[prefixCount...]))),
-                                        image: nil,
-                                        video: nil)
-                                    generationCache = built.map { $0.copy() }
-                                    generationCacheKey = key
-                                }
-                            }
-                        }
-                    } catch {
-                        generationInput = fullInput
-                        generationCache = nil
-                        generationCacheKey = nil
-                    }
+        return AsyncThrowingStream<Generation, Error> { continuation in
+            let task = Task {
+                for await value in stream {
+                    if Task.isCancelled { break }
+                    continuation.yield(value)
                 }
-
-                do {
-                    let iterator = try TokenIterator(
-                        input: generationInput,
-                        model: context.model,
-                        cache: generationCache,
-                        parameters: parameters)
-                    return MLXLMCommon.generateTask(
-                        promptTokenCount: fullInput.text.tokens.size,
-                        modelConfiguration: context.configuration,
-                        tokenizer: context.tokenizer,
-                        iterator: iterator)
-                } catch where generationCache != nil {
-                    if let generationCacheKey {
-                        KVCacheManager.shared.clear(for: generationCacheKey)
-                    }
-                    let iterator = try TokenIterator(
-                        input: fullInput,
-                        model: context.model,
-                        cache: nil,
-                        parameters: parameters)
-                    return MLXLMCommon.generateTask(
-                        promptTokenCount: fullInput.text.tokens.size,
-                        modelConfiguration: context.configuration,
-                        tokenizer: context.tokenizer,
-                        iterator: iterator)
-                }
+                continuation.finish()
             }
-
-            return AsyncStream { continuation in
-                let task = Task {
-                    for await item in inner.0 {
-                        if Task.isCancelled { break }
-                        continuation.yield(item)
-                    }
-
-                    // `AsyncStream` can finish before the producer task has
-                    // released its iterator/cache. Cancel on early stop and
-                    // wait for the producer before reporting completion.
-                    inner.1.cancel()
-                    await inner.1.value
-                    continuation.finish()
-                }
-                continuation.onTermination = { _ in
-                    task.cancel()
-                    inner.1.cancel()
-                }
+            continuation.onTermination = { _ in
+                task.cancel()
             }
+        }
     }
-    
+
     /// Generates text based on the provided messages using the specified model.
     /// - Parameters:
     ///   - model: The language model to use for generation
@@ -229,7 +138,7 @@ final class LMService {
         maxTokens: Int? = nil
     ) async throws -> String {
         var output = ""
-        for await segment in try await generate(
+        for try await segment in try await generate(
             model: model,
             messages: messages,
             tools: tools,
