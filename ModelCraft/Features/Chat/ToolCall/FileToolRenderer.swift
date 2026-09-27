@@ -7,7 +7,6 @@
 
 
 import SwiftUI
-import QuickLook
 import MLXLMCommon
 
 struct FileToolRenderer: View {
@@ -15,6 +14,8 @@ struct FileToolRenderer: View {
     let toolCall: ToolCall
     let result: CallToolResult?
     let status: ToolCallStatus
+
+    @Environment(\.openURL) private var openURL
 
     private var readActionDescription: String {
         switch status {
@@ -44,8 +45,6 @@ struct FileToolRenderer: View {
         }
     }
 
-    @State private var previewURL: URL? = nil
-    
     var body: some View {
 
         if toolCall.function.name == ToolNames.readFile,
@@ -56,7 +55,7 @@ struct FileToolRenderer: View {
                 Text(readActionDescription)
 
                 Button {
-                    previewURL = FileTool.fileURL(for: path)
+                    openFile(path)
                 } label: {
                     Text(fileName)
                         .underline()
@@ -64,7 +63,6 @@ struct FileToolRenderer: View {
                 .buttonStyle(.plain)
             }
             .foregroundStyle(.secondary)
-            .quickLookPreview($previewURL)
         } else if toolCall.function.name == ToolNames.applyPatch {
             VStack(alignment: .leading, spacing: 4) {
                 ForEach(toolCall.patchFileChanges) { change in
@@ -74,7 +72,7 @@ struct FileToolRenderer: View {
 
                         if change.action == .edit {
                             Button {
-                                previewURL = FileTool.fileURL(for: change.path)
+                                openFile(change.path)
                             } label: {
                                 Text(change.fileName)
                                     .underline()
@@ -87,8 +85,12 @@ struct FileToolRenderer: View {
                 }
             }
             .foregroundStyle(.secondary)
-            .quickLookPreview($previewURL)
         }
+    }
+
+    private func openFile(_ path: String) {
+        guard let url = FilePreviewLink.url(for: path) else { return }
+        openURL(url)
     }
 }
 

@@ -28,6 +28,8 @@ struct ChatView: View {
     @State private var composerSelectionLocation = 0
     @State private var slashCommandLocation: Int?
     @State private var projectEdition: Project?
+    @State private var previewURL: URL?
+    @State private var isFileInspectorPresented = false
     
     enum VoiceState {
         case idle
@@ -46,6 +48,13 @@ struct ChatView: View {
         MainView()
             .frame(minWidth: ChatView.minWidth, minHeight: 250)
             .toolbar(content: ToolbarItems)
+            .environment(\.openURL, OpenURLAction(handler: openURL))
+            .inspector(isPresented: $isFileInspectorPresented) {
+                FileInspectorView(
+                    url: previewURL,
+                    isPresented: $isFileInspectorPresented
+                )
+            }
             .sheet(item: $projectEdition) { project in
                 ProjectEdition(project: project)
                     .presentationDetents([.medium, .large])
@@ -58,6 +67,10 @@ struct ChatView: View {
                 if slashCommandLocation != nil {
                     reloadCommands()
                 }
+            }
+            .onChange(of: chat?.id) {
+                isFileInspectorPresented = false
+                previewURL = nil
             }
             .modifier(AudioLevelChangeModifier { transcript in
                 _ = submitMessage(content: transcript, files: [])
@@ -546,6 +559,64 @@ private extension ChatView {
         draft.files = []
         composerSelectionLocation = 0
         slashCommandLocation = nil
+    }
+
+    func openURL(_ url: URL) -> OpenURLAction.Result {
+        let path: String
+        if let requestedPath = FilePreviewLink.path(from: url) {
+            path = requestedPath
+        } else if url.isFileURL {
+            path = url.path
+        } else if url.scheme == nil {
+            path = url.relativePath
+        } else {
+            return .systemAction
+        }
+
+        guard let url = resolvedPreviewURL(for: path) else {
+            return .discarded
+        }
+
+        previewURL = url
+        isFileInspectorPresented = true
+        return .handled
+    }
+
+    func resolvedPreviewURL(for path: String) -> URL? {
+        let baseURL = chat?.project?.workingDirectory ?? .documentsDirectory
+        let url = URL(
+            fileURLWithPath: (path as NSString).expandingTildeInPath,
+            relativeTo: baseURL
+        )
+        .standardizedFileURL
+        .resolvingSymlinksInPath()
+
+        var isDirectory: ObjCBool = false
+        guard FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory),
+              !isDirectory.boolValue else {
+            return nil
+        }
+
+        guard let project = chat?.project else {
+            return url
+        }
+
+        let roots = [project.workingDirectory].compactMap { $0 } + project.resources
+        guard roots.contains(where: { contains(url, root: $0) }) else {
+            return nil
+        }
+        return url
+    }
+
+    func contains(_ candidate: URL, root: URL) -> Bool {
+        let root = root.standardizedFileURL.resolvingSymlinksInPath()
+        if candidate == root {
+            return true
+        }
+
+        let values = try? root.resourceValues(forKeys: [.isDirectoryKey])
+        return values?.isDirectory == true
+            && candidate.pathComponents.starts(with: root.pathComponents)
     }
     
     func scrollToBottom(_ proxy: ScrollViewProxy, lastID: ConversationContentItem.ID?) {
