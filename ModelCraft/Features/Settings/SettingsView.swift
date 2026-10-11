@@ -13,6 +13,7 @@ struct SettingsView: View {
         case general
         case models
         case storage
+        case permissions
         var id: Self { self }
     }
     
@@ -35,7 +36,12 @@ struct SettingsView: View {
                 .tabItem {
                     Image(systemName: "externaldrive")
                     Text("Storage")
-            }
+                }
+            PermissionsView().tag(Tab.permissions as Tab?)
+                .tabItem {
+                    Image(systemName: "hand.raised")
+                    Text("Permissions")
+                }
         }
     }
 }

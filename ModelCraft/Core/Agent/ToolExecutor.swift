@@ -122,6 +122,38 @@ enum ToolExecutor {
                 reply(try await toolCall.execute(with: ComputerUseTool.typeText).toolResult)
             case ToolNames.pressKey:
                 reply(try await toolCall.execute(with: ComputerUseTool.pressKey).toolResult)
+            case ToolNames.searchNotes:
+                reply(try await toolCall.execute(with: AppTool.searchNotes).toolResult)
+            case ToolNames.readNote:
+                reply(try await toolCall.execute(with: AppTool.readNote).toolResult)
+            case ToolNames.createNote:
+                reply(try await toolCall.execute(with: AppTool.createNote).toolResult)
+            case ToolNames.updateNote:
+                reply(try await toolCall.execute(with: AppTool.updateNote).toolResult)
+            case ToolNames.searchCalendar:
+                reply(try await toolCall.execute(with: AppTool.searchCalendar).toolResult)
+            case ToolNames.readCalendarEvent:
+                reply(try await toolCall.execute(with: AppTool.readCalendarEvent).toolResult)
+            case ToolNames.createCalendarEvent:
+                reply(try await toolCall.execute(with: AppTool.createCalendarEvent).toolResult)
+            case ToolNames.updateCalendarEvent:
+                reply(try await toolCall.execute(with: AppTool.updateCalendarEvent).toolResult)
+            case ToolNames.searchReminders:
+                reply(try await toolCall.execute(with: AppTool.searchReminders).toolResult)
+            case ToolNames.readReminder:
+                reply(try await toolCall.execute(with: AppTool.readReminder).toolResult)
+            case ToolNames.createReminder:
+                reply(try await toolCall.execute(with: AppTool.createReminder).toolResult)
+            case ToolNames.updateReminder:
+                reply(try await toolCall.execute(with: AppTool.updateReminder).toolResult)
+            case ToolNames.searchMail:
+                reply(try await toolCall.execute(with: AppTool.searchMail).toolResult)
+            case ToolNames.readMail:
+                reply(try await toolCall.execute(with: AppTool.readMail).toolResult)
+            case ToolNames.createMailDraft:
+                reply(try await toolCall.execute(with: AppTool.createMailDraft).toolResult)
+            case ToolNames.runAppleScript:
+                reply(try await toolCall.execute(with: AppTool.runAppleScript).toolResult)
             case ToolNames.executeCommand:
                 reply(try await toolCall.execute(with: CommandTool.executeCommand).toolResult)
             default:

@@ -32,6 +32,7 @@ enum ToolDefinition {
             ComputerUseTool.allTools,
             ScreenControlTool.allTools,
             SkillTool.allTools,
+            AppTool.allTools,
             [WebTool.webFetch],
         ].flatMap { $0 }
     }

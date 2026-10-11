@@ -45,6 +45,7 @@ enum ComputerUseTool {
         description: """
             Inspect the accessible UI hierarchy of all visible windows for an application.
             Use this before click_element or type_text, and call it again after an action to verify the resulting state. Use capture_app_window when visual layout is needed or the accessibility tree is incomplete.
+            For Notes, Reminders, Calendar, or Mail data operations, prefer the typed native-application tools and use this only when the native operation is unavailable or failed with a reason that permits GUI fallback.
             ### Output Format Specification:
             The return value is a list of strings representing the UI tree. Elements follow these formats:
             1. **Interactive Elements**: Used for elements you can interact with.

@@ -2,7 +2,13 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>NSAppleEventsUsageDescription</key>
+	<string>ModelCraft uses automation to read and update supported macOS applications only when you ask the agent to do so.</string>
 	<key>NSAppTransportSecurity</key>
 	<dict/>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>ModelCraft uses Calendar access to search, read, create, and update events you request.</string>
+	<key>NSRemindersFullAccessUsageDescription</key>
+	<string>ModelCraft uses Reminders access to search, read, create, and update reminders you request.</string>
 </dict>
 </plist>

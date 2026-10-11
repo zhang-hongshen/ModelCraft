@@ -23,7 +23,7 @@ enum ScreenControlTool {
     
     static let captureFullScreen = Tool<CaptureFullScreenInput, CaptureFullScreenOutput?>(
         name: "capture_full_screen",
-        description: "Capture all displays as one screenshot for visual context or global screen coordinates. Use capture_app_window for a known application, or get_ui_hierarchy when semantic labels and actionable element indexes are needed. Returns image data, MIME type, and total size in screen points.",
+        description: "Capture all displays as one screenshot for visual context or global screen coordinates. Use capture_app_window for a known application, or get_ui_hierarchy when semantic labels and actionable element indexes are needed. For Notes, Reminders, Calendar, or Mail data operations, prefer typed native-application tools and use screenshots only as a fallback. Returns image data, MIME type, and total size in screen points.",
         parameters: []
     ) { input in
         try Task.checkCancellation()
@@ -40,7 +40,7 @@ enum ScreenControlTool {
     
     static let captureAppWindow = Tool<CaptureAppWindowInput, [AppWindow]>(
         name: "capture_app_window",
-        description: "Capture every visible window of one application for visual layout, state, and global screen coordinates. Use get_ui_hierarchy instead when semantic labels or actionable element indexes are needed. Returns each window's image, identifier, and frame in screen points.",
+        description: "Capture every visible window of one application for visual layout, state, and global screen coordinates. Use get_ui_hierarchy instead when semantic labels or actionable element indexes are needed. For Notes, Reminders, Calendar, or Mail data operations, prefer typed native-application tools and use screenshots only as a fallback. Returns each window's image, identifier, and frame in screen points.",
         parameters: [
             .required("appID", type: .string, description: "The bundle identifier of the target app (e.g., com.apple.Finder)")
         ]

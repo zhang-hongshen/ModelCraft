@@ -253,7 +253,15 @@ extension ToolCall {
              ToolNames.drag,
              ToolNames.clickElement,
              ToolNames.typeText,
-             ToolNames.pressKey:
+             ToolNames.pressKey,
+             ToolNames.createNote,
+             ToolNames.updateNote,
+             ToolNames.createCalendarEvent,
+             ToolNames.updateCalendarEvent,
+             ToolNames.createReminder,
+             ToolNames.updateReminder,
+             ToolNames.createMailDraft,
+             ToolNames.runAppleScript:
             true
         case ToolNames.executeCommand:
             !isReadOnlyCommand
@@ -286,6 +294,29 @@ extension ToolCall {
             return function.arguments["prompt"]?.stringValue
         case ToolNames.clickElement, ToolNames.typeText, ToolNames.pressKey:
             return function.arguments["appID"]?.stringValue
+        case ToolNames.createNote:
+            return function.arguments["title"]?.stringValue
+        case ToolNames.updateNote:
+            return function.arguments["note_id"]?.stringValue
+        case ToolNames.createCalendarEvent:
+            let title = function.arguments["title"]?.stringValue ?? ""
+            let start = function.arguments["start_at"]?.stringValue ?? ""
+            let end = function.arguments["end_at"]?.stringValue ?? ""
+            return String(localized: "\(title)\n\(start) – \(end)")
+        case ToolNames.createReminder:
+            return function.arguments["title"]?.stringValue
+        case ToolNames.updateCalendarEvent:
+            return function.arguments["event_id"]?.stringValue
+        case ToolNames.updateReminder:
+            return function.arguments["reminder_id"]?.stringValue
+        case ToolNames.createMailDraft:
+            let recipients = function.arguments["to"]?.arrayValue?
+                .compactMap(\.stringValue)
+                .joined(separator: ", ") ?? ""
+            let subject = function.arguments["subject"]?.stringValue ?? ""
+            return String(localized: "To: \(recipients)\nSubject: \(subject)")
+        case ToolNames.runAppleScript:
+            return function.arguments["script"]?.stringValue
         default:
             return nil
         }
@@ -564,8 +595,39 @@ extension ToolCall {
             case .failed:
                 return String(localized: "Key press failed")
             }
+        case ToolNames.searchNotes, ToolNames.readNote:
+            return nativeDescription(status, running: "Reading Notes", completed: "Read Notes", failed: "Notes operation failed")
+        case ToolNames.createNote, ToolNames.updateNote:
+            return nativeDescription(status, running: "Updating Notes", completed: "Updated Notes", failed: "Notes update failed")
+        case ToolNames.searchCalendar, ToolNames.readCalendarEvent:
+            return nativeDescription(status, running: "Reading Calendar", completed: "Read Calendar", failed: "Calendar operation failed")
+        case ToolNames.createCalendarEvent, ToolNames.updateCalendarEvent:
+            return nativeDescription(status, running: "Updating Calendar", completed: "Updated Calendar", failed: "Calendar update failed")
+        case ToolNames.searchReminders, ToolNames.readReminder:
+            return nativeDescription(status, running: "Reading Reminders", completed: "Read Reminders", failed: "Reminders operation failed")
+        case ToolNames.createReminder, ToolNames.updateReminder:
+            return nativeDescription(status, running: "Updating Reminders", completed: "Updated Reminders", failed: "Reminders update failed")
+        case ToolNames.searchMail, ToolNames.readMail:
+            return nativeDescription(status, running: "Reading Mail", completed: "Read Mail", failed: "Mail operation failed")
+        case ToolNames.createMailDraft:
+            return nativeDescription(status, running: "Creating Mail draft", completed: "Created Mail draft", failed: "Mail draft creation failed")
+        case ToolNames.runAppleScript:
+            return nativeDescription(status, running: "Running AppleScript", completed: "Ran AppleScript", failed: "AppleScript failed")
         default:
             return String(localized: "Unknown Tool Call")
+        }
+    }
+
+    private func nativeDescription(
+        _ status: ToolCallStatus,
+        running: LocalizedStringResource,
+        completed: LocalizedStringResource,
+        failed: LocalizedStringResource
+    ) -> String {
+        switch status {
+        case .running: String(localized: running)
+        case .completed: String(localized: completed)
+        case .failed: String(localized: failed)
         }
     }
     
@@ -590,6 +652,15 @@ extension ToolCall {
         case ToolNames.captureFullScreen: "display.2"
         case ToolNames.captureAppWindow: "macwindow"
         case ToolNames.typeText, ToolNames.pressKey: "keyboard"
+        case ToolNames.searchNotes, ToolNames.readNote,
+             ToolNames.createNote, ToolNames.updateNote: "note.text"
+        case ToolNames.searchCalendar, ToolNames.readCalendarEvent,
+             ToolNames.createCalendarEvent, ToolNames.updateCalendarEvent: "calendar"
+        case ToolNames.searchReminders, ToolNames.readReminder,
+             ToolNames.createReminder, ToolNames.updateReminder: "checklist"
+        case ToolNames.searchMail, ToolNames.readMail,
+             ToolNames.createMailDraft: "envelope"
+        case ToolNames.runAppleScript: "applescript"
         default: "exclamationmark.triangle"
         }
     }

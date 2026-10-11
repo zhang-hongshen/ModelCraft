@@ -90,6 +90,9 @@
 		70A2B0022FFF100000000001 /* SwiftStreamingMarkdown in Frameworks */ = {isa = PBXBuildFile; productRef = 70A2B0012FFF100000000001 /* SwiftStreamingMarkdown */; };
 		70A2B0042FFF100000000004 /* MarkdownRenderConfig+ModelCraft.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70A2B0032FFF100000000003 /* MarkdownRenderConfig+ModelCraft.swift */; };
 		70A574AA2BB07264008E3750 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 70A574A92BB07264008E3750 /* Localizable.xcstrings */; };
+		70AA101130AA101100000011 /* AppleScriptRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70AA100130AA100100000001 /* AppleScriptRunner.swift */; };
+		70AA101230AA101200000012 /* AppTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70AA100230AA100200000002 /* AppTool.swift */; };
+		70AA101430AA101400000014 /* PermissionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70AA100430AA100400000004 /* PermissionsView.swift */; };
 		70AD101130AD101100000011 /* Hub in Frameworks */ = {isa = PBXBuildFile; productRef = 70AD100130AD100100000001 /* Hub */; };
 		70AD101230AD101200000012 /* Tokenizers in Frameworks */ = {isa = PBXBuildFile; productRef = 70AD100230AD100200000002 /* Tokenizers */; };
 		70B13D042BBB1F3300A42F3C /* XMLFileParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70B13D032BBB1F3300A42F3C /* XMLFileParser.swift */; };
@@ -289,6 +292,9 @@
 		70A1F0082F00000100000001 /* StableDiffusionRuntimeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StableDiffusionRuntimeTests.swift; sourceTree = "<group>"; };
 		70A2B0032FFF100000000003 /* MarkdownRenderConfig+ModelCraft.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MarkdownRenderConfig+ModelCraft.swift"; sourceTree = "<group>"; };
 		70A574A92BB07264008E3750 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
+		70AA100130AA100100000001 /* AppleScriptRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleScriptRunner.swift; sourceTree = "<group>"; };
+		70AA100230AA100200000002 /* AppTool.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTool.swift; sourceTree = "<group>"; };
+		70AA100430AA100400000004 /* PermissionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PermissionsView.swift; sourceTree = "<group>"; };
 		70B13D032BBB1F3300A42F3C /* XMLFileParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XMLFileParser.swift; sourceTree = "<group>"; };
 		70B13D052BBBDC2100A42F3C /* FileThumbnail.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileThumbnail.swift; sourceTree = "<group>"; };
 		70B13D122BBC66FC00A42F3C /* ProjectFileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectFileView.swift; sourceTree = "<group>"; };
@@ -429,6 +435,7 @@
 				70F78FEE2FDBF98A003C8737 /* ComputerUseTool.swift */,
 				7071E3822F27C55E00CACB8B /* FileTool.swift */,
 				7021D75C2F84B14600A2F684 /* ImageTool.swift */,
+				70AA100230AA100200000002 /* AppTool.swift */,
 				706943D82F7C212D00B271AA /* ScreenControlTool.swift */,
 				7071E37E2F269EAB00CACB8B /* SearchTool.swift */,
 				706943DA2F7C21D700B271AA /* SkillTool.swift */,
@@ -709,6 +716,7 @@
 				91B50E0C0B834320A0205003 /* StorageView.swift */,
 				91B50E0C0B834320A0205001 /* ModelsView.swift */,
 				70CE60C22BAD616600A2D0B0 /* GeneralView.swift */,
+				70AA100430AA100400000004 /* PermissionsView.swift */,
 				70CE60BD2BAD60AE00A2D0B0 /* SettingsView.swift */,
 			);
 			path = Settings;
@@ -757,6 +765,7 @@
 		70FDA0252F20D31F00F9DBD8 /* Utils */ = {
 			isa = PBXGroup;
 			children = (
+				70AA100130AA100100000001 /* AppleScriptRunner.swift */,
 				70F78FF22FDE2DB6003C8737 /* UIManager.swift */,
 				702A31452F815854009CE217 /* AudioRecorder.swift */,
 				708EC0E82F4A09520055D765 /* ScreenControlManager.swift */,
@@ -997,6 +1006,9 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				70AA101130AA101100000011 /* AppleScriptRunner.swift in Sources */,
+				70AA101230AA101200000012 /* AppTool.swift in Sources */,
+				70AA101430AA101400000014 /* PermissionsView.swift in Sources */,
 				70FB39E02FB6C94D0029EFDB /* ExecuteCommandToolRenderer.swift in Sources */,
 				7078AB342BB514A9004B3819 /* ModelTaskView.swift in Sources */,
 				70FD4B93304E7A2F00B70A9B /* ProjectModelActor.swift in Sources */,
