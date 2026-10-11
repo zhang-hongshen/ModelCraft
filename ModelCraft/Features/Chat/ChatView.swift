@@ -22,6 +22,7 @@ struct ChatView: View {
     
     @State private var draft = Message(role: .user)
     @State private var voiceState: VoiceState = .idle
+    @State private var voiceTask: Task<Void, Never>?
     @State private var composerHeight: CGFloat = 0
     @State private var skillCommands: [ChatCommand] = []
     @State private var selectedCommand: ChatCommand = .compact
@@ -32,12 +33,14 @@ struct ChatView: View {
     enum VoiceState {
         case idle
         case loading
-        case recording
+        case listening
+        case responding
     }
     
     @Environment(GlobalStore.self) private var globalStore
     @Environment(LocalModelStore.self) private var localModelStore
     @Environment(STTService.self) private var sttService
+    @Environment(TTSService.self) private var ttsService
     
     @State private var chatService = ChatService()
     private static let minWidth: CGFloat = 270
@@ -64,9 +67,13 @@ struct ChatView: View {
                 globalStore.isFileInspectorPresented = false
                 globalStore.previewURL = nil
             }
-            .modifier(AudioLevelChangeModifier { transcript in
-                _ = submitMessage(content: transcript, files: [])
-            })
+            .onChange(of: chat?.sortedMessages.last?.content) {
+                guard voiceState == .responding,
+                      let message = chat?.sortedMessages.last,
+                      message.role == .assistant else { return }
+                ttsService.feed(message.content, messageID: message.id)
+            }
+            .onDisappear(perform: stopVoiceMode)
     }
 }
 
@@ -193,25 +200,16 @@ private extension ChatView {
     func voiceModeButton() -> some View {
         let disabled = globalStore.selectedModel == nil
         Button {
-            Task {
-                switch voiceState {
-                case .idle:
-                    voiceState = .loading
-                    await sttService.loadModel()
-                    await sttService.startRecording()
-                    voiceState = .recording
-                case .recording:
-                    sttService.stopRecording()
-                    voiceState = .idle
-                case .loading:
-                    break
-                }
+            if voiceState == .idle {
+                startVoiceMode()
+            } else {
+                stopVoiceMode()
             }
         } label: {
             switch voiceState {
             case .loading:
                 ProgressView().controlSize(.small)
-            case .recording:
+            case .listening, .responding:
                 Image(systemName: "stop.fill")
             case .idle:
                 Image(systemName: "waveform")
@@ -336,6 +334,8 @@ private extension ChatView {
                             if chatService.isCompacting {
                                 ProgressView()
                                     .controlSize(.small)
+                            } else if voiceState != .idle {
+                                voiceModeButton()
                             } else if !draft.content.isEmpty {
                                 SubmitMessageButton()
                             } else if chat?.isGenerating == true {
@@ -530,14 +530,7 @@ private extension ChatView {
               !chatService.isCompacting else {
             return false
         }
-        let activeChat: Chat
-        if let chat = chat {
-            activeChat = chat
-        } else {
-            activeChat = chatService.createChat(project: globalStore.newChatProject)
-            globalStore.currentTab = .chat(activeChat)
-            globalStore.newChatProject = nil
-        }
+        let activeChat = openChat()
         let message = Message(
             role: .user,
             chat: activeChat,
@@ -553,11 +546,92 @@ private extension ChatView {
         return true
     }
 
+    /// The open chat, or a new chat that becomes the open one.
+    func openChat() -> Chat {
+        if let chat {
+            return chat
+        }
+        let newChat = chatService.createChat(project: globalStore.newChatProject)
+        globalStore.currentTab = .chat(newChat)
+        globalStore.newChatProject = nil
+        return newChat
+    }
+
     func submitDraft() {
         if !submitMessage(content: draft.content, files: draft.files) {
             return
         }
         clearDraft()
+    }
+
+    /// Runs the voice conversation: listen to one utterance, send it, and speak the response
+    /// while already listening for the next one. Talking over a response interrupts it.
+    func startVoiceMode() {
+        voiceState = .loading
+        voiceTask = Task {
+            await sttService.loadModel()
+            await ttsService.loadModel()
+            guard !Task.isCancelled else { return }
+            // This view value keeps the `chat` it had when voice mode started, so the chat
+            // created by the first turn is remembered here.
+            var voiceChat = chat
+            voiceState = .listening
+            var utterance = await sttService.listen()
+            while !Task.isCancelled,
+                  let text = utterance,
+                  let model = globalStore.selectedModel,
+                  !chatService.isCompacting {
+                if text.isEmpty {
+                    utterance = await sttService.listen()
+                    continue
+                }
+                let chat = voiceChat ?? openChat()
+                voiceChat = chat
+
+                voiceState = .responding
+                ttsService.begin()
+                async let nextUtterance = sttService.listen {
+                    interruptVoiceResponse(in: chat)
+                }
+                let message = Message(role: .user, chat: chat, content: text)
+                try? await chatService.sendMessage(model: model, chat: chat, message: message)
+                // Speak the text that arrived after the last streamed change.
+                for reply in chat.sortedMessages.drop(while: { $0 != message }) where reply.role == .assistant {
+                    ttsService.feed(reply.content, messageID: reply.id, isComplete: true)
+                }
+                await ttsService.finish()
+                guard !Task.isCancelled else { return }
+
+                voiceState = .listening
+                utterance = await nextUtterance
+            }
+            // Ended without `stopVoiceMode()`, for example because recording failed.
+            if !Task.isCancelled {
+                stopVoiceMode()
+            }
+        }
+    }
+
+    /// Stops speaking and generating as soon as the user starts talking over a response.
+    func interruptVoiceResponse(in chat: Chat) {
+        guard voiceState == .responding else { return }
+        voiceState = .listening
+        ttsService.stop()
+        if chat.isGenerating {
+            Task { await chatService.stopGenerating(chat: chat) }
+        }
+    }
+
+    /// Cancelling the voice task also ends any `listen()` in progress.
+    func stopVoiceMode() {
+        guard voiceState != .idle else { return }
+        voiceTask?.cancel()
+        voiceTask = nil
+        ttsService.stop()
+        if voiceState == .responding, let chat {
+            Task { await chatService.stopGenerating(chat: chat) }
+        }
+        voiceState = .idle
     }
     
     func clearDraft() {
@@ -1280,29 +1354,6 @@ private struct ConversationItemsView: View {
         }
     }
 }
-
-private struct AudioLevelChangeModifier: ViewModifier {
-
-    let onTranscription: (String) -> Void
-
-    @Environment(STTService.self) private var sttService
-
-    func body(content: Content) -> some View {
-        content
-            .onChange(of: sttService.audioLevel) { oldValue, newValue in
-                if oldValue <= 0.1 && newValue > 0.1 {
-                    Task {
-                        await sttService.startRecording()
-                    }
-                }
-                if oldValue > 0.1 && newValue <= 0.1 {
-                    sttService.stopRecording()
-                    onTranscription(sttService.transcript)
-                }
-            }
-    }
-}
-
 
 #Preview(traits: .preview) {
     ChatView(chat: .preview)

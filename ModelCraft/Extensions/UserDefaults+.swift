@@ -19,9 +19,6 @@ extension UserDefaults {
     static let customSkillDirectories = "customSkillDirectories"
     static let imageGenerationModelID = "imageGenerationModelID"
     static let videoGenerationModelID = "videoGenerationModelID"
-    // Speaking
-    static let speakingRate = "speakingRate"
-    static let speakingVolume = "speakingVolume"
     
     func value<T>(forKey key: String, default defaultValue: T) -> T {
         return self.value(forKey: key) as? T ?? defaultValue
@@ -45,8 +42,6 @@ enum UserDefaultSettings {
     static let videoOutputDirectory = URL.moviesDirectory
     static let skillDirectory = FileManager.default.homeDirectoryForCurrentUser
         .appendingPathComponent(".agents/skills")
-    static let speakingRate = 0.5
-    static let speakingVolume = 0.8
 }
 
 enum Appearance: String {

@@ -63,6 +63,7 @@ struct ModelCraftApp: App {
         .environment(localModelStore)
         .environment(UserSettings())
         .environment(STTService())
+        .environment(TTSService())
         .windowResizability(.contentSize)
         .commands {
             SidebarCommands()

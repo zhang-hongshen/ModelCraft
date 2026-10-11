@@ -73,19 +73,14 @@ class UserSettings {
         }
     }
     
-    var appearance = UserDefaultSettings.appearance {
+    var appearance = UserDefaults.standard.string(forKey: UserDefaults.appearance)
+        .flatMap(Appearance.init(rawValue:)) ?? UserDefaultSettings.appearance {
         didSet { UserDefaults.standard.set(appearance.rawValue, forKey: UserDefaults.appearance) }
     }
 
-    var language = UserDefaultSettings.language {
+    var language = UserDefaults.standard.string(
+        forKey: UserDefaults.language
+    ) ?? UserDefaultSettings.language {
         didSet { UserDefaults.standard.set(language, forKey: UserDefaults.language) }
-    }
-
-    var speakingRate = UserDefaultSettings.speakingRate {
-        didSet { UserDefaults.standard.set(speakingRate, forKey: UserDefaults.speakingRate) }
-    }
-
-    var speakingVolume = UserDefaultSettings.speakingVolume {
-        didSet { UserDefaults.standard.set(speakingVolume, forKey: UserDefaults.speakingVolume) }
     }
 }

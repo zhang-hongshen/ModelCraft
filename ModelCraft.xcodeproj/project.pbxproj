@@ -93,6 +93,8 @@
 		70AA101130AA101100000011 /* AppleScriptRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70AA100130AA100100000001 /* AppleScriptRunner.swift */; };
 		70AA101230AA101200000012 /* AppTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70AA100230AA100200000002 /* AppTool.swift */; };
 		70AA101430AA101400000014 /* PermissionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70AA100430AA100400000004 /* PermissionsView.swift */; };
+		70AB201130AB201100000011 /* TTSService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70AB200130AB200100000001 /* TTSService.swift */; };
+		70AB301130AB301100000011 /* VoiceAudioEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70AB300130AB300100000001 /* VoiceAudioEngine.swift */; };
 		70AD101130AD101100000011 /* Hub in Frameworks */ = {isa = PBXBuildFile; productRef = 70AD100130AD100100000001 /* Hub */; };
 		70AD101230AD101200000012 /* Tokenizers in Frameworks */ = {isa = PBXBuildFile; productRef = 70AD100230AD100200000002 /* Tokenizers */; };
 		70B13D042BBB1F3300A42F3C /* XMLFileParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70B13D032BBB1F3300A42F3C /* XMLFileParser.swift */; };
@@ -295,6 +297,8 @@
 		70AA100130AA100100000001 /* AppleScriptRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleScriptRunner.swift; sourceTree = "<group>"; };
 		70AA100230AA100200000002 /* AppTool.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTool.swift; sourceTree = "<group>"; };
 		70AA100430AA100400000004 /* PermissionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PermissionsView.swift; sourceTree = "<group>"; };
+		70AB200130AB200100000001 /* TTSService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TTSService.swift; sourceTree = "<group>"; };
+		70AB300130AB300100000001 /* VoiceAudioEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceAudioEngine.swift; sourceTree = "<group>"; };
 		70B13D032BBB1F3300A42F3C /* XMLFileParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XMLFileParser.swift; sourceTree = "<group>"; };
 		70B13D052BBBDC2100A42F3C /* FileThumbnail.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileThumbnail.swift; sourceTree = "<group>"; };
 		70B13D122BBC66FC00A42F3C /* ProjectFileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectFileView.swift; sourceTree = "<group>"; };
@@ -473,6 +477,7 @@
 			isa = PBXGroup;
 			children = (
 				70E0BA8E2F8371980095DED1 /* STTService.swift */,
+				70AB200130AB200100000001 /* TTSService.swift */,
 				70823EC72F520F6F0011DF58 /* ModelService.swift */,
 				7078AA112F4B79DF00711940 /* LMService.swift */,
 				70FE039E2F13EF9D0061CCEB /* ChatService.swift */,
@@ -768,6 +773,7 @@
 				70AA100130AA100100000001 /* AppleScriptRunner.swift */,
 				70F78FF22FDE2DB6003C8737 /* UIManager.swift */,
 				702A31452F815854009CE217 /* AudioRecorder.swift */,
+				70AB300130AB300100000001 /* VoiceAudioEngine.swift */,
 				708EC0E82F4A09520055D765 /* ScreenControlManager.swift */,
 				7071E37C2F26997B00CACB8B /* LocationManager.swift */,
 				706D82652F1EB26500029818 /* SpeechManager.swift */,
@@ -1034,6 +1040,7 @@
 				70873F5F2F2562BB00C07EB3 /* Value.swift in Sources */,
 				70C22FE72BAFD5C2002754C7 /* DefaultImageView.swift in Sources */,
 				702A31462F815854009CE217 /* AudioRecorder.swift in Sources */,
+				70AB301130AB301100000011 /* VoiceAudioEngine.swift in Sources */,
 				70B13D042BBB1F3300A42F3C /* XMLFileParser.swift in Sources */,
 				708C5EE72F0B9D6100127118 /* AgentExecutor.swift in Sources */,
 				70FDA0242F20C21300F9DBD8 /* ToolCall.swift in Sources */,
@@ -1060,6 +1067,7 @@
 				705483F82BBE992800256094 /* DeleteButton.swift in Sources */,
 				70E2017B2BAE825A00CFE1D7 /* ChatView.swift in Sources */,
 				70E0BA8F2F83719C0095DED1 /* STTService.swift in Sources */,
+				70AB201130AB201100000011 /* TTSService.swift in Sources */,
 				70CE60BE2BAD60AE00A2D0B0 /* SettingsView.swift in Sources */,
 				70C22FD12BAF2C35002754C7 /* RoundedRectangle+.swift in Sources */,
 				70321DD32FB8C04600A56C75 /* AppDetailView.swift in Sources */,

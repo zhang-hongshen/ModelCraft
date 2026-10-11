@@ -15,7 +15,7 @@ import MLX
 @MainActor
 @Observable
 final class STTService {
-    var isLoading = false
+    /// The transcript of the utterance being recorded, shown while the user speaks.
     var transcript: String = ""
 
     // Streaming parameters
@@ -24,11 +24,6 @@ final class STTService {
     // Model configuration
     var modelId: String = "mlx-community/Qwen3-ASR-0.6B-4bit"
 
-    // Recording state
-    var isRecording: Bool { recorder.isRecording }
-    var recordingDuration: TimeInterval { recorder.recordingDuration }
-    var audioLevel: Float { recorder.audioLevel }
-
     private var model: Qwen3ASRModel?
     private let recorder = AudioRecorder()
 
@@ -36,42 +31,50 @@ final class STTService {
 
     func loadModel() async {
         guard model == nil else { return }
-
-        isLoading = true
-
         do {
             model = try await Qwen3ASRModel.fromPretrained(modelId)
         } catch {
             print("Failed to load model: \(error.localizedDescription)")
         }
-
-        isLoading = false
     }
 
-    // MARK: - Live Recording & Streaming Transcription
+    // MARK: - Listening
 
-    private var liveTask: Task<Void, Never>?
-    private var eventTask: Task<Void, Never>?
-    private var streamingSession: StreamingInferenceSession?
-    private var lastReadPos: Int = 0
+    private static let levelPollInterval: Duration = .milliseconds(100)
+    private static let speechLevel: Float = 0.1
+    /// Speech must last this long before it counts, so short noises or residual echo
+    /// of the assistant's voice do not start an utterance.
+    private static let speechOnset: Duration = .milliseconds(300)
+    private static let endOfUtterancePause: Duration = .milliseconds(1000)
+    /// Audio kept from before the onset was confirmed so the first syllable is transcribed.
+    private static let preRollSamples = Int(VoiceAudioEngine.captureSampleRate * 0.5)
 
-    func startRecording() async {
-        guard let model = model else {
+    /// Records one utterance: waits for speech, calls `onSpeech` when it starts, ends after
+    /// a pause, and returns the trimmed transcript. Returns `nil` when recording could not
+    /// start or the calling task was cancelled.
+    func listen(onSpeech: () -> Void = {}) async -> String? {
+        guard let model else {
             print("Model not loaded")
-            return
+            return nil
         }
-
-        transcript = ""
-        lastReadPos = 0
-
         do {
-            try await recorder.startRecording()
+            try await recorder.start()
         } catch {
             print(error.localizedDescription)
-            return
+            return nil
+        }
+        defer {
+            recorder.stop()
+            transcript = ""
         }
 
-        // Create streaming session
+        var speech: Duration = .zero
+        while speech < Self.speechOnset {
+            guard await waitForNextPoll() else { return nil }
+            speech = recorder.level > Self.speechLevel ? speech + Self.levelPollInterval : .zero
+        }
+        onSpeech()
+
         let config = StreamingConfig(
             decodeIntervalSeconds: 1.0,
             maxCachedWindows: 60,
@@ -79,81 +82,47 @@ final class STTService {
             maxTokensPerPass: 1024
         )
         let session = StreamingInferenceSession(model: model, config: config)
-        streamingSession = session
-
-        // Listen to events from the session
-        eventTask = Task {
+        let events = Task {
             for await event in session.events {
                 switch event {
                 case .displayUpdate, .provisional, .stats:
                     break
-                case .confirmed(let text):
+                case .confirmed(let text), .ended(let text):
                     transcript = text
-                case .ended(let fullText):
-                    transcript = fullText
                 }
             }
-            // Stream ended naturally — clean up
-            streamingSession = nil
-            eventTask = nil
         }
 
-        // Audio feed loop: read new samples every 100ms and feed to session
-        liveTask = Task {
-            while !Task.isCancelled && recorder.isRecording {
-                if let (audio, endPos) = recorder.getAudio(from: lastReadPos) {
-                    lastReadPos = endPos
-                    let samples = audio.asArray(Float.self)
-                    session.feedAudio(samples: samples)
-                }
-                try? await Task.sleep(for: .milliseconds(100))
+        var readPosition = max(0, recorder.sampleCount - Self.preRollSamples)
+        var silence: Duration = .zero
+        while silence < Self.endOfUtterancePause {
+            guard await waitForNextPoll() else {
+                session.cancel()
+                events.cancel()
+                return nil
             }
+            readPosition = feed(session, from: readPosition)
+            silence = recorder.level > Self.speechLevel ? .zero : silence + Self.levelPollInterval
         }
+
+        _ = feed(session, from: readPosition)
+        session.stop()
+        await events.value
+        return transcript.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    func stopRecording() {
-        liveTask?.cancel()
-        liveTask = nil
+    /// Waits one poll interval. Returns `false` once the listening task is cancelled.
+    private func waitForNextPoll() async -> Bool {
+        try? await Task.sleep(for: Self.levelPollInterval)
+        return !Task.isCancelled
+    }
 
-        _ = recorder.stopRecording()
-
-        // Feed any remaining audio, then stop session
-        if let session = streamingSession {
-            if let (audio, endPos) = recorder.getAudio(from: lastReadPos) {
-                lastReadPos = endPos
-                let samples = audio.asArray(Float.self)
-                session.feedAudio(samples: samples)
-            }
-
-            // Stop promotes all provisional tokens and emits .ended
-            // The eventTask will process .ended and clean up naturally
-            session.stop()
+    /// Sends the samples captured since `position` to the session and returns the new position.
+    private func feed(_ session: StreamingInferenceSession, from position: Int) -> Int {
+        let (samples, end) = recorder.recordedSamples(from: position)
+        if !samples.isEmpty {
+            session.feedAudio(samples: samples)
         }
+        return end
     }
-
-    func cancelRecording() {
-        liveTask?.cancel()
-        liveTask = nil
-        streamingSession?.cancel()
-        streamingSession = nil
-        eventTask?.cancel()
-        eventTask = nil
-        recorder.cancelRecording()
-        lastReadPos = 0
-    }
-
-    func stop() {
-        liveTask?.cancel()
-        liveTask = nil
-        streamingSession?.cancel()
-        streamingSession = nil
-        eventTask?.cancel()
-        eventTask = nil
-
-        if isRecording {
-            recorder.cancelRecording()
-            lastReadPos = 0
-        }
-    }
-
 }

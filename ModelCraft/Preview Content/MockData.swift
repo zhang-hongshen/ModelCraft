@@ -190,6 +190,7 @@ struct PreviewEnvironment: PreviewModifier {
             .environment(LocalModelStore(models: LocalModel.previews))
             .environment(UserSettings())
             .environment(STTService())
+            .environment(TTSService())
     }
 }
 
