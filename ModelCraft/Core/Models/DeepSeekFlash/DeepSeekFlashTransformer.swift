@@ -166,46 +166,30 @@ final class DeepSeekFlashTransformer: Module {
         var dsparkHidden = [MLXArray]()
 
         if !streamingLayerURLs.isEmpty {
-            var nextLayer = 0
-            var residentLayerRange: Range<Int>?
-            while nextLayer < configuration.numHiddenLayers {
-                eval(hidden)
-                if let residentLayerRange {
-                    evaluateAttentionStates(in: residentLayerRange)
+            for layerID in 0 ..< configuration.numHiddenLayers {
+                let block = try DeepSeekFlashLoader.loadTransformerBlock(
+                    layerID: layerID,
+                    url: streamingLayerURLs[layerID],
+                    configuration: configuration)
+                layers = [block]
+                hidden = block(
+                    hidden,
+                    startPosition: startPosition,
+                    inputIDs: inputIDs,
+                    state: attentionStates[layerID],
+                    imageVisibility: imageVisibility)
+                if !mtp.isEmpty, configuration.dsparkTargetLayerIDs.contains(layerID) {
+                    let targetHidden = mean(hidden, axis: 2)
+                    eval(targetHidden)
+                    dsparkHidden.append(targetHidden)
                 }
+                // Nothing lazy may still reference the block once it leaves memory.
+                eval(hidden)
+                evaluateAttentionState(layerID: layerID)
                 Stream.gpu.synchronize()
                 layers = []
                 Memory.clearCache()
-                let layerGroup = try DeepSeekFlashLoader.loadTransformerBlocks(
-                    startingAt: nextLayer,
-                    urls: streamingLayerURLs,
-                    configuration: configuration)
-                layers = layerGroup.blocks
-                let layerRange = layerGroup.range
-                for (offset, layerID) in layerRange.enumerated() {
-                    hidden = layers[offset](
-                        hidden,
-                        startPosition: startPosition,
-                        inputIDs: inputIDs,
-                        state: attentionStates[layerID],
-                        imageVisibility: imageVisibility)
-                    if configuration.dsparkTargetLayerIDs.contains(layerID) {
-                        let targetHidden = mean(hidden, axis: 2)
-                        eval(targetHidden)
-                        dsparkHidden.append(targetHidden)
-                    }
-                    eval(hidden)
-                }
-                residentLayerRange = layerRange
-                nextLayer = layerRange.upperBound
             }
-            eval(hidden)
-            if let residentLayerRange {
-                evaluateAttentionStates(in: residentLayerRange)
-            }
-            Stream.gpu.synchronize()
-            layers = []
-            Memory.clearCache()
         } else {
             for (layerID, block) in layers.enumerated() {
                 hidden = block(
@@ -236,22 +220,19 @@ final class DeepSeekFlashTransformer: Module {
                 ? nil : MLX.concatenated(dsparkHidden, axis: -1))
     }
 
-    private func evaluateAttentionStates(in layers: Range<Int>) {
-        var values = [MLXArray]()
-        for layerID in layers {
-            let state = attentionStates[layerID]
-            values.append(state.keyValueCache)
-            if let indexKeyValueCache = state.indexKeyValueCache {
-                values.append(indexKeyValueCache)
-            }
-            if let compressor = state.compressor {
-                values.append(compressor.keyValue)
-                values.append(compressor.score)
-            }
-            if let indexCompressor = state.indexCompressor {
-                values.append(indexCompressor.keyValue)
-                values.append(indexCompressor.score)
-            }
+    private func evaluateAttentionState(layerID: Int) {
+        let state = attentionStates[layerID]
+        var values = [state.keyValueCache]
+        if let indexKeyValueCache = state.indexKeyValueCache {
+            values.append(indexKeyValueCache)
+        }
+        if let compressor = state.compressor {
+            values.append(compressor.keyValue)
+            values.append(compressor.score)
+        }
+        if let indexCompressor = state.indexCompressor {
+            values.append(indexCompressor.keyValue)
+            values.append(indexCompressor.score)
         }
         eval(values)
     }

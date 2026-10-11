@@ -5,22 +5,16 @@
 //  Created by Hongshen on 26/9/26.
 //
 
-import Darwin
 import Foundation
 import Hub
 import MLX
 import MLXNN
-
-// libSystem exports this on macOS even though the SDK only exposes the declaration on iOS.
-@_silgen_name("os_proc_available_memory")
-private func osProcAvailableMemory() -> UInt
 
 public enum DeepSeekFlashLoaderError: Error, LocalizedError {
     case fileNotFound(URL)
     case invalidConfiguration(URL)
     case invalidIndex(URL)
     case emptyWeights(URL)
-    case insufficientMemory(required: UInt64, available: UInt64)
 
     public var errorDescription: String? {
         switch self {
@@ -28,18 +22,11 @@ public enum DeepSeekFlashLoaderError: Error, LocalizedError {
         case .invalidConfiguration(let url): "Invalid DeepSeekFlash config: \(url.path)"
         case .invalidIndex(let url): "Invalid DeepSeekFlash weight index: \(url.path)"
         case .emptyWeights(let url): "No DeepSeekFlash weights were loaded from \(url.path)"
-        case .insufficientMemory(let required, let available):
-            "DeepSeekFlash layer group needs \(required) bytes, but only \(available) bytes are available"
         }
     }
 }
 
 enum DeepSeekFlashLoader {
-    struct LayerGroup {
-        let range: Range<Int>
-        let blocks: [DeepSeekFlashTransformerBlock]
-    }
-
     private struct WeightIndex: Decodable {
         let weightMap: [String: String]
 
@@ -102,7 +89,7 @@ enum DeepSeekFlashLoader {
         let totalSize = try shardURLs.reduce(UInt64(0)) {
             $0 + (try fileSize($1))
         }
-        let fullLoad = totalSize <= availableLoadingBudget()
+        let fullLoad = totalSize <= ProcessInfo.processInfo.physicalMemory / 4 * 3
 
         let transformer = DeepSeekFlashTransformer(
             configuration: configuration,
@@ -117,8 +104,13 @@ enum DeepSeekFlashLoader {
                 try loadWeights(from: url, into: transformer)
             }
         } else {
-            let layerURLSet = Set(layerURLs)
-            for url in shardURLs where !layerURLSet.contains(url) {
+            // DSpark stages only draft tokens, so streaming leaves them unloaded.
+            transformer.mtp = []
+            let dsparkURLs = try Set(weightMap.compactMap { name, shardName in
+                name.hasPrefix("mtp.") ? shardName : nil
+            }).map { try resolve(hub: hub, path: $0) }
+            let streamedURLs = Set(layerURLs).union(dsparkURLs)
+            for url in shardURLs where !streamedURLs.contains(url) {
                 try loadWeights(from: url, into: transformer)
             }
             transformer.streamingLayerURLs = layerURLs
@@ -128,63 +120,21 @@ enum DeepSeekFlashLoader {
         return transformer
     }
 
-    static func loadTransformerBlocks(
-        startingAt firstLayer: Int,
-        urls: [URL],
+    /// Builds one Transformer block from its shard. Tensors stay lazy until the
+    /// forward pass evaluates them, so only the experts a step routes to are read.
+    static func loadTransformerBlock(
+        layerID: Int,
+        url: URL,
         configuration: DeepSeekFlashConfiguration
-    ) throws -> LayerGroup {
-        precondition(urls.indices.contains(firstLayer))
-        let budget = availableLoadingBudget()
-        var required = UInt64(0)
-        var endLayer = firstLayer
-
-        while endLayer < urls.count {
-            let size = try fileSize(urls[endLayer])
-            guard required + size <= budget else { break }
-            required += size
-            endLayer += 1
+    ) throws -> DeepSeekFlashTransformerBlock {
+        let block = DeepSeekFlashTransformerBlock(
+            layerID: layerID,
+            configuration: configuration)
+        let prefix = "layers.\(layerID)."
+        try loadWeights(from: url, into: block) { name, array in
+            guard name.hasPrefix(prefix) else { return [] }
+            return [(String(name.dropFirst(prefix.count)), array)]
         }
-        guard endLayer > firstLayer else {
-            throw DeepSeekFlashLoaderError.insufficientMemory(
-                required: try fileSize(urls[firstLayer]),
-                available: budget)
-        }
-
-        let range = firstLayer ..< endLayer
-        var blocks = [DeepSeekFlashTransformerBlock]()
-        blocks.reserveCapacity(range.count)
-        for layerID in range {
-            let url = urls[layerID]
-            let size = try fileSize(url)
-            let liveBudget = availableLoadingBudget()
-            guard size <= liveBudget else {
-                throw DeepSeekFlashLoaderError.insufficientMemory(
-                    required: size,
-                    available: liveBudget)
-            }
-            let prefix = "layers.\(layerID)."
-            blocks.append(try loadBlock(
-                from: url,
-                mapper: { name, array in
-                    guard name.hasPrefix(prefix) else { return [] }
-                    return [(String(name.dropFirst(prefix.count)), array)]
-                }
-            ) {
-                DeepSeekFlashTransformerBlock(
-                    layerID: layerID,
-                    configuration: configuration)
-            })
-        }
-        return LayerGroup(range: range, blocks: blocks)
-    }
-
-    private static func loadBlock<Block: Module>(
-        from url: URL,
-        mapper: (String, MLXArray) -> [(String, MLXArray)],
-        makeBlock: () -> Block
-    ) throws -> Block {
-        let block = makeBlock()
-        try loadWeights(from: url, into: block, mapper: mapper)
         return block
     }
 
@@ -222,15 +172,5 @@ enum DeepSeekFlashLoader {
             throw DeepSeekFlashLoaderError.fileNotFound(url)
         }
         return UInt64(size)
-    }
-
-    private static func availableLoadingBudget() -> UInt64 {
-        let physicalMemory = ProcessInfo.processInfo.physicalMemory
-        let targetPeak = physicalMemory / 4 * 3
-        let snapshot = Memory.snapshot()
-        let mlxMemory = UInt64(max(snapshot.activeMemory, 0))
-            + UInt64(max(snapshot.cacheMemory, 0))
-        let targetBudget = targetPeak > mlxMemory ? targetPeak - mlxMemory : 0
-        return min(UInt64(osProcAvailableMemory()), targetBudget)
     }
 }

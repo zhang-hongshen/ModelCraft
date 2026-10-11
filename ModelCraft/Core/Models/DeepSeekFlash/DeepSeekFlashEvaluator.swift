@@ -154,7 +154,7 @@ final class DeepSeekFlashEvaluator {
                 prompt += "<｜User｜>" + content
             case .assistant:
                 prompt += "<｜Assistant｜></think>"
-                prompt += content + "<｜end▁of▁sentence｜>"
+                prompt += content + renderToolCalls(of: message) + "<｜end▁of▁sentence｜>"
             case .tool:
                 prompt += "<｜User｜><tool_result>"
                 prompt += content
@@ -167,6 +167,45 @@ final class DeepSeekFlashEvaluator {
         }
         prompt += "<｜Assistant｜></think>"
         return (prompt, images)
+    }
+
+    /// Renders an assistant message's tool calls in the DSML format the model emits, so the
+    /// following tool result is paired with the call that produced it.
+    private func renderToolCalls(of message: MLXLMCommon.Chat.Message) -> String {
+        var metadata: [String: any Sendable] = [:]
+        DefaultMessageGenerator().addToolMetadata(to: &metadata, for: message)
+        guard let calls = metadata["tool_calls"] as? [[String: any Sendable]],
+              !calls.isEmpty
+        else {
+            return ""
+        }
+
+        let invocations = calls.compactMap { call -> String? in
+            guard let function = call["function"] as? [String: any Sendable],
+                  let name = function["name"] as? String
+            else {
+                return nil
+            }
+            let arguments = function["arguments"] as? [String: any Sendable] ?? [:]
+            let parameters = arguments.keys.sorted().map { key in
+                let value = arguments[key]
+                if let string = value as? String {
+                    return "<｜DSML｜parameter name=\"\(key)\" string=\"true\">\(string)</｜DSML｜parameter>"
+                }
+                // Invalid objects raise instead of throwing, so validate inside an array first.
+                let json = value
+                    .flatMap { JSONSerialization.isValidJSONObject([$0]) ? $0 : nil }
+                    .flatMap { try? JSONSerialization.data(
+                        withJSONObject: $0,
+                        options: [.fragmentsAllowed, .sortedKeys]) }
+                    .map { String(decoding: $0, as: UTF8.self) } ?? "null"
+                return "<｜DSML｜parameter name=\"\(key)\" string=\"false\">\(json)</｜DSML｜parameter>"
+            }
+            return (["<｜DSML｜invoke name=\"\(name)\">"] + parameters + ["</｜DSML｜invoke>"])
+                .joined(separator: "\n")
+        }
+        return "\n\n" + ([Self.toolCallsStart] + invocations + [Self.toolCallsEnd])
+            .joined(separator: "\n")
     }
 
     private func renderTools(_ tools: [ToolSpec]) -> String {

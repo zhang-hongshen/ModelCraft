@@ -20,15 +20,15 @@ class DeepSeekFlashAttention: Module {
     let softmaxScale: Float
 
     @ParameterInfo(key: "attn_sink") var attentionSink: MLXArray
-    @ModuleInfo(key: "wq_a") var queryA: DeepSeekFlashLinear
-    @ModuleInfo(key: "q_norm") var queryNorm: DeepSeekFlashRMSNorm
-    @ModuleInfo(key: "wq_b") var queryB: DeepSeekFlashLinear
-    @ModuleInfo(key: "wkv") var keyValue: DeepSeekFlashLinear
-    @ModuleInfo(key: "kv_norm") var keyValueNorm: DeepSeekFlashRMSNorm
-    @ModuleInfo(key: "wo_a") var outputA: DeepSeekFlashLinear
-    @ModuleInfo(key: "wo_b") var outputB: DeepSeekFlashLinear
     @ModuleInfo(key: "compressor") var compressor: DeepSeekFlashCompressor?
     @ModuleInfo(key: "indexer") var indexer: DeepSeekFlashIndexer?
+    @ModuleInfo(key: "kv_norm") var keyValueNorm: DeepSeekFlashRMSNorm
+    @ModuleInfo(key: "q_norm") var queryNorm: DeepSeekFlashRMSNorm
+    @ModuleInfo(key: "wkv") var keyValue: DeepSeekFlashLinear
+    @ModuleInfo(key: "wo_a") var outputA: DeepSeekFlashLinear
+    @ModuleInfo(key: "wo_b") var outputB: DeepSeekFlashLinear
+    @ModuleInfo(key: "wq_a") var queryA: DeepSeekFlashLinear
+    @ModuleInfo(key: "wq_b") var queryB: DeepSeekFlashLinear
 
     init(layerID: Int, configuration: DeepSeekFlashConfiguration) {
         self.layerID = layerID
