@@ -5,6 +5,7 @@
 //  Created by Hongshen on 23/2/26.
 //
 
+import CoreImage
 import Foundation
 import UniformTypeIdentifiers
 
@@ -154,6 +155,11 @@ final class LMService {
             }
         }
         try Task.checkCancellation()
+        // Callers use the answer only, so leading model reasoning is dropped.
+        let answer = output.drop { $0.isWhitespace }
+        if answer.hasPrefix("<think>"), let end = answer.range(of: "</think>") {
+            return answer[end.upperBound...].trimmingCharacters(in: .whitespacesAndNewlines)
+        }
         return output
     }
     
@@ -165,7 +171,7 @@ final class LMService {
     ) async throws -> String {
         return try await generate(
             model: model,
-            messages: messages.compactMap { toMessage($0) },
+            messages: protocolMessages(messages),
             tools: tools,
             maxTokens: maxTokens)
     }
@@ -173,7 +179,52 @@ final class LMService {
 }
 
 extension LMService {
-    
+
+    func protocolMessages(_ messages: [Message]) -> [MLXLMCommon.Chat.Message] {
+        var protocolMessages: [MLXLMCommon.Chat.Message] = []
+        for message in messages {
+            append(message, to: &protocolMessages)
+        }
+        return protocolMessages
+    }
+
+    /// Appends the protocol form of a persisted message. A tool message is preceded by the
+    /// assistant tool call that produced it, attached to the preceding assistant text when
+    /// there is one, so chat templates can pair the result with its call. Images and videos
+    /// in the tool result are attached to the tool message so the model can see them.
+    func append(_ message: Message, to messages: inout [MLXLMCommon.Chat.Message]) {
+        guard message.role == .tool, let toolCall = message.toolCall else {
+            messages.append(toMessage(message))
+            return
+        }
+        if let last = messages.last, last.role == .assistant, last.tool == nil {
+            messages[messages.count - 1].tool = .calls([toolCall])
+        } else {
+            messages.append(.assistant("", toolCalls: [toolCall]))
+        }
+        var toolMessage = MLXLMCommon.Chat.Message.tool(
+            message.content, id: toolCall.id, name: toolCall.function.name)
+        for block in message.toolCallResult?.content ?? [] {
+            switch block {
+            case .image(let image):
+                if let data = Data(base64Encoded: image.data),
+                   let ciImage = CIImage(data: data) {
+                    toolMessage.images.append(.ciImage(ciImage))
+                }
+            case .resourceLink(let link):
+                guard let type = link.mimeType.flatMap({ UTType(mimeType: $0) }) else { continue }
+                if type.conforms(to: .image) {
+                    toolMessage.images.append(.url(link.url))
+                } else if type.conforms(to: .movie) {
+                    toolMessage.videos.append(.url(link.url))
+                }
+            default:
+                break
+            }
+        }
+        messages.append(toolMessage)
+    }
+
     func toMessage(_ message: Message) -> MLXLMCommon.Chat.Message {
         let role: MLXLMCommon.Chat.Message.Role =
             switch message.role {

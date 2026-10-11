@@ -313,15 +313,8 @@ private extension ChatView {
 
     @ViewBuilder
     func ComposerView(showsProjectPicker: Bool) -> some View {
+        let pendingInteraction = chatService.interactionCoordinator.pendingInteraction
         VStack(spacing: 8) {
-            if let pendingInteraction = chatService.interactionCoordinator.pendingInteraction {
-                UserInteractionRequestView(
-                    pendingInteraction: pendingInteraction,
-                    onSubmitUserInput: chatService.interactionCoordinator.submitUserInput,
-                    onResolveApproval: chatService.interactionCoordinator.resolveApproval)
-                .id(pendingInteraction.id)
-            }
-
             if isCommandPalettePresented {
                 ChatCommandPalette(
                     skillCommands: skillCommands,
@@ -330,37 +323,58 @@ private extension ChatView {
                     onSelect: runCommand)
             }
 
-            ChatInputView(
-                userInput: draft,
-                skillNames: skillCommands.compactMap(\.skillName),
-                selectionLocation: $composerSelectionLocation,
-                slashCommandLocation: $slashCommandLocation,
-                onCommand: handleComposerCommand,
-                trailing: {
-                    HStack {
-                        if let chat, let contextWindow = globalStore.selectedModel?.contextWindow, contextWindow > 0 {
-                            ContextWindowUsageView(tokenCount: chat.tokenCount, contextWindow: contextWindow)
-                        }
+            // A pending request covers the input. The ZStack is as large as its larger
+            // child, so the request is as wide as the input, at least as tall, and taller
+            // when its content needs it.
+            ZStack(alignment: .top) {
+                ChatInputView(
+                    userInput: draft,
+                    skillNames: skillCommands.compactMap(\.skillName),
+                    selectionLocation: $composerSelectionLocation,
+                    slashCommandLocation: $slashCommandLocation,
+                    onCommand: handleComposerCommand,
+                    trailing: {
+                        HStack {
+                            if let chat, let contextWindow = globalStore.selectedModel?.contextWindow, contextWindow > 0 {
+                                ContextWindowUsageView(tokenCount: chat.tokenCount, contextWindow: contextWindow)
+                            }
 
-                        ModelPickerButton()
+                            ModelPickerButton()
 
-                        if chatService.isCompacting {
-                            ProgressView()
-                                .controlSize(.small)
-                        } else if !draft.content.isEmpty {
-                            SubmitMessageButton()
-                        } else if chat?.isGenerating == true {
-                            StopGeneratingMessageButton()
-                        } else {
-                            voiceModeButton()
+                            if chatService.isCompacting {
+                                ProgressView()
+                                    .controlSize(.small)
+                            } else if !draft.content.isEmpty {
+                                SubmitMessageButton()
+                            } else if chat?.isGenerating == true {
+                                StopGeneratingMessageButton()
+                            } else {
+                                voiceModeButton()
+                            }
                         }
                     }
+                )
+                .onKeyPress(
+                    keys: [.upArrow, .downArrow, .return, .escape],
+                    phases: [.down, .repeat],
+                    action: handleCommandKeyPress)
+                .opacity(pendingInteraction == nil ? 1 : 0)
+                .disabled(pendingInteraction != nil)
+                .accessibilityHidden(pendingInteraction != nil)
+
+                if let pendingInteraction {
+                    UserInteractionRequestView(
+                        pendingInteraction: pendingInteraction,
+                        onSubmitUserInput: chatService.interactionCoordinator.submitUserInput,
+                        onResolveApproval: chatService.interactionCoordinator.resolveApproval)
+                    .id(pendingInteraction.id)
                 }
-            )
-            .onKeyPress(
-                keys: [.upArrow, .downArrow, .return, .escape],
-                phases: [.down, .repeat],
-                action: handleCommandKeyPress)
+            }
+            .background {
+                if pendingInteraction != nil {
+                    RoundedRectangle().fill(.background)
+                }
+            }
 
             if showsProjectPicker {
                 HStack {
@@ -812,7 +826,7 @@ private struct UserInteractionRequestView: View {
 
     let pendingInteraction: UserInteractionCoordinator.PendingInteraction
     let onSubmitUserInput: ([UserInputAnswer]) -> Void
-    let onResolveApproval: (Bool) -> Void
+    let onResolveApproval: (ToolApprovalDecision) -> Void
 
     var body: some View {
         VStack {
@@ -821,18 +835,15 @@ private struct UserInteractionRequestView: View {
                 UserInputRequestView(
                     pendingUserInput: pendingUserInput,
                     onConfirm: onSubmitUserInput)
+                    // A new request starts on its first page with empty answers.
+                    .id(pendingUserInput.id)
             case .approval(let pendingApproval):
                 ToolApprovalRequestView(
                     request: pendingApproval.request,
                     onResolve: onResolveApproval)
             }
         }
-        .frame(maxWidth: 560)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
-        .overlay {
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(.separator.opacity(0.5))
-        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
@@ -846,19 +857,29 @@ private struct UserInputRequestView: View {
     @State private var importingFieldID: String?
     @State private var fileImportError: String?
 
+    /// The position of the question on screen.
+    @State private var page = 0
+
+    private var fields: [UserInputField] {
+        pendingUserInput.request.fields
+    }
+
     var body: some View {
+        let field = fields[page]
+        let isLastPage = page == fields.count - 1
         VStack(alignment: .leading, spacing: 12) {
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 16) {
-                    ForEach(pendingUserInput.request.fields) { field in
-                        UserInputFieldView(
-                            field: field,
-                            form: form,
-                            onChooseFiles: presentFileImporter)
-                    }
-                }
+            if fields.count > 1 {
+                Text(verbatim: "\(page + 1) / \(fields.count)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
             }
-            .frame(maxHeight: 360)
+
+            UserInputFieldView(
+                field: field,
+                form: form,
+                onChooseFiles: presentFileImporter)
+                .id(field.id)
 
             if let fileImportError {
                 Text(fileImportError)
@@ -867,12 +888,22 @@ private struct UserInputRequestView: View {
             }
 
             HStack {
+                if page > 0 {
+                    Button("Back") {
+                        page -= 1
+                    }
+                }
                 Spacer()
-                Button("Confirm") {
-                    onConfirm(form.answers(for: pendingUserInput.request.fields))
+                Button("Skip") {
+                    form.clear(field.id)
+                    goForward()
+                }
+                Button(isLastPage ? LocalizedStringKey("Confirm") : LocalizedStringKey("Next")) {
+                    goForward()
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(!form.isComplete(fields: pendingUserInput.request.fields))
+                .keyboardShortcut(.defaultAction)
+                .disabled(!form.hasAnswer(for: field))
             }
         }
         .padding()
@@ -893,8 +924,18 @@ private struct UserInputRequestView: View {
         }
     }
 
+    /// Shows the next question, or sends every answer after the last one.
+    /// A skipped question is sent with no values.
+    private func goForward() {
+        if page < fields.count - 1 {
+            page += 1
+        } else {
+            onConfirm(form.answers(for: fields))
+        }
+    }
+
     private var importingField: UserInputField? {
-        pendingUserInput.request.fields.first { $0.id == importingFieldID }
+        fields.first { $0.id == importingFieldID }
     }
 
     private var importerContentTypes: [UTType] {
@@ -1075,7 +1116,7 @@ private struct UserInputOptionLabel: View {
 private struct ToolApprovalRequestView: View {
 
     let request: ToolApprovalRequest
-    let onResolve: (Bool) -> Void
+    let onResolve: (ToolApprovalDecision) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -1084,21 +1125,51 @@ private struct ToolApprovalRequestView: View {
 
             Text(request.title)
             if let detail = request.detail, !detail.isEmpty {
-                Text(detail)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .textSelection(.enabled)
+                if request.allowsAlways {
+                    Text(detail)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .textSelection(.enabled)
+                } else {
+                    // An AppleScript: show the whole script so the user knows what runs.
+                    let script = Text(verbatim: detail)
+                        .font(.system(.caption, design: .monospaced))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .textSelection(.enabled)
+                    ViewThatFits(in: .vertical) {
+                        script
+                        ScrollView {
+                            script
+                        }
+                    }
+                    .frame(maxHeight: 240)
+                    .padding(8)
+                    .background(.quaternary, in: RoundedRectangle(cornerRadius: 8))
+
+                    if detail.localizedCaseInsensitiveContains("do shell script") {
+                        Label(
+                            "This script can run shell commands with ModelCraft's permissions.",
+                            systemImage: "exclamationmark.triangle.fill")
+                            .font(.caption)
+                            .foregroundStyle(.orange)
+                    }
+                }
             }
 
             HStack {
                 Spacer()
-                Button("Don't Allow") {
-                    onResolve(false)
+                Button("Deny") {
+                    onResolve(.deny)
                 }
-                Button("Allow for This Task") {
-                    onResolve(true)
+                Button("Allow Once") {
+                    onResolve(.allowOnce)
                 }
                 .buttonStyle(.borderedProminent)
+                if request.allowsAlways {
+                    Button("Always Allow") {
+                        onResolve(.alwaysAllow)
+                    }
+                }
             }
         }
         .padding()
@@ -1156,8 +1227,16 @@ private final class UserInputFormModel {
         selectedFiles[fieldID] ?? []
     }
 
-    func isComplete(fields: [UserInputField]) -> Bool {
-        fields.allSatisfy { !values(for: $0).isEmpty }
+    func hasAnswer(for field: UserInputField) -> Bool {
+        !values(for: field).isEmpty
+    }
+
+    /// Removes the answer of a skipped question.
+    func clear(_ fieldID: String) {
+        selectedOptionIDs[fieldID] = nil
+        customFieldIDs.remove(fieldID)
+        textAnswers[fieldID] = nil
+        selectedFiles[fieldID] = nil
     }
 
     func answers(for fields: [UserInputField]) -> [UserInputAnswer] {

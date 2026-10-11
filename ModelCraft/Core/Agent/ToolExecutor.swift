@@ -5,7 +5,7 @@
 //  Created by Hongshen on 10/3/26.
 //
 
-import CoreImage
+import Foundation
 import SwiftData
 
 import MLXLMCommon
@@ -20,6 +20,12 @@ enum ToolExecutor {
         
         var toolCallResult = CallToolResult()
         var message = MLXLMCommon.Chat.Message(role: .tool, content: "")
+
+        func reply(_ text: String) {
+            toolCallResult.content.append(.text(TextContent(text: text)))
+            message.content = text
+        }
+
         do  {
             switch toolCall.function.name {
             case ToolNames.readFile:
@@ -27,17 +33,11 @@ enum ToolExecutor {
                 toolCallResult.content.append(.text(TextContent(text: result.content)))
                 message.content = result.toolResult
             case ToolNames.applyPatch:
-                let result = try await toolCall.execute(with: FileTool.applyPatch)
-                toolCallResult.content.append(.text(TextContent(text: result.toolResult)))
-                message.content = result.toolResult
+                reply(try await toolCall.execute(with: FileTool.applyPatch).toolResult)
             case ToolNames.listDirectory:
-                let result = try await toolCall.execute(with: FileTool.listDirectory)
-                toolCallResult.content.append(.text(TextContent(text: result.toolResult)))
-                message.content = result.toolResult
+                reply(try await toolCall.execute(with: FileTool.listDirectory).toolResult)
             case ToolNames.searchMap:
-                let result = try await toolCall.execute(with: SearchTool.searchMap)
-                toolCallResult.content.append(.text(TextContent(text: result.toolResult)))
-                message.content = result.toolResult
+                reply(try await toolCall.execute(with: SearchTool.searchMap).toolResult)
             case ToolNames.searchProject:
                 guard let projectID else {
                     throw ToolExecutorError.projectUnavailable
@@ -59,12 +59,12 @@ enum ToolExecutor {
                 let result = try await toolCall.execute(with: ImageTool.textToImage)
                 toolCallResult.content.append(
                     .resourceLink(ResourceLink(name: "", title: "", url: result.imageURL, mimeType: result.mimeType)))
-                message.images.append(.url(result.imageURL))
+                message.content = result.toolResult
             case ToolNames.textToVideo:
                 let result = try await toolCall.execute(with: VideoTool.textToVideo)
                 toolCallResult.content.append(
                     .resourceLink(ResourceLink(name: "", title: "", url: result.videoURL, mimeType: result.mimeType)))
-                message.videos.append(.url(result.videoURL))
+                message.content = result.toolResult
             case ToolNames.textToAudio:
                 let result = try await toolCall.execute(with: AudioTool.textToAudio)
                 toolCallResult.content.append(
@@ -76,13 +76,10 @@ enum ToolExecutor {
                 message.content = result.toolResult
             case ToolNames.captureFullScreen:
                 if let result = try await toolCall.execute(with: ScreenControlTool.captureFullScreen) {
-                    toolCallResult.content.append(.text(TextContent(
-                        text: "Captured all displays at \(Int(result.size.width))x\(Int(result.size.height)) points."
-                    )))
+                    let description = "Captured all displays at \(Int(result.size.width))x\(Int(result.size.height)) points."
+                    toolCallResult.content.append(.text(TextContent(text: description)))
                     toolCallResult.content.append(.image(ImageContent(data: result.imageData.base64EncodedString(), mimeType: result.mimeType)))
-                    if let ciImage = CIImage(data: result.imageData){
-                        message.images.append(.ciImage(ciImage))
-                    }
+                    message.content = description
                 } else {
                     let errorDescription = "Failed to capture the full screen."
                     toolCallResult.isError = true
@@ -97,62 +94,39 @@ enum ToolExecutor {
                     toolCallResult.content.append(.text(TextContent(text: resultDescription)))
                     message.content = resultDescription
                 } else {
+                    var descriptions: [String] = []
                     for screenshot in screenshots {
                         let frame = screenshot.windowFrame
-                        toolCallResult.content.append(.text(TextContent(
-                            text: "Window \(screenshot.windowID): x=\(Int(frame.minX)), y=\(Int(frame.minY)), width=\(Int(frame.width)), height=\(Int(frame.height))."
-                        )))
+                        let description = "Window \(screenshot.windowID): x=\(Int(frame.minX)), y=\(Int(frame.minY)), width=\(Int(frame.width)), height=\(Int(frame.height))."
+                        toolCallResult.content.append(.text(TextContent(text: description)))
                         toolCallResult.content.append(.image(ImageContent(data: screenshot.imageData.base64EncodedString(), mimeType: screenshot.mimeType)))
-                        if let ciImage = CIImage(data: screenshot.imageData){
-                            message.images.append(.ciImage(ciImage))
-                        }
+                        descriptions.append(description)
                     }
+                    message.content = descriptions.joined(separator: "\n")
                 }
             case ToolNames.click:
-                let result = try await toolCall.execute(with: ScreenControlTool.click)
-                toolCallResult.content.append(.text(TextContent(text: result.toolResult)))
-                message.content = result.toolResult
+                reply(try await toolCall.execute(with: ScreenControlTool.click).toolResult)
             case ToolNames.move:
-                let result = try await toolCall.execute(with: ScreenControlTool.move)
-                toolCallResult.content.append(.text(TextContent(text: result.toolResult)))
-                message.content = result.toolResult
+                reply(try await toolCall.execute(with: ScreenControlTool.move).toolResult)
             case ToolNames.drag:
-                let result = try await toolCall.execute(with: ScreenControlTool.drag)
-                toolCallResult.content.append(.text(TextContent(text: result.toolResult)))
-                message.content = result.toolResult
+                reply(try await toolCall.execute(with: ScreenControlTool.drag).toolResult)
             case ToolNames.scroll:
-                let result = try await toolCall.execute(with: ScreenControlTool.scroll)
-                toolCallResult.content.append(.text(TextContent(text: result.toolResult)))
-                message.content = result.toolResult
+                reply(try await toolCall.execute(with: ScreenControlTool.scroll).toolResult)
             case ToolNames.listRunningApps:
-                let result = try await toolCall.execute(with: ComputerUseTool.listRunningApplication)
-                toolCallResult.content.append(.text(TextContent(text: result.toolResult)))
-                message.content = result.toolResult
+                reply(try await toolCall.execute(with: ComputerUseTool.listRunningApplication).toolResult)
             case ToolNames.getUIHierarchy:
-                let result = try await toolCall.execute(with: ComputerUseTool.getUIHierarchy)
-                toolCallResult.content.append(.text(TextContent(text: result.toolResult)))
-                message.content = result.toolResult
+                reply(try await toolCall.execute(with: ComputerUseTool.getUIHierarchy).toolResult)
             case ToolNames.clickElement:
-                let result = try await toolCall.execute(with: ComputerUseTool.clickElement)
-                toolCallResult.content.append(.text(TextContent(text: result.toolResult)))
-                message.content = result.toolResult
+                reply(try await toolCall.execute(with: ComputerUseTool.clickElement).toolResult)
             case ToolNames.typeText:
-                let result = try await toolCall.execute(with: ComputerUseTool.typeText)
-                toolCallResult.content.append(.text(TextContent(text: result.toolResult)))
-                message.content = result.toolResult
+                reply(try await toolCall.execute(with: ComputerUseTool.typeText).toolResult)
             case ToolNames.pressKey:
-                let result = try await toolCall.execute(with: ComputerUseTool.pressKey)
-                toolCallResult.content.append(.text(TextContent(text: result.toolResult)))
-                message.content = result.toolResult
+                reply(try await toolCall.execute(with: ComputerUseTool.pressKey).toolResult)
             case ToolNames.executeCommand:
-                let result = try await toolCall.execute(with: CommandTool.executeCommand)
-                toolCallResult.content.append(.text(TextContent(text: result.toolResult)))
-                message.content = result.toolResult
+                reply(try await toolCall.execute(with: CommandTool.executeCommand).toolResult)
             default:
                 toolCallResult.isError = true
-                let errorDescription = "Unknown tool: \(toolCall.function.name)"
-                toolCallResult.content.append(.text(TextContent(text: errorDescription)))
-                message.content = errorDescription
+                reply("Unknown tool: \(toolCall.function.name)")
             }
             try Task.checkCancellation()
         } catch is CancellationError {
@@ -160,8 +134,7 @@ enum ToolExecutor {
         } catch {
             try Task.checkCancellation()
             toolCallResult.isError = true
-            toolCallResult.content.append(.text(TextContent(text: error.localizedDescription)))
-            message.content = error.localizedDescription
+            reply(error.localizedDescription)
         }
         print("ToolCall result \(toolCallResult)")
         return (toolCallResult, message)

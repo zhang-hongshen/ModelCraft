@@ -23,9 +23,9 @@ enum ImageTool {
     
     static let textToImage = Tool<TextToImageInput, TextToImageOutput>(
             name: "text_to_image",
-            description: "Generate a new PNG image from a text description with the local image model. Saves the image in the configured image output directory and returns its file URL and MIME type.",
+            description: "Generate a new PNG image from a text description with the local image model. Saves the image in the configured image output directory and returns its file URL and MIME type. The app shows the generated file to the user, so do not repeat its path.",
             parameters: [
-                .required("prompt", type: .string, description: "Describe the desired image, including subject, composition, style, lighting, colors, and any visible text that matter.")
+                .required("prompt", type: .string, description: "Describe the desired image, including subject, composition, style, lighting, and colors that matter.")
             ]
         ) { input in
             try Task.checkCancellation()

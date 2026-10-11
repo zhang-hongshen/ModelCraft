@@ -10,7 +10,7 @@ import MLXLMCommon
 
 struct ImageGenerationToolRenderer: View {
 
-    private static let imageWidth: CGFloat = 180
+    private static let maximumImageWidth: CGFloat = 384
 
     let toolCall: ToolCall
     let result: CallToolResult?
@@ -43,7 +43,7 @@ struct ImageGenerationToolRenderer: View {
 
         return content
             .aspectRatio(aspectRatio, contentMode: .fit)
-            .frame(width: Self.imageWidth)
+            .frame(maxWidth: Self.maximumImageWidth)
     }
 }
 

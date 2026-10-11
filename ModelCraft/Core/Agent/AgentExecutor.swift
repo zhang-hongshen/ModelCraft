@@ -14,7 +14,8 @@ import Tokenizers
 final class AgentExecutor {
 
     private let interactionCoordinator: UserInteractionCoordinator
-    private var authorizationContext = ToolAuthorizationContext()
+    /// What the user chose to always allow, per conversation.
+    private var authorizationContexts: [UUID: ToolAuthorizationContext] = [:]
 
     init(interactionCoordinator: UserInteractionCoordinator) {
         self.interactionCoordinator = interactionCoordinator
@@ -35,8 +36,11 @@ final class AgentExecutor {
     ) async throws -> Void {
         try Task.checkCancellation()
         let project = chat.project
-        authorizationContext = ToolAuthorizationContext(
-            workingDirectory: project?.workingDirectory)
+        // Approvals are scoped to the working folder, so changing it starts over.
+        if authorizationContexts[chat.id]?.workingDirectory != project?.workingDirectory {
+            authorizationContexts[chat.id] = ToolAuthorizationContext(
+                workingDirectory: project?.workingDirectory)
+        }
         
         try await ProjectToolContext.$workingDirectory.withValue(project?.workingDirectory) {
             try await ProjectToolContext.$readOnlyFiles.withValue(project?.resources ?? []) {
@@ -58,10 +62,7 @@ final class AgentExecutor {
         lastToolSignature: String?,
         consecutiveSameToolCalls: Int
     ) async throws {
-        var availableTools = ToolDefinition.allToolSchema
-        if let project = chat.project {
-            availableTools.append(SearchTool.searchProject(projectID: project.persistentModelID).schema)
-        }
+        let availableTools = ToolDefinition.allToolSchema(for: chat)
         let assistantMessage = Message(role: .assistant, chat: chat, status: .new)
         ModelContainer.shared.mainContext.persist(assistantMessage)
         var allMessages = messages
@@ -103,16 +104,23 @@ final class AgentExecutor {
                         .error(Self.duplicateToolCallMessage),
                         .tool(Self.duplicateToolCallMessage))
                 } else {
-                    result = try await executeToolCall(
-                        toolCall,
-                        signature: signature,
-                        projectID: chat.project?.persistentModelID)
+                    // Running media tools report progress into the tool message's content,
+                    // which `Message` decodes until the result arrives.
+                    result = try await ToolExecutionProgressReporter.$imageGeneration.withValue({
+                        toolMessage.content = $0.storedValue
+                    }) {
+                        try await ToolExecutionProgressReporter.$videoGeneration.withValue({
+                            toolMessage.content = $0.storedValue
+                        }) {
+                            try await executeToolCall(toolCall, signature: signature, chat: chat)
+                        }
+                    }
                 }
 
                 toolMessage.content = result.1.content
                 toolMessage.toolCallResult = result.0
                 toolMessage.status = result.0.isError ? .failed : .generated
-                allMessages.append(result.1)
+                LMService.shared.append(toolMessage, to: &allMessages)
                 try await run(
                     model: model,
                     chat: chat,
@@ -132,24 +140,38 @@ final class AgentExecutor {
     private func executeToolCall(
         _ toolCall: ToolCall,
         signature: String,
-        projectID: PersistentIdentifier?
+        chat: Chat
     ) async throws -> (CallToolResult, MLXLMCommon.Chat.Message) {
         if toolCall.function.name == ToolNames.requestUserInput {
-            return try await executeUserInput(toolCall)
+            return try await executeUserInput(toolCall, chat: chat)
         }
 
         if toolCall.requiresUserApproval,
-           !authorizationContext.allows(toolCall, signature: signature) {
-            guard try await interactionCoordinator.requestApproval(
+           authorizationContexts[chat.id]?.allows(toolCall, signature: signature) != true {
+            // A patch that cannot apply is returned to the model instead of being
+            // approved by the user only to fail.
+            if toolCall.function.name == ToolNames.applyPatch {
+                do {
+                    try FileTool.validatePatch(
+                        toolCall.function.arguments["patch"]?.stringValue ?? "")
+                } catch {
+                    return (.error(error), .tool(error.localizedDescription))
+                }
+            }
+            let decision = try await interactionCoordinator.requestApproval(
                 toolCall.approvalRequest)
-            else {
+            switch decision {
+            case .deny:
                 let message = "The user did not allow this action."
                 return (.error(message), .tool(message))
+            case .allowOnce:
+                break
+            case .alwaysAllow:
+                authorizationContexts[chat.id]?.authorize(toolCall, signature: signature)
             }
-            authorizationContext.authorize(toolCall, signature: signature)
         }
 
-        return try await ToolExecutor.dispatch(toolCall, projectID: projectID)
+        return try await ToolExecutor.dispatch(toolCall, projectID: chat.project?.persistentModelID)
     }
 
     private func toolName(from schema: ToolSpec) -> String? {
@@ -159,11 +181,12 @@ final class AgentExecutor {
 
     @MainActor
     private func executeUserInput(
-        _ toolCall: ToolCall
+        _ toolCall: ToolCall,
+        chat: Chat
     ) async throws -> (CallToolResult, MLXLMCommon.Chat.Message) {
         let request = try await toolCall.execute(with: UserInputTool.requestUserInput)
         let output = try await interactionCoordinator.requestUserInput(request)
-        authorizationContext.authorize(request: request, output: output)
+        authorizationContexts[chat.id]?.authorize(request: request, output: output)
         let data = try JSONEncoder().encode(output)
         let content = String(decoding: data, as: UTF8.self)
         var result = CallToolResult()
@@ -188,7 +211,7 @@ private struct ToolAuthorizationContext {
     private var applicationIDs: Set<String> = []
     private var allowsScreenInteraction = false
     private var approvedToolSignatures: Set<String> = []
-    private let workingDirectory: URL?
+    let workingDirectory: URL?
 
     init(workingDirectory: URL? = nil) {
         self.workingDirectory = workingDirectory

@@ -15,16 +15,17 @@ enum AudioTool {
     static let allTools: [any ToolProtocol] = [
         textToAudio
     ]
+
+    private static let evaluator = MusicGenEvaluator()
     
     static let textToAudio = Tool<TextToAudioInput, TextToAudioOutput>(
             name: "text_to_audio",
-            description: "Generate a new WAV music or audio clip from a text description with the local audio model. Saves the file in the configured audio output directory and returns its file URL and MIME type.",
+            description: "Generate a new WAV music or audio clip from a text description with the local audio model. Saves the file in the configured audio output directory and returns its file URL and MIME type. The app shows the generated file to the user, so do not repeat its path.",
             parameters: [
                 .required("prompt", type: .string, description: "Describe the desired sound, including genre or source, mood, instruments, rhythm, and other audible qualities that matter.")
             ]
         ) { input in
             try Task.checkCancellation()
-            let evaluator = await MusicGenEvaluator()
             let type = UTType.wav
             let outputDirectory = UserDefaults.standard.url(forKey: UserDefaults.audioOutputDirectory)
                 ?? UserDefaultSettings.audioOutputDirectory

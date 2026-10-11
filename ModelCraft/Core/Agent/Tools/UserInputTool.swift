@@ -14,7 +14,7 @@ struct UserInputTool {
 
     static let requestUserInput = Tool<RequestUserInput, RequestUserInput>(
         name: ToolNames.requestUserInput,
-        description: "Use this tool when the user must provide missing information, choose among multiple valid options, enter text, or select a file or directory before continuing. Do not infer a preference when the answer affects the result. Group related inputs into one request. This tool gathers information only; execution permission is handled separately by the app. It returns each field_id with values containing selected option IDs, entered text, or selected absolute paths.",
+        description: "Use this tool when the user must provide missing information, choose among multiple valid options, enter text, or select a file or directory before continuing. Do not infer a preference when the answer affects the result, and do not write the questions as text in the reply instead of calling this tool. Group related inputs into one request. This tool gathers information only; execution permission is handled separately by the app. It returns each field_id with values containing selected option IDs, entered text, or selected absolute paths. The user may skip a field; a skipped field has empty values, so decide a reasonable default for it or ask again only if it is essential.",
         parameters: [
             .required(
                 "fields",

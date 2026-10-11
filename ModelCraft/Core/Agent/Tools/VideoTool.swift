@@ -57,8 +57,8 @@ enum VideoTool {
         return Tool<TextToVideoInput, TextToVideoOutput>(
             name: "text_to_video",
             description: usesH3
-                ? "Generate an MP4 video with the selected MiniMax H3 model. H3 produces video at its supported 768p canvas. Saves the file in the configured video output directory and returns its file URL and MIME type."
-                : "Generate an MP4 video with the selected LTX Video model. Before calling this tool, the user must explicitly choose aspect ratio, long-edge resolution, and duration. Saves the file in the configured video output directory and returns its file URL and MIME type.",
+                ? "Generate an MP4 video with the selected MiniMax H3 model. H3 produces video at its supported 768p canvas. Saves the file in the configured video output directory and returns its file URL and MIME type. The app shows the generated file to the user, so do not repeat its path."
+                : "Generate an MP4 video with the selected LTX Video model. Before calling this tool, ask the user with request_user_input to choose aspect ratio, long-edge resolution, and duration. Saves the file in the configured video output directory and returns its file URL and MIME type. The app shows the generated file to the user, so do not repeat its path.",
             parameters: parameters
         ) { input in
             let type = UTType.mpeg4Movie

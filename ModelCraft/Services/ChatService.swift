@@ -242,16 +242,11 @@ final class ChatService {
             history = Array(messages.suffix(from: startIndex))
         }
         messages.append(contentsOf: history)
-        return messages.map { LMService.shared.toMessage($0) }
+        return LMService.shared.protocolMessages(messages)
     }
 
     private func availableTools(for chat: Chat?) -> [ToolSpec] {
-        var tools = ToolDefinition.allToolSchema
-        if let projectID = chat?.project?.persistentModelID {
-            tools.append(
-                SearchTool.searchProject(projectID: projectID).schema)
-        }
-        return tools
+        ToolDefinition.allToolSchema(for: chat)
     }
 }
 
@@ -287,7 +282,7 @@ final class UserInteractionCoordinator {
     @ObservationIgnored
     private var userInputContinuation: CheckedContinuation<RequestUserInputOutput, any Error>?
     @ObservationIgnored
-    private var approvalContinuation: CheckedContinuation<Bool, any Error>?
+    private var approvalContinuation: CheckedContinuation<ToolApprovalDecision, any Error>?
 
     func requestUserInput(_ request: RequestUserInput) async throws -> RequestUserInputOutput {
         try Task.checkCancellation()
@@ -307,7 +302,7 @@ final class UserInteractionCoordinator {
         }
     }
 
-    func requestApproval(_ request: ToolApprovalRequest) async throws -> Bool {
+    func requestApproval(_ request: ToolApprovalRequest) async throws -> ToolApprovalDecision {
         try Task.checkCancellation()
         return try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { continuation in
@@ -332,11 +327,11 @@ final class UserInteractionCoordinator {
         continuation?.resume(returning: RequestUserInputOutput(answers: answers))
     }
 
-    func resolveApproval(_ isApproved: Bool) {
+    func resolveApproval(_ decision: ToolApprovalDecision) {
         let continuation = approvalContinuation
         approvalContinuation = nil
         pendingInteraction = nil
-        continuation?.resume(returning: isApproved)
+        continuation?.resume(returning: decision)
     }
 
     func cancel() {

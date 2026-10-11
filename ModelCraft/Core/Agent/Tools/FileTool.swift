@@ -46,6 +46,36 @@ enum FileTool {
     }
 
     static func applyPatch(_ patch: String) throws -> [String] {
+        let (staged, changedPaths) = try stagePatch(patch)
+
+        // Validate every operation first, then mutate the filesystem.
+        for (url, content) in staged {
+            try Task.checkCancellation()
+
+            if let content {
+                try FileManager.default.createDirectory(
+                    at: url.deletingLastPathComponent(),
+                    withIntermediateDirectories: true
+                )
+                try Data(content.utf8).write(to: url, options: .atomic)
+            } else if FileManager.default.fileExists(atPath: url.path) {
+                try FileManager.default.removeItem(at: url)
+            }
+        }
+
+        try Task.checkCancellation()
+        return changedPaths
+    }
+
+    /// Runs every check `applyPatch` performs without changing any file, so a patch that
+    /// cannot apply fails before the user is asked to approve it.
+    static func validatePatch(_ patch: String) throws {
+        _ = try stagePatch(patch)
+    }
+
+    private static func stagePatch(
+        _ patch: String
+    ) throws -> (staged: [URL: String?], changedPaths: [String]) {
         try Task.checkCancellation()
 
         let operations = try PatchParser.parse(patch)
@@ -110,23 +140,7 @@ enum FileTool {
             }
         }
 
-        // Validate every operation first, then mutate the filesystem.
-        for (url, content) in staged {
-            try Task.checkCancellation()
-
-            if let content {
-                try FileManager.default.createDirectory(
-                    at: url.deletingLastPathComponent(),
-                    withIntermediateDirectories: true
-                )
-                try Data(content.utf8).write(to: url, options: .atomic)
-            } else if FileManager.default.fileExists(atPath: url.path) {
-                try FileManager.default.removeItem(at: url)
-            }
-        }
-
-        try Task.checkCancellation()
-        return changedPaths
+        return (staged, changedPaths)
     }
 
     static func fileURL(for path: String) -> URL {
@@ -248,7 +262,13 @@ private enum PatchLine {
 private enum PatchParser {
 
     static func parse(_ patch: String) throws -> [PatchOperation] {
-        let lines = patch.components(separatedBy: "\n")
+        var lines = patch
+            .replacingOccurrences(of: "\r\n", with: "\n")
+            .components(separatedBy: "\n")
+        // Models often end the document with a newline after `*** End Patch`.
+        while lines.last == "" {
+            lines.removeLast()
+        }
 
         guard lines.first == "*** Begin Patch",
               lines.last == "*** End Patch" else {
@@ -271,6 +291,13 @@ private enum PatchParser {
                 var contentLines: [String] = []
 
                 while index < lines.count - 1, !lines[index].hasPrefix("*** ") {
+                    // Models often drop the '+' on blank lines; an empty line can only
+                    // mean an empty content line.
+                    if lines[index].isEmpty {
+                        contentLines.append("")
+                        index += 1
+                        continue
+                    }
                     guard lines[index].hasPrefix("+") else {
                         throw FileToolError.invalidPatch("Every Add File content line must start with '+'.")
                     }
@@ -317,8 +344,12 @@ private enum PatchParser {
                           !lines[index].hasPrefix("*** ") {
                         let patchLine = lines[index]
 
+                        // A blank line is an unchanged empty line whose leading space
+                        // was dropped.
                         guard let marker = patchLine.first else {
-                            throw FileToolError.invalidPatch("Update lines must start with ' ', '-' or '+'.")
+                            patchLines.append(.context(""))
+                            index += 1
+                            continue
                         }
 
                         let text = String(patchLine.dropFirst())

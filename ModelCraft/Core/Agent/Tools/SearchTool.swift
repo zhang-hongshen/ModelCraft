@@ -61,7 +61,7 @@ enum SearchTool {
     
     static let searchMap = Tool<SearchMapInput, SearchMapOutput>(
         name: "search_map",
-        description: "Search Apple Maps for real-world places such as businesses, restaurants, landmarks, or addresses. Returns matching names, addresses, coordinates, and available contact details; distance is available when current-location search is enabled.",
+        description: "Search Apple Maps for real-world places such as businesses, restaurants, landmarks, or addresses. Returns matching names, addresses, coordinates, and available contact details; distance is available when current-location search is enabled. It only finds physical locations; it cannot look up products, specifications, prices, news, or other general information.",
         parameters: [
             .required("query", type: .string, description: "A place name, category, address, or natural-language location query. Include a city or area when the search is not near the user."),
             .required("useCurrentLocation", type: .bool, description: "Set to true if the user implies their current location. Set to false if a specific city or remote location is mentioned."),
@@ -82,7 +82,7 @@ enum SearchTool {
     static func searchProject(projectID: PersistentIdentifier) -> Tool<SearchProjectInput, SearchProjectOutput> {
             return Tool(
                 name: ToolNames.searchProject,
-                description: "Search the current project's working folder and read-only reference files. Source code is parsed with SwiftSyntax or Tree-sitter and ranked using definitions, references, and caller-callee relationships; configuration and data files use structured keys; documents and transcripts use hybrid keyword and semantic retrieval. A local reranker combines those signals according to whether the task is understanding, locating, or editing. Use direct read_file instead when the exact path is already known. Results include absolute paths and precise line, section, or document locations so a matching source file can be read before editing. This is local project search, not web search.",
+                description: "Search the current project's working folder and read-only reference files, including source code, configuration, documents, and transcripts. Use read_file instead when the exact path is already known. Returns ranked matches with absolute paths and line, section, or document locations, so a matching file can be read before editing. This is local project search, not web search.",
                 parameters: [
                     .required("query", type: .string, description: "A focused concept, filename, code symbol, configuration key, error text, or natural-language question to find in the project."),
                     .optional("purpose", type: .string, description: "How the results will be used: automatic, understand, locate, or edit. Defaults to automatic. Use understand for answering from project knowledge, locate for finding definitions or files, and edit before changing code."),

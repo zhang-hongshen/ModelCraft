@@ -54,6 +54,24 @@ struct ToolNames {
     static let clickElement = "click_element"
     static let typeText = "type_text"
     static let pressKey = "press_key"
+
+    // MARK: Native Application Tool
+    static let searchNotes = "notes_search"
+    static let readNote = "notes_read"
+    static let createNote = "notes_create"
+    static let updateNote = "notes_update"
+    static let searchCalendar = "calendar_search"
+    static let readCalendarEvent = "calendar_read"
+    static let createCalendarEvent = "calendar_create"
+    static let updateCalendarEvent = "calendar_update"
+    static let searchReminders = "reminders_search"
+    static let readReminder = "reminders_read"
+    static let createReminder = "reminders_create"
+    static let updateReminder = "reminders_update"
+    static let searchMail = "mail_search"
+    static let readMail = "mail_read"
+    static let createMailDraft = "mail_create_draft"
+    static let runAppleScript = "run_applescript"
 }
 
 typealias VideoGenerationProgressHandler = @MainActor @Sendable (LTXVideoProgress) -> Void
@@ -68,6 +86,17 @@ struct ToolApprovalRequest: Sendable {
     let toolName: String
     let title: String
     let detail: String?
+
+    /// AppleScript can do anything the app can, so every script needs a fresh decision.
+    var allowsAlways: Bool {
+        toolName != ToolNames.runAppleScript
+    }
+}
+
+enum ToolApprovalDecision: Sendable {
+    case deny
+    case allowOnce
+    case alwaysAllow
 }
 
 enum PatchFileAction: Hashable {
@@ -250,15 +279,15 @@ extension ToolCall {
     private var approvalDetail: String? {
         switch function.name {
         case ToolNames.applyPatch:
-            patchFileChanges.map(\.path).formatted()
+            return patchFileChanges.map(\.path).formatted()
         case ToolNames.executeCommand:
-            function.arguments["command"]?.stringValue
+            return function.arguments["command"]?.stringValue
         case ToolNames.textToImage, ToolNames.textToVideo, ToolNames.textToAudio:
-            function.arguments["prompt"]?.stringValue
+            return function.arguments["prompt"]?.stringValue
         case ToolNames.clickElement, ToolNames.typeText, ToolNames.pressKey:
-            function.arguments["appID"]?.stringValue
+            return function.arguments["appID"]?.stringValue
         default:
-            nil
+            return nil
         }
     }
 

@@ -14,6 +14,7 @@ enum ToolDefinition {
     static let modelIDs: Set<String> = [
         StableDiffusionConfiguration.presetSDXLTurbo.id,
         LTXVideoConfiguration.ltxv2BDistilled.id,
+        H3Configuration.presetH3BaseFL2VA.id,
         MusicGenConfiguration.small.id,
         MusicGenConfiguration.small.audioEncoderParameters.id,
         MusicGenConfiguration.small.textEncoderParameters.id,
@@ -30,17 +31,18 @@ enum ToolDefinition {
             AudioTool.allTools,
             ComputerUseTool.allTools,
             ScreenControlTool.allTools,
-            SkillTool.allTools
+            SkillTool.allTools,
+            [WebTool.webFetch],
         ].flatMap { $0 }
     }
-    
-    @MainActor
-    static var allToolSchema: [ToolSpec] {
-        var tools = allTools.map { $0.schema }
-        if NetworkMonitor.shared.isConnected {
-            tools.append(WebTool.webFetch.schema)
+
+    /// The same tools on every request, so the prompt prefix stays reusable. Project search
+    /// is added in project chats, which is fixed for the life of a chat.
+    static func allToolSchema(for chat: Chat?) -> [ToolSpec] {
+        var tools = allTools.map(\.schema)
+        if let projectID = chat?.project?.persistentModelID {
+            tools.append(SearchTool.searchProject(projectID: projectID).schema)
         }
         return tools
     }
-    
 }

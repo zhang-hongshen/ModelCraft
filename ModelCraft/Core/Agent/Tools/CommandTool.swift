@@ -75,7 +75,7 @@ enum CommandTool {
     
     static let executeCommand = Tool<ExecuteCommandInput, ExecuteCommandOutput>(
         name: "execute_command",
-        description: "Run one shell command from the current project's working folder, or the app's Documents directory when the project has no working folder. The command may read or modify files in the working folder and returns stdout, stderr, and the process exit code. Project reference files are read-only and must not be changed or deleted.",
+        description: "Run one shell command from the current project's working folder, or the app's Documents directory when the project has no working folder. The command may read or modify files in the working folder and returns stdout, stderr, and the process exit code. Do not use it to write or edit file contents; use apply_patch for file changes. Project reference files are read-only and must not be changed or deleted.",
         parameters: [
             .required("command", type: .string, description: "The complete command string passed to `sh -c`. Use paths relative to the current working folder or explicit absolute paths, include every required argument, and never modify a project reference file.")
         
