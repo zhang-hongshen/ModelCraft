@@ -95,6 +95,8 @@
 		70AA101430AA101400000014 /* PermissionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70AA100430AA100400000004 /* PermissionsView.swift */; };
 		70AB201130AB201100000011 /* TTSService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70AB200130AB200100000001 /* TTSService.swift */; };
 		70AB301130AB301100000011 /* VoiceAudioEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70AB300130AB300100000001 /* VoiceAudioEngine.swift */; };
+		70AC101130AC101100000011 /* GenerativeUIParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70AC100130AC100100000001 /* GenerativeUIParser.swift */; };
+		70AC101230AC101200000012 /* GenerativeUIView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70AC100230AC100200000002 /* GenerativeUIView.swift */; };
 		70AD101130AD101100000011 /* Hub in Frameworks */ = {isa = PBXBuildFile; productRef = 70AD100130AD100100000001 /* Hub */; };
 		70AD101230AD101200000012 /* Tokenizers in Frameworks */ = {isa = PBXBuildFile; productRef = 70AD100230AD100200000002 /* Tokenizers */; };
 		70B13D042BBB1F3300A42F3C /* XMLFileParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70B13D032BBB1F3300A42F3C /* XMLFileParser.swift */; };
@@ -299,6 +301,8 @@
 		70AA100430AA100400000004 /* PermissionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PermissionsView.swift; sourceTree = "<group>"; };
 		70AB200130AB200100000001 /* TTSService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TTSService.swift; sourceTree = "<group>"; };
 		70AB300130AB300100000001 /* VoiceAudioEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceAudioEngine.swift; sourceTree = "<group>"; };
+		70AC100130AC100100000001 /* GenerativeUIParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenerativeUIParser.swift; sourceTree = "<group>"; };
+		70AC100230AC100200000002 /* GenerativeUIView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenerativeUIView.swift; sourceTree = "<group>"; };
 		70B13D032BBB1F3300A42F3C /* XMLFileParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XMLFileParser.swift; sourceTree = "<group>"; };
 		70B13D052BBBDC2100A42F3C /* FileThumbnail.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileThumbnail.swift; sourceTree = "<group>"; };
 		70B13D122BBC66FC00A42F3C /* ProjectFileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectFileView.swift; sourceTree = "<group>"; };
@@ -735,6 +739,8 @@
 				7001D9AF2EC10DEB00047F6B /* ChatInputView.swift */,
 				70E2017A2BAE825A00CFE1D7 /* ChatView.swift */,
 				70097F7E2D6C04BB00DDDEDF /* MessageView.swift */,
+				70AC100130AC100100000001 /* GenerativeUIParser.swift */,
+				70AC100230AC100200000002 /* GenerativeUIView.swift */,
 				7067E8232BCD1AE600FF2797 /* MessageFileView.swift */,
 			);
 			path = Chat;
@@ -1029,6 +1035,8 @@
 				701954252BC8286E00CD2ED3 /* FixedLengthTextSplitter.swift in Sources */,
 				70FE039F2F13EFA20061CCEB /* ChatService.swift in Sources */,
 				70097F7F2D6C04BB00DDDEDF /* MessageView.swift in Sources */,
+				70AC101130AC101100000011 /* GenerativeUIParser.swift in Sources */,
+				70AC101230AC101200000012 /* GenerativeUIView.swift in Sources */,
 				7014FA1D2F5DE2A400552108 /* ToolCallView.swift in Sources */,
 				70A0000B2FFF00000000000B /* ToolCallGroupView.swift in Sources */,
 				70097F832D6DA73C00DDDEDF /* RuntimeError.swift in Sources */,

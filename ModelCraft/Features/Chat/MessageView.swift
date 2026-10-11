@@ -190,11 +190,7 @@ extension MessageView {
         VStack(alignment: .leading) {
 
             if case .assistant = message.role, !message.content.isEmpty {
-                MarkdownView(
-                    text: message.content,
-                    config: .modelCraft
-                )
-                .multilineTextAlignment(.leading)
+                AssistantContentView(message: message)
             }
             
             
@@ -248,6 +244,74 @@ extension MessageView {
                                             message: userMessage)
         }
         
+    }
+}
+
+/// Assistant text rendered as Markdown, with leading reasoning collapsed and `ui` blocks
+/// rendered as native components.
+private struct AssistantContentView: View {
+
+    let message: Message
+
+    @Environment(GlobalStore.self) private var globalStore
+    @Environment(ChatService.self) private var service
+
+    var body: some View {
+        let segments = MessageContentSegment.segments(
+            of: message.content,
+            isComplete: message.status != .generating)
+        VStack(alignment: .leading) {
+            ForEach(segments) { segment in
+                switch segment {
+                case .thinking(let text, let isFinished):
+                    ThinkingView(text: text, isFinished: isFinished)
+                case .markdown(_, let text):
+                    MarkdownView(text: text, config: .modelCraft)
+                        .multilineTextAlignment(.leading)
+                case .ui(_, let components?):
+                    GenerativeUIView(
+                        components: components,
+                        send: message.status == .generating ? nil : send)
+                case .ui(_, nil):
+                    ProgressView()
+                        .controlSize(.small)
+                }
+            }
+        }
+    }
+
+    /// Sends an action from a `ui` block as the user's next message in this chat.
+    private func send(_ text: String) {
+        guard let chat = message.chat,
+              let model = globalStore.selectedModel,
+              !service.isCompacting
+        else { return }
+        let userMessage = Message(role: .user, chat: chat, content: text)
+        Task {
+            try await service.sendMessage(model: model, chat: chat, message: userMessage)
+        }
+    }
+}
+
+private struct ThinkingView: View {
+
+    let text: String
+    let isFinished: Bool
+
+    @State private var isExpanded = false
+
+    var body: some View {
+        DisclosureGroup(isExpanded: $isExpanded) {
+            Text(text)
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .textSelection(.enabled)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.top, 4)
+        } label: {
+            Text(isFinished ? LocalizedStringKey("Thought") : LocalizedStringKey("Thinking…"))
+        }
+        .foregroundStyle(.secondary)
     }
 }
 
