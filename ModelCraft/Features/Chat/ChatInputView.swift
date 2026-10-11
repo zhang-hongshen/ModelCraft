@@ -104,9 +104,10 @@ extension ChatInputView {
                             .allowsHitTesting(false)
                     }
 
-                    SkillComposerTextEditor(
+                    ModelCraftTextEditor(
                         text: $userInput.content,
-                        skillNames: skillNames,
+                        tokens: skillNames.map { "/\($0)" },
+                        tokenSystemImage: "cube",
                         selectionLocation: $selectionLocation,
                         slashCommandLocation: $slashCommandLocation,
                         onCommand: onCommand)
@@ -157,10 +158,19 @@ extension ChatInputView {
     }
 }
 
-private struct SkillComposerTextEditor: NSViewRepresentable {
+/// A plain-text editor that renders each occurrence of `tokens` in the accent color with
+/// a leading icon. The icons are display-only; `text` and `selectionLocation` never
+/// include them.
+private struct ModelCraftTextEditor: NSViewRepresentable {
+
+    /// Matches the body font of sent messages. The text view's own `font` reflects its
+    /// first character, so it is never read back as the source of truth.
+    static let font = NSFont.systemFont(
+        ofSize: NSFont.preferredFont(forTextStyle: .body).pointSize)
 
     @Binding var text: String
-    let skillNames: [String]
+    let tokens: [String]
+    let tokenSystemImage: String
     @Binding var selectionLocation: Int
     @Binding var slashCommandLocation: Int?
     let onCommand: (ChatComposerCommand) -> Bool
@@ -180,7 +190,7 @@ private struct SkillComposerTextEditor: NSViewRepresentable {
         let textView = NSTextView()
         textView.delegate = context.coordinator
         textView.drawsBackground = false
-        textView.font = NSFont.systemFont(ofSize: NSFont.systemFontSize)
+        textView.font = Self.font
         textView.textColor = .labelColor
         textView.isRichText = true
         textView.allowsUndo = true
@@ -197,7 +207,7 @@ private struct SkillComposerTextEditor: NSViewRepresentable {
 
         context.coordinator.render(
             text,
-            skillNames: skillNames,
+            tokens: tokens,
             selectionLocation: selectionLocation,
             in: textView)
         return scrollView
@@ -214,7 +224,9 @@ private struct SkillComposerTextEditor: NSViewRepresentable {
         nsView: NSScrollView,
         context: Context
     ) -> CGSize? {
-        guard let width = proposal.width,
+        // SwiftUI also proposes an infinite width to measure the maximum size; sizing
+        // the text view to it is invalid geometry, so only a finite width is measured.
+        guard let width = proposal.width, width.isFinite,
               let textView = nsView.documentView as? NSTextView,
               let layoutManager = textView.layoutManager,
               let textContainer = textView.textContainer else {
@@ -227,8 +239,7 @@ private struct SkillComposerTextEditor: NSViewRepresentable {
             height: .greatestFiniteMagnitude)
         layoutManager.ensureLayout(for: textContainer)
 
-        let font = textView.font ?? NSFont.systemFont(ofSize: NSFont.systemFontSize)
-        let lineHeight = layoutManager.defaultLineHeight(for: font)
+        let lineHeight = layoutManager.defaultLineHeight(for: Self.font)
         let contentHeight = ceil(layoutManager.usedRect(for: textContainer).height)
         return CGSize(
             width: width,
@@ -237,12 +248,12 @@ private struct SkillComposerTextEditor: NSViewRepresentable {
 
     final class Coordinator: NSObject, NSTextViewDelegate {
 
-        var parent: SkillComposerTextEditor
+        var parent: ModelCraftTextEditor
         private var isRendering = false
-        private var renderedSkillNames: [String] = []
-        private var skillRegex: NSRegularExpression?
+        private var renderedTokens: [String] = []
+        private var tokenRegex: NSRegularExpression?
 
-        init(parent: SkillComposerTextEditor) {
+        init(parent: ModelCraftTextEditor) {
             self.parent = parent
         }
 
@@ -284,17 +295,17 @@ private struct SkillComposerTextEditor: NSViewRepresentable {
         }
 
         func updateIfNeeded(_ textView: NSTextView) {
-            updateRegexIfNeeded(parent.skillNames)
+            updateRegexIfNeeded(parent.tokens)
             let source = sourceString(from: textView.attributedString())
             let displaySelection = displayLocation(
                 for: parent.selectionLocation,
                 in: parent.text)
             if source != parent.text
-                || renderedSkillNames != parent.skillNames
+                || renderedTokens != parent.tokens
                 || textView.selectedRange().location != displaySelection {
                 render(
                     parent.text,
-                    skillNames: parent.skillNames,
+                    tokens: parent.tokens,
                     selectionLocation: parent.selectionLocation,
                     in: textView)
             }
@@ -302,26 +313,26 @@ private struct SkillComposerTextEditor: NSViewRepresentable {
 
         func render(
             _ source: String,
-            skillNames: [String],
+            tokens: [String],
             selectionLocation: Int,
             in textView: NSTextView
         ) {
             isRendering = true
             defer { isRendering = false }
 
-            updateRegexIfNeeded(skillNames)
-            let baseAttributes = textAttributes(for: textView)
+            updateRegexIfNeeded(tokens)
+            let baseAttributes = Self.textAttributes
             let attributed = NSMutableAttributedString(
                 string: source,
                 attributes: baseAttributes)
-            let matches = skillMatches(in: source)
+            let matches = tokenMatches(in: source)
 
             for match in matches.reversed() {
                 attributed.addAttribute(
                     .foregroundColor,
                     value: NSColor.controlAccentColor,
                     range: match.range)
-                attributed.insert(skillIcon(), at: match.range.location)
+                attributed.insert(tokenIcon(), at: match.range.location)
             }
 
             textView.textStorage?.setAttributedString(attributed)
@@ -331,7 +342,7 @@ private struct SkillComposerTextEditor: NSViewRepresentable {
                 attributed.length)
             textView.setSelectedRange(NSRange(location: displaySelection, length: 0))
             textView.scrollRangeToVisible(NSRange(location: displaySelection, length: 0))
-            renderedSkillNames = skillNames
+            renderedTokens = tokens
         }
 
         private func synchronize(_ textView: NSTextView) {
@@ -348,7 +359,7 @@ private struct SkillComposerTextEditor: NSViewRepresentable {
             guard !textView.hasMarkedText() else { return }
             render(
                 source,
-                skillNames: parent.skillNames,
+                tokens: parent.tokens,
                 selectionLocation: sourceSelection,
                 in: textView)
         }
@@ -366,28 +377,28 @@ private struct SkillComposerTextEditor: NSViewRepresentable {
                 hasSelection: textView.selectedRange().length > 0)
         }
 
-        private func updateRegexIfNeeded(_ skillNames: [String]) {
-            guard renderedSkillNames != skillNames else { return }
-            let alternatives = skillNames
+        private func updateRegexIfNeeded(_ tokens: [String]) {
+            guard renderedTokens != tokens else { return }
+            let alternatives = tokens
                 .sorted { $0.count > $1.count }
                 .map { NSRegularExpression.escapedPattern(for: $0) }
                 .joined(separator: "|")
-            skillRegex = alternatives.isEmpty
+            tokenRegex = alternatives.isEmpty
                 ? nil
                 : try? NSRegularExpression(
-                    pattern: "/(\(alternatives))(?![A-Za-z0-9-])")
+                    pattern: "(?:\(alternatives))(?![A-Za-z0-9-])")
         }
 
-        private func skillMatches(in source: String) -> [NSTextCheckingResult] {
-            skillRegex?.matches(
+        private func tokenMatches(in source: String) -> [NSTextCheckingResult] {
+            tokenRegex?.matches(
                 in: source,
                 range: NSRange(location: 0, length: (source as NSString).length)) ?? []
         }
 
-        private func skillIcon() -> NSAttributedString {
+        private func tokenIcon() -> NSAttributedString {
             let attachment = NSTextAttachment()
             attachment.image = NSImage(
-                systemSymbolName: "cube",
+                systemSymbolName: parent.tokenSystemImage,
                 accessibilityDescription: nil)?.withSymbolConfiguration(
                     NSImage.SymbolConfiguration(
                         paletteColors: [.controlAccentColor]))
@@ -397,24 +408,22 @@ private struct SkillComposerTextEditor: NSViewRepresentable {
             let icon = NSMutableAttributedString(attachment: attachment)
             icon.append(NSAttributedString(string: " "))
             icon.addAttribute(
-                .skillReferenceIcon,
+                .tokenIcon,
                 value: true,
                 range: NSRange(location: 0, length: icon.length))
             return icon
         }
 
-        private func textAttributes(for textView: NSTextView) -> [NSAttributedString.Key: Any] {
-            [
-                .font: textView.font ?? NSFont.systemFont(ofSize: NSFont.systemFontSize),
-                .foregroundColor: NSColor.labelColor,
-            ]
-        }
+        private static let textAttributes: [NSAttributedString.Key: Any] = [
+            .font: ModelCraftTextEditor.font,
+            .foregroundColor: NSColor.labelColor,
+        ]
 
         private func sourceString(from attributed: NSAttributedString) -> String {
             let source = NSMutableAttributedString(attributedString: attributed)
             var iconRanges: [NSRange] = []
             source.enumerateAttribute(
-                .skillReferenceIcon,
+                .tokenIcon,
                 in: NSRange(location: 0, length: source.length)) { value, range, _ in
                     if value != nil {
                         iconRanges.append(range)
@@ -433,7 +442,7 @@ private struct SkillComposerTextEditor: NSViewRepresentable {
             let prefixLength = min(displayLocation, attributed.length)
             var iconLength = 0
             attributed.enumerateAttribute(
-                .skillReferenceIcon,
+                .tokenIcon,
                 in: NSRange(location: 0, length: prefixLength)) { value, range, _ in
                     if value != nil {
                         iconLength += range.length
@@ -444,7 +453,7 @@ private struct SkillComposerTextEditor: NSViewRepresentable {
 
         private func displayLocation(for sourceLocation: Int, in source: String) -> Int {
             let clampedLocation = min(sourceLocation, (source as NSString).length)
-            let insertedIconLength = skillMatches(in: source).reduce(into: 0) { length, match in
+            let insertedIconLength = tokenMatches(in: source).reduce(into: 0) { length, match in
                 if match.range.location < clampedLocation {
                     length += 2
                 }
@@ -472,8 +481,8 @@ private struct SkillComposerTextEditor: NSViewRepresentable {
 }
 
 private extension NSAttributedString.Key {
-    static let skillReferenceIcon = NSAttributedString.Key(
-        "ModelCraftSkillReferenceIcon")
+    static let tokenIcon = NSAttributedString.Key(
+        "ModelCraftTextEditorTokenIcon")
 }
 
 #Preview(traits: .preview) {

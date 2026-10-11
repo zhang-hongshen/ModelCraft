@@ -18,6 +18,7 @@ struct ContextWindowUsageView: View {
         let fraction = min(Double(tokenCount) / Double(contextWindow), 1)
 
         ProgressView(value: fraction)
+            .progressViewStyle(.circular)
             .controlSize(.small)
             .onHover { hovering in
                 isHovering = hovering

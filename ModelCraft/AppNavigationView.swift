@@ -146,8 +146,6 @@ private struct ProjectSidebarSection: View {
             HStack {
                 Text("Projects")
 
-                Spacer()
-
                 Button(action: onCreateProject) {
                     Image(systemName: "plus")
                 }
