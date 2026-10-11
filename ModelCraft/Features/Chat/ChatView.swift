@@ -28,8 +28,6 @@ struct ChatView: View {
     @State private var composerSelectionLocation = 0
     @State private var slashCommandLocation: Int?
     @State private var projectEdition: Project?
-    @State private var previewURL: URL?
-    @State private var isFileInspectorPresented = false
     
     enum VoiceState {
         case idle
@@ -49,12 +47,6 @@ struct ChatView: View {
             .frame(minWidth: ChatView.minWidth, minHeight: 250)
             .toolbar(content: ToolbarItems)
             .environment(\.openURL, OpenURLAction(handler: openURL))
-            .inspector(isPresented: $isFileInspectorPresented) {
-                FileInspectorView(
-                    url: previewURL,
-                    isPresented: $isFileInspectorPresented
-                )
-            }
             .sheet(item: $projectEdition) { project in
                 ProjectEdition(project: project)
                     .presentationDetents([.medium, .large])
@@ -69,8 +61,8 @@ struct ChatView: View {
                 }
             }
             .onChange(of: chat?.id) {
-                isFileInspectorPresented = false
-                previewURL = nil
+                globalStore.isFileInspectorPresented = false
+                globalStore.previewURL = nil
             }
             .modifier(AudioLevelChangeModifier { transcript in
                 _ = submitMessage(content: transcript, files: [])
@@ -591,8 +583,8 @@ private extension ChatView {
             return .discarded
         }
 
-        previewURL = url
-        isFileInspectorPresented = true
+        globalStore.previewURL = url
+        globalStore.isFileInspectorPresented = true
         return .handled
     }
 

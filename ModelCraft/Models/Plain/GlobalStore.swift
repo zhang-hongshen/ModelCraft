@@ -14,6 +14,9 @@ class GlobalStore {
     var currentTab: AppNavigationTab? = nil
     var newChatProject: Project? = nil
     var runningTasks: [String: Task<Void, Never>] = [:]
+    /// The file shown in the window's trailing inspector.
+    var previewURL: URL? = nil
+    var isFileInspectorPresented = false
 
     func startNewChat(in project: Project? = nil) {
         newChatProject = project
