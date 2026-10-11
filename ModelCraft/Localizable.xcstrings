@@ -4,6 +4,16 @@
     "" : {
 
     },
+    "%@\n%@ – %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@\n%2$@ – %3$@"
+          }
+        }
+      }
+    },
     "%@ / %@ tokens used" : {
       "localizations" : {
         "en" : {
@@ -28,6 +38,16 @@
     },
     ">" : {
 
+    },
+    "Accessibility" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "辅助功能"
+          }
+        }
+      }
     },
     "Acknowledgments" : {
       "localizations" : {
@@ -56,6 +76,7 @@
 
     },
     "Allow for This Task" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -65,8 +86,49 @@
         }
       }
     },
+    "Allow Once" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "允许一次"
+          }
+        }
+      }
+    },
     "Allow this action?" : {
 
+    },
+    "Allowed" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已允许"
+          }
+        }
+      }
+    },
+    "Always Allow" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "始终允许"
+          }
+        }
+      }
+    },
+    "Always Allow applies only to matching actions in this conversation." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "始终允许仅适用于本次对话中完全匹配的操作。"
+          }
+        }
+      }
     },
     "Appearance" : {
       "localizations" : {
@@ -77,6 +139,42 @@
           }
         }
       }
+    },
+    "AppleScript access is requested by macOS when a Mail tool first runs." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "首次运行邮件工具时，macOS 会请求 AppleScript 访问权限。"
+          }
+        }
+      }
+    },
+    "AppleScript access is requested by macOS when a Notes tool first runs." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "首次运行备忘录工具时，macOS 会请求 AppleScript 访问权限。"
+          }
+        }
+      }
+    },
+    "AppleScript always requires confirmation." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "每次运行 AppleScript 都需要确认。"
+          }
+        }
+      }
+    },
+    "AppleScript failed" : {
+
     },
     "Application window capture failed" : {
 
@@ -130,6 +228,19 @@
     "Audio creation failed" : {
 
     },
+    "Automation" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自动化"
+          }
+        }
+      }
+    },
+    "Back" : {
+
+    },
     "Binary data (%@)" : {
 
     },
@@ -139,6 +250,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "浏览文件"
+          }
+        }
+      }
+    },
+    "Calendar operation failed" : {
+
+    },
+    "Calendar update failed" : {
+
+    },
+    "Calendars" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "日历"
           }
         }
       }
@@ -175,6 +302,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "对话"
+          }
+        }
+      }
+    },
+    "Checked When App Runs" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "应用运行时检查"
           }
         }
       }
@@ -328,6 +465,9 @@
         }
       }
     },
+    "Created Mail draft" : {
+
+    },
     "Creating audio" : {
 
     },
@@ -340,6 +480,9 @@
           }
         }
       }
+    },
+    "Creating Mail draft" : {
+
     },
     "Creating video" : {
       "localizations" : {
@@ -383,6 +526,9 @@
           }
         }
       }
+    },
+    "Decreasing" : {
+
     },
     "Default" : {
 
@@ -439,8 +585,15 @@
         }
       }
     },
-    "Don't Allow" : {
-
+    "Deny" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "拒绝"
+          }
+        }
+      }
     },
     "Download" : {
       "localizations" : {
@@ -780,6 +933,16 @@
         }
       }
     },
+    "GUI Fallback" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "界面操作兜底"
+          }
+        }
+      }
+    },
     "How can I help you today?" : {
       "localizations" : {
         "zh-Hans" : {
@@ -823,6 +986,9 @@
     "Images" : {
 
     },
+    "Increasing" : {
+
+    },
     "Inspected UI hierarchy" : {
 
     },
@@ -848,6 +1014,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "浅色"
+          }
+        }
+      }
+    },
+    "Limited Access" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "有限访问"
           }
         }
       }
@@ -900,6 +1076,22 @@
           }
         }
       }
+    },
+    "Mail" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "邮件"
+          }
+        }
+      }
+    },
+    "Mail draft creation failed" : {
+
+    },
+    "Mail operation failed" : {
+
     },
     "Map search failed" : {
       "localizations" : {
@@ -1020,6 +1212,16 @@
     "Name" : {
 
     },
+    "Native Application Data" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "原生应用数据"
+          }
+        }
+      }
+    },
     "New Chat" : {
       "localizations" : {
         "zh-Hans" : {
@@ -1039,6 +1241,12 @@
           }
         }
       }
+    },
+    "Next" : {
+
+    },
+    "No" : {
+
     },
     "No File Selected" : {
 
@@ -1076,12 +1284,68 @@
         }
       }
     },
+    "Not Allowed" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "未允许"
+          }
+        }
+      }
+    },
+    "Not Requested" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "尚未请求"
+          }
+        }
+      }
+    },
+    "Notes" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "备忘录"
+          }
+        }
+      }
+    },
+    "Notes operation failed" : {
+
+    },
+    "Notes update failed" : {
+
+    },
     "OK" : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "确定"
+          }
+        }
+      }
+    },
+    "Open Settings" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "打开设置"
+          }
+        }
+      }
+    },
+    "Permissions" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "权限"
           }
         }
       }
@@ -1148,6 +1412,9 @@
         }
       }
     },
+    "Ran AppleScript" : {
+
+    },
     "Read" : {
       "localizations" : {
         "zh-Hans" : {
@@ -1172,6 +1439,15 @@
         }
       }
     },
+    "Read Calendar" : {
+
+    },
+    "Read Mail" : {
+
+    },
+    "Read Notes" : {
+
+    },
     "Read one file" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1182,6 +1458,9 @@
           }
         }
       }
+    },
+    "Read Reminders" : {
+
     },
     "Reading" : {
       "localizations" : {
@@ -1194,6 +1473,18 @@
       }
     },
     "Reading %@" : {
+
+    },
+    "Reading Calendar" : {
+
+    },
+    "Reading Mail" : {
+
+    },
+    "Reading Notes" : {
+
+    },
+    "Reading Reminders" : {
 
     },
     "Recents" : {
@@ -1214,6 +1505,22 @@
           }
         }
       }
+    },
+    "Reminders" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "提醒事项"
+          }
+        }
+      }
+    },
+    "Reminders operation failed" : {
+
+    },
+    "Reminders update failed" : {
+
     },
     "Remove" : {
       "localizations" : {
@@ -1261,6 +1568,16 @@
         }
       }
     },
+    "Request Access" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "请求访问"
+          }
+        }
+      }
+    },
     "Reset" : {
       "localizations" : {
         "zh-Hans" : {
@@ -1302,6 +1619,9 @@
         }
       }
     },
+    "Running AppleScript" : {
+
+    },
     "Save" : {
       "localizations" : {
         "zh-Hans" : {
@@ -1318,6 +1638,27 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "正在保存"
+          }
+        }
+      }
+    },
+    "Screen Recording" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "屏幕录制"
+          }
+        }
+      }
+    },
+    "Script" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "脚本"
           }
         }
       }
@@ -1346,6 +1687,9 @@
     "Select Model" : {
 
     },
+    "Series" : {
+
+    },
     "Show in Finder" : {
       "localizations" : {
         "zh-Hans" : {
@@ -1368,6 +1712,9 @@
           }
         }
       }
+    },
+    "Skip" : {
+
     },
     "Speaking Rate" : {
       "extractionState" : "stale",
@@ -1421,6 +1768,9 @@
         }
       }
     },
+    "Submit" : {
+
+    },
     "System" : {
       "localizations" : {
         "zh-Hans" : {
@@ -1469,6 +1819,32 @@
         }
       }
     },
+    "Thinking…" : {
+
+    },
+    "This script can run shell commands with ModelCraft's permissions." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此脚本可以使用 ModelCraft 的权限运行 shell 命令。"
+          }
+        }
+      }
+    },
+    "Thought" : {
+
+    },
+    "To: %@\nSubject: %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "To: %1$@\nSubject: %2$@"
+          }
+        }
+      }
+    },
     "Tool" : {
 
     },
@@ -1507,6 +1883,9 @@
     "Unable to open the image file." : {
 
     },
+    "Unchanged" : {
+
+    },
     "Unknown" : {
 
     },
@@ -1515,6 +1894,68 @@
     },
     "Unsupported audio type" : {
 
+    },
+    "Updated Calendar" : {
+
+    },
+    "Updated Notes" : {
+
+    },
+    "Updated Reminders" : {
+
+    },
+    "Updating Calendar" : {
+
+    },
+    "Updating Notes" : {
+
+    },
+    "Updating Reminders" : {
+
+    },
+    "Used only when a screenshot is needed for GUI fallback." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "仅在界面操作兜底需要截图时使用。"
+          }
+        }
+      }
+    },
+    "Used only when native application tools cannot complete an interface action." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "仅在原生应用工具无法完成界面操作时使用。"
+          }
+        }
+      }
+    },
+    "Used to search, read, create, and update events with EventKit." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "用于通过 EventKit 搜索、读取、创建和修改日历事件。"
+          }
+        }
+      }
+    },
+    "Used to search, read, create, and update reminders with EventKit." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "用于通过 EventKit 搜索、读取、创建和修改提醒事项。"
+          }
+        }
+      }
     },
     "User input cancelled" : {
 
@@ -1672,6 +2113,9 @@
           }
         }
       }
+    },
+    "Yes" : {
+
     },
     "You" : {
       "localizations" : {
