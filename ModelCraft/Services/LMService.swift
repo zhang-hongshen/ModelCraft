@@ -41,10 +41,15 @@ final class LMService {
         let container: ModelContainer
         do {
             // Load model from on-disk file
-            container = try await loadModelContainer(configuration: .init(directory: hub.localRepoLocation(.init(id: model.id))))
+            container = try await loadModelContainer(
+                from: hub.localRepoLocation(.init(id: model.id)),
+                using: TransformersTokenizerLoader())
         } catch {
             // Download model from remote repo
-            container = try await loadModelContainer(hub: hub, configuration: .init(id: model.id))
+            container = try await loadModelContainer(
+                from: hub,
+                using: TransformersTokenizerLoader(),
+                configuration: .init(id: model.id))
         }
         
         // Cache the loaded model for future use
@@ -192,5 +197,56 @@ extension LMService {
         }
 
         return MLXLMCommon.Chat.Message(role: role, content: message.content, images: images, videos: videos)
+    }
+}
+
+/// Loads model tokenizers with swift-transformers for MLX model containers.
+private struct TransformersTokenizerLoader: MLXLMCommon.TokenizerLoader {
+
+    func load(from directory: URL) async throws -> any MLXLMCommon.Tokenizer {
+        TransformersTokenizer(try await AutoTokenizer.from(modelFolder: directory))
+    }
+}
+
+/// Presents a swift-transformers tokenizer as an MLXLMCommon tokenizer.
+struct TransformersTokenizer: MLXLMCommon.Tokenizer {
+
+    let upstream: any Tokenizers.Tokenizer
+
+    init(_ upstream: any Tokenizers.Tokenizer) {
+        self.upstream = upstream
+    }
+
+    func encode(text: String, addSpecialTokens: Bool) -> [Int] {
+        upstream.encode(text: text, addSpecialTokens: addSpecialTokens)
+    }
+
+    func decode(tokenIds: [Int], skipSpecialTokens: Bool) -> String {
+        upstream.decode(tokens: tokenIds, skipSpecialTokens: skipSpecialTokens)
+    }
+
+    func convertTokenToId(_ token: String) -> Int? {
+        upstream.convertTokenToId(token)
+    }
+
+    func convertIdToToken(_ id: Int) -> String? {
+        upstream.convertIdToToken(id)
+    }
+
+    var bosToken: String? { upstream.bosToken }
+    var eosToken: String? { upstream.eosToken }
+    var unknownToken: String? { upstream.unknownToken }
+
+    func applyChatTemplate(
+        messages: [[String: any Sendable]],
+        tools: [[String: any Sendable]]?,
+        additionalContext: [String: any Sendable]?
+    ) throws -> [Int] {
+        do {
+            return try upstream.applyChatTemplate(
+                messages: messages, tools: tools, additionalContext: additionalContext)
+        } catch Tokenizers.TokenizerError.missingChatTemplate {
+            throw MLXLMCommon.TokenizerError.missingChatTemplate
+        }
     }
 }

@@ -8,7 +8,7 @@
 import Foundation
 
 import Hub
-import HuggingFace
+import MLXLMCommon
 
 
 extension HubApi {
@@ -24,5 +24,23 @@ extension HubApi {
 
     public static var `default`: HubApi {
         HubApi(downloadBase: downloadBaseDirectory)
+    }
+}
+
+/// Lets MLX model loading download into the same base directory as the rest of the app.
+extension HubApi: @retroactive Downloader {
+
+    public func download(
+        id: String,
+        revision: String?,
+        matching patterns: [String],
+        useLatest: Bool,
+        progressHandler: @Sendable @escaping (Progress) -> Void
+    ) async throws -> URL {
+        try await snapshot(
+            from: Repo(id: id),
+            revision: revision ?? "main",
+            matching: patterns,
+            progressHandler: progressHandler)
     }
 }

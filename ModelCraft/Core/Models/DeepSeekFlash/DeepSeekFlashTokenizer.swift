@@ -12,7 +12,7 @@ import MLXLMCommon
 
 final class DeepSeekFlashTokenizer {
     static let imagePlaceholder = "<｜deepseek_image｜>"
-    private let tokenizer: Tokenizer
+    private let tokenizer: Tokenizers.Tokenizer
 
     init(hub: HubApi, directory: URL) async throws {
         let tokenizerData = try hub.configuration(
@@ -49,8 +49,8 @@ final class DeepSeekFlashTokenizer {
     final class StreamingDecoder {
         private var detokenizer: NaiveStreamingDetokenizer
 
-        fileprivate init(tokenizer: Tokenizer) {
-            detokenizer = NaiveStreamingDetokenizer(tokenizer: tokenizer)
+        fileprivate init(tokenizer: Tokenizers.Tokenizer) {
+            detokenizer = NaiveStreamingDetokenizer(tokenizer: TransformersTokenizer(tokenizer))
         }
 
         func append(token: Int) -> String? {

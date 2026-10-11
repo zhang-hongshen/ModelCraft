@@ -7,8 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		91B50E0C0B834320A0205004 /* StorageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91B50E0C0B834320A0205003 /* StorageView.swift */; };
-		91B50E0C0B834320A0205002 /* ModelsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91B50E0C0B834320A0205001 /* ModelsView.swift */; };
 		7001D9B02EC10DEB00047F6B /* ChatInputView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7001D9AF2EC10DEB00047F6B /* ChatInputView.swift */; };
 		7008FD8F2E80414200D62EF6 /* NLEmbedding+.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7008FD8E2E80413E00D62EF6 /* NLEmbedding+.swift */; };
 		70097F7F2D6C04BB00DDDEDF /* MessageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70097F7E2D6C04BB00DDDEDF /* MessageView.swift */; };
@@ -92,6 +90,8 @@
 		70A2B0022FFF100000000001 /* SwiftStreamingMarkdown in Frameworks */ = {isa = PBXBuildFile; productRef = 70A2B0012FFF100000000001 /* SwiftStreamingMarkdown */; };
 		70A2B0042FFF100000000004 /* MarkdownRenderConfig+ModelCraft.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70A2B0032FFF100000000003 /* MarkdownRenderConfig+ModelCraft.swift */; };
 		70A574AA2BB07264008E3750 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 70A574A92BB07264008E3750 /* Localizable.xcstrings */; };
+		70AD101130AD101100000011 /* Hub in Frameworks */ = {isa = PBXBuildFile; productRef = 70AD100130AD100100000001 /* Hub */; };
+		70AD101230AD101200000012 /* Tokenizers in Frameworks */ = {isa = PBXBuildFile; productRef = 70AD100230AD100200000002 /* Tokenizers */; };
 		70B13D042BBB1F3300A42F3C /* XMLFileParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70B13D032BBB1F3300A42F3C /* XMLFileParser.swift */; };
 		70B13D062BBBDC2100A42F3C /* FileThumbnail.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70B13D052BBBDC2100A42F3C /* FileThumbnail.swift */; };
 		70B13D132BBC66FC00A42F3C /* ProjectFileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70B13D122BBC66FC00A42F3C /* ProjectFileView.swift */; };
@@ -170,6 +170,8 @@
 		70FD4B93304E7A2F00B70A9B /* ProjectModelActor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70FD4B92304E7A2F00B70A9B /* ProjectModelActor.swift */; };
 		70FDA0242F20C21300F9DBD8 /* ToolCall.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70FDA0232F20C21000F9DBD8 /* ToolCall.swift */; };
 		70FE039F2F13EFA20061CCEB /* ChatService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70FE039E2F13EF9D0061CCEB /* ChatService.swift */; };
+		91B50E0C0B834320A0205002 /* ModelsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91B50E0C0B834320A0205001 /* ModelsView.swift */; };
+		91B50E0C0B834320A0205004 /* StorageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91B50E0C0B834320A0205003 /* StorageView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -213,8 +215,6 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		91B50E0C0B834320A0205003 /* StorageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StorageView.swift; sourceTree = "<group>"; };
-		91B50E0C0B834320A0205001 /* ModelsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelsView.swift; sourceTree = "<group>"; };
 		7001D9AF2EC10DEB00047F6B /* ChatInputView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatInputView.swift; sourceTree = "<group>"; };
 		7008FD8E2E80413E00D62EF6 /* NLEmbedding+.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NLEmbedding+.swift"; sourceTree = "<group>"; };
 		70097F7E2D6C04BB00DDDEDF /* MessageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageView.swift; sourceTree = "<group>"; };
@@ -356,6 +356,8 @@
 		70FD4B92304E7A2F00B70A9B /* ProjectModelActor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectModelActor.swift; sourceTree = "<group>"; };
 		70FDA0232F20C21000F9DBD8 /* ToolCall.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolCall.swift; sourceTree = "<group>"; };
 		70FE039E2F13EF9D0061CCEB /* ChatService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatService.swift; sourceTree = "<group>"; };
+		91B50E0C0B834320A0205001 /* ModelsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelsView.swift; sourceTree = "<group>"; };
+		91B50E0C0B834320A0205003 /* StorageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StorageView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -388,6 +390,8 @@
 				70C0DE4E30C4A00100C0DE4E /* TreeSitterTypeScript in Frameworks */,
 				70A2B0022FFF100000000001 /* SwiftStreamingMarkdown in Frameworks */,
 				7021D7622F84B59F00A2F684 /* MLXLMCommon in Frameworks */,
+				70AD101130AD101100000011 /* Hub in Frameworks */,
+				70AD101230AD101200000012 /* Tokenizers in Frameworks */,
 				7021D7602F84B59F00A2F684 /* MLXLLM in Frameworks */,
 				702A313E2F80BD23009CE217 /* MLXAudioCore in Frameworks */,
 				7021D7642F84B59F00A2F684 /* MLXVLM in Frameworks */,
@@ -852,6 +856,8 @@
 				7021D75F2F84B59F00A2F684 /* MLXLLM */,
 				7021D7612F84B59F00A2F684 /* MLXLMCommon */,
 				7021D7632F84B59F00A2F684 /* MLXVLM */,
+				70AD100130AD100100000001 /* Hub */,
+				70AD100230AD100200000002 /* Tokenizers */,
 				708032EE2F93F26000E63074 /* Waveform */,
 			);
 			productName = ModelCraft;
@@ -935,6 +941,7 @@
 				7078AB0E2F4D5AEB00711940 /* XCRemoteSwiftPackageReference "Alamofire" */,
 				702A313C2F80BD23009CE217 /* XCRemoteSwiftPackageReference "mlx-audio-swift" */,
 				7021D75E2F84B59F00A2F684 /* XCRemoteSwiftPackageReference "mlx-swift-lm" */,
+				70AD100030AD100000000000 /* XCRemoteSwiftPackageReference "swift-transformers" */,
 				708032ED2F93F25F00E63074 /* XCRemoteSwiftPackageReference "Waveform" */,
 			);
 			productRefGroup = 70CE60652BAD2D4500A2D0B0 /* Products */;
@@ -1473,7 +1480,7 @@
 			repositoryURL = "https://github.com/ml-explore/mlx-swift-lm";
 			requirement = {
 				kind = upToNextMajorVersion;
-				minimumVersion = 2.31.3;
+				minimumVersion = 3.32.3;
 			};
 		};
 		702A313C2F80BD23009CE217 /* XCRemoteSwiftPackageReference "mlx-audio-swift" */ = {
@@ -1481,7 +1488,7 @@
 			repositoryURL = "https://github.com/Blaizzy/mlx-audio-swift.git";
 			requirement = {
 				kind = upToNextMajorVersion;
-				minimumVersion = 0.1.2;
+				minimumVersion = 0.1.5;
 			};
 		};
 		7078AB0E2F4D5AEB00711940 /* XCRemoteSwiftPackageReference "Alamofire" */ = {
@@ -1508,12 +1515,22 @@
 				revision = 5f7c04e0558df6146f90d482edb62cb456986bda;
 			};
 		};
+		70AD100030AD100000000000 /* XCRemoteSwiftPackageReference "swift-transformers" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/huggingface/swift-transformers";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.3.0;
+			};
+			traits = (
+			);
+		};
 		70C0DE1030C4A00100C0DE10 /* XCRemoteSwiftPackageReference "swift-syntax" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/swiftlang/swift-syntax.git";
 			requirement = {
-				kind = exactVersion;
-				version = 603.0.2;
+				kind = upToNextMajorVersion;
+				minimumVersion = 603.0.2;
 			};
 		};
 		70C0DE1130C4A00100C0DE11 /* XCRemoteSwiftPackageReference "tree-sitter" */ = {
@@ -1528,8 +1545,8 @@
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/simonbs/TreeSitterLanguages";
 			requirement = {
-				kind = exactVersion;
-				version = 0.1.10;
+				kind = upToNextMinorVersion;
+				minimumVersion = 0.1.10;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */
@@ -1584,6 +1601,16 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 70A2B0002FFF100000000001 /* XCRemoteSwiftPackageReference "SwiftStreamingMarkdown" */;
 			productName = SwiftStreamingMarkdown;
+		};
+		70AD100130AD100100000001 /* Hub */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 70AD100030AD100000000000 /* XCRemoteSwiftPackageReference "swift-transformers" */;
+			productName = Hub;
+		};
+		70AD100230AD100200000002 /* Tokenizers */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 70AD100030AD100000000000 /* XCRemoteSwiftPackageReference "swift-transformers" */;
+			productName = Tokenizers;
 		};
 		70C0DE2030C4A00100C0DE20 /* SwiftParser */ = {
 			isa = XCSwiftPackageProductDependency;
