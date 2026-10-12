@@ -101,18 +101,24 @@ struct StorageView: View {
             do {
                 try await Task.detached(priority: .userInitiated) {
                     let fileManager = FileManager.default
-                    let oldModelsDirectory = oldDownloadBase.appending(path: "models")
-                    let newModelsDirectory = targetDownloadBase.appending(path: "models")
+                    // User models and the app's system models move together.
+                    let folders = ["models", ".system"].filter {
+                        fileManager.fileExists(at: oldDownloadBase.appending(path: $0))
+                    }
 
                     try fileManager.createDirectoryIfNotExists(at: targetDownloadBase)
 
-                    if fileManager.fileExists(at: oldModelsDirectory) {
-                        guard !fileManager.fileExists(at: newModelsDirectory) else {
-                            throw RuntimeError(String(
-                                localized: "The selected location already contains a models folder."
-                            ))
-                        }
-                        try fileManager.moveDirectory(at: oldModelsDirectory, to: newModelsDirectory)
+                    guard !folders.contains(where: {
+                        fileManager.fileExists(at: targetDownloadBase.appending(path: $0))
+                    }) else {
+                        throw RuntimeError(String(
+                            localized: "The selected location already contains a models folder."
+                        ))
+                    }
+                    for folder in folders {
+                        try fileManager.moveDirectory(
+                            at: oldDownloadBase.appending(path: folder),
+                            to: targetDownloadBase.appending(path: folder))
                     }
                 }.value
                 userSettings.modelDownloadBaseDirectory = targetDownloadBase

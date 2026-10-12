@@ -408,21 +408,21 @@ public struct StableDiffusionConfiguration: Sendable {
             StableDiffusion
 
     public func download(
-        hub: HubApi = .default, progressHandler: @escaping (Progress) -> Void = { _ in }
+        hub: HubApi = .system, progressHandler: @escaping (Progress) -> Void = { _ in }
     ) async throws {
         let repo = Hub.Repo(id: self.id)
         try await hub.snapshot(
             from: repo, matching: Array(files.values), progressHandler: progressHandler)
     }
 
-    func isDownloaded(hub: HubApi = .default) -> Bool {
+    func isDownloaded(hub: HubApi = .system) -> Bool {
         let directory = hub.localRepoLocation(Hub.Repo(id: id))
         return files.values.allSatisfy { path in
             FileManager.default.fileExists(atPath: directory.appending(path: path).path)
         }
     }
 
-    public func textToImageGenerator(hub: HubApi = .default, configuration: LoadConfiguration)
+    public func textToImageGenerator(hub: HubApi = .system, configuration: LoadConfiguration)
         throws -> TextToImageGenerator?
     {
         try factory(hub, self, configuration) as? TextToImageGenerator

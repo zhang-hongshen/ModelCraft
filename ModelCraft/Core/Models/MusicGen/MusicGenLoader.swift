@@ -18,7 +18,7 @@ public class MusicGenLoader {
         return try MLX.loadArrays(url: url)
     }
     
-    public static func loadT5(hub: HubApi = .default, configuration: MusicGenConfiguration) throws -> MusicGenT5 {
+    public static func loadT5(hub: HubApi = .system, configuration: MusicGenConfiguration) throws -> MusicGenT5 {
         let directory = hub.localRepoLocation(Hub.Repo(id: configuration.textEncoderParameters.id))
         let url = directory.appending(component: "model.safetensors")
         
@@ -34,7 +34,7 @@ public class MusicGenLoader {
         return model
     }
     
-    public static func loadTokenizer(hub: HubApi = .default, configuration: MusicGenConfiguration) throws -> MusicGenTokenizer {
+    public static func loadTokenizer(hub: HubApi = .system, configuration: MusicGenConfiguration) throws -> MusicGenTokenizer {
         let directory = hub.localRepoLocation(Hub.Repo(id: configuration.id))
         let tokenizerDataURL = directory.appending(component: "tokenizer.json")
         let tokenizerConfigURL = directory.appending(component: "tokenizer_config.json")
@@ -43,7 +43,7 @@ public class MusicGenLoader {
         return try MusicGenTokenizer(decoderStartTokenId: configuration.textEncoderParameters.decoderStartTokenId, tokenizerData: tokenizerData, tokenizerConfig: tokenizerConfig)
     }
     
-    public static func loadTextConditioner(hub: HubApi = .default, configuration: MusicGenConfiguration) throws -> MusicGenTextConditioner {
+    public static func loadTextConditioner(hub: HubApi = .system, configuration: MusicGenConfiguration) throws -> MusicGenTextConditioner {
         let t5 = try MusicGenLoader.loadT5(hub: hub, configuration: configuration)
         let tokenizer = try loadTokenizer(hub: hub, configuration: configuration)
         return try MusicGenTextConditioner(

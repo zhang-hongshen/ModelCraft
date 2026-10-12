@@ -27,6 +27,7 @@ final class VoiceAudioEngine: @unchecked Sendable {
     private let lock = NSLock()
     private var captureHandler: (([Float]) -> Void)?
     private var queuedBuffers = 0
+    private var queuedDuration: TimeInterval = 0
     /// Incremented by `stopPlayback()` so completions of discarded buffers are ignored.
     private var playbackGeneration = 0
     private var drainContinuations: [CheckedContinuation<Void, Never>] = []
@@ -68,16 +69,24 @@ final class VoiceAudioEngine: @unchecked Sendable {
             playbackFormat = format
         }
 
+        let duration = Double(samples.count) / sampleRate
         let generation = lock.withLock {
             queuedBuffers += 1
+            queuedDuration += duration
             return playbackGeneration
         }
         player.scheduleBuffer(buffer, completionCallbackType: .dataPlayedBack) { [weak self] _ in
-            self?.bufferPlayed(generation: generation)
+            self?.bufferPlayed(generation: generation, duration: duration)
         }
         if !player.isPlaying {
             player.play()
         }
+    }
+
+    /// Seconds of scheduled audio not yet played, counted per buffer: a buffer counts in
+    /// full until it has finished playing.
+    var queuedPlaybackDuration: TimeInterval {
+        lock.withLock { queuedDuration }
     }
 
     /// Returns once every scheduled buffer has been played or playback was stopped.
@@ -99,6 +108,7 @@ final class VoiceAudioEngine: @unchecked Sendable {
         let continuations = lock.withLock {
             playbackGeneration += 1
             queuedBuffers = 0
+            queuedDuration = 0
             defer { drainContinuations.removeAll() }
             return drainContinuations
         }
@@ -106,11 +116,15 @@ final class VoiceAudioEngine: @unchecked Sendable {
         stopIfIdle()
     }
 
-    private func bufferPlayed(generation: Int) {
+    private func bufferPlayed(generation: Int, duration: TimeInterval) {
         let continuations: [CheckedContinuation<Void, Never>] = lock.withLock {
             guard generation == playbackGeneration else { return [] }
             queuedBuffers -= 1
-            guard queuedBuffers == 0 else { return [] }
+            guard queuedBuffers == 0 else {
+                queuedDuration -= duration
+                return []
+            }
+            queuedDuration = 0
             defer { drainContinuations.removeAll() }
             return drainContinuations
         }

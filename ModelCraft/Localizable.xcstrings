@@ -75,6 +75,9 @@
     "Add Skill Directory…" : {
 
     },
+    "Add text or files to what you say next" : {
+
+    },
     "Allow for This Task" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -722,6 +725,9 @@
     "Element click failed" : {
 
     },
+    "End Voice Mode" : {
+
+    },
     "Enter your answer" : {
 
     },
@@ -1208,6 +1214,9 @@
           }
         }
       }
+    },
+    "Mute Microphone" : {
+
     },
     "Name" : {
 
@@ -1748,6 +1757,9 @@
         }
       }
     },
+    "Start Voice Mode" : {
+
+    },
     "Stopped" : {
       "localizations" : {
         "zh-Hans" : {
@@ -1890,6 +1902,9 @@
 
     },
     "Unknown Tool Call" : {
+
+    },
+    "Unmute Microphone" : {
 
     },
     "Unsupported audio type" : {

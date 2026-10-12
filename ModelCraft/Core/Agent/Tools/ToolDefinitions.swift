@@ -11,9 +11,11 @@ import Tokenizers
 
 enum ToolDefinition {
 
+    /// Repositories downloaded for media tools, which live in `HubApi.system`.
     static let modelIDs: Set<String> = [
         StableDiffusionConfiguration.presetSDXLTurbo.id,
         LTXVideoConfiguration.ltxv2BDistilled.id,
+        LTXVideoConfiguration.tokenizerRepositoryID,
         H3Configuration.presetH3BaseFL2VA.id,
         MusicGenConfiguration.small.id,
         MusicGenConfiguration.small.audioEncoderParameters.id,

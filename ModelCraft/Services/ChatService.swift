@@ -188,7 +188,7 @@ final class ChatService {
             return
         }
         let prompt = PromptBuilder.generateTitle(messages: chat.messages)
-        chat.title = try await LMService.shared.generate(
+        chat.title = try await LMService.shared.generateAuxiliary(
             model: model,
             messages: prompt)
     }
@@ -200,6 +200,10 @@ final class ChatService {
         await cancelCurrentGeneration()
         if let currentMessage = chat.currentGeneratingAssistantMessage {
             currentMessage.status = .generated
+        }
+        // A reply cancelled before its first token has no content to keep.
+        for message in chat.messages.filter(\.isWaitingForModelResponse) {
+            ModelContainer.shared.mainContext.delete(message)
         }
     }
 
@@ -217,7 +221,7 @@ final class ChatService {
 
         parts.append(PromptBuilder.compressionText(messages))
 
-        return try await LMService.shared.generate(
+        return try await LMService.shared.generateAuxiliary(
             model: model,
             messages: PromptBuilder.summarize(
                 conversation: parts.joined(separator: "\n")

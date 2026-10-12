@@ -31,7 +31,7 @@ Each `ChatView` owns one `ChatService`, which owns one `AgentExecutor` and one `
 
 ### Cancellation and resend
 
-- `stopGenerating` cancels any pending approval or user-input prompt, cancels metadata and generation tasks, and settles the current generating assistant message as `generated`. Partial text stays visible.
+- `stopGenerating` cancels any pending approval or user-input prompt, cancels metadata and generation tasks, and settles the current generating assistant message as `generated`. Partial text stays visible; an assistant message still waiting for its first token is deleted.
 - A newer `sendMessage` supersedes the previous request; request IDs prevent a cancelled request from clearing the newer request's task.
 - `resendMessage` deletes every message after the chosen user message and sends it again. If the deleted range reaches into the summarized prefix, the summary is discarded.
 
@@ -47,7 +47,7 @@ Compaction keeps long conversations inside the model's context window without de
 
 ## Titles and context usage
 
-Titles are generated once, in the background after the first completed turn, with `PromptBuilder.generateTitle`. A failure or cancellation is ignored; a later turn tries again while the title is still `nil`. Users can rename chats from the sidebar.
+Titles are generated once, in the background after the first completed turn, with `PromptBuilder.generateTitle`. Titles and compaction summaries go through `LMService.generateAuxiliary`, which prefers Apple's on-device model when available; see [Language models](models.md#inference). A failure or cancellation is ignored; a later turn tries again while the title is still `nil`. Users can rename chats from the sidebar.
 
 `ContextWindowUsageView` shows `Chat.tokenCount` against `LocalModel.contextWindow`. `tokenCount` is the prompt plus generated tokens reported by the latest generation; it is not recomputed independently.
 

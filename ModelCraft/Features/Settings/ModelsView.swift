@@ -145,13 +145,13 @@ struct ModelsView: View {
     private var isH3Downloaded: Bool {
         let configuration = H3Configuration.presetH3BaseFL2VA
         guard let indexFile = configuration.files[.transformerWeights] else { return false }
-        let directory = HubApi.default.localRepoLocation(Hub.Repo(id: configuration.id))
+        let directory = HubApi.system.localRepoLocation(Hub.Repo(id: configuration.id))
         return FileManager.default.fileExists(atPath: directory.appending(path: indexFile).path)
     }
 
     private var isLTXVideoDownloaded: Bool {
         let configuration = LTXVideoConfiguration.ltxv2BDistilled
-        let directory = HubApi.default.localRepoLocation(Hub.Repo(id: configuration.id))
+        let directory = HubApi.system.localRepoLocation(Hub.Repo(id: configuration.id))
         return [configuration.files[.transformerWeights], configuration.files[.vaeWeights]]
             .compactMap { $0 }
             .allSatisfy { FileManager.default.fileExists(atPath: directory.appending(path: $0).path) }
@@ -201,7 +201,7 @@ struct ModelsView: View {
         Task {
             do {
                 try await Task.detached(priority: .userInitiated) {
-                    try ModelService.deleteModel(modelID: repositoryID)
+                    try ModelService.deleteModel(hub: .system, modelID: repositoryID)
                 }.value
                 downloadedModelIDs.remove(id)
                 if userSettings.imageGenerationModelID == id {

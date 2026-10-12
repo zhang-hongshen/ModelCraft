@@ -145,7 +145,7 @@ public struct H3Configuration: Sendable {
     /// not already present. No model root or local repository path is passed
     /// through the H3 API.
     public func download(
-        hub: HubApi = .default,
+        hub: HubApi = .system,
         progressHandler: @escaping (Progress) -> Void = { _ in }
     ) async throws {
         try await hub.snapshot(

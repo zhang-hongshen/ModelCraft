@@ -89,8 +89,7 @@ final class LocalModelStore {
 
             return modelDirectories.compactMap { modelDirectory in
                 let modelID = "\(authorDirectory.lastPathComponent)/\(modelDirectory.lastPathComponent)"
-                guard isDirectory(modelDirectory),
-                      !ToolDefinition.modelIDs.contains(modelID) else {
+                guard isDirectory(modelDirectory) else {
                     return nil
                 }
                 let values = try? modelDirectory.resourceValues(forKeys: [

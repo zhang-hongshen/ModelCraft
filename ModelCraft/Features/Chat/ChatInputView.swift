@@ -17,13 +17,15 @@ enum ChatComposerCommand {
     case dismiss
 }
 
-struct ChatInputView<Content: View>: View {
+struct ChatInputView<Header: View, Content: View>: View {
     
     @Bindable var userInput: Message
     let skillNames: [String]?
+    let placeholder: LocalizedStringKey
     @Binding var selectionLocation: Int
     @Binding var slashCommandLocation: Int?
     let onCommand: (ChatComposerCommand) -> Bool
+    var header: () -> Header
     var trailing: () -> Content
     
     @State private var fileImporterPresented = false
@@ -33,17 +35,41 @@ struct ChatInputView<Content: View>: View {
     init(
         userInput: Message,
         skillNames: [String]? = nil,
+        placeholder: LocalizedStringKey = "Type Anything",
         selectionLocation: Binding<Int> = .constant(0),
         slashCommandLocation: Binding<Int?> = .constant(nil),
         onCommand: @escaping (ChatComposerCommand) -> Bool = { _ in false },
+        @ViewBuilder header: @escaping () -> Header,
         @ViewBuilder trailing: @escaping () -> Content
     ) {
         self._userInput = Bindable(userInput)
         self.skillNames = skillNames
+        self.placeholder = placeholder
         self._selectionLocation = selectionLocation
         self._slashCommandLocation = slashCommandLocation
         self.onCommand = onCommand
+        self.header = header
         self.trailing = trailing
+    }
+
+    init(
+        userInput: Message,
+        skillNames: [String]? = nil,
+        placeholder: LocalizedStringKey = "Type Anything",
+        selectionLocation: Binding<Int> = .constant(0),
+        slashCommandLocation: Binding<Int?> = .constant(nil),
+        onCommand: @escaping (ChatComposerCommand) -> Bool = { _ in false },
+        @ViewBuilder trailing: @escaping () -> Content
+    ) where Header == EmptyView {
+        self.init(
+            userInput: userInput,
+            skillNames: skillNames,
+            placeholder: placeholder,
+            selectionLocation: selectionLocation,
+            slashCommandLocation: slashCommandLocation,
+            onCommand: onCommand,
+            header: EmptyView.init,
+            trailing: trailing)
     }
     
     var body: some View {
@@ -82,7 +108,8 @@ extension ChatInputView {
     @ViewBuilder
     func MainView() -> some View {
         VStack(alignment: .leading) {
-            
+            header()
+
             if !userInput.files.isEmpty {
                 ScrollView(.horizontal) {
                     HStack(alignment: .center) {
@@ -99,7 +126,7 @@ extension ChatInputView {
             if let skillNames {
                 ZStack(alignment: .topLeading) {
                     if userInput.content.isEmpty {
-                        Text("Type Anything")
+                        Text(placeholder)
                             .foregroundStyle(.tertiary)
                             .allowsHitTesting(false)
                     }
@@ -113,7 +140,7 @@ extension ChatInputView {
                         onCommand: onCommand)
                 }
             } else {
-                TextField("Type Anything", text: $userInput.content, axis: .vertical)
+                TextField(placeholder, text: $userInput.content, axis: .vertical)
                     .lineLimit(1...3)
                     .textFieldStyle(.plain)
                     .contentMargins(.trailing, 0, for: .scrollIndicators)

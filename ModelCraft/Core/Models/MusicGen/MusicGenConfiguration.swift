@@ -27,7 +27,7 @@ public struct MusicGenConfiguration: Sendable {
     
     
     public func download(
-        hub: HubApi = .default, progressHandler: @escaping (Progress) -> Void = { _ in }
+        hub: HubApi = .system, progressHandler: @escaping (Progress) -> Void = { _ in }
     ) async throws {
         let repo = Hub.Repo(id: self.id)
         try await hub.snapshot(
@@ -221,7 +221,7 @@ public struct MusicGenAudioEncoderParameters: Codable, Sendable {
     public let useConvShortcut: Bool?
     
     public func download(
-        hub: HubApi = .default, progressHandler: @escaping (Progress) -> Void = { _ in }
+        hub: HubApi = .system, progressHandler: @escaping (Progress) -> Void = { _ in }
     ) async throws {
         let repo = Hub.Repo(id: self.id)
         try await hub.snapshot(
@@ -246,7 +246,7 @@ public struct MusicGenTextEncoderParameters: Codable, Sendable {
     public let vocabSize: Int
     
     public func download(
-        hub: HubApi = .default, progressHandler: @escaping (Progress) -> Void = { _ in }
+        hub: HubApi = .system, progressHandler: @escaping (Progress) -> Void = { _ in }
     ) async throws {
         let repo = Hub.Repo(id: self.id)
         try await hub.snapshot(

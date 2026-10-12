@@ -36,14 +36,14 @@ public enum LTXVideoLoaderError: Error, LocalizedError {
 
 public enum LTXVideoLoader {
     public static func localDirectory(
-        hub: HubApi = .default,
+        hub: HubApi = .system,
         configuration: LTXVideoConfiguration
     ) -> URL {
         hub.localRepoLocation(Hub.Repo(id: configuration.id))
     }
 
     public static func resolve(
-        hub: HubApi = .default,
+        hub: HubApi = .system,
         configuration: LTXVideoConfiguration,
         key: LTXVideoFileKey
     ) throws -> URL {
@@ -146,7 +146,7 @@ public enum LTXVideoLoader {
     }
 
     public static func loadTextEncoder(
-        hub: HubApi = .default,
+        hub: HubApi = .system,
         configuration: LTXVideoConfiguration
     ) throws -> LTXVideoTextEncoder {
         try loadTextEncoder(
@@ -156,7 +156,7 @@ public enum LTXVideoLoader {
     }
 
     static func loadTextEncoder(
-        hub: HubApi = .default,
+        hub: HubApi = .system,
         configuration: LTXVideoConfiguration,
         quantization: LTXVideoQuantization?
     ) throws -> LTXVideoTextEncoder {
@@ -173,7 +173,7 @@ public enum LTXVideoLoader {
     }
 
     public static func loadTokenizer(
-        hub: HubApi = .default,
+        hub: HubApi = .system,
         configuration: LTXVideoConfiguration
     ) async throws -> Tokenizer {
         let directory = try resolve(hub: hub, configuration: configuration, key: .tokenizer)
@@ -187,7 +187,7 @@ public enum LTXVideoLoader {
     }
 
     public static func loadTransformer(
-        hub: HubApi = .default,
+        hub: HubApi = .system,
         configuration: LTXVideoConfiguration
     ) throws -> LTXVideoTransformer3DModel {
         try loadTransformer(
@@ -197,7 +197,7 @@ public enum LTXVideoLoader {
     }
 
     static func loadTransformer(
-        hub: HubApi = .default,
+        hub: HubApi = .system,
         configuration: LTXVideoConfiguration,
         quantization: LTXVideoQuantization?
     ) throws -> LTXVideoTransformer3DModel {
@@ -223,7 +223,7 @@ public enum LTXVideoLoader {
     }
 
     public static func loadVAE(
-        hub: HubApi = .default,
+        hub: HubApi = .system,
         configuration: LTXVideoConfiguration
     ) throws -> LTXVideoVAE {
         let model = LTXVideoVAE(configuration: configuration.vae)

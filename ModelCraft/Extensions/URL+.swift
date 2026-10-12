@@ -48,7 +48,7 @@ extension URL {
         if !type.conforms(to: .audio) {
             return ""
         }
-        let sttModel = try await Qwen3ASRModel.fromPretrained("mlx-community/Qwen3-ASR-0.6B-4bit")
+        let sttModel = try await STTService.loadModel(id: "mlx-community/Qwen3-ASR-0.6B-4bit")
         let (_, audioData) = try loadAudioArray(from: self)
         return sttModel.generate(audio: audioData).text
     }

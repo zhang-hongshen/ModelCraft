@@ -79,8 +79,8 @@ enum ModelService {
         }
     }
     
-    static func deleteModel(modelID: String) throws {
-        let modelFolder = HubApi.default.localRepoLocation(.init(id: modelID))
+    static func deleteModel(hub: HubApi = .default, modelID: String) throws {
+        let modelFolder = hub.localRepoLocation(.init(id: modelID))
         try FileManager.default.removeItem(at: modelFolder)
     }
     

@@ -24,7 +24,7 @@ Settings > Models stores the selected image and video model IDs (`sdxl-turbo`, `
 
 Settings > Models downloads and deletes media models directly through each family's configuration, not through `ModelTask`. Deleting the selected model clears the image selection or falls back to another downloaded video model. A model that is selected but not downloaded is fetched on first use by its model factory.
 
-Media repositories are listed in `ToolDefinition.modelIDs` so `LocalModelStore` does not offer them as chat models. Add every new media repository there.
+Media models download and load through `HubApi.system`, so they live under `<base>/.system/models/<author>/<name>` and never appear as chat models. New media families default their `hub` parameters to `.system`. `ToolDefinition.modelIDs` lists the media repositories so `HubApi.moveSystemModels` can move copies downloaded before this layout out of `<base>/models` at launch; add every new media repository there.
 
 ## Execution and presentation
 

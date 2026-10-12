@@ -23,7 +23,7 @@ actor H3ModelFactory {
     private var states: [H3Configuration.Task: LoadState] = [:]
 
     func load(
-        hub: HubApi = .default,
+        hub: HubApi = .system,
         configuration: H3Configuration,
         progressHandler: @escaping (Progress) -> Void = { _ in }
     ) async throws -> H3Base {

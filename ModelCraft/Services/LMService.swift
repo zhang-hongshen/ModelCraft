@@ -7,6 +7,7 @@
 
 import CoreImage
 import Foundation
+import FoundationModels
 import UniformTypeIdentifiers
 
 import MLX
@@ -163,17 +164,40 @@ final class LMService {
         return output
     }
     
-    func generate(
+    /// Generates a short auxiliary text, such as a chat title or compaction summary.
+    /// Apple's on-device model answers when the system offers it; otherwise, or when it
+    /// rejects the prompt (context size, language, guardrails), `model` generates it.
+    func generateAuxiliary(
         model: LocalModel,
-        messages: [Message],
-        tools: [ToolSpec] = [],
-        maxTokens: Int? = nil
+        messages: [Message]
     ) async throws -> String {
+        if #available(macOS 26.0, *), SystemLanguageModel.default.isAvailable {
+            do {
+                return try await generateOnDevice(messages: messages)
+            } catch {
+                try Task.checkCancellation()
+            }
+        }
         return try await generate(
             model: model,
-            messages: protocolMessages(messages),
-            tools: tools,
-            maxTokens: maxTokens)
+            messages: protocolMessages(messages))
+    }
+
+    @available(macOS 26.0, *)
+    private func generateOnDevice(messages: [Message]) async throws -> String {
+        let instructions = messages
+            .filter { $0.role == .system }
+            .map(\.content)
+            .joined(separator: "\n\n")
+        let prompt = messages
+            .filter { $0.role != .system }
+            .map(\.content)
+            .joined(separator: "\n\n")
+        let session = LanguageModelSession(instructions: instructions)
+        let response = try await session.respond(
+            to: prompt,
+            options: GenerationOptions(temperature: 0.7))
+        return response.content.trimmingCharacters(in: .whitespacesAndNewlines)
     }
     
 }

@@ -10,6 +10,7 @@ import SwiftData
 import AVFoundation
 
 import MLX
+import Hub
 
 @main
 struct ModelCraftApp: App {
@@ -33,6 +34,7 @@ struct ModelCraftApp: App {
                     .background(.ultraThinMaterial)
                     .applyUserSettings()
                     .task {
+                        HubApi.moveSystemModels(ids: ToolDefinition.modelIDs)
                         localModelStore.reload()
                         modelTaskTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { timer in
                             guard timer.isValid else { return }

@@ -186,7 +186,7 @@ public struct LTXVideoVAEConfiguration: Sendable, Codable {
 }
 
 public struct LTXVideoConfiguration: Sendable {
-    private static let tokenizerRepositoryID = "Xenova/t5-tokenizer-new"
+    static let tokenizerRepositoryID = "Xenova/t5-tokenizer-new"
 
     public let id: String
     public let files: [LTXVideoFileKey: String]
@@ -196,7 +196,7 @@ public struct LTXVideoConfiguration: Sendable {
         @Sendable (String, LTXVideoAspectRatio, LTXVideoResolution, Int) -> LTXVideoEvaluateParameters
 
     public func download(
-        hub: HubApi = .default,
+        hub: HubApi = .system,
         progressHandler: @escaping (Progress) -> Void = { _ in }
     ) async throws {
         let directory = try await hub.snapshot(

@@ -36,6 +36,16 @@ struct ChatView: View {
         case listening
         case responding
     }
+
+    /// The voice mode phase shown in the composer, or `nil` outside voice mode.
+    var voicePhase: VoicePhase? {
+        switch voiceState {
+        case .idle: nil
+        case .loading: .loading
+        case .listening: sttService.isHearingSpeech ? .hearing : .waiting
+        case .responding: ttsService.isPlaying ? .speaking : .thinking
+        }
+    }
     
     @Environment(GlobalStore.self) private var globalStore
     @Environment(LocalModelStore.self) private var localModelStore
@@ -198,28 +208,46 @@ private extension ChatView {
     
     @ViewBuilder
     func voiceModeButton() -> some View {
-        let disabled = globalStore.selectedModel == nil
-        Button {
-            if voiceState == .idle {
-                startVoiceMode()
-            } else {
-                stopVoiceMode()
-            }
-        } label: {
-            switch voiceState {
-            case .loading:
-                ProgressView().controlSize(.small)
-            case .listening, .responding:
-                Image(systemName: "stop.fill")
-            case .idle:
-                Image(systemName: "waveform")
-            }
+        Button(action: startVoiceMode) {
+            Image(systemName: "waveform")
         }
         .buttonStyle(.borderedProminent)
         .buttonBorderShape(.circle)
         .controlSize(.large)
-        .disabled(disabled)
+        .disabled(globalStore.selectedModel == nil)
         .help("Voice Mode")
+        .accessibilityLabel("Start Voice Mode")
+    }
+
+    /// The level bars, mute, and end controls that replace the send button in voice mode.
+    @ViewBuilder
+    func VoiceControls(phase: VoicePhase) -> some View {
+        @Bindable var sttService = self.sttService
+        HStack {
+            VoiceLevelView(phase: phase, level: sttService.level)
+                .padding(.horizontal, 4)
+
+            Toggle(isOn: $sttService.isMuted) {
+                Image(systemName: sttService.isMuted ? "mic.slash.fill" : "mic.fill")
+                    .contentTransition(.symbolEffect(.replace))
+            }
+            .toggleStyle(.button)
+            .buttonBorderShape(.circle)
+            .controlSize(.large)
+            .disabled(phase == .loading)
+            .help(sttService.isMuted ? "Unmute Microphone" : "Mute Microphone")
+            .accessibilityLabel(sttService.isMuted ? "Unmute Microphone" : "Mute Microphone")
+
+            Button(action: stopVoiceMode) {
+                Image(systemName: "xmark")
+            }
+            .buttonStyle(.borderedProminent)
+            .buttonBorderShape(.circle)
+            .controlSize(.large)
+            .keyboardShortcut(.cancelAction)
+            .help("End Voice Mode")
+            .accessibilityLabel("End Voice Mode")
+        }
     }
     
     
@@ -265,12 +293,6 @@ private extension ChatView {
                             .environment(chatService)
                             .safeAreaPadding()
                             .background(SmallScrollerConfigurator())
-                        
-                        if !sttService.transcript.isEmpty {
-                            Text(sttService.transcript)
-                                .padding()
-                                .animation(.easeInOut, value: sttService.transcript)
-                        }
                     }
                     .contentMargins(.leading, Layout.padding, for: .scrollContent)
                     .contentMargins(.bottom, composerHeight, for: .scrollContent)
@@ -320,9 +342,18 @@ private extension ChatView {
                 ChatInputView(
                     userInput: draft,
                     skillNames: skillCommands.compactMap(\.skillName),
+                    placeholder: voicePhase == nil ? "Type Anything" : "Add text or files to what you say next",
                     selectionLocation: $composerSelectionLocation,
                     slashCommandLocation: $slashCommandLocation,
                     onCommand: handleComposerCommand,
+                    header: {
+                        // The utterance being recorded, shown until it is sent.
+                        if voicePhase != nil, !sttService.transcript.isEmpty {
+                            Text(verbatim: sttService.transcript)
+                                .textSelection(.enabled)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                    },
                     trailing: {
                         HStack {
                             if let chat, let contextWindow = globalStore.selectedModel?.contextWindow, contextWindow > 0 {
@@ -334,8 +365,8 @@ private extension ChatView {
                             if chatService.isCompacting {
                                 ProgressView()
                                     .controlSize(.small)
-                            } else if voiceState != .idle {
-                                voiceModeButton()
+                            } else if let voicePhase {
+                                VoiceControls(phase: voicePhase)
                             } else if !draft.content.isEmpty {
                                 SubmitMessageButton()
                             } else if chat?.isGenerating == true {
@@ -593,7 +624,14 @@ private extension ChatView {
                 async let nextUtterance = sttService.listen {
                     interruptVoiceResponse(in: chat)
                 }
-                let message = Message(role: .user, chat: chat, content: text)
+                // Text and files added to the composer go with the utterance.
+                let note = draft.content.trimmingCharacters(in: .whitespacesAndNewlines)
+                let message = Message(
+                    role: .user,
+                    chat: chat,
+                    content: note.isEmpty ? text : "\(note)\n\n\(text)",
+                    files: draft.files)
+                clearDraft()
                 try? await chatService.sendMessage(model: model, chat: chat, message: message)
                 // Speak the text that arrived after the last streamed change.
                 for reply in chat.sortedMessages.drop(while: { $0 != message }) where reply.role == .assistant {
@@ -612,14 +650,13 @@ private extension ChatView {
         }
     }
 
-    /// Stops speaking and generating as soon as the user starts talking over a response.
+    /// Stops speaking and generating as soon as the user starts talking over a response,
+    /// including while the model is still compacting, prefilling, or thinking.
     func interruptVoiceResponse(in chat: Chat) {
         guard voiceState == .responding else { return }
         voiceState = .listening
         ttsService.stop()
-        if chat.isGenerating {
-            Task { await chatService.stopGenerating(chat: chat) }
-        }
+        Task { await chatService.stopGenerating(chat: chat) }
     }
 
     /// Cancelling the voice task also ends any `listen()` in progress.
@@ -631,6 +668,7 @@ private extension ChatView {
         if voiceState == .responding, let chat {
             Task { await chatService.stopGenerating(chat: chat) }
         }
+        sttService.isMuted = false
         voiceState = .idle
     }
     
@@ -1358,4 +1396,77 @@ private struct ConversationItemsView: View {
 #Preview(traits: .preview) {
     ChatView(chat: .preview)
         .frame(width: 760, height: 900)
+}
+
+// MARK: - Voice mode
+
+/// What voice mode is doing, as shown in the composer.
+enum VoicePhase {
+    case loading
+    /// Listening and waiting for the user to start speaking.
+    case waiting
+    /// Recording an utterance.
+    case hearing
+    /// A response is being generated and nothing is spoken yet.
+    case thinking
+    case speaking
+}
+
+/// Bars that follow the microphone while listening, move with the voice while speaking,
+/// and pulse while thinking.
+struct VoiceLevelView: View {
+
+    let phase: VoicePhase
+    let level: Float
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private static let barCount = 5
+    /// Middle bars react more than the outer ones.
+    private static let barWeights: [Double] = [0.5, 0.8, 1, 0.8, 0.5]
+    private static let minHeight: Double = 4
+    private static let maxHeight: Double = 20
+
+    var body: some View {
+        if phase == .loading {
+            ProgressView()
+                .controlSize(.small)
+        } else {
+            TimelineView(.animation(paused: reduceMotion)) { context in
+                let time = context.date.timeIntervalSinceReferenceDate
+                HStack(spacing: 3) {
+                    ForEach(0..<Self.barCount, id: \.self) { index in
+                        Capsule()
+                            .fill(.tint)
+                            .frame(width: 3, height: height(of: index, at: time))
+                            .opacity(opacity(of: index, at: time))
+                    }
+                }
+                .frame(height: Self.maxHeight)
+            }
+            .animation(.easeOut(duration: 0.1), value: level)
+            .accessibilityHidden(true)
+        }
+    }
+
+    private func height(of index: Int, at time: TimeInterval) -> Double {
+        let weight = Self.barWeights[index]
+        let phaseOffset = Double(index) * 1.3
+        let amplitude: Double
+        switch phase {
+        case .loading, .thinking:
+            amplitude = 0
+        case .waiting, .hearing:
+            // A slight idle motion keeps the bars alive while the room is quiet.
+            amplitude = max(Double(level), 0.08 + 0.05 * sin(time * 2 + phaseOffset)) * weight
+        case .speaking:
+            amplitude = (0.5 + 0.5 * sin(time * 7 + phaseOffset)) * (0.6 + 0.4 * sin(time * 2.3 + phaseOffset)) * weight
+        }
+        return Self.minHeight + (Self.maxHeight - Self.minHeight) * min(amplitude, 1)
+    }
+
+    private func opacity(of index: Int, at time: TimeInterval) -> Double {
+        guard phase == .thinking else { return 1 }
+        return 0.3 + 0.7 * max(0, sin(time * 4 - Double(index) * 0.6))
+    }
 }

@@ -20,6 +20,7 @@ struct ContextWindowUsageView: View {
         ProgressView(value: fraction)
             .progressViewStyle(.circular)
             .controlSize(.small)
+            .tint(tint(for: fraction))
             .onHover { hovering in
                 isHovering = hovering
             }
@@ -44,6 +45,14 @@ struct ContextWindowUsageView: View {
             .accessibilityValue(
                 Text(fraction.formatted(.percent.precision(.fractionLength(0))))
             )
+    }
+
+    private func tint(for fraction: Double) -> Color {
+        switch fraction {
+        case 0.9...: .red
+        case 0.75...: .orange
+        default: .accentColor
+        }
     }
 
     private func formatTokens(_ value: Int) -> String {

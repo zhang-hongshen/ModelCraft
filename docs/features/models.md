@@ -8,7 +8,9 @@ Image, video, and audio models are managed separately; see [Media generation](me
 
 All models download through `HubApi.default`, whose base directory is the `modelDownloadBaseDirectory` setting (default `~/Library/Application Support/huggingface`). Repositories live under `<base>/models/<author>/<name>`, the standard Hugging Face snapshot layout. `HubApi` also conforms to MLX's `Downloader`, so MLX loading writes to the same place.
 
-Changing the location in Settings > Storage moves the existing `models` folder to the new base and reloads `LocalModelStore`. It is disabled while any model task is running and refuses a destination that already contains a `models` folder.
+System models (image, video, music, voice) use `HubApi.system`, whose base is `<base>/.system`, so they live under `<base>/.system/models/<author>/<name>`, apart from the chat models users download.
+
+Changing the location in Settings > Storage moves the existing `models` and `.system` folders to the new base and reloads `LocalModelStore`. It is disabled while any model task is running and refuses a destination that already contains either folder.
 
 ## Discovery and download
 
@@ -22,7 +24,7 @@ Changing the location in Settings > Storage moves the existing `models` folder t
 
 `LocalModel` is a plain value, not a SwiftData entity. `LocalModelStore.reload()` scans `<base>/models/*/*` and builds one `LocalModel` per repository folder with its size and creation date, newest first. It runs at launch, when the app becomes active, and after download, delete, or relocation, so models copied in by other tools appear without a separate registry.
 
-Repositories listed in `ToolDefinition.modelIDs` (the media-generation models) are excluded so they are never offered as chat models.
+The app's own image, video, music, and voice models download through `HubApi.system` into `<base>/.system/models`, so the scan never sees them.
 
 `contextWindow` is resolved from the repository:
 
@@ -40,7 +42,8 @@ The resolved window drives compaction and the context-usage indicator described 
 
 `LMService.shared` is the single entry point for chat inference.
 
-- `generate(model:messages:tools:maxTokens:)` returns an `AsyncThrowingStream<Generation>` of text chunks, tool calls, and completion info. A `String`-returning overload collects the stream and strips a leading `<think>…</think>` block; it is used for titles and summaries.
+- `generate(model:messages:tools:maxTokens:)` returns an `AsyncThrowingStream<Generation>` of text chunks, tool calls, and completion info. A `String`-returning overload collects the stream and strips a leading `<think>…</think>` block.
+- `generateAuxiliary(model:messages:)` produces chat titles and compaction summaries. On macOS 26 or later, when `SystemLanguageModel.default.isAvailable` (Apple Intelligence supported and enabled), it uses Apple's on-device Foundation Models model with the system messages as instructions and the rest as the prompt. When the system model is unavailable or rejects the request (context size, language, guardrails), the selected model generates it through the `String` overload. Cancellation propagates instead of falling back. The app weak-links `FoundationModels` so it still launches on macOS 15.
 - `tokenCount(model:messages:tools:)` renders the same prompt with tools and counts tokens.
 - Models load with `MLXLMCommon.loadModelContainer`, first from the local repository and, if that fails, by downloading. Tokenizers come from swift-transformers through `TransformersTokenizerLoader`. Loaded containers are cached in an `NSCache` with a count limit of 5.
 - Generation uses temperature 0.7, and images are resized to fit 1024 × 1024 before processing.
