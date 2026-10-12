@@ -36,7 +36,13 @@ ModelCraft brings local language and media models into one native macOS app. Cha
 
 ### Install a release
 
-Download the latest available build from [GitHub Releases](https://github.com/zhang-hongshen/ModelCraft/releases). Open ModelCraft, download a compatible model from the Model Store, and start a conversation.
+Download the latest available build from [GitHub Releases](https://github.com/zhang-hongshen/ModelCraft/releases). Open the `ModelCraft_<version>.dmg`, drag ModelCraft into Applications, then open it, download a compatible model from the Model Store, and start a conversation.
+
+Release builds are ad-hoc signed and not notarized by Apple, so macOS blocks the first launch. Either open **System Settings → Privacy & Security** and click **Open Anyway**, or run:
+
+```bash
+xattr -cr /Applications/ModelCraft.app
+```
 
 ### Build from source
 

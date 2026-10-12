@@ -36,7 +36,13 @@ ModelCraft 将本地语言模型与媒体生成模型整合到一款原生应用
 
 ### 安装发布版本
 
-前往 [GitHub Releases](https://github.com/zhang-hongshen/ModelCraft/releases) 下载最新可用版本。打开 ModelCraft，在模型商店中下载兼容模型，即可开始对话。
+前往 [GitHub Releases](https://github.com/zhang-hongshen/ModelCraft/releases) 下载最新可用版本。打开 `ModelCraft_<版本号>.dmg`，将 ModelCraft 拖入「应用程序」，然后打开 ModelCraft，在模型商店中下载兼容模型，即可开始对话。
+
+发布版本使用 ad-hoc 签名，未经过 Apple 公证，因此首次打开会被 macOS 拦截。请前往「系统设置 → 隐私与安全性」点击「仍要打开」，或运行：
+
+```bash
+xattr -cr /Applications/ModelCraft.app
+```
 
 ### 从源码构建
 
