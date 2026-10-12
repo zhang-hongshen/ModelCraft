@@ -20,6 +20,14 @@
 		</dict>
 		<dict>
 			<key>File</key>
+			<string>com.mono0926.LicensePlist/equatable</string>
+			<key>Title</key>
+			<string>Equatable</string>
+			<key>Type</key>
+			<string>PSChildPaneSpecifier</string>
+		</dict>
+		<dict>
+			<key>File</key>
 			<string>com.mono0926.LicensePlist/EventSource</string>
 			<key>Title</key>
 			<string>EventSource</string>
@@ -28,9 +36,25 @@
 		</dict>
 		<dict>
 			<key>File</key>
+			<string>com.mono0926.LicensePlist/highlightswift</string>
+			<key>Title</key>
+			<string>HighlightSwift</string>
+			<key>Type</key>
+			<string>PSChildPaneSpecifier</string>
+		</dict>
+		<dict>
+			<key>File</key>
+			<string>com.mono0926.LicensePlist/iosMath</string>
+			<key>Title</key>
+			<string>iosMath</string>
+			<key>Type</key>
+			<string>PSChildPaneSpecifier</string>
+		</dict>
+		<dict>
+			<key>File</key>
 			<string>com.mono0926.LicensePlist/mlx-audio-swift</string>
 			<key>Title</key>
-			<string>mlx-audio-swift</string>
+			<string>MLXAudio</string>
 			<key>Type</key>
 			<string>PSChildPaneSpecifier</string>
 		</dict>
@@ -52,17 +76,9 @@
 		</dict>
 		<dict>
 			<key>File</key>
-			<string>com.mono0926.LicensePlist/NetworkImage</string>
+			<string>com.mono0926.LicensePlist/Runestone</string>
 			<key>Title</key>
-			<string>NetworkImage</string>
-			<key>Type</key>
-			<string>PSChildPaneSpecifier</string>
-		</dict>
-		<dict>
-			<key>File</key>
-			<string>com.mono0926.LicensePlist/Splash</string>
-			<key>Title</key>
-			<string>Splash</string>
+			<string>Runestone</string>
 			<key>Type</key>
 			<string>PSChildPaneSpecifier</string>
 		</dict>
@@ -71,14 +87,6 @@
 			<string>com.mono0926.LicensePlist/swift-asn1</string>
 			<key>Title</key>
 			<string>swift-asn1</string>
-			<key>Type</key>
-			<string>PSChildPaneSpecifier</string>
-		</dict>
-		<dict>
-			<key>File</key>
-			<string>com.mono0926.LicensePlist/swift-atomics</string>
-			<key>Title</key>
-			<string>swift-atomics</string>
 			<key>Type</key>
 			<string>PSChildPaneSpecifier</string>
 		</dict>
@@ -124,17 +132,9 @@
 		</dict>
 		<dict>
 			<key>File</key>
-			<string>com.mono0926.LicensePlist/swift-markdown-ui</string>
+			<string>com.mono0926.LicensePlist/swift-markdown</string>
 			<key>Title</key>
-			<string>swift-markdown-ui</string>
-			<key>Type</key>
-			<string>PSChildPaneSpecifier</string>
-		</dict>
-		<dict>
-			<key>File</key>
-			<string>com.mono0926.LicensePlist/swift-nio</string>
-			<key>Title</key>
-			<string>swift-nio</string>
+			<string>swift-markdown</string>
 			<key>Type</key>
 			<string>PSChildPaneSpecifier</string>
 		</dict>
@@ -148,9 +148,9 @@
 		</dict>
 		<dict>
 			<key>File</key>
-			<string>com.mono0926.LicensePlist/swift-system</string>
+			<string>com.mono0926.LicensePlist/swift-syntax</string>
 			<key>Title</key>
-			<string>swift-system</string>
+			<string>swift-syntax</string>
 			<key>Type</key>
 			<string>PSChildPaneSpecifier</string>
 		</dict>
@@ -159,6 +159,38 @@
 			<string>com.mono0926.LicensePlist/swift-transformers</string>
 			<key>Title</key>
 			<string>swift-transformers</string>
+			<key>Type</key>
+			<string>PSChildPaneSpecifier</string>
+		</dict>
+		<dict>
+			<key>File</key>
+			<string>com.mono0926.LicensePlist/SwiftStreamingMarkdown</string>
+			<key>Title</key>
+			<string>SwiftStreamingMarkdown</string>
+			<key>Type</key>
+			<string>PSChildPaneSpecifier</string>
+		</dict>
+		<dict>
+			<key>File</key>
+			<string>com.mono0926.LicensePlist/SwiftUI-Shimmer</string>
+			<key>Title</key>
+			<string>SwiftUI-Shimmer</string>
+			<key>Type</key>
+			<string>PSChildPaneSpecifier</string>
+		</dict>
+		<dict>
+			<key>File</key>
+			<string>com.mono0926.LicensePlist/tree-sitter</string>
+			<key>Title</key>
+			<string>TreeSitter</string>
+			<key>Type</key>
+			<string>PSChildPaneSpecifier</string>
+		</dict>
+		<dict>
+			<key>File</key>
+			<string>com.mono0926.LicensePlist/TreeSitterLanguages</string>
+			<key>Title</key>
+			<string>TreeSitterLanguages</string>
 			<key>Type</key>
 			<string>PSChildPaneSpecifier</string>
 		</dict>
