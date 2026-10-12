@@ -13,12 +13,20 @@ env:
   SCHEME: ModelCraft
   PROJECT: ModelCraft.xcodeproj
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
-  release:
-    runs-on: macos-latest
+  prepare:
+    name: Prepare
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.version.outputs.tag }}
+      version: ${{ steps.version.outputs.version }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -26,59 +34,16 @@ jobs:
       - name: Fetch tags
         run: git fetch --force --tags origin
 
-      - name: Select Xcode
-        uses: maxim-lobanov/setup-xcode@v1
-        with:
-          xcode-version: latest-stable
-
-      - name: Install Metal toolchain
-        run: xcodebuild -downloadComponent MetalToolchain
-
       - name: Resolve version
+        id: version
         run: |
           TAG="${GITHUB_REF_NAME}"
-          echo "TAG=$TAG" >> "$GITHUB_ENV"
-          echo "VERSION=${TAG#v}" >> "$GITHUB_ENV"
-
-      - name: Archive
-        run: |
-          xcodebuild archive \
-            -project "$PROJECT" \
-            -scheme "$SCHEME" \
-            -configuration Release \
-            -destination 'generic/platform=macOS' \
-            -archivePath "build/$APP_NAME.xcarchive" \
-            -skipMacroValidation \
-            -skipPackagePluginValidation \
-            MARKETING_VERSION="$VERSION" \
-            CURRENT_PROJECT_VERSION="${{ github.run_number }}" \
-            CODE_SIGN_IDENTITY=- \
-            CODE_SIGN_STYLE=Manual \
-            DEVELOPMENT_TEAM= \
-            PROVISIONING_PROFILE_SPECIFIER=
-
-      - name: Verify version
-        run: |
-          APP="build/$APP_NAME.xcarchive/Products/Applications/$APP_NAME.app"
-          BUILT_VERSION=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP/Contents/Info.plist")
-          BUILD_NUMBER=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$APP/Contents/Info.plist")
-          echo "CFBundleShortVersionString: $BUILT_VERSION"
-          echo "CFBundleVersion: $BUILD_NUMBER"
-          if [ "$BUILT_VERSION" != "$VERSION" ]; then
-            echo "::error::CFBundleShortVersionString ($BUILT_VERSION) does not match tag version ($VERSION)"
-            exit 1
-          fi
-
-      - name: Create DMG
-        run: |
-          DMG="${APP_NAME}_${VERSION}.dmg"
-          mkdir -p build/dmg
-          cp -R "build/$APP_NAME.xcarchive/Products/Applications/$APP_NAME.app" build/dmg/
-          ln -s /Applications build/dmg/Applications
-          hdiutil create -volname "$APP_NAME" -srcfolder build/dmg -ov -format UDZO "build/$DMG"
-          echo "DMG=build/$DMG" >> "$GITHUB_ENV"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
 
       - name: Generate release notes
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
         run: |
           PREVIOUS_TAG=$(git describe --tags --abbrev=0 "$TAG^" 2>/dev/null || true)
           MESSAGE=""
@@ -100,7 +65,123 @@ jobs:
           } > notes.md
           cat notes.md
 
+      - name: Upload release notes
+        uses: actions/upload-artifact@v7
+        with:
+          name: notes
+          path: notes.md
+
+  build:
+    name: Build
+    needs: prepare
+    runs-on: macos-latest
+    env:
+      VERSION: ${{ needs.prepare.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Select Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Install Metal toolchain
+        run: xcodebuild -downloadComponent MetalToolchain
+
+      # xcbeautify turns compiler errors into annotations on the run summary; the full log is uploaded on failure.
+      - name: Archive
+        run: |
+          mkdir -p build
+          xcodebuild archive \
+            -project "$PROJECT" \
+            -scheme "$SCHEME" \
+            -configuration Release \
+            -destination 'generic/platform=macOS' \
+            -archivePath "build/$APP_NAME.xcarchive" \
+            -skipMacroValidation \
+            -skipPackagePluginValidation \
+            MARKETING_VERSION="$VERSION" \
+            CURRENT_PROJECT_VERSION="${{ github.run_number }}" \
+            CODE_SIGN_IDENTITY=- \
+            CODE_SIGN_STYLE=Manual \
+            DEVELOPMENT_TEAM= \
+            PROVISIONING_PROFILE_SPECIFIER= \
+            2>&1 | tee build/xcodebuild.log | xcbeautify --renderer github-actions
+
+      - name: Upload build log
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: xcodebuild-log
+          path: build/xcodebuild.log
+
+      - name: Verify version
+        run: |
+          APP="build/$APP_NAME.xcarchive/Products/Applications/$APP_NAME.app"
+          BUILT_VERSION=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP/Contents/Info.plist")
+          BUILD_NUMBER=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$APP/Contents/Info.plist")
+          echo "CFBundleShortVersionString: $BUILT_VERSION"
+          echo "CFBundleVersion: $BUILD_NUMBER"
+          if [ "$BUILT_VERSION" != "$VERSION" ]; then
+            echo "::error::CFBundleShortVersionString ($BUILT_VERSION) does not match tag version ($VERSION)"
+            exit 1
+          fi
+
+      # ditto keeps the bundle's symlinks and code signature, which a plain artifact upload would not.
+      - name: Compress app
+        run: ditto -c -k --keepParent "build/$APP_NAME.xcarchive/Products/Applications/$APP_NAME.app" "build/$APP_NAME.zip"
+
+      - name: Upload app
+        uses: actions/upload-artifact@v7
+        with:
+          name: app
+          path: build/${{ env.APP_NAME }}.zip
+
+  package:
+    name: Package DMG
+    needs: [prepare, build]
+    runs-on: macos-latest
+    env:
+      VERSION: ${{ needs.prepare.outputs.version }}
+    steps:
+      - name: Download app
+        uses: actions/download-artifact@v8
+        with:
+          name: app
+
+      - name: Create DMG
+        run: |
+          mkdir -p dmg
+          ditto -x -k "$APP_NAME.zip" dmg
+          ln -s /Applications dmg/Applications
+          hdiutil create -volname "$APP_NAME" -srcfolder dmg -ov -format UDZO "${APP_NAME}_${VERSION}.dmg"
+
+      - name: Upload DMG
+        uses: actions/upload-artifact@v7
+        with:
+          name: dmg
+          path: ${{ env.APP_NAME }}_${{ needs.prepare.outputs.version }}.dmg
+
+  release:
+    name: Publish release
+    needs: [prepare, package]
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      TAG: ${{ needs.prepare.outputs.tag }}
+      VERSION: ${{ needs.prepare.outputs.version }}
+    steps:
+      - name: Download release notes
+        uses: actions/download-artifact@v8
+        with:
+          name: notes
+
+      - name: Download DMG
+        uses: actions/download-artifact@v8
+        with:
+          name: dmg
+
       - name: Create GitHub Release
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh release create "$TAG" "$DMG" --title "$APP_NAME $VERSION" --notes-file notes.md
+        run: gh release create "$TAG" "${APP_NAME}_${VERSION}.dmg" --title "$APP_NAME $VERSION" --notes-file notes.md
