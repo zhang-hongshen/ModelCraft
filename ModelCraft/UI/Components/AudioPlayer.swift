@@ -375,7 +375,9 @@ private enum WaveformError: LocalizedError {
 }
 
 
+#if DEBUG
 #Preview {
     AudioPlayer(url: PreviewResources.wav.url)
         .frame(width: 350, height: 100)
 }
+#endif

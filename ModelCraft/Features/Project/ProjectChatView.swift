@@ -74,6 +74,8 @@ struct ChatCard: View {
     }
 }
 
+#if DEBUG
 #Preview(traits: .preview) {
     ProjectChatView(chats: Chat.previews)
 }
+#endif

@@ -30,6 +30,8 @@ struct AppDetailView: View {
     }
 }
 
+#if DEBUG
 #Preview(traits: .preview) {
     AppDetailView(tab: nil)
 }
+#endif

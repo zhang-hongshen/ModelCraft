@@ -57,6 +57,8 @@ struct ProjectFileView: View {
     }
 }
 
+#if DEBUG
 #Preview {
     ProjectFileView(project: .preview)
 }
+#endif

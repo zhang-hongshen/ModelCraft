@@ -92,6 +92,8 @@ extension DownloadedModelsView {
     }
 }
 
+#if DEBUG
 #Preview(traits: .preview) {
     DownloadedModelsView()
 }
+#endif

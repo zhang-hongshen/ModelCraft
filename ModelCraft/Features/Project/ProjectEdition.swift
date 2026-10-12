@@ -231,6 +231,8 @@ extension ProjectEdition {
     
 }
 
+#if DEBUG
 #Preview {
     ProjectEdition(project: .preview)
 }
+#endif

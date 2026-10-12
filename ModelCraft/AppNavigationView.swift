@@ -312,6 +312,8 @@ private struct ChatProjectMenu: View {
     }
 }
 
+#if DEBUG
 #Preview(traits: .preview) {
     AppNavigationView()
 }
+#endif

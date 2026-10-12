@@ -1393,10 +1393,12 @@ private struct ConversationItemsView: View {
     }
 }
 
+#if DEBUG
 #Preview(traits: .preview) {
     ChatView(chat: .preview)
         .frame(width: 760, height: 900)
 }
+#endif
 
 // MARK: - Voice mode
 

@@ -167,6 +167,8 @@ extension ModelStore {
 
 }
 
+#if DEBUG
 #Preview(traits: .preview) {
     ModelStore()
 }
+#endif

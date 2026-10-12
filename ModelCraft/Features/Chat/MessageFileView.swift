@@ -53,6 +53,7 @@ struct MessageFileContentView: View {
     }
 }
 
+#if DEBUG
 #Preview {
     ScrollView {
         ForEach(PreviewResources.allCases) {
@@ -62,3 +63,4 @@ struct MessageFileContentView: View {
         }
     }
 }
+#endif

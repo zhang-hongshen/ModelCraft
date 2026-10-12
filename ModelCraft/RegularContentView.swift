@@ -30,7 +30,9 @@ struct RegularContentView: View {
 }
 
 
+#if DEBUG
 #Preview(traits: .preview) {
     RegularContentView()
 }
+#endif
 

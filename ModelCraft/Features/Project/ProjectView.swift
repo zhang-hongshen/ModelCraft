@@ -128,6 +128,8 @@ extension ProjectView {
     }
 }
 
+#if DEBUG
 #Preview(traits: .preview) {
     ProjectView(project: .preview)
 }
+#endif

@@ -47,6 +47,7 @@ struct ToolCallGroupView: View {
     }
 }
 
+#if DEBUG
 #Preview {
     let messages = Array(Chat.preview.sortedMessages.dropFirst(2).prefix(2))
 
@@ -56,3 +57,4 @@ struct ToolCallGroupView: View {
             .frame(maxWidth: 560)
     }
 }
+#endif

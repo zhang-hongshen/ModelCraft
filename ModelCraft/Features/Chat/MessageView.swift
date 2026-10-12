@@ -411,6 +411,7 @@ private struct GenerationMetricsButton: View {
     }
 }
 
+#if DEBUG
 #Preview(traits: .preview){
     ScrollView {
         VStack {
@@ -421,3 +422,4 @@ private struct GenerationMetricsButton: View {
         .padding()
     }
 }
+#endif

@@ -70,6 +70,7 @@ extension ModelTaskView {
     }
 }
 
+#if DEBUG
 #Preview(traits: .preview) {
     ScrollView {
         ForEach(ModelTask.previews) {
@@ -77,3 +78,4 @@ extension ModelTaskView {
         }
     }
 }
+#endif

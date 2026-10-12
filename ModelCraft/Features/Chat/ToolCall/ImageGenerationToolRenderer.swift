@@ -199,6 +199,7 @@ struct ImageGeneratingView: View {
     }
 }
 
+#if DEBUG
 #Preview("Image generation", traits: .preview) {
     let toolCall = ToolCall(function: .init(
         name: ToolNames.textToImage,
@@ -225,3 +226,4 @@ struct ImageGeneratingView: View {
         .padding()
     }
 }
+#endif

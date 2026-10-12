@@ -512,8 +512,10 @@ private extension NSAttributedString.Key {
         "ModelCraftTextEditorTokenIcon")
 }
 
+#if DEBUG
 #Preview(traits: .preview) {
     ChatInputView(
         userInput: Message(chat: .preview),
         trailing: {})
 }
+#endif
