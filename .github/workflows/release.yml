@@ -183,4 +183,4 @@ jobs:
           name: dmg
 
       - name: Create GitHub Release
-        run: gh release create "$TAG" "${APP_NAME}_${VERSION}.dmg" --title "$APP_NAME $VERSION" --notes-file notes.md
+        run: gh release create "$TAG" "${APP_NAME}_${VERSION}.dmg" --title "$VERSION" --notes-file notes.md
