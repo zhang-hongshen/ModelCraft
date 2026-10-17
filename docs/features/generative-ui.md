@@ -1,65 +1,45 @@
 # Generative UI
 
-This document owns the `ui` block contract: the model-visible format, how assistant content is split and rendered, and failure behavior. Read it before changing the `Rich UI` section of `Resources/Prompts/system.md`, `GenerativeUIParser.swift`, `GenerativeUIView.swift`, or assistant content rendering in `MessageView`.
+This document owns the `ui` block contract: the model-visible format, the SwiftUI interpreter that runs it, how assistant content is split and rendered, and failure behavior. Read it before changing the `Rich UI` section of `Resources/Prompts/system.md`, `GenerativeUIParser.swift`, `GenerativeUIInterpreter.swift`, `GenerativeUIView.swift`, or assistant content rendering in `MessageView`.
 
 ## Contract
 
-The assistant renders native UI by writing a fenced code block tagged `ui` in its reply. The block is ordinary message text: it is persisted in `Message.content`, returned to the model with the conversation history, copied with the message, and skipped by `TTSService` like any code block. No separate storage or tool call is involved.
+The assistant renders native UI by writing SwiftUI code in a fenced code block tagged `ui`. The block is ordinary message text: it is persisted in `Message.content`, returned to the model with the conversation history, copied with the message, and skipped by `TTSService` like any code block. No separate storage or tool call is involved. The format is taught in the system prompt because it is an output format rather than a tool; tool selection still belongs to tool schemas as described in [Tools](tools.md).
 
-The block contains a JSON array of components, decoded with `Codable` into `GenerativeUIComponent`. Each component has a `type`; its other fields are read only by that type. Containers nest components in `children`, so the model composes layouts as a tree. The format is JSON rather than Swift because SwiftUI cannot be compiled at run time, and a data format keeps the UI native without interpreting code. The format is taught in the system prompt because it is an output format rather than a tool; tool selection still belongs to tool schemas as described in [Tools](tools.md).
+SwiftUI cannot be compiled at run time, so the app interprets a subset of Swift instead of compiling it. Code is parsed with `SwiftParser` and run by `UIInterpreter`; it can only do what the interpreter implements, so a block cannot reach files, the network, other processes, or app state, and an error in it cannot crash the app. A block is either top-level views or a `struct ContentView: View`; without `ContentView`, the first view type declared is the root.
 
-`type` names a SwiftUI view where one exists and is matched case-insensitively. `row`, `column`, `card`, `stat`, `callout`, `table`, and `chart` are ModelCraft components; `row` and `column` remain as aliases of `hstack` and `vstack`.
+### Language
 
-| `type` | Fields | SwiftUI |
-| --- | --- | --- |
-| `vstack`, `column` | `alignment` (`leading` default, `center`, `trailing`), `spacing`, `children` | `VStack` |
-| `hstack`, `row` | `alignment` (`center` default for `hstack`, `top` for `row`), `spacing`, `children` | `HStack` |
-| `zstack` | `alignment`, `children` | `ZStack` |
-| `grid` | `spacing`, `children` of `gridRow` (other children span the grid) | `Grid`, `GridRow` |
-| `lazyVGrid` | `minWidth` (adaptive column width), `spacing`, `children` | `LazyVGrid` |
-| `scrollView` | `axis: "horizontal"` scrolls; otherwise lays out inline | `ScrollView` |
-| `section` | `title`, `footer`, `children` | `Section` |
-| `groupBox` | `title`, `children` | `GroupBox` |
-| `card` | `title`, `icon`, `children` | — |
-| `disclosureGroup` | `title`, `expanded`, `children` | `DisclosureGroup` |
-| `tabView` | `children`, each a tab named by its `title` | segmented `Picker` |
-| `list` | `items`, `style: "numbered"`, `children` | — |
-| `text` | `text`, `style`: `title` \| `headline` \| `caption` \| `secondary` | `Text` |
-| `label` | `title`, `icon` | `Label` |
-| `image` | `icon` (SF Symbol), `label` for accessibility | `Image(systemName:)` |
-| `labeledContent` | `label`, `value` | `LabeledContent` |
-| `divider`, `spacer` | — | `Divider`, `Spacer` |
-| `link` | `title`, `url` | `Link` |
-| `progressView` | `label`, numeric `value`, `total`; indeterminate without `value` | `ProgressView` |
-| `gauge` | `label`, numeric `value`, `minimum`, `maximum`, `detail` | `Gauge` |
-| `stat` | `label`, `value`, `detail`, `trend`: `up` \| `down` \| `flat`, `icon` | — |
-| `callout` | `kind`: `info` \| `success` \| `warning` \| `error`, `text`, `title` | — |
-| `table` | `columns`, `rows` (arrays of strings); the first column is styled as the row label | `Grid` |
-| `chart` | `kind`: `bar` \| `line` \| `area` \| `point` \| `pie`, `x` and `y` axis titles, `points` of `{label, value, series}` | Swift Charts |
-| `map` | `places` of `{title, latitude, longitude}` | `Map` with `Marker`s |
-| `button` | `title`, and `send` or `url` | `Button` |
-| `form` | `title`, `submit`, `fields` of `{label, kind, value, on, options, minimum, maximum, step}` with `kind` `text` \| `toggle` \| `picker` \| `slider` \| `stepper` \| `date` | `Form` |
+- Declarations: structs (classes behave as structs), enums with raw values, `CaseIterable`, and computed properties, extensions, methods, top-level functions, and top-level constants. Records get a memberwise initializer; custom initializers, protocols, generics, and `async` code are not supported.
+- View types: stored properties with `@State` (also accepted: `@StateObject`, `@ObservedObject`, `@Bindable`) keep per-instance state; `@Binding` properties take a `$` binding; other properties are set by the memberwise initializer. Properties, methods, and functions returning a `View` are view builders.
+- Statements: `let`, `var`, assignment and compound assignment, `if` and `if let`, `guard`, `switch` with value, range, and binding patterns, `for`-`in` with `where`, `while`, `repeat`, `break`, `continue`, `return`, and `if`/`switch` expressions.
+- Expressions: literals with string interpolation (including `specifier:`), arrays, dictionaries, tuples, closures with named or `$0` parameters, operators with standard precedence, optional chaining, `??`, key paths, and `$` bindings to state, `@Binding` properties, their fields, and array elements.
+- Built-ins: the common `String`, `Array`, `Dictionary`, number, `Bool`, and `Date` methods; `min`, `max`, `abs`, rounding and math functions; `String(format:)`; `Int`/`Double`/`String` conversions; `UUID()`, `Date()`, `Int.random(in:)`, `stride`, `zip`; `withAnimation`; and `send(_:)`.
+- A run is limited to 200,000 evaluation steps so an endless loop fails instead of hanging.
 
-Every component also accepts modifiers named after SwiftUI's: `font` (text styles from `largeTitle` to `caption2`), `weight`, `color` and `background` (adaptive system colors and `primary` through `quinary`), `padding`, `cornerRadius` (shapes the background), `width`, `height`, and `fillWidth`. A modifier that is not set leaves inherited values unchanged, and sizes are clamped. Text in `text`, `callout`, `list`, `table`, and `labeledContent` supports inline Markdown.
+### Views
 
-Decoding is lenient so a small type mistake does not discard a block: numbers, Booleans, and strings convert into each other where a field needs it, and an element of `children`, `points`, `places`, `fields`, or the top-level array that cannot be decoded is dropped on its own. Dates in forms are exchanged as `yyyy-MM-dd`.
+`UIInterpreter.makeView` builds the supported SwiftUI views, and `applyModifier` the supported modifiers; the system prompt lists both. A modifier the interpreter does not know is ignored so styling never fails a block, while an unknown view or function is an error. Views the chat cannot host are adapted: a vertical `ScrollView`, `Form`, and `List` lay out in place because the chat already scrolls, and `Image` supports only SF Symbols. `Chart` content is collected as mark records and drawn by `UIChart`; `Map` content as `Marker` records drawn by `UIMap`. `Stat`, `Card`, and `Callout` are ModelCraft views for key figures, titled groups, and tinted notes.
+
+Values are `UIValue`s. Views, colors, fonts, and shape styles are values too, so helpers can return them; built-in value types such as shapes, chart marks, grid items, and coordinates are records named after their SwiftUI type. An implicit member such as `.blue` or `.title.bold()` stays a member until its use converts it in `UIStyles`.
 
 ## Rendering
 
 `MessageContentSegment.segments(of:isComplete:)` splits assistant content into leading reasoning (`<think>…</think>`), Markdown, and `ui` segments. A `ui` fence inside another fenced code block remains code. Segments are identified by their starting line so they keep identity while content streams.
 
-A `ui` block renders while it streams. `MessageContentSegment.completingPartialJSON` keeps the longest prefix that ends after a complete value or inside a string value, then closes the open string, objects, and arrays, so a card appears with its title and its children appear one by one. Every field of `GenerativeUIComponent`, `GenerativeUIChartPoint`, and `GenerativeUIFormField` is optional for this reason: the newest object may not have its `type` yet. Components are identified by position, which stays stable as content is appended; a form keeps only the user's edits by field position, so fields can keep arriving. Until the opening `[` of the array arrives, a small progress indicator is shown.
+A `ui` block is not run while it streams; a small progress indicator stands in until its closing fence arrives or the message completes. `GenerativeUIView` then parses the block into a `GenerativeUIProgram` and shows the root `InterpretedView`.
+
+Each `InterpretedView` is one instance of a view type. Its `@State` values live in a `UIStateStore` held in SwiftUI `@State`, so they keep SwiftUI's identity rules: they survive re-renders and are reset when the view's position or `ForEach` id changes. The store is `@Observable`, so changing state re-runs only the bodies that read it. `ForEach` identifies elements by the `id:` key path, an `id` property, or the element itself; those ids also tag `Picker` options.
 
 ## Actions
 
-Actions are a closed set; a block cannot run code or call tools.
-
-- A button's `send` text and a form submission create a user message in the same chat through `ChatService.sendMessage`. A form message has the form title, if any, followed by one `label: value` line per field, so the user bubble and the model input are the same text. A submitted form stays disabled.
-- `form` is for adjusting an answer the assistant has already given. Information the assistant needs before it can answer is collected by the `request_user_input` tool, whose schema owns that choice.
-- A button's `url` and links in text open only `http`, `https`, and `mailto` URLs.
-- Buttons and forms are disabled while the containing message is still generating.
+- Buttons, gestures, `onAppear`, `onChange`, and timers run their closures with the variables they captured, against the same state store. A timer from `Timer.publish(every:…)` passed to `onReceive` runs as a view task.
+- `send(_:)` creates a user message in the same chat through `ChatService.sendMessage`. It fails while the containing message is still generating.
+- Links open only `http`, `https`, and `mailto` URLs.
+- Information the assistant needs before it can answer is collected by the `request_user_input` tool, whose schema owns that choice.
 
 ## Failure behavior
 
-- A closed block that is not a valid JSON array of components is shown as a Markdown code block. An unclosed block in a completed message is shown the same way.
-- An unknown or not-yet-streamed `type` renders nothing; missing fields render empty; chart points without a label or value and places without coordinates are skipped.
+- A block that does not parse, or whose body throws, shows `GenerativeUIErrorView` with the message and line, in place of the view that failed; sibling views keep rendering. Its "Ask to Fix" button sends the error as a user message so the model can rewrite the block.
+- An error thrown by an action is shown under the block until an action succeeds.
+- An unclosed block in a completed message is run as it is.
