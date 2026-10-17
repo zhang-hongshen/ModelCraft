@@ -447,7 +447,7 @@ final class H3TextEncoder {
         let mlp = l.mlp
         let y = l.postAttnNorm(attended)[0]
         let g = mlp.gate(y), u = mlp.up(y)
-        var updated = attended + mlp.down(silu(g) * u).expandedDimensions(axis: 0)
+        var updated = attended + mlp.down(h3SwiGLU(g, u)).expandedDimensions(axis: 0)
 
         // DeepStack: the vision tower's layer-8/16/24 features are *added*
         // into the first three language layers, at the image's token

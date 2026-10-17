@@ -25,9 +25,8 @@ final class DeepSeekFlashDSparkAttention: DeepSeekFlashAttention {
         let batchSize = mainHidden.dim(0)
         let mainSequenceLength = mainHidden.dim(1)
         let window = configuration.slidingWindow
-        let mainPositions = Array(startPosition ..< (startPosition + mainSequenceLength))
         let mainKeyValue = applyRoPE(
-            keyValueNorm(keyValue(mainHidden)), positions: mainPositions)
+            keyValueNorm(keyValue(mainHidden)), start: startPosition)
 
         if startPosition == 0 {
             if mainSequenceLength <= window {
@@ -47,7 +46,6 @@ final class DeepSeekFlashDSparkAttention: DeepSeekFlashAttention {
 
         let blockSize = x.dim(1)
         let draftStart = startPosition + mainSequenceLength
-        let draftPositions = Array(draftStart ..< (draftStart + blockSize))
         let reducedQuery = queryNorm(queryA(x))
         var query = queryB(reducedQuery).reshaped([
             batchSize,
@@ -57,9 +55,9 @@ final class DeepSeekFlashDSparkAttention: DeepSeekFlashAttention {
         ])
         query = query * rsqrt(mean(query * query, axis: -1, keepDims: true)
             + configuration.rmsNormEpsilon)
-        query = applyRoPE(query, positions: draftPositions)
+        query = applyRoPE(query, start: draftStart)
         let draftKeyValue = applyRoPE(
-            keyValueNorm(keyValue(x)), positions: draftPositions)
+            keyValueNorm(keyValue(x)), start: draftStart)
 
         state.keyValueCache[0 ..< batchSize, startPosition % window] = mainKeyValue[0..., 0]
         let allKeyValue = MLX.concatenated(
@@ -81,7 +79,7 @@ final class DeepSeekFlashDSparkAttention: DeepSeekFlashAttention {
             indices: indices,
             attentionSink: attentionSink,
             scale: softmaxScale)
-        output = applyRoPE(output, positions: draftPositions, inverse: true)
+        output = applyRoPE(output, start: draftStart, inverse: true)
         return projectOutput(output)
     }
 }

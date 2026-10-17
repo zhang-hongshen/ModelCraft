@@ -29,6 +29,10 @@ private func ltxApproximateGELU(_ x: MLXArray) -> MLXArray {
     MLXNN.gelu(x)
 }
 
+/// AdaLN modulation and gated residual, each as one kernel.
+private let ltxScaleShift = compile { x, scale, shift in x * (1 + scale) + shift }
+private let ltxGate = compile { x, y, gate in x + y * gate }
+
 private func ltxApplyRotary(_ x: MLXArray, cos: MLXArray, sin: MLXArray) -> MLXArray {
     let b = Int(x.shape[0])
     let s = Int(x.shape[1])
@@ -290,12 +294,12 @@ public final class LTXVideoTransformerBlock: Module {
         let gateMLP = ada[0..., 0..., 5, 0...]
 
         var y = norm1(x)
-        y = y * (1 + scaleMSA) + shiftMSA
+        y = ltxScaleShift(y, scaleMSA, shiftMSA)
         y = attn1(
             hiddenStates: y,
             imageRotaryEmbedding: imageRotaryEmbedding
         )
-        x = x + y * gateMSA
+        x = ltxGate(x, y, gateMSA)
 
         y = attn2(
             hiddenStates: x,
@@ -305,9 +309,9 @@ public final class LTXVideoTransformerBlock: Module {
         x = x + y
 
         y = norm2(x)
-        y = y * (1 + scaleMLP) + shiftMLP
+        y = ltxScaleShift(y, scaleMLP, shiftMLP)
         y = ff(y)
-        x = x + y * gateMLP
+        x = ltxGate(x, y, gateMLP)
         return x
     }
 }
@@ -402,7 +406,7 @@ public final class LTXVideoTransformer3DModel: Module {
         let shift = scaleShift[0..., 0..., 0, 0...]
         let scale = scaleShift[0..., 0..., 1, 0...]
         x = normOut(x)
-        x = x * (1 + scale) + shift
+        x = ltxScaleShift(x, scale, shift)
         return projOut(x)
     }
 

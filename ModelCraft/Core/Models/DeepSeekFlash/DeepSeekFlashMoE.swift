@@ -159,10 +159,15 @@ final class DeepSeekFlashExpert: Module {
                 max: configuration.swigluLimit)
             gate = MLX.minimum(gate, configuration.swigluLimit)
         }
-        var hidden = MLXNN.silu(gate) * up
+        var hidden = Self.swiGLU(gate, up)
         if let weights {
             hidden = hidden * weights
         }
         return downProjection(hidden.asType(inputType))
+    }
+
+    /// `silu(gate) * up` as one kernel.
+    private static let swiGLU = compile(shapeless: true) { gate, up in
+        gate * MLX.sigmoid(gate) * up
     }
 }

@@ -473,14 +473,21 @@ struct ModulationIndex {
 /// `h * (1 + scale) + shift`, per token.
 func modScaleShift(_ h: MLXArray, shift: MLXArray, scale: MLXArray,
                           index: ModulationIndex) -> MLXArray {
-    h * (1.0 + index.gather(scale)) + index.gather(shift)
+    fusedScaleShift(h, index.gather(scale), index.gather(shift))
 }
 
 /// `x + other * gate`, per token.
 func modGate(_ x: MLXArray, gate: MLXArray, other: MLXArray,
                     index: ModulationIndex) -> MLXArray {
-    x + other * index.gather(gate)
+    fusedGate(x, other, index.gather(gate))
 }
+
+/// The modulation arithmetic as one kernel each; the gathers stay outside.
+private let fusedScaleShift = compile { h, scale, shift in h * (1.0 + scale) + shift }
+private let fusedGate = compile { x, other, gate in x + other * gate }
+
+/// `silu(gate) * up` as one kernel, for every SwiGLU in this family.
+let h3SwiGLU = compile(shapeless: true) { gate, up in gate * MLX.sigmoid(gate) * up }
 
 /// RMSNorm over the last axis: `x * rsqrt(mean(x^2) + eps) * weight`.
 ///
@@ -505,9 +512,8 @@ final class H3RMSNorm: Module {
     }
 
     func callAsFunction(_ x: MLXArray) -> MLXArray {
-        let f = x.asType(.float32)
-        let n = f * rsqrt(mean(f * f, axis: -1, keepDims: true) + eps)
-        return (n * weight.asType(.float32)).asType(x.dtype)
+        MLXFast.rmsNorm(x.asType(.float32), weight: weight.asType(.float32), eps: eps)
+            .asType(x.dtype)
     }
 }
 
@@ -682,7 +688,7 @@ final class H3FeedForward: Module {
 
     func callAsFunction(_ x: MLXArray) -> MLXArray {
         let parts = w1(x).split(parts: 2, axis: -1)
-        return w2(silu(parts[0]) * parts[1])
+        return w2(h3SwiGLU(parts[0], parts[1]))
     }
 }
 

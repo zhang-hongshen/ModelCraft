@@ -99,11 +99,16 @@ class TransformerBlock: Module {
         y = norm3(x)
         let ya = linear1(y)
         let yb = linear2(y)
-        y = ya * gelu(yb)
+        y = Self.geglu(ya, yb)
         y = linear3(y)
         x = x + y
 
         return x
+    }
+
+    /// `a * gelu(b)` as one kernel.
+    private static let geglu = compile(shapeless: true) { a, b in
+        a * (b * (1 + erf(b / Float(2).squareRoot())) / 2)
     }
 }
 

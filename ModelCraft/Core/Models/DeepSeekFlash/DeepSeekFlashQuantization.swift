@@ -97,17 +97,15 @@ final class DeepSeekFlashRMSNorm: Module {
     }
 
     func callAsFunction(_ x: MLXArray) -> MLXArray {
-        let inputType = x.dtype
-        let value = x.asType(.float32)
-        let normalized = value * rsqrt(mean(value * value, axis: -1, keepDims: true) + epsilon)
-        return (normalized * weight).asType(inputType)
+        MLXFast.rmsNorm(x.asType(.float32), weight: weight, eps: epsilon).asType(x.dtype)
     }
 }
 
 enum DeepSeekFlashRoPE {
     static func apply(
         _ x: MLXArray,
-        positions: [Int],
+        start: Int,
+        step: Int = 1,
         dimension: Int,
         base: Float,
         originalSequenceLength: Int,
@@ -148,27 +146,21 @@ enum DeepSeekFlashRoPE {
             frequencies = lowFrequencyPart + highFrequencyPart
         }
 
-        var angles = MLXArray(positions.map(Float.init)).expandedDimensions(axis: 1)
-            * frequencies.expandedDimensions(axis: 0)
-        if inverse {
-            angles = -angles
-        }
-
-        let prefix = x[.ellipsis, 0 ..< (x.dim(-1) - dimension)]
+        // The fused kernel rotates the leading channels of axis -1 at positions
+        // `scale * (offset + i)` along axis -2; this layout rotates the trailing
+        // channels at `start + i * step` along axis 1.
+        precondition(start % step == 0)
         let rotary = x[.ellipsis, (x.dim(-1) - dimension)...]
-        let pairs = rotary.reshaped(Array(rotary.shape.dropLast()) + [half, 2]).asType(.float32)
-        let real = pairs[.ellipsis, 0]
-        let imaginary = pairs[.ellipsis, 1]
-        var angleShape = Array(repeating: 1, count: real.ndim)
-        angleShape[1] = positions.count
-        angleShape[angleShape.count - 1] = half
-        let cosine = MLX.cos(angles).reshaped(angleShape)
-        let sine = MLX.sin(angles).reshaped(angleShape)
-        let rotated = MLX.stacked(
-            [real * cosine - imaginary * sine, real * sine + imaginary * cosine], axis: -1)
-            .reshaped(rotary.shape)
-            .asType(x.dtype)
-        return MLX.concatenated([prefix, rotated], axis: -1)
+        let rotated = MLXFast.RoPE(
+            rotary.swappedAxes(1, -2),
+            dimensions: dimension,
+            traditional: true,
+            base: nil,
+            scale: Float(inverse ? -step : step),
+            offset: start / step,
+            freqs: 1 / frequencies)
+            .swappedAxes(1, -2)
+        return MLX.concatenated([x[.ellipsis, 0 ..< (x.dim(-1) - dimension)], rotated], axis: -1)
     }
 
     private static func correctionDimension(

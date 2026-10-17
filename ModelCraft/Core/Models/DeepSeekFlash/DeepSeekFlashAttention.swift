@@ -81,7 +81,6 @@ class DeepSeekFlashAttention: Module {
     ) -> MLXArray {
         let batchSize = x.dim(0)
         let sequenceLength = x.dim(1)
-        let endPosition = startPosition + sequenceLength
         let window = configuration.slidingWindow
 
         let reducedQuery = queryNorm(queryA(x))
@@ -92,10 +91,10 @@ class DeepSeekFlashAttention: Module {
         ])
         query = query * rsqrt(mean(query * query, axis: -1, keepDims: true)
             + configuration.rmsNormEpsilon)
-        query = applyRoPE(query, positions: Array(startPosition ..< endPosition))
+        query = applyRoPE(query, start: startPosition)
 
         var currentKeyValue = applyRoPE(
-            keyValueNorm(keyValue(x)), positions: Array(startPosition ..< endPosition))
+            keyValueNorm(keyValue(x)), start: startPosition)
         var indices = windowIndices(
             batchSize: batchSize,
             sequenceLength: sequenceLength,
@@ -158,7 +157,7 @@ class DeepSeekFlashAttention: Module {
             attentionSink: attentionSink,
             scale: softmaxScale)
         output = applyRoPE(
-            output, positions: Array(startPosition ..< endPosition), inverse: true)
+            output, start: startPosition, inverse: true)
         return projectOutput(output)
     }
 
@@ -182,12 +181,12 @@ class DeepSeekFlashAttention: Module {
 
     func applyRoPE(
         _ x: MLXArray,
-        positions: [Int],
+        start: Int,
         inverse: Bool = false
     ) -> MLXArray {
         DeepSeekFlashRoPE.apply(
             x,
-            positions: positions,
+            start: start,
             dimension: configuration.ropeHeadDimension,
             base: compressionRatio > 0 ? configuration.compressRopeTheta : configuration.ropeTheta,
             originalSequenceLength: compressionRatio > 0
@@ -418,15 +417,11 @@ final class DeepSeekFlashCompressor: Module {
             }
         }
 
-        let positionCount = keyValue.dim(1)
-        let positions = Array(stride(
-            from: compressionPosition,
-            to: compressionPosition + positionCount * ratio,
-            by: ratio))
         var output = norm(keyValue.asType(x.dtype))
         output = DeepSeekFlashRoPE.apply(
             output,
-            positions: positions,
+            start: compressionPosition,
+            step: ratio,
             dimension: ropeHeadDimension,
             base: configuration.compressRopeTheta,
             originalSequenceLength: configuration.originalMaxPositionEmbeddings,
@@ -492,7 +487,7 @@ final class DeepSeekFlashIndexer: Module {
             ])
         query = DeepSeekFlashRoPE.apply(
             query,
-            positions: Array(startPosition ..< endPosition),
+            start: startPosition,
             dimension: configuration.ropeHeadDimension,
             base: configuration.compressRopeTheta,
             originalSequenceLength: configuration.originalMaxPositionEmbeddings,

@@ -864,14 +864,13 @@ final class TemporalIsolatedGroupNorm: Module {
         let f = x.asType(.float32)
         // group over channels only; each (frame, group) gets its own statistics
         let g = f.transposed(0, 2, 1, 3, 4).reshaped([b * t, groups, (c / groups) * h * w])
-        let mu = mean(g, axis: -1, keepDims: true)
-        let d = g - mu
-        let v = mean(d * d, axis: -1, keepDims: true)
-        let n = (d * rsqrt(v + eps)).reshaped([b, t, c, h, w]).transposed(0, 2, 1, 3, 4)
+        let n = MLXFast.layerNorm(g, eps: eps).reshaped([b, t, c, h, w]).transposed(0, 2, 1, 3, 4)
         let shape = [1, c, 1, 1, 1]
-        return (n * weight.asType(.float32).reshaped(shape)
-                  + bias.asType(.float32).reshaped(shape)).asType(x.dtype)
+        return Self.affine(n, weight.asType(.float32).reshaped(shape),
+                           bias.asType(.float32).reshaped(shape)).asType(x.dtype)
     }
+
+    private static let affine = compile { n, w, b in n * w + b }
 }
 
 /// Reflect padding on the spatial axes, causal zero padding on time.
@@ -1039,12 +1038,8 @@ final class VaeRMSNorm: Module {
     }
 
     func callAsFunction(_ x: MLXArray) -> MLXArray {
-        let f = x.asType(.float32)
-        let n = f * rsqrt(mean(f * f, axis: -1, keepDims: true) + eps)
-        if let weight {
-            return (n * weight.asType(.float32)).asType(x.dtype)
-        }
-        return n.asType(x.dtype)
+        let w = weight?.asType(.float32) ?? MLXArray.ones([x.dim(-1)], dtype: .float32)
+        return MLXFast.rmsNorm(x.asType(.float32), weight: w, eps: eps).asType(x.dtype)
     }
 }
 
@@ -1077,12 +1072,10 @@ final class VaeLayerNorm: Module {
     }
 
     func callAsFunction(_ x: MLXArray) -> MLXArray {
-        let f = x.asType(.float32)
-        let mu = mean(f, axis: -1, keepDims: true)
-        let diff = f - mu
-        let variance = mean(diff * diff, axis: -1, keepDims: true)
-        let n = diff * rsqrt(variance + eps)
-        return (n * weight.asType(.float32) + bias.asType(.float32)).asType(x.dtype)
+        MLXFast.layerNorm(
+            x.asType(.float32), weight: weight.asType(.float32),
+            bias: bias.asType(.float32), eps: eps)
+            .asType(x.dtype)
     }
 }
 
@@ -1209,7 +1202,7 @@ final class VaeFeedForward: Module {
         let innerDim = h.dim(-1) / 2
         let gate = h[0..., 0..., 0 ..< innerDim]
         let up = h[0..., 0..., innerDim...]
-        return w2(silu(gate) * up)
+        return w2(h3SwiGLU(gate, up))
     }
 }
 
