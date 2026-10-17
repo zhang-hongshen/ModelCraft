@@ -36,11 +36,11 @@ struct ChatCard: View {
         HStack {
             ZStack {
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(Color.accentColor.opacity(0.1))
+                    .fill(Color.accent.opacity(0.1))
                 
                 Image(systemName: "message.fill")
                     .font(.system(size: 16))
-                    .foregroundStyle(Color.accentColor)
+                    .foregroundStyle(Color.accent)
             }
             .frame(width: 44, height: 44)
             

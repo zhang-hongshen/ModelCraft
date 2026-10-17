@@ -156,7 +156,7 @@ extension ChatInputView {
         }
         .padding()
         .background(
-            RoundedRectangle().fill(.background)
+            RoundedRectangle().fill(.surface)
         )
     }
     
@@ -357,7 +357,7 @@ private struct ModelCraftTextEditor: NSViewRepresentable {
             for match in matches.reversed() {
                 attributed.addAttribute(
                     .foregroundColor,
-                    value: NSColor.controlAccentColor,
+                    value: NSColor(resource: .accent),
                     range: match.range)
                 attributed.insert(tokenIcon(), at: match.range.location)
             }
@@ -428,7 +428,7 @@ private struct ModelCraftTextEditor: NSViewRepresentable {
                 systemSymbolName: parent.tokenSystemImage,
                 accessibilityDescription: nil)?.withSymbolConfiguration(
                     NSImage.SymbolConfiguration(
-                        paletteColors: [.controlAccentColor]))
+                        paletteColors: [NSColor(resource: .accent)]))
             attachment.bounds = CGRect(x: 0, y: -2, width: 14, height: 14)
             attachment.lineLayoutPadding = 1
 

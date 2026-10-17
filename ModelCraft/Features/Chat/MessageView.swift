@@ -101,7 +101,7 @@ extension MessageView {
                         UserMessageContentView(message)
                             .padding()
                             .background {
-                                RoundedRectangle().fill(.quaternary)
+                                RoundedRectangle().fill(.userBubble)
                             }
                             .contextMenu {
                                 UserButtons()
@@ -268,9 +268,9 @@ private struct AssistantContentView: View {
                 case .markdown(_, let text):
                     MarkdownView(text: text, config: .modelCraft)
                         .multilineTextAlignment(.leading)
-                case .ui(_, let components?):
+                case .ui(_, let source?):
                     GenerativeUIView(
-                        components: components,
+                        source: source,
                         send: message.status == .generating ? nil : send)
                 case .ui(_, nil):
                     ProgressView()

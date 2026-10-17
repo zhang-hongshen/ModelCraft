@@ -51,7 +51,7 @@ struct ContextWindowUsageView: View {
         switch fraction {
         case 0.9...: .red
         case 0.75...: .orange
-        default: .accentColor
+        default: .accent
         }
     }
 

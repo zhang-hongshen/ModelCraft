@@ -395,7 +395,7 @@ private extension ChatView {
             }
             .background {
                 if pendingInteraction != nil {
-                    RoundedRectangle().fill(.background)
+                    RoundedRectangle().fill(.surface)
                 }
             }
 
@@ -816,7 +816,7 @@ private struct ChatCommandPalette: View {
         }
         .frame(maxHeight: 320)
         .padding(6)
-        .background(.background, in: RoundedRectangle(cornerRadius: 12))
+        .background(.surface, in: RoundedRectangle(cornerRadius: 12))
         .overlay {
             RoundedRectangle(cornerRadius: 12)
                 .stroke(.separator)
@@ -921,7 +921,7 @@ private struct ChatCommandRow: View {
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
         .background(
-            isSelected ? Color.accentColor.opacity(0.14) : Color.clear,
+            isSelected ? Color.accent.opacity(0.14) : Color.clear,
             in: RoundedRectangle(cornerRadius: 6))
     }
 }
