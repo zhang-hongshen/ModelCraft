@@ -68,7 +68,7 @@ struct TerminalView: View {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(alignment: .top, spacing: 4) {
                     Text(">")
-                        .foregroundStyle(Color.accentColor)
+                        .foregroundStyle(Color.accent)
                         .bold()
                     Text(command)
                 }

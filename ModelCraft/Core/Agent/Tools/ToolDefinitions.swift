@@ -40,9 +40,10 @@ enum ToolDefinition {
     }
 
     /// The same tools on every request, so the prompt prefix stays reusable. Project search
-    /// is added in project chats, which is fixed for the life of a chat.
+    /// is added in project chats, which is fixed for the life of a chat; connector tools change
+    /// only when the user installs or uninstalls a connector.
     static func allToolSchema(for chat: Chat?) -> [ToolSpec] {
-        var tools = allTools.map(\.schema)
+        var tools = allTools.map(\.schema) + ConnectorTool.schemas
         if let projectID = chat?.project?.persistentModelID {
             tools.append(SearchTool.searchProject(projectID: projectID).schema)
         }

@@ -32,6 +32,7 @@ struct ModelCraftApp: App {
             WindowGroup {
                 ContentView()
                     .background(.ultraThinMaterial)
+                    .tint(.accent)
                     .applyUserSettings()
                     .task {
                         HubApi.moveSystemModels(ids: ToolDefinition.modelIDs)
@@ -55,6 +56,7 @@ struct ModelCraftApp: App {
             }
             Settings {
                 SettingsView().background(.ultraThinMaterial)
+                    .tint(.accent)
                     .applyUserSettings()
                     .frame(minWidth: 560, idealWidth: 640, maxWidth: 760, minHeight: 200)
             }

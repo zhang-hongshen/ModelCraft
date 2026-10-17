@@ -36,6 +36,8 @@ struct AppNavigationView: View {
                 .tag(AppNavigationTab.modelStore)
             Label("Downloaded Models", systemImage: "shippingbox")
                 .tag(AppNavigationTab.downloadedModels)
+            Label("Connectors", systemImage: "app.connected.to.app.below.fill")
+                .tag(AppNavigationTab.connectors)
 
             ProjectSidebarSection(
                 projects: projects,

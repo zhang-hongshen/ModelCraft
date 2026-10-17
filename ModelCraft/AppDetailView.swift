@@ -21,6 +21,8 @@ struct AppDetailView: View {
             ModelStore().navigationTitle("Model Store")
         case .downloadedModels:
             DownloadedModelsView().navigationTitle("Downloaded Models")
+        case .connectors:
+            ConnectorsView().navigationTitle("Connectors")
         }
     }
 

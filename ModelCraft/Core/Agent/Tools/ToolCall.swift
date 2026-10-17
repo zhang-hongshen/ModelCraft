@@ -266,7 +266,8 @@ extension ToolCall {
         case ToolNames.executeCommand:
             !isReadOnlyCommand
         default:
-            false
+            Connector(toolName: function.name) != nil
+                && !ConnectorTool.isReadOnly(toolName: function.name)
         }
     }
 
@@ -318,7 +319,11 @@ extension ToolCall {
         case ToolNames.runAppleScript:
             return function.arguments["script"]?.stringValue
         default:
-            return nil
+            guard Connector(toolName: function.name) != nil else { return nil }
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
+            return (try? encoder.encode(function.arguments))
+                .map { String(decoding: $0, as: UTF8.self) }
         }
     }
 
@@ -614,7 +619,17 @@ extension ToolCall {
         case ToolNames.runAppleScript:
             return nativeDescription(status, running: "Running AppleScript", completed: "Ran AppleScript", failed: "AppleScript failed")
         default:
-            return String(localized: "Unknown Tool Call")
+            guard let connector = Connector(toolName: function.name) else {
+                return String(localized: "Unknown Tool Call")
+            }
+            switch status {
+            case .running:
+                return String(localized: "Using \(connector.name)")
+            case .completed:
+                return String(localized: "Used \(connector.name)")
+            case .failed:
+                return String(localized: "\(connector.name) failed")
+            }
         }
     }
 
@@ -661,7 +676,9 @@ extension ToolCall {
         case ToolNames.searchMail, ToolNames.readMail,
              ToolNames.createMailDraft: "envelope"
         case ToolNames.runAppleScript: "applescript"
-        default: "exclamationmark.triangle"
+        default:
+            Connector(toolName: function.name) == nil
+                ? "exclamationmark.triangle" : "app.connected.to.app.below.fill"
         }
     }
 }

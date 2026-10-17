@@ -157,8 +157,12 @@ enum ToolExecutor {
             case ToolNames.executeCommand:
                 reply(try await toolCall.execute(with: CommandTool.executeCommand).toolResult)
             default:
-                toolCallResult.isError = true
-                reply("Unknown tool: \(toolCall.function.name)")
+                if let connector = Connector(toolName: toolCall.function.name) {
+                    (toolCallResult, message) = try await ConnectorTool.call(toolCall, connector: connector)
+                } else {
+                    toolCallResult.isError = true
+                    reply("Unknown tool: \(toolCall.function.name)")
+                }
             }
             try Task.checkCancellation()
         } catch is CancellationError {

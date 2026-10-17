@@ -102,7 +102,7 @@ struct ImageGeneratingView: View {
                             .font(.title)
                             .fontWeight(.semibold)
                             .symbolRenderingMode(.hierarchical)
-                            .foregroundStyle(.primary, Color.accentColor)
+                            .foregroundStyle(.primary, Color.accent)
                             .minimumScaleFactor(0.35)
                             .frame(width: badge * 0.62, height: badge * 0.62)
                     }
@@ -144,8 +144,8 @@ struct ImageGeneratingView: View {
     private func accentGlow(endRadius: CGFloat, startRadius: CGFloat) -> RadialGradient {
         RadialGradient(
             colors: [
-                Color.accentColor.opacity(0.18),
-                Color.accentColor.opacity(0.05),
+                Color.accent.opacity(0.18),
+                Color.accent.opacity(0.05),
                 .clear
             ],
             center: .center,

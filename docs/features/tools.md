@@ -28,7 +28,7 @@ Every tool is exposed directly under its own name. The native-application tools 
 
 Calendar and Reminders use EventKit. Notes and Mail use `AppleScriptRunner.run`, which launches the target application in the background when it is not running and then executes `NSAppleScript` off the main thread. A script error, including Automation denial, is thrown and becomes a failed tool result; denial tells the user where to enable it in System Settings. AppleScript literals assembled from tool arguments must use `AppleScriptLiteral`; interpolating model or user strings directly into source is not allowed.
 
-Additional providers such as Shortcuts or MCP add their schemas to the fixed tool set and dispatch through `ToolExecutor`; provider-specific routing does not belong in the system prompt.
+Additional providers add their schemas to the fixed tool set and dispatch through `ToolExecutor`; provider-specific routing does not belong in the system prompt. MCP tools from installed apps are owned by [Connectors](connectors.md).
 
 ## Schema writing
 
