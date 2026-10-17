@@ -24,7 +24,26 @@
         }
       }
     },
+    "%@ failed" : {
+
+    },
+    "%@ is not accepting connections. Update %@ and allow connections from other apps in its settings." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ is not accepting connections. Update %2$@ and allow connections from other apps in its settings."
+          }
+        }
+      }
+    },
+    "%@ is not installed on this Mac." : {
+
+    },
     "%@s" : {
+
+    },
+    "%lld downloads" : {
 
     },
     "%lld items" : {
@@ -212,6 +231,9 @@
         }
       }
     },
+    "Ask to Fix" : {
+
+    },
     "Assistant" : {
       "localizations" : {
         "zh-Hans" : {
@@ -245,6 +267,12 @@
 
     },
     "Binary data (%@)" : {
+
+    },
+    "Browse and edit the keys in your Redis databases." : {
+
+    },
+    "Browse and play the movies, TV shows, and music in your media library." : {
 
     },
     "Browse Files" : {
@@ -287,6 +315,9 @@
 
     },
     "Capturing application windows" : {
+
+    },
+    "Category" : {
 
     },
     "Chat Title" : {
@@ -442,6 +473,9 @@
     "Confirm" : {
 
     },
+    "Connectors" : {
+
+    },
     "Context window usage" : {
 
     },
@@ -467,6 +501,12 @@
           }
         }
       }
+    },
+    "Couldn't Install %@" : {
+
+    },
+    "Couldn't Uninstall %@" : {
+
     },
     "Created Mail draft" : {
 
@@ -607,6 +647,9 @@
           }
         }
       }
+    },
+    "Download %@ to install its connector." : {
+
     },
     "Download Location" : {
       "localizations" : {
@@ -928,6 +971,9 @@
     "Generation Info" : {
 
     },
+    "Get %@" : {
+
+    },
     "Grid" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -999,6 +1045,15 @@
 
     },
     "Inspecting UI hierarchy" : {
+
+    },
+    "Install" : {
+
+    },
+    "Installed" : {
+
+    },
+    "Installing" : {
 
     },
     "Key press failed" : {
@@ -1254,9 +1309,6 @@
     "Next" : {
 
     },
-    "No" : {
-
-    },
     "No File Selected" : {
 
     },
@@ -1339,6 +1391,9 @@
         }
       }
     },
+    "Omni" : {
+
+    },
     "Open Settings" : {
       "localizations" : {
         "zh-Hans" : {
@@ -1370,6 +1425,9 @@
       }
     },
     "Prefill Time" : {
+
+    },
+    "Preparing download" : {
 
     },
     "Preparing..." : {
@@ -1410,6 +1468,9 @@
           }
         }
       }
+    },
+    "Put sung vocals on pitch and export the corrected audio." : {
+
     },
     "Ran a command" : {
       "localizations" : {
@@ -1608,6 +1669,9 @@
         }
       }
     },
+    "Resume Download" : {
+
+    },
     "Retry" : {
       "localizations" : {
         "zh-Hans" : {
@@ -1696,9 +1760,6 @@
     "Select Model" : {
 
     },
-    "Series" : {
-
-    },
     "Show in Finder" : {
       "localizations" : {
         "zh-Hans" : {
@@ -1708,6 +1769,9 @@
           }
         }
       }
+    },
+    "Size %@" : {
+
     },
     "Skill loading failed" : {
 
@@ -1760,6 +1824,9 @@
     "Start Voice Mode" : {
 
     },
+    "Stop Download" : {
+
+    },
     "Stopped" : {
       "localizations" : {
         "zh-Hans" : {
@@ -1779,9 +1846,6 @@
           }
         }
       }
-    },
-    "Submit" : {
-
     },
     "System" : {
       "localizations" : {
@@ -1807,7 +1871,13 @@
         }
       }
     },
+    "Text" : {
+
+    },
     "Text input failed" : {
+
+    },
+    "The `ui` block failed: %@. Rewrite it with the supported SwiftUI subset." : {
 
     },
     "The selected location already contains a models folder." : {
@@ -1832,6 +1902,9 @@
       }
     },
     "Thinking…" : {
+
+    },
+    "This interface couldn't be shown" : {
 
     },
     "This script can run shell commands with ModelCraft's permissions." : {
@@ -1898,6 +1971,9 @@
     "Unchanged" : {
 
     },
+    "Uninstall" : {
+
+    },
     "Unknown" : {
 
     },
@@ -1926,6 +2002,9 @@
 
     },
     "Updating Reminders" : {
+
+    },
+    "Used %@" : {
 
     },
     "Used only when a screenshot is needed for GUI fallback." : {
@@ -1976,6 +2055,9 @@
 
     },
     "User input received" : {
+
+    },
+    "Using %@" : {
 
     },
     "Video" : {
@@ -2128,9 +2210,6 @@
           }
         }
       }
-    },
-    "Yes" : {
-
     },
     "You" : {
       "localizations" : {
