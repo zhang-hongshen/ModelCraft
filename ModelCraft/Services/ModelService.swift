@@ -15,10 +15,11 @@ enum ModelService {
     
     private static let baseURL = "https://huggingface.co/api"
     
-    static func searchModel(keyword: String, page: Int = 0, pageSize: Int = 20) async throws -> [ModelStoreModel] {
+    static func searchModel(keyword: String, category: ModelCategory, page: Int = 0, pageSize: Int = 20) async throws -> [ModelStoreModel] {
         var parameters: [String: Any] = [
             "author": "mlx-community",
             "filter": "mlx",
+            "pipeline_tag": category.rawValue,
             "sort": "downloads",
             "direction": "-1",
             "limit": pageSize,
@@ -29,33 +30,28 @@ enum ModelService {
             parameters["search"] = keyword
         }
         
-        let models = try await AF.request(baseURL + "/models", method: .get, parameters: parameters)
+        return try await AF.request(baseURL + "/models", method: .get, parameters: parameters)
                 .validate()
                 .serializingDecodable([ModelStoreModel].self, decoder: JSONDecoder.default)
                 .value
-            
-        return try await withThrowingTaskGroup(of: ModelStoreModel.self) { group in
-            for model in models {
-                group.addTask {
-                    var newModel = model
-                    do {
-                        newModel = try await AF.request(Self.baseURL + "/models/\(model.id)", method: .get)
-                                .validate()
-                                .serializingDecodable(ModelStoreModel.self, decoder: JSONDecoder.default)
-                                .value
-                    } catch {
-                        print("size fetch failed for \(model.id)")
-                    }
-                    return newModel
-                }
-            }
-            var result: [ModelStoreModel] = []
-            for try await model in group {
-                result.append(model)
-            }
-            
-            return result
+    }
+    
+    /// The search endpoint cannot return `usedStorage`, so it is requested per model with
+    /// `expand[]=usedStorage`, which returns only that field.
+    static func fetchUsedStorage(modelID: String) async throws -> Int64 {
+        struct Response: Decodable {
+            let usedStorage: Int64
         }
+        return try await AF.request(baseURL + "/models/\(modelID)", method: .get, parameters: ["expand[]": "usedStorage"])
+                .validate()
+                .serializingDecodable(Response.self, automaticallyCancelling: true)
+                .value
+                .usedStorage
+    }
+    
+    /// Redirects to the organization's avatar image.
+    static func avatarURL(organization: String) -> URL? {
+        URL(string: baseURL + "/organizations/\(organization)/avatar?redirect=true")
     }
     
     static func downloadModel(hub: HubApi = .default, modelID: String) -> AsyncThrowingStream<Progress, Error> {

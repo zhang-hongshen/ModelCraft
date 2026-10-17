@@ -82,7 +82,7 @@ struct ModelsView: View {
                 Button(action: onSelect) {
                     HStack {
                         Image(systemName: selectedID == id ? "checkmark.circle.fill" : "circle")
-                            .foregroundStyle(selectedID == id ? Color.accentColor : Color.secondary)
+                            .foregroundStyle(selectedID == id ? Color.accent : Color.secondary)
                         Text(title)
                     }
                     .contentShape(Rectangle())

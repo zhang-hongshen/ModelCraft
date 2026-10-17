@@ -69,11 +69,11 @@ private struct AppearanceOptionButton: View {
             .frame(width: 112)
             .background {
                 RoundedRectangle(cornerRadius: 10)
-                    .fill(isSelected ? Color.accentColor.opacity(0.1) : Color.clear)
+                    .fill(isSelected ? Color.accent.opacity(0.1) : Color.clear)
             }
             .overlay {
                 RoundedRectangle(cornerRadius: 10)
-                    .strokeBorder(isSelected ? Color.accentColor : Color.secondary.opacity(0.2), lineWidth: 1)
+                    .strokeBorder(isSelected ? Color.accent : Color.secondary.opacity(0.2), lineWidth: 1)
             }
             .contentShape(RoundedRectangle(cornerRadius: 10))
         }

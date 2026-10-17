@@ -11,8 +11,10 @@ import SwiftData
 struct ModelStore: View {    
     
     @State private var viewMode: ViewMode = .list
+    @State private var category: ModelCategory = .text
     
     @State private var models: [ModelStoreModel] = []
+    @State private var sizes: [String: Int64] = [:]
     
     @State private var isLoading = false
     @State private var canLoadMore = true
@@ -23,7 +25,7 @@ struct ModelStore: View {
     private var downloadTasks: [ModelTask] = []
     
     fileprivate static let pageSize = 20
-    fileprivate static let columns = [GridItem(.adaptive(minimum: 200), spacing: 16)]
+    fileprivate static let columns = [GridItem(.adaptive(minimum: 220), spacing: 12, alignment: .top)]
     
     var body: some View {
         let downloadTasksByModelID = Dictionary(
@@ -33,17 +35,19 @@ struct ModelStore: View {
         ScrollView {
             ModelStoreContent(
                 models: models,
+                sizes: sizes,
                 downloadTasksByModelID: downloadTasksByModelID,
                 viewMode: viewMode,
                 isLoading: isLoading,
                 canLoadMore: canLoadMore,
-                onLoadMore: loadMoreModels)
+                onLoadMore: loadMoreModels,
+                onLoadSize: loadSize)
                 .padding()
                 .toolbar(content: ToolbarItems)
         }
         .searchable(text: $searchText)
         .refreshable { await reloadModels() }
-        .task(id: searchText) {
+        .task(id: SearchRequest(keyword: searchText, category: category)) {
             if !searchText.isEmpty {
                 try? await Task.sleep(for: .milliseconds(500))
             }
@@ -59,6 +63,13 @@ extension ModelStore {
     @ToolbarContentBuilder
     func ToolbarItems() -> some ToolbarContent {
         ToolbarItemGroup {
+            Picker("Category", selection: $category) {
+                ForEach(ModelCategory.allCases) { category in
+                    Text(category.title).tag(category)
+                }
+            }
+            .pickerStyle(.segmented)
+            
             Menu {
                 Picker("", selection: $viewMode) {
                     Text("as List").tag(ViewMode.list)
@@ -84,13 +95,20 @@ extension ModelStore {
     
 }
 
+private struct SearchRequest: Hashable {
+    let keyword: String
+    let category: ModelCategory
+}
+
 private struct ModelStoreContent: View {
     let models: [ModelStoreModel]
+    let sizes: [String: Int64]
     let downloadTasksByModelID: [String: ModelTask]
     let viewMode: ViewMode
     let isLoading: Bool
     let canLoadMore: Bool
     let onLoadMore: () async -> Void
+    let onLoadSize: (String) async -> Void
 
     var body: some View {
         switch viewMode {
@@ -109,17 +127,18 @@ private struct ModelStoreContent: View {
     private var rows: some View {
         if isLoading {
             ForEach(0..<ModelStore.pageSize, id: \.self) { _ in
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(Color.secondary.opacity(0.1))
-                    .frame(height: 100)
-                    .redacted(reason: .placeholder)
+                RoundedRectangle()
+                    .fill(.quaternary.opacity(0.5))
+                    .frame(height: viewMode == .grid ? 150 : 70)
             }
         } else {
             ForEach(models) { model in
                 ModelCard(
                     model: model,
+                    sizeInBytes: sizes[model.id],
                     viewMode: viewMode,
                     downloadTask: downloadTasksByModelID[model.id])
+                .task { await onLoadSize(model.id) }
             }
             if canLoadMore {
                 ProgressView()
@@ -135,6 +154,7 @@ extension ModelStore {
     func fetchModels() async throws -> [ModelStoreModel] {
         let models = try await ModelService.searchModel(
             keyword: searchText,
+            category: category,
             page: page,
             pageSize: ModelStore.pageSize)
         if models.count < ModelStore.pageSize {
@@ -152,6 +172,17 @@ extension ModelStore {
             models = try await fetchModels()
         } catch {
             
+        }
+    }
+    
+    /// Loads a size when its card appears; sizes are kept across reloads of this view.
+    func loadSize(for modelID: String) async {
+        guard sizes[modelID] == nil else { return }
+        do {
+            sizes[modelID] = try await ModelService.fetchUsedStorage(modelID: modelID)
+        } catch {
+            guard !Task.isCancelled else { return }
+            print("size fetch failed for \(modelID): \(error)")
         }
     }
     
