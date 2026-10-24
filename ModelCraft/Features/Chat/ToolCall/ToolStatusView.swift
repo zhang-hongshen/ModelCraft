@@ -15,10 +15,28 @@ struct ToolStatusView: View {
     var body: some View {
 
         HStack {
-            Image(systemName: toolCall.icon)
+            ToolCallIcon(toolCall: toolCall)
             Text(toolCall.localizedDescription(status))
         }
         .foregroundStyle(.secondary)
+    }
+}
+
+/// A connector's call shows the app's own icon, so it reads as using that app.
+struct ToolCallIcon: View {
+    let toolCall: ToolCall
+
+    @ScaledMetric(relativeTo: .body) private var appIconSize = 16
+
+    var body: some View {
+        if let connector = Connector(toolName: toolCall.function.name) {
+            Image(connector.iconName)
+                .resizable()
+                .frame(width: appIconSize, height: appIconSize)
+                .accessibilityHidden(true)
+        } else {
+            Image(systemName: toolCall.icon)
+        }
     }
 }
 

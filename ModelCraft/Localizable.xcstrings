@@ -40,6 +40,25 @@
     "%@ is not installed on this Mac." : {
 
     },
+    "%@, moved to the next workday on days off" : {
+
+    },
+    "%@, moved to the previous workday on days off" : {
+
+    },
+    "%@, until %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@, until %2$@"
+          }
+        }
+      }
+    },
+    "%@, workdays only" : {
+
+    },
     "%@s" : {
 
     },
@@ -56,6 +75,18 @@
 
     },
     ">" : {
+
+    },
+    "A weekday is not valid." : {
+
+    },
+    "A workday position must be from 1 through 23 or from -1 through -23." : {
+
+    },
+    "A workday position needs a weekly, monthly, or yearly schedule." : {
+
+    },
+    "A workday position replaces weekdays and days of the month; choose one or the other." : {
 
     },
     "Accessibility" : {
@@ -152,6 +183,9 @@
         }
       }
     },
+    "An hourly schedule can only skip days that are not workdays, not move to another day." : {
+
+    },
     "Appearance" : {
       "localizations" : {
         "zh-Hans" : {
@@ -233,6 +267,26 @@
     },
     "Ask to Fix" : {
 
+    },
+    "Asked a question" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "提出了问题"
+          }
+        }
+      }
+    },
+    "Asked questions" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "提出了问题"
+          }
+        }
+      }
     },
     "Assistant" : {
       "localizations" : {
@@ -320,6 +374,12 @@
     "Category" : {
 
     },
+    "Changed a scheduled task" : {
+
+    },
+    "Changed scheduled tasks" : {
+
+    },
     "Chat Title" : {
       "localizations" : {
         "zh-Hans" : {
@@ -340,6 +400,9 @@
         }
       }
     },
+    "Checked scheduled tasks" : {
+
+    },
     "Checked When App Runs" : {
       "localizations" : {
         "zh-Hans" : {
@@ -349,6 +412,12 @@
           }
         }
       }
+    },
+    "Checked workdays" : {
+
+    },
+    "Checking workdays" : {
+
     },
     "Choose File" : {
 
@@ -381,6 +450,12 @@
 
     },
     "Choose Project" : {
+
+    },
+    "Chosen days" : {
+
+    },
+    "Chosen weekdays" : {
 
     },
     "Click failed at (%lf, %lf)" : {
@@ -426,6 +501,9 @@
 
     },
     "Close File Preview" : {
+
+    },
+    "Coming Up" : {
 
     },
     "Command failed" : {
@@ -482,6 +560,16 @@
     "Context window:" : {
 
     },
+    "Controlled the computer" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "操作了电脑"
+          }
+        }
+      }
+    },
     "Copied" : {
       "localizations" : {
         "zh-Hans" : {
@@ -508,8 +596,71 @@
     "Couldn't Uninstall %@" : {
 
     },
+    "Create" : {
+
+    },
+    "Created a video" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "生成了视频"
+          }
+        }
+      }
+    },
+    "Created an image" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "生成了图片"
+          }
+        }
+      }
+    },
+    "Created audio" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "生成了音频"
+          }
+        }
+      }
+    },
+    "Created audio clips" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "生成了音频"
+          }
+        }
+      }
+    },
+    "Created images" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "生成了图片"
+          }
+        }
+      }
+    },
     "Created Mail draft" : {
 
+    },
+    "Created videos" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "生成了视频"
+          }
+        }
+      }
     },
     "Creating audio" : {
 
@@ -540,6 +691,9 @@
     "Custom" : {
 
     },
+    "Daily" : {
+
+    },
     "Dark" : {
       "localizations" : {
         "zh-Hans" : {
@@ -549,6 +703,27 @@
           }
         }
       }
+    },
+    "Date" : {
+
+    },
+    "day %@" : {
+
+    },
+    "Day Off" : {
+
+    },
+    "Days" : {
+
+    },
+    "Days of the month can be chosen only for a monthly or yearly schedule." : {
+
+    },
+    "Days of the month must be from 1 through 31, or -1 for the last day." : {
+
+    },
+    "Days Off" : {
+
     },
     "Decoding image..." : {
       "localizations" : {
@@ -612,10 +787,36 @@
     "Deleted %@" : {
 
     },
+    "Deleted a file" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "删除了文件"
+          }
+        }
+      }
+    },
+    "Deleted a scheduled task" : {
+
+    },
+    "Deleted files" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "删除了文件"
+          }
+        }
+      }
+    },
     "Deleting" : {
 
     },
     "Deleting %@" : {
+
+    },
+    "Deleting a scheduled task" : {
 
     },
     "Deleting..." : {
@@ -638,6 +839,9 @@
         }
       }
     },
+    "Done" : {
+
+    },
     "Download" : {
       "localizations" : {
         "zh-Hans" : {
@@ -650,16 +854,6 @@
     },
     "Download %@ to install its connector." : {
 
-    },
-    "Download Location" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "下载位置"
-          }
-        }
-      }
     },
     "Downloaded" : {
       "localizations" : {
@@ -721,6 +915,9 @@
     "Dragging pointer" : {
 
     },
+    "Each run starts a new chat with this prompt. Nobody is present during a run, so questions go unanswered and actions that need approval are not performed." : {
+
+    },
     "Edit" : {
       "localizations" : {
         "zh-Hans" : {
@@ -737,24 +934,22 @@
     "Edited %@" : {
 
     },
-    "Edited %lld files" : {
-      "extractionState" : "stale",
+    "Edited a file" : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "编辑了%1$lld个文件"
+            "value" : "编辑了文件"
           }
         }
       }
     },
-    "Edited one file" : {
-      "extractionState" : "stale",
+    "Edited files" : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "编辑了 1 个文件"
+            "value" : "编辑了文件"
           }
         }
       }
@@ -768,33 +963,120 @@
     "Element click failed" : {
 
     },
+    "Enabled" : {
+
+    },
+    "End" : {
+
+    },
     "End Voice Mode" : {
+
+    },
+    "Ends" : {
 
     },
     "Enter your answer" : {
 
     },
-    "Executed %lld commands" : {
-      "extractionState" : "stale",
+    "Every %lld day(s)" : {
+
+    },
+    "Every %lld days at %@" : {
       "localizations" : {
-        "zh-Hans" : {
+        "en" : {
           "stringUnit" : {
-            "state" : "translated",
-            "value" : "执行了%1$lld个命令"
+            "state" : "new",
+            "value" : "Every %1$lld days at %2$@"
           }
         }
       }
     },
-    "Executed one command" : {
-      "extractionState" : "stale",
+    "Every %lld hour(s)" : {
+
+    },
+    "Every %lld hours" : {
+
+    },
+    "Every %lld month(s)" : {
+
+    },
+    "Every %lld months on %@ at %@" : {
       "localizations" : {
-        "zh-Hans" : {
+        "en" : {
           "stringUnit" : {
-            "state" : "translated",
-            "value" : "执行了 1 个命令"
+            "state" : "new",
+            "value" : "Every %1$lld months on %2$@ at %3$@"
           }
         }
       }
+    },
+    "Every %lld week(s)" : {
+
+    },
+    "Every %lld weeks on %@ at %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Every %1$lld weeks on %2$@ at %3$@"
+          }
+        }
+      }
+    },
+    "Every %lld year(s)" : {
+
+    },
+    "Every %lld years in %@ on %@ at %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Every %1$lld years in %2$@ on %3$@ at %4$@"
+          }
+        }
+      }
+    },
+    "Every day at %@" : {
+
+    },
+    "Every hour" : {
+
+    },
+    "Every month on %@ at %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Every month on %1$@ at %2$@"
+          }
+        }
+      }
+    },
+    "Every week on %@ at %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Every week on %1$@ at %2$@"
+          }
+        }
+      }
+    },
+    "Every year in %@ on %@ at %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Every year in %1$@ on %2$@ at %3$@"
+          }
+        }
+      }
+    },
+    "Exception" : {
+
+    },
+    "Exceptions" : {
+
     },
     "Failed" : {
       "localizations" : {
@@ -900,8 +1182,28 @@
         }
       }
     },
+    "Fetched a web page" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "获取了网页"
+          }
+        }
+      }
+    },
     "Fetched web page" : {
 
+    },
+    "Fetched web pages" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "获取了网页"
+          }
+        }
+      }
     },
     "Fetching web page" : {
 
@@ -920,6 +1222,9 @@
       }
     },
     "Folder" : {
+
+    },
+    "Frequency" : {
 
     },
     "Full screenshot captured" : {
@@ -995,6 +1300,12 @@
         }
       }
     },
+    "Holiday Region" : {
+
+    },
+    "Hourly" : {
+
+    },
     "How can I help you today?" : {
       "localizations" : {
         "zh-Hans" : {
@@ -1050,13 +1361,13 @@
     "Install" : {
 
     },
-    "Installed" : {
-
-    },
     "Installing" : {
 
     },
     "Key press failed" : {
+
+    },
+    "Kind" : {
 
     },
     "Language" : {
@@ -1068,6 +1379,9 @@
           }
         }
       }
+    },
+    "Last" : {
+
     },
     "Light" : {
       "localizations" : {
@@ -1100,6 +1414,26 @@
         }
       }
     },
+    "Listed a directory" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "列出了目录"
+          }
+        }
+      }
+    },
+    "Listed directories" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "列出了目录"
+          }
+        }
+      }
+    },
     "Listed directory" : {
 
     },
@@ -1112,8 +1446,31 @@
     "Listing running applications" : {
 
     },
+    "Load tools when needed" : {
+
+    },
+    "Loaded a skill" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "加载了技能"
+          }
+        }
+      }
+    },
     "Loaded skill %@" : {
 
+    },
+    "Loaded skills" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "加载了技能"
+          }
+        }
+      }
     },
     "Loading image model..." : {
       "localizations" : {
@@ -1186,7 +1543,6 @@
       }
     },
     "Model" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -1237,6 +1593,21 @@
         }
       }
     },
+    "Monthly" : {
+
+    },
+    "Months" : {
+
+    },
+    "Months can be chosen only for a yearly schedule." : {
+
+    },
+    "Months must be from 1 through 12." : {
+
+    },
+    "More" : {
+
+    },
     "Move failed" : {
 
     },
@@ -1249,6 +1620,12 @@
           }
         }
       }
+    },
+    "Move to the next workday" : {
+
+    },
+    "Move to the previous workday" : {
+
     },
     "Moved to (%lf, %lf)" : {
       "localizations" : {
@@ -1306,13 +1683,22 @@
         }
       }
     },
+    "New Scheduled Task" : {
+
+    },
     "Next" : {
+
+    },
+    "Next run %@" : {
 
     },
     "No File Selected" : {
 
     },
     "No Folder" : {
+
+    },
+    "No holidays or exceptions in the coming months" : {
 
     },
     "No messages" : {
@@ -1334,8 +1720,13 @@
     "No reference files added yet" : {
 
     },
+    "No Scheduled Tasks" : {
+
+    },
+    "No upcoming runs" : {
+
+    },
     "None" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -1381,6 +1772,12 @@
     "Notes update failed" : {
 
     },
+    "Notifications for ModelCraft are turned off in System Settings." : {
+
+    },
+    "Notify when scheduled tasks finish" : {
+
+    },
     "OK" : {
       "localizations" : {
         "zh-Hans" : {
@@ -1394,6 +1791,15 @@
     "Omni" : {
 
     },
+    "On" : {
+
+    },
+    "Once" : {
+
+    },
+    "Once on %@" : {
+
+    },
     "Open Settings" : {
       "localizations" : {
         "zh-Hans" : {
@@ -1403,6 +1809,12 @@
           }
         }
       }
+    },
+    "Open System Settings" : {
+
+    },
+    "Paused" : {
+
     },
     "Permissions" : {
       "localizations" : {
@@ -1446,6 +1858,9 @@
     "Pressing a key" : {
 
     },
+    "Project" : {
+
+    },
     "Project Documentation" : {
       "localizations" : {
         "zh-Hans" : {
@@ -1469,6 +1884,12 @@
         }
       }
     },
+    "Prompt" : {
+
+    },
+    "Public holidays for %@ aren't available yet. Until they load, those years follow the weekend only." : {
+
+    },
     "Put sung vocals on pitch and export the corrected audio." : {
 
     },
@@ -1482,8 +1903,58 @@
         }
       }
     },
+    "Ran a script" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "运行了脚本"
+          }
+        }
+      }
+    },
+    "Ran a search" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "进行了搜索"
+          }
+        }
+      }
+    },
     "Ran AppleScript" : {
 
+    },
+    "Ran commands" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已执行命令"
+          }
+        }
+      }
+    },
+    "Ran scripts" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "运行了脚本"
+          }
+        }
+      }
+    },
+    "Ran searches" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "进行了搜索"
+          }
+        }
+      }
     },
     "Read" : {
       "localizations" : {
@@ -1498,13 +1969,12 @@
     "Read %@" : {
 
     },
-    "Read %lld files" : {
-      "extractionState" : "stale",
+    "Read a file" : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "读取了%1$lld个文件"
+            "value" : "读取了文件"
           }
         }
       }
@@ -1512,24 +1982,26 @@
     "Read Calendar" : {
 
     },
+    "Read files" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "读取了文件"
+          }
+        }
+      }
+    },
     "Read Mail" : {
 
     },
     "Read Notes" : {
 
     },
-    "Read one file" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "读取了 1 个文件"
-          }
-        }
-      }
-    },
     "Read Reminders" : {
+
+    },
+    "Read scheduled tasks" : {
 
     },
     "Reading" : {
@@ -1555,6 +2027,15 @@
 
     },
     "Reading Reminders" : {
+
+    },
+    "Reading scheduled tasks" : {
+
+    },
+    "Reading scheduled tasks failed" : {
+
+    },
+    "Reason (optional)" : {
 
     },
     "Recents" : {
@@ -1602,6 +2083,9 @@
         }
       }
     },
+    "Remove Exception" : {
+
+    },
     "Remove Folder" : {
 
     },
@@ -1637,6 +2121,9 @@
           }
         }
       }
+    },
+    "Repeat" : {
+
     },
     "Request Access" : {
       "localizations" : {
@@ -1682,6 +2169,15 @@
         }
       }
     },
+    "Run a prompt automatically on a schedule, or ask the assistant to schedule one." : {
+
+    },
+    "Run anyway" : {
+
+    },
+    "Run Now" : {
+
+    },
     "Running a command" : {
       "localizations" : {
         "zh-Hans" : {
@@ -1693,6 +2189,9 @@
       }
     },
     "Running AppleScript" : {
+
+    },
+    "Runs" : {
 
     },
     "Save" : {
@@ -1714,6 +2213,24 @@
           }
         }
       }
+    },
+    "Scheduled a task" : {
+
+    },
+    "Scheduled task deletion failed" : {
+
+    },
+    "Scheduled task update failed" : {
+
+    },
+    "Scheduled Tasks" : {
+
+    },
+    "Scheduling a task" : {
+
+    },
+    "Scheduling failed" : {
+
     },
     "Screen Recording" : {
       "localizations" : {
@@ -1745,10 +2262,16 @@
     "Scrolling" : {
 
     },
+    "Search the pages, databases, and notes in your knowledge base." : {
+
+    },
     "Searched map for %@" : {
 
     },
     "Searched project for %@" : {
+
+    },
+    "Searched tools for %@" : {
 
     },
     "Searching map for %@" : {
@@ -1757,7 +2280,13 @@
     "Searching project for %@" : {
 
     },
+    "Searching tools for %@" : {
+
+    },
     "Select Model" : {
+
+    },
+    "Show a notification when a scheduled task's run completes or fails. Click it to open the run's chat." : {
 
     },
     "Show in Finder" : {
@@ -1821,7 +2350,16 @@
         }
       }
     },
+    "Start each chat with essential tools only, and let the model load others when a task needs them. This keeps prompts shorter and responses faster." : {
+
+    },
     "Start Voice Mode" : {
+
+    },
+    "Starts" : {
+
+    },
+    "Stop" : {
 
     },
     "Stop Download" : {
@@ -1880,15 +2418,35 @@
     "The `ui` block failed: %@. Rewrite it with the supported SwiftUI subset." : {
 
     },
-    "The selected location already contains a models folder." : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "所选位置已包含 models 文件夹。"
-          }
-        }
-      }
+    "The end must be after the start." : {
+
+    },
+    "the first workday" : {
+
+    },
+    "The interval must be from 1 through 1000." : {
+
+    },
+    "the last day" : {
+
+    },
+    "the last workday" : {
+
+    },
+    "The model %@ is not downloaded." : {
+
+    },
+    "The run finished." : {
+
+    },
+    "the second workday" : {
+
+    },
+    "the second-to-last workday" : {
+
+    },
+    "the third workday" : {
+
     },
     "Thinking" : {
       "extractionState" : "stale",
@@ -1920,6 +2478,9 @@
     "Thought" : {
 
     },
+    "Time" : {
+
+    },
     "To: %@\nSubject: %@" : {
       "localizations" : {
         "en" : {
@@ -1930,7 +2491,30 @@
         }
       }
     },
+    "Took a screenshot" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "截取了屏幕"
+          }
+        }
+      }
+    },
+    "Took screenshots" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "截取了屏幕"
+          }
+        }
+      }
+    },
     "Tool" : {
+
+    },
+    "Tool search failed" : {
 
     },
     "Type Anything" : {
@@ -1955,16 +2539,6 @@
     "Unable to create an image generator with model ID '%@'." : {
 
     },
-    "Unable to Move Models" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "无法迁移模型"
-          }
-        }
-      }
-    },
     "Unable to open the image file." : {
 
     },
@@ -1986,6 +2560,12 @@
     "Unsupported audio type" : {
 
     },
+    "Upcoming Runs" : {
+
+    },
+    "Updated a scheduled task" : {
+
+    },
     "Updated Calendar" : {
 
     },
@@ -1993,6 +2573,12 @@
 
     },
     "Updated Reminders" : {
+
+    },
+    "Updated workdays" : {
+
+    },
+    "Updating a scheduled task" : {
 
     },
     "Updating Calendar" : {
@@ -2004,8 +2590,31 @@
     "Updating Reminders" : {
 
     },
+    "Updating workdays" : {
+
+    },
     "Used %@" : {
 
+    },
+    "Used an app" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "使用了应用"
+          }
+        }
+      }
+    },
+    "Used apps" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "使用了应用"
+          }
+        }
+      }
     },
     "Used only when a screenshot is needed for GUI fallback." : {
       "extractionState" : "stale",
@@ -2132,6 +2741,39 @@
     "Web fetch failed" : {
 
     },
+    "Weekdays" : {
+
+    },
+    "Weekdays can be chosen only for a weekly schedule." : {
+
+    },
+    "Weekly" : {
+
+    },
+    "What should the assistant do each time?" : {
+
+    },
+    "Workday" : {
+
+    },
+    "workday %lld" : {
+
+    },
+    "workday %lld from the end" : {
+
+    },
+    "Workday check failed" : {
+
+    },
+    "Workday update failed" : {
+
+    },
+    "Workdays" : {
+
+    },
+    "Workdays are the days outside the weekend, adjusted for the region's public holidays and, in mainland China, its makeup workdays. Exceptions take precedence over both." : {
+
+    },
     "Working Folder" : {
 
     },
@@ -2210,6 +2852,9 @@
           }
         }
       }
+    },
+    "Yearly" : {
+
     },
     "You" : {
       "localizations" : {

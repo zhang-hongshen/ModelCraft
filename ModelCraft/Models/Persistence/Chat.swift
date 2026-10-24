@@ -22,6 +22,9 @@ class Chat {
     var lastSummaryIndex: Int = 0
 
     var project: Project? = nil
+
+    /// The schedule whose run created this chat.
+    var schedule: Schedule? = nil
     
     @Relationship(deleteRule: .cascade, inverse: \Message.chat)
     var messages: [Message] = []
@@ -99,6 +102,13 @@ enum ChatContentBuilder {
         }
 
         for message in messages {
+            // While the model works out its next step, the group stays open and shows
+            // that it is still working instead of ending in a separate spinner.
+            if message.isWaitingForModelResponse, pendingToolCalls.count > 1 {
+                pendingToolCalls.append(message)
+                continue
+            }
+
             guard case .tool = message.role,
                   let toolCall = message.toolCall else {
                 flushToolCalls()
@@ -222,79 +232,100 @@ struct ToolCallGroupSummary {
             ?? message.toolCall?.compactDescription(.running)
     }
 
-    var fileReadCount: Int {
-        count(named: ToolNames.readFile)
+    var isWaitingForModelResponse: Bool {
+        messages.last?.isWaitingForModelResponse ?? false
     }
 
-    private var patchFileChanges: [PatchFileChange] {
-        messages.flatMap { $0.toolCall?.patchFileChanges ?? [] }
+    /// What the group is doing now while it is live, and what it did once it is done.
+    /// Between tool calls the latest step stays in the title until the next one starts.
+    var title: String {
+        if let activeToolDescription {
+            return activeToolDescription
+        }
+        if isWaitingForModelResponse,
+           let message = messages.last(where: { $0.toolCall != nil }),
+           let toolCall = message.toolCall {
+            return toolCall.compactDescription(message.toolCallStatus)
+        }
+        return completedDescription
     }
 
-    var fileEditCount: Int {
-        patchFileChanges.filter { $0.action == .edit }.count
-    }
-
-    var fileDeleteCount: Int {
-        patchFileChanges.filter { $0.action == .delete }.count
-    }
-
-    var commandCount: Int {
-        count(named: ToolNames.executeCommand)
-    }
-
+    /// One phrase per kind of work, in the order it first happened. Only one versus
+    /// several is told apart; counts are left out.
     var completedDescription: String {
-        var descriptions: [String] = []
-        if fileEditCount > 0 {
-            descriptions.append(countDescription(
-                fileEditCount,
-                singular: "Edited one file",
-                plural: "Edited %lld files"
-            ))
-        }
-        if fileDeleteCount > 0 {
-            descriptions.append(countDescription(
-                fileDeleteCount,
-                singular: "Deleted one file",
-                plural: "Deleted %lld files"
-            ))
-        }
-        if fileReadCount > 0 {
-            descriptions.append(countDescription(
-                fileReadCount,
-                singular: "Read one file",
-                plural: "Read %lld files"
-            ))
-        }
-        if commandCount > 0 {
-            descriptions.append(countDescription(
-                commandCount,
-                singular: "Executed one command",
-                plural: "Executed %lld commands"
-            ))
+        var activities: [ToolCallActivity] = []
+        var occurrences: [ToolCallActivity: Set<String>] = [:]
+        for message in messages {
+            guard let toolCall = message.toolCall else { continue }
+            for (activity, occurrence) in toolCall.activities(id: message.id.uuidString) {
+                if occurrences[activity] == nil {
+                    activities.append(activity)
+                }
+                occurrences[activity, default: []].insert(occurrence)
+            }
         }
 
+        let descriptions = activities.enumerated().map { index, activity in
+            let description = activity.description(isPlural: occurrences[activity, default: []].count > 1)
+            // Later phrases continue the sentence that the first one starts.
+            return index == 0 ? description : description.prefix(1).lowercased() + description.dropFirst()
+        }
         guard !descriptions.isEmpty else {
             return String(localized: "Completed")
         }
         return ListFormatter.localizedString(byJoining: descriptions)
     }
+}
 
-    private func count(named name: String) -> Int {
-        messages.reduce(into: 0) { count, message in
-            if message.toolCall?.function.name == name {
-                count += 1
-            }
-        }
-    }
+/// A kind of work a tool call does, as the summary of a tool call group names it.
+enum ToolCallActivity: Hashable {
+    case editFile, deleteFile, readFile, listDirectory
+    case runCommand, runScript
+    case search, fetchWebPage
+    case useApp
+    case controlComputer, takeScreenshot
+    case createImage, createVideo, createAudio
+    case loadSkill, askQuestion
+    case checkSchedule, changeSchedule
 
-    private func countDescription(_ count: Int, singular: String, plural: String) -> String {
-        if count == 1 {
-            return String(localized: String.LocalizationValue(singular))
+    func description(isPlural: Bool) -> String {
+        let resource: LocalizedStringResource = switch (self, isPlural) {
+        case (.editFile, false): "Edited a file"
+        case (.editFile, true): "Edited files"
+        case (.deleteFile, false): "Deleted a file"
+        case (.deleteFile, true): "Deleted files"
+        case (.readFile, false): "Read a file"
+        case (.readFile, true): "Read files"
+        case (.listDirectory, false): "Listed a directory"
+        case (.listDirectory, true): "Listed directories"
+        case (.runCommand, false): "Ran a command"
+        case (.runCommand, true): "Ran commands"
+        case (.runScript, false): "Ran a script"
+        case (.runScript, true): "Ran scripts"
+        case (.search, false): "Ran a search"
+        case (.search, true): "Ran searches"
+        case (.fetchWebPage, false): "Fetched a web page"
+        case (.fetchWebPage, true): "Fetched web pages"
+        case (.useApp, false): "Used an app"
+        case (.useApp, true): "Used apps"
+        case (.controlComputer, _): "Controlled the computer"
+        case (.takeScreenshot, false): "Took a screenshot"
+        case (.takeScreenshot, true): "Took screenshots"
+        case (.createImage, false): "Created an image"
+        case (.createImage, true): "Created images"
+        case (.createVideo, false): "Created a video"
+        case (.createVideo, true): "Created videos"
+        case (.createAudio, false): "Created audio"
+        case (.createAudio, true): "Created audio clips"
+        case (.loadSkill, false): "Loaded a skill"
+        case (.loadSkill, true): "Loaded skills"
+        case (.askQuestion, false): "Asked a question"
+        case (.askQuestion, true): "Asked questions"
+        case (.checkSchedule, _): "Checked scheduled tasks"
+        case (.changeSchedule, false): "Changed a scheduled task"
+        case (.changeSchedule, true): "Changed scheduled tasks"
         }
-        return String(
-            format: String(localized: String.LocalizationValue(plural)),
-            Int64(count)
-        )
+        return String(localized: resource)
     }
 }
 

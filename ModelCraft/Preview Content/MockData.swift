@@ -150,7 +150,7 @@ extension SwiftData.ModelContainer {
     static var preview: SwiftData.ModelContainer = {
         let schema = Schema([
             Message.self, Chat.self, ModelTask.self,
-            Project.self,
+            Project.self, Schedule.self, WorkdayException.self,
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
 
@@ -168,7 +168,7 @@ struct PreviewEnvironment: PreviewModifier {
     static func makeSharedContext() async throws -> SwiftData.ModelContainer {
         let container = try SwiftData.ModelContainer(for:
                                             Message.self, Chat.self, ModelTask.self,
-                                           Project.self,
+                                           Project.self, Schedule.self, WorkdayException.self,
                                            configurations: .init(isStoredInMemoryOnly: true))
         
         let context = container.mainContext
@@ -188,6 +188,9 @@ struct PreviewEnvironment: PreviewModifier {
             .environment(SpeechManager())
             .environment(GlobalStore())
             .environment(LocalModelStore(models: LocalModel.previews))
+            .environment(Scheduler(
+                localModelStore: LocalModelStore(models: LocalModel.previews),
+                globalStore: GlobalStore()))
             .environment(UserSettings())
             .environment(STTService())
             .environment(TTSService())

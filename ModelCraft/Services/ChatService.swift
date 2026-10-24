@@ -26,10 +26,14 @@ final class ChatService {
 
     private static let compressionTrigger = 0.75
 
-    init() {
+    /// An unattended service runs with nobody present, as scheduled runs do: questions and
+    /// actions that need approval fail instead of waiting.
+    init(isUnattended: Bool = false) {
         let interactionCoordinator = UserInteractionCoordinator()
         self.interactionCoordinator = interactionCoordinator
-        self.executor = AgentExecutor(interactionCoordinator: interactionCoordinator)
+        self.executor = AgentExecutor(
+            interactionCoordinator: interactionCoordinator,
+            isUnattended: isUnattended)
     }
 
     private func cancelCurrentGeneration() async {

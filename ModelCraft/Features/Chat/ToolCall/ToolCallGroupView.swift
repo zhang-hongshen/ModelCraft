@@ -39,7 +39,7 @@ struct ToolCallGroupView: View {
             .padding(.top, 8)
             .frame(maxWidth: .infinity, alignment: .leading)
         } label: {
-            Text(summary.activeToolDescription ?? summary.completedDescription)
+            Text(summary.title)
                 .foregroundStyle(.secondary)
                 .fontWeight(.medium)
                 .multilineTextAlignment(.leading)

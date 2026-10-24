@@ -14,8 +14,7 @@ import MLXLMCommon
 extension HubApi {
 
     static var downloadBaseDirectory: URL {
-        UserDefaults.standard.url(forKey: UserDefaults.modelDownloadBaseDirectory)
-            ?? UserDefaultSettings.modelDownloadBaseDirectory
+        UserDefaultSettings.modelDownloadBaseDirectory
     }
 
     static var modelsDirectory: URL {

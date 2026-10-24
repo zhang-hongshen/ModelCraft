@@ -71,10 +71,6 @@
 		7078AB102F4D5AEB00711940 /* Alamofire in Frameworks */ = {isa = PBXBuildFile; productRef = 7078AB0F2F4D5AEB00711940 /* Alamofire */; };
 		7078AB122F4D5B6100711940 /* Data+.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7078AB112F4D5B5F00711940 /* Data+.swift */; };
 		7078AB142F4EDE9900711940 /* ToolDefinitions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7078AB132F4EDE9600711940 /* ToolDefinitions.swift */; };
-		70C0FF0330C0FF0300C0FF03 /* MCP in Frameworks */ = {isa = PBXBuildFile; productRef = 70C0FF0230C0FF0200C0FF02 /* MCP */; };
-		70C0FF1230C0FF1200C0FF12 /* Connector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70C0FF1130C0FF1100C0FF11 /* Connector.swift */; };
-		70C0FF1430C0FF1400C0FF14 /* ConnectorTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70C0FF1330C0FF1300C0FF13 /* ConnectorTool.swift */; };
-		70C0FF1630C0FF1600C0FF16 /* ConnectorsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70C0FF1530C0FF1500C0FF15 /* ConnectorsView.swift */; };
 		7078AB162F4F7C3800711940 /* JSONValue+.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7078AB152F4F7C3500711940 /* JSONValue+.swift */; };
 		7078AB342BB514A9004B3819 /* ModelTaskView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7078AB332BB514A9004B3819 /* ModelTaskView.swift */; };
 		708032EC2F93F11300E63074 /* AudioPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 708032EB2F93F11000E63074 /* AudioPlayer.swift */; };
@@ -99,6 +95,7 @@
 		70AA101430AA101400000014 /* PermissionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70AA100430AA100400000004 /* PermissionsView.swift */; };
 		70AB201130AB201100000011 /* TTSService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70AB200130AB200100000001 /* TTSService.swift */; };
 		70AB301130AB301100000011 /* VoiceAudioEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70AB300130AB300100000001 /* VoiceAudioEngine.swift */; };
+		70AC0002AC0002AC0002AC02 /* AppIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = 70AC0001AC0001AC0001AC01 /* AppIcon.icon */; };
 		70AC101130AC101100000011 /* GenerativeUIParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70AC100130AC100100000001 /* GenerativeUIParser.swift */; };
 		70AC101230AC101200000012 /* GenerativeUIView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70AC100230AC100200000002 /* GenerativeUIView.swift */; };
 		70AC101330AC101300000013 /* GenerativeUIInterpreter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70AC100330AC100300000003 /* GenerativeUIInterpreter.swift */; };
@@ -127,6 +124,10 @@
 		70C0DE4C30C4A00100C0DE4C /* TreeSitterRust in Frameworks */ = {isa = PBXBuildFile; productRef = 70C0DE3930C4A00100C0DE39 /* TreeSitterRust */; };
 		70C0DE4D30C4A00100C0DE4D /* TreeSitterTSX in Frameworks */ = {isa = PBXBuildFile; productRef = 70C0DE3A30C4A00100C0DE3A /* TreeSitterTSX */; };
 		70C0DE4E30C4A00100C0DE4E /* TreeSitterTypeScript in Frameworks */ = {isa = PBXBuildFile; productRef = 70C0DE3B30C4A00100C0DE3B /* TreeSitterTypeScript */; };
+		70C0FF0330C0FF0300C0FF03 /* MCP in Frameworks */ = {isa = PBXBuildFile; productRef = 70C0FF0230C0FF0200C0FF02 /* MCP */; };
+		70C0FF1230C0FF1200C0FF12 /* Connector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70C0FF1130C0FF1100C0FF11 /* Connector.swift */; };
+		70C0FF1430C0FF1400C0FF14 /* ConnectorTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70C0FF1330C0FF1300C0FF13 /* ConnectorTool.swift */; };
+		70C0FF1630C0FF1600C0FF16 /* ConnectorsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70C0FF1530C0FF1500C0FF15 /* ConnectorsView.swift */; };
 		70C2156E2FB99E5D00DCA77C /* HubApi+.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70C2156D2FB99E5900DCA77C /* HubApi+.swift */; };
 		70C215782FBAB65900DCA77C /* example.png in Resources */ = {isa = PBXBuildFile; fileRef = 70C215772FBAB65900DCA77C /* example.png */; };
 		70C2157D2FBAB77700DCA77C /* example.mov in Resources */ = {isa = PBXBuildFile; fileRef = 70C215792FBAB77700DCA77C /* example.mov */; };
@@ -151,7 +152,6 @@
 		70CE60682BAD2D4500A2D0B0 /* ModelCraftApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70CE60672BAD2D4500A2D0B0 /* ModelCraftApp.swift */; };
 		70CE606A2BAD2D4500A2D0B0 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70CE60692BAD2D4500A2D0B0 /* ContentView.swift */; };
 		70CE606E2BAD2D4600A2D0B0 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 70CE606D2BAD2D4600A2D0B0 /* Assets.xcassets */; };
-		70AC0002AC0002AC0002AC02 /* AppIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = 70AC0001AC0001AC0001AC01 /* AppIcon.icon */; };
 		70CE60722BAD2D4600A2D0B0 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 70CE60712BAD2D4600A2D0B0 /* Preview Assets.xcassets */; };
 		70CE60862BAD2D4700A2D0B0 /* ModelCraftUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70CE60852BAD2D4700A2D0B0 /* ModelCraftUITests.swift */; };
 		70CE60882BAD2D4700A2D0B0 /* ModelCraftUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70CE60872BAD2D4700A2D0B0 /* ModelCraftUITestsLaunchTests.swift */; };
@@ -185,6 +185,13 @@
 		70FE039F2F13EFA20061CCEB /* ChatService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70FE039E2F13EF9D0061CCEB /* ChatService.swift */; };
 		91B50E0C0B834320A0205002 /* ModelsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91B50E0C0B834320A0205001 /* ModelsView.swift */; };
 		91B50E0C0B834320A0205004 /* StorageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91B50E0C0B834320A0205003 /* StorageView.swift */; };
+		70D1A0022FD1A00200D1A002 /* Schedule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70D1A0012FD1A00100D1A001 /* Schedule.swift */; };
+		70D1A0042FD1A00400D1A004 /* WorkdayCalendar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70D1A0032FD1A00300D1A003 /* WorkdayCalendar.swift */; };
+		70D1A0062FD1A00600D1A006 /* Scheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70D1A0052FD1A00500D1A005 /* Scheduler.swift */; };
+		70D1A0082FD1A00800D1A008 /* ScheduleTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70D1A0072FD1A00700D1A007 /* ScheduleTool.swift */; };
+		70D1A00A2FD1A00A00D1A00A /* SchedulesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70D1A0092FD1A00900D1A009 /* SchedulesView.swift */; };
+		70D1A00C2FD1A00C00D1A00C /* ScheduleEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70D1A00B2FD1A00B00D1A00B /* ScheduleEditor.swift */; };
+		70D1A00E2FD1A00E00D1A00E /* WorkdaysView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70D1A00D2FD1A00D00D1A00D /* WorkdaysView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -285,9 +292,6 @@
 		7078AB0C2F4CA44E00711940 /* JSONEncoder+.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "JSONEncoder+.swift"; sourceTree = "<group>"; };
 		7078AB112F4D5B5F00711940 /* Data+.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Data+.swift"; sourceTree = "<group>"; };
 		7078AB132F4EDE9600711940 /* ToolDefinitions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolDefinitions.swift; sourceTree = "<group>"; };
-		70C0FF1130C0FF1100C0FF11 /* Connector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Connector.swift; sourceTree = "<group>"; };
-		70C0FF1330C0FF1300C0FF13 /* ConnectorTool.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectorTool.swift; sourceTree = "<group>"; };
-		70C0FF1530C0FF1500C0FF15 /* ConnectorsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectorsView.swift; sourceTree = "<group>"; };
 		7078AB152F4F7C3500711940 /* JSONValue+.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "JSONValue+.swift"; sourceTree = "<group>"; };
 		7078AB332BB514A9004B3819 /* ModelTaskView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelTaskView.swift; sourceTree = "<group>"; };
 		708032EB2F93F11000E63074 /* AudioPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioPlayer.swift; sourceTree = "<group>"; };
@@ -310,6 +314,7 @@
 		70AA100430AA100400000004 /* PermissionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PermissionsView.swift; sourceTree = "<group>"; };
 		70AB200130AB200100000001 /* TTSService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TTSService.swift; sourceTree = "<group>"; };
 		70AB300130AB300100000001 /* VoiceAudioEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceAudioEngine.swift; sourceTree = "<group>"; };
+		70AC0001AC0001AC0001AC01 /* AppIcon.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = AppIcon.icon; sourceTree = "<group>"; };
 		70AC100130AC100100000001 /* GenerativeUIParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenerativeUIParser.swift; sourceTree = "<group>"; };
 		70AC100230AC100200000002 /* GenerativeUIView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenerativeUIView.swift; sourceTree = "<group>"; };
 		70AC100330AC100300000003 /* GenerativeUIInterpreter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenerativeUIInterpreter.swift; sourceTree = "<group>"; };
@@ -321,6 +326,9 @@
 		70C0DE0130C4A00100C0DE01 /* ProjectSearchIndex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectSearchIndex.swift; sourceTree = "<group>"; };
 		70C0DE0330C4A00100C0DE03 /* CodeStructureParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodeStructureParser.swift; sourceTree = "<group>"; };
 		70C0DE0530C4A00100C0DE05 /* ProjectSearchReranker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectSearchReranker.swift; sourceTree = "<group>"; };
+		70C0FF1130C0FF1100C0FF11 /* Connector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Connector.swift; sourceTree = "<group>"; };
+		70C0FF1330C0FF1300C0FF13 /* ConnectorTool.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectorTool.swift; sourceTree = "<group>"; };
+		70C0FF1530C0FF1500C0FF15 /* ConnectorsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectorsView.swift; sourceTree = "<group>"; };
 		70C2156D2FB99E5900DCA77C /* HubApi+.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HubApi+.swift"; sourceTree = "<group>"; };
 		70C215772FBAB65900DCA77C /* example.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = example.png; sourceTree = "<group>"; };
 		70C215792FBAB77700DCA77C /* example.mov */ = {isa = PBXFileReference; lastKnownFileType = video.quicktime; path = example.mov; sourceTree = "<group>"; };
@@ -346,7 +354,6 @@
 		70CE60672BAD2D4500A2D0B0 /* ModelCraftApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelCraftApp.swift; sourceTree = "<group>"; };
 		70CE60692BAD2D4500A2D0B0 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		70CE606D2BAD2D4600A2D0B0 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		70AC0001AC0001AC0001AC01 /* AppIcon.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = AppIcon.icon; sourceTree = "<group>"; };
 		70CE606F2BAD2D4600A2D0B0 /* ModelCraft.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ModelCraft.entitlements; sourceTree = "<group>"; };
 		70CE60712BAD2D4600A2D0B0 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		70CE60772BAD2D4700A2D0B0 /* ModelCraftTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ModelCraftTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -383,6 +390,13 @@
 		70FE039E2F13EF9D0061CCEB /* ChatService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatService.swift; sourceTree = "<group>"; };
 		91B50E0C0B834320A0205001 /* ModelsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelsView.swift; sourceTree = "<group>"; };
 		91B50E0C0B834320A0205003 /* StorageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StorageView.swift; sourceTree = "<group>"; };
+		70D1A0012FD1A00100D1A001 /* Schedule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Schedule.swift; sourceTree = "<group>"; };
+		70D1A0032FD1A00300D1A003 /* WorkdayCalendar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkdayCalendar.swift; sourceTree = "<group>"; };
+		70D1A0052FD1A00500D1A005 /* Scheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Scheduler.swift; sourceTree = "<group>"; };
+		70D1A0072FD1A00700D1A007 /* ScheduleTool.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduleTool.swift; sourceTree = "<group>"; };
+		70D1A0092FD1A00900D1A009 /* SchedulesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SchedulesView.swift; sourceTree = "<group>"; };
+		70D1A00B2FD1A00B00D1A00B /* ScheduleEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduleEditor.swift; sourceTree = "<group>"; };
+		70D1A00D2FD1A00D00D1A00D /* WorkdaysView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkdaysView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -462,6 +476,7 @@
 				70FDA0232F20C21000F9DBD8 /* ToolCall.swift */,
 				7078AB132F4EDE9600711940 /* ToolDefinitions.swift */,
 				70C0FF1330C0FF1300C0FF13 /* ConnectorTool.swift */,
+				70D1A0072FD1A00700D1A007 /* ScheduleTool.swift */,
 				7039EF5B2F8F46C60099F491 /* VideoTool.swift */,
 				70B4A00130C3A00100B4A001 /* WebTool.swift */,
 				70FD4805304C351F00B70A9B /* UserInputTool.swift */,
@@ -498,6 +513,8 @@
 				70823EC72F520F6F0011DF58 /* ModelService.swift */,
 				7078AA112F4B79DF00711940 /* LMService.swift */,
 				70FE039E2F13EF9D0061CCEB /* ChatService.swift */,
+				70D1A0052FD1A00500D1A005 /* Scheduler.swift */,
+				70D1A0032FD1A00300D1A003 /* WorkdayCalendar.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -558,6 +575,7 @@
 				70CE60A12BAD386E00A2D0B0 /* Message.swift */,
 				70CE60C72BAD705E00A2D0B0 /* Chat.swift */,
 				70CE4D2E2BB94C7800E1DEE2 /* Project.swift */,
+				70D1A0012FD1A00100D1A001 /* Schedule.swift */,
 				70C0DE0130C4A00100C0DE01 /* ProjectSearchIndex.swift */,
 				70C0DE0530C4A00100C0DE05 /* ProjectSearchReranker.swift */,
 				7097F96A2BB02DD2001A91E3 /* ModelTask.swift */,
@@ -577,6 +595,14 @@
 				7014F9C02F5C915A00552108 /* Tools */,
 			);
 			path = Agent;
+			sourceTree = "<group>";
+		};
+		70C0FF1730C0FF1700C0FF17 /* Connector */ = {
+			isa = PBXGroup;
+			children = (
+				70C0FF1530C0FF1500C0FF15 /* ConnectorsView.swift */,
+			);
+			path = Connector;
 			sourceTree = "<group>";
 		};
 		70C215722FBAB61400DCA77C /* Resources */ = {
@@ -729,17 +755,10 @@
 				70CE4D2D2BB94C4300E1DEE2 /* Project */,
 				7078AB302BB510A1004B3819 /* Model */,
 				70C0FF1730C0FF1700C0FF17 /* Connector */,
+				70D1A00F2FD1A00F00D1A00F /* Schedule */,
 				70CE60CA2BAD7A4F00A2D0B0 /* Settings */,
 			);
 			path = Features;
-			sourceTree = "<group>";
-		};
-		70C0FF1730C0FF1700C0FF17 /* Connector */ = {
-			isa = PBXGroup;
-			children = (
-				70C0FF1530C0FF1500C0FF15 /* ConnectorsView.swift */,
-			);
-			path = Connector;
 			sourceTree = "<group>";
 		};
 		70CE60CA2BAD7A4F00A2D0B0 /* Settings */ = {
@@ -850,6 +869,16 @@
 				70FD4B92304E7A2F00B70A9B /* ProjectModelActor.swift */,
 			);
 			path = Actor;
+			sourceTree = "<group>";
+		};
+		70D1A00F2FD1A00F00D1A00F /* Schedule */ = {
+			isa = PBXGroup;
+			children = (
+				70D1A0092FD1A00900D1A009 /* SchedulesView.swift */,
+				70D1A00B2FD1A00B00D1A00B /* ScheduleEditor.swift */,
+				70D1A00D2FD1A00D00D1A00D /* WorkdaysView.swift */,
+			);
+			path = Schedule;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -1126,6 +1155,13 @@
 				70C0FF1230C0FF1200C0FF12 /* Connector.swift in Sources */,
 				70C0FF1430C0FF1400C0FF14 /* ConnectorTool.swift in Sources */,
 				70C0FF1630C0FF1600C0FF16 /* ConnectorsView.swift in Sources */,
+				70D1A0022FD1A00200D1A002 /* Schedule.swift in Sources */,
+				70D1A0042FD1A00400D1A004 /* WorkdayCalendar.swift in Sources */,
+				70D1A0062FD1A00600D1A006 /* Scheduler.swift in Sources */,
+				70D1A0082FD1A00800D1A008 /* ScheduleTool.swift in Sources */,
+				70D1A00A2FD1A00A00D1A00A /* SchedulesView.swift in Sources */,
+				70D1A00C2FD1A00C00D1A00C /* ScheduleEditor.swift in Sources */,
+				70D1A00E2FD1A00E00D1A00E /* WorkdaysView.swift in Sources */,
 				70C22FCC2BAEE24C002754C7 /* Image+.swift in Sources */,
 				705483F82BBE992800256094 /* DeleteButton.swift in Sources */,
 				70E2017B2BAE825A00CFE1D7 /* ChatView.swift in Sources */,

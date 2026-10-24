@@ -38,6 +38,8 @@ struct AppNavigationView: View {
                 .tag(AppNavigationTab.downloadedModels)
             Label("Connectors", systemImage: "app.connected.to.app.below.fill")
                 .tag(AppNavigationTab.connectors)
+            Label("Scheduled Tasks", systemImage: "clock.arrow.circlepath")
+                .tag(AppNavigationTab.schedules)
 
             ProjectSidebarSection(
                 projects: projects,

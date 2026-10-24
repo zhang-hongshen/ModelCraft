@@ -13,8 +13,8 @@ Read this before changing agent execution, inference, persistence, project knowl
 | Area | Owner | Responsibility |
 | --- | --- | --- |
 | App lifecycle and navigation | `ModelCraftApp.swift`, root content and navigation views | Environment setup, window/scene entry, destination selection, model-task polling |
-| Feature UI | `Features/` | SwiftUI presentation and user interaction grouped by Chat, Project, Model, and Settings |
-| Persistent state | `Models/Persistence/`, `ModelContainer.shared` | Projects, chats, messages, and model download/delete tasks (SwiftData) |
+| Feature UI | `Features/` | SwiftUI presentation and user interaction grouped by Chat, Project, Model, Connector, Schedule, and Settings |
+| Persistent state | `Models/Persistence/`, `ModelContainer.shared` | Projects, chats, messages, model download/delete tasks, schedules, and workday exceptions (SwiftData) |
 | UI/application state | `Models/Plain/`, `GlobalStore`, `UserSettings`, `LocalModelStore` | Selection, navigation, settings, running tasks, and chat models discovered on disk |
 | Chat orchestration | `ChatService` | Request ownership, cancellation, compaction, title/context metadata, and agent invocation. See [Chat](features/chat.md) |
 | Agent loop | `Core/Agent/AgentExecutor.swift` | Model steps, tool-call limits, approval, tool execution, results, and continuation |
@@ -22,6 +22,7 @@ Read this before changing agent execution, inference, persistence, project knowl
 | Media generation | Media tools, `Core/Models/` families | Image, video, and audio generation runtimes. See [Media generation](features/media-generation.md) |
 | Tools | `Core/Agent/Tools/`, `ToolExecutor` | Model-visible schemas, typed execution, structured results, and platform actions. See [Tools](features/tools.md) and [Computer use](features/computer-use.md) |
 | Project knowledge | `Project`, `ProjectSearchIndex`, `SearchTool` | Working folder, read-only references, and local retrieval for project chats. See [Projects](features/projects.md) |
+| Scheduled tasks | `Scheduler`, `HolidayStore`, `Schedule` | Due-time checks, unattended runs as new chats, and holiday-aware workdays. See [Scheduled tasks](features/schedules.md) |
 | Voice mode | `ChatView`, `STTService`, `TTSService`, `VoiceAudioEngine` | Spoken input and output over the normal chat path. See [Voice mode](features/voice-mode.md) |
 | Settings | `Features/Settings/`, `UserSettings` | Stored preferences and their consumers. See [Settings](features/settings.md) |
 
@@ -39,7 +40,7 @@ Cancellation leaves partial assistant content visible and settles any in-progres
 
 ## Tool boundary
 
-`ToolDefinition` assembles the schema list for a model request. It is the same on every request so the prompt prefix stays reusable; only project-document search depends on the chat having a project. Tools that cannot run, such as network tools while offline, report that in their result. Every tool is exposed directly; see [Tools](features/tools.md#fixed-tool-set-and-native-applications).
+`ToolDefinition` assembles the schema list for a model request from the chat's state: the core tools, project-document search in project chats, installed connector tools, and either every deferred tool or, when tools load on demand, `search_tools` plus the deferred tools the chat's searches have found. Tools that cannot run, such as network tools while offline, report that in their result. Every tool is exposed directly; see [Tools](features/tools.md#tool-set-and-on-demand-loading).
 
 The model sees tool names, descriptions, parameter schemas, and prior tool results. It does not see Swift implementation details. Tool selection knowledge belongs in those schemas; the [Tools feature guide](features/tools.md) owns the complete rule.
 

@@ -23,6 +23,8 @@ struct AppDetailView: View {
             DownloadedModelsView().navigationTitle("Downloaded Models")
         case .connectors:
             ConnectorsView().navigationTitle("Connectors")
+        case .schedules:
+            SchedulesView().navigationTitle("Scheduled Tasks")
         }
     }
 

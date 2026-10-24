@@ -15,33 +15,46 @@ struct DefaultToolRenderer: View {
     let result: CallToolResult?
     let status: ToolCallStatus
 
-    @State private var isDetailPresented = false
+    @State private var isExpanded = false
+
+    /// Text and embedded resources are model-facing output, so only media is worth expanding.
+    private var mediaResult: CallToolResult? {
+        guard let result else { return nil }
+        let media = result.content.filter { block in
+            switch block {
+            case .image, .audio, .resourceLink: true
+            case .text, .embeddedResource: false
+            }
+        }
+        return media.isEmpty ? nil : CallToolResult(content: media)
+    }
 
     var body: some View {
 
-        if let result {
-            Button {
-                isDetailPresented.toggle()
+        if let mediaResult {
+            DisclosureGroup(isExpanded: $isExpanded) {
+                ContentBlocksView(result: mediaResult)
+                    .padding(.top, 8)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             } label: {
-                HStack(spacing: 6) {
-                    Image(systemName: toolCall.icon)
-                    Text(toolCall.compactDescription(status))
-                }
-                .foregroundStyle(.secondary)
+                label
             }
-            .buttonStyle(.plain)
-            .popover(isPresented: $isDetailPresented, arrowEdge: .leading) {
-                ScrollView {
-                    ContentBlocksView(result: result)
-                        .textSelection(.enabled)
-                }
-                .frame(width: 520, height: 320)
-                .padding(12)
-            }
+
+        } else if result != nil {
+
+            label
 
         } else {
 
             ToolStatusView(toolCall: toolCall, status: status)
         }
+    }
+
+    private var label: some View {
+        HStack(spacing: 6) {
+            ToolCallIcon(toolCall: toolCall)
+            Text(toolCall.compactDescription(status))
+        }
+        .foregroundStyle(.secondary)
     }
 }

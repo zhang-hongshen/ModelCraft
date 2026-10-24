@@ -6,9 +6,15 @@
 //
 
 import SwiftUI
+import UserNotifications
 
 struct GeneralView: View {
     @Environment(UserSettings.self) private var userSettings
+    @Environment(\.openURL) private var openURL
+    @State private var areNotificationsDenied = false
+
+    private static let notificationSettingsURL = URL(
+        string: "x-apple.systempreferences:com.apple.Notifications-Settings.extension")!
 
     var body: some View {
         @Bindable var userSettings = userSettings
@@ -34,8 +40,38 @@ struct GeneralView: View {
                     }
                 }
             }
+
+            Section {
+                Toggle("Load tools when needed", isOn: $userSettings.loadToolsWhenNeeded)
+            } footer: {
+                Text("Start each chat with essential tools only, and let the model load others when a task needs them. This keeps prompts shorter and responses faster.")
+                    .foregroundStyle(.secondary)
+            }
+
+            Section {
+                Toggle("Notify when scheduled tasks finish", isOn: $userSettings.notifyWhenScheduledTasksFinish)
+                if userSettings.notifyWhenScheduledTasksFinish && areNotificationsDenied {
+                    LabeledContent {
+                        Button("Open System Settings") {
+                            openURL(Self.notificationSettingsURL)
+                        }
+                    } label: {
+                        Label("Notifications for ModelCraft are turned off in System Settings.", systemImage: "exclamationmark.triangle")
+                    }
+                }
+            } footer: {
+                Text("Show a notification when a scheduled task's run completes or fails. Click it to open the run's chat.")
+                    .foregroundStyle(.secondary)
+            }
         }
         .formStyle(.grouped)
+        .task(id: userSettings.notifyWhenScheduledTasksFinish) {
+            guard userSettings.notifyWhenScheduledTasksFinish else { return }
+            // Turning the setting on is when macOS asks for permission the first time.
+            let granted = (try? await UNUserNotificationCenter.current()
+                .requestAuthorization(options: [.alert, .sound])) ?? false
+            areNotificationsDenied = !granted
+        }
     }
 }
 

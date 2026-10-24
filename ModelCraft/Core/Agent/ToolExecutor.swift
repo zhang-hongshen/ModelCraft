@@ -14,7 +14,8 @@ enum ToolExecutor {
     
     static func dispatch(
         _ toolCall: ToolCall,
-        projectID: PersistentIdentifier?
+        projectID: PersistentIdentifier?,
+        modelID: String
     ) async throws -> (CallToolResult, MLXLMCommon.Chat.Message) {
         try Task.checkCancellation()
         
@@ -74,6 +75,8 @@ enum ToolExecutor {
                 let result = try await toolCall.execute(with: SkillTool.activateSkill)
                 toolCallResult.content.append(.text(TextContent(text: result.content)))
                 message.content = result.toolResult
+            case ToolNames.searchTools:
+                reply(try await toolCall.execute(with: ToolDefinition.searchTools).toolResult)
             case ToolNames.captureFullScreen:
                 if let result = try await toolCall.execute(with: ScreenControlTool.captureFullScreen) {
                     let description = "Captured all displays at \(Int(result.size.width))x\(Int(result.size.height)) points."
@@ -156,6 +159,19 @@ enum ToolExecutor {
                 reply(try await toolCall.execute(with: AppTool.runAppleScript).toolResult)
             case ToolNames.executeCommand:
                 reply(try await toolCall.execute(with: CommandTool.executeCommand).toolResult)
+            case ToolNames.createSchedule:
+                reply(try await toolCall.execute(with: ScheduleTool.createSchedule(
+                    projectID: projectID, modelID: modelID)).toolResult)
+            case ToolNames.listSchedules:
+                reply(try await toolCall.execute(with: ScheduleTool.listSchedules).toolResult)
+            case ToolNames.updateSchedule:
+                reply(try await toolCall.execute(with: ScheduleTool.updateSchedule).toolResult)
+            case ToolNames.deleteSchedule:
+                reply(try await toolCall.execute(with: ScheduleTool.deleteSchedule).toolResult)
+            case ToolNames.listWorkdays:
+                reply(try await toolCall.execute(with: ScheduleTool.listWorkdays).toolResult)
+            case ToolNames.setWorkday:
+                reply(try await toolCall.execute(with: ScheduleTool.setWorkday).toolResult)
             default:
                 if let connector = Connector(toolName: toolCall.function.name) {
                     (toolCallResult, message) = try await ConnectorTool.call(toolCall, connector: connector)

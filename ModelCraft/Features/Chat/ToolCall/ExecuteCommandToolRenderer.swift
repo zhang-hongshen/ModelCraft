@@ -14,7 +14,7 @@ struct ExecuteCommandToolRenderer: View {
     let result: CallToolResult?
     let status: ToolCallStatus
 
-    @State private var isDetailPresented = false
+    @State private var isExpanded = false
 
     private var command: String {
         toolCall.function.arguments["command"]?.stringValue ?? "Unknown Command"
@@ -29,23 +29,18 @@ struct ExecuteCommandToolRenderer: View {
     }
     
     var body: some View {
-        Button {
-            isDetailPresented.toggle()
+        DisclosureGroup(isExpanded: $isExpanded) {
+            TerminalView(
+                command: command,
+                output: output
+            )
+            .padding(.top, 8)
         } label: {
             HStack(spacing: 6) {
                 Image(systemName: toolCall.icon)
                 Text(toolCall.compactDescription(status))
             }
             .foregroundStyle(.secondary)
-        }
-        .buttonStyle(.plain)
-        .popover(isPresented: $isDetailPresented, arrowEdge: .leading) {
-            TerminalView(
-                command: command,
-                output: output
-            )
-            .frame(width: 520)
-            .padding(12)
         }
     }
 }

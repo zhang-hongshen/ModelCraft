@@ -2,7 +2,7 @@
 
 This document owns GUI control of other applications: semantic accessibility tools, coordinate screen tools, their shared state, and the macOS permissions they need. Read it before changing `ComputerUseTool`, `ScreenControlTool`, `UIManager`, `ScreenControlManager`, `AXUIElement+`, or Settings > Permissions.
 
-Typed Notes, Reminders, Calendar, and Mail tools and the AppleScript fallback are described in [Tools](tools.md#fixed-tool-set-and-native-applications). Approval rules for these tools are in [Tools](tools.md#execution-approval). GUI control is the fallback when no typed tool covers an operation.
+Typed Notes, Reminders, Calendar, and Mail tools and the AppleScript fallback are described in [Tools](tools.md#tool-set-and-on-demand-loading). Approval rules for these tools are in [Tools](tools.md#execution-approval). GUI control is the fallback when no typed tool covers an operation.
 
 ## Tool layers
 

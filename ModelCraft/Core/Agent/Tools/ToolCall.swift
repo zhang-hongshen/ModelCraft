@@ -39,6 +39,9 @@ struct ToolNames {
     // MARK: Skill Tool
     static let activateSkill = "activate_skill"
 
+    // MARK: Tool Search
+    static let searchTools = "search_tools"
+
     // MARK: Image Tool
     static let textToImage = "text_to_image"
 
@@ -72,6 +75,14 @@ struct ToolNames {
     static let readMail = "mail_read"
     static let createMailDraft = "mail_create_draft"
     static let runAppleScript = "run_applescript"
+
+    // MARK: Schedule Tool
+    static let createSchedule = "schedule_create"
+    static let listSchedules = "schedule_list"
+    static let updateSchedule = "schedule_update"
+    static let deleteSchedule = "schedule_delete"
+    static let listWorkdays = "workdays_list"
+    static let setWorkday = "workdays_set"
 }
 
 typealias VideoGenerationProgressHandler = @MainActor @Sendable (LTXVideoProgress) -> Void
@@ -261,7 +272,11 @@ extension ToolCall {
              ToolNames.createReminder,
              ToolNames.updateReminder,
              ToolNames.createMailDraft,
-             ToolNames.runAppleScript:
+             ToolNames.runAppleScript,
+             ToolNames.createSchedule,
+             ToolNames.updateSchedule,
+             ToolNames.deleteSchedule,
+             ToolNames.setWorkday:
             true
         case ToolNames.executeCommand:
             !isReadOnlyCommand
@@ -318,6 +333,16 @@ extension ToolCall {
             return String(localized: "To: \(recipients)\nSubject: \(subject)")
         case ToolNames.runAppleScript:
             return function.arguments["script"]?.stringValue
+        case ToolNames.createSchedule:
+            let name = function.arguments["name"]?.stringValue ?? ""
+            let prompt = function.arguments["prompt"]?.stringValue ?? ""
+            return "\(name)\n\(prompt)"
+        case ToolNames.updateSchedule, ToolNames.deleteSchedule:
+            return function.arguments["schedule_id"]?.stringValue
+        case ToolNames.setWorkday:
+            let date = function.arguments["date"]?.stringValue ?? ""
+            let kind = function.arguments["kind"]?.stringValue ?? ""
+            return "\(date): \(kind)"
         default:
             guard Connector(toolName: function.name) != nil else { return nil }
             let encoder = JSONEncoder()
@@ -555,6 +580,16 @@ extension ToolCall {
             case .failed:
                 return String(localized: "Skill loading failed")
             }
+        case ToolNames.searchTools:
+            let query = arguments["query"]?.stringValue ?? ""
+            switch status {
+            case .running:
+                return String(localized: "Searching tools for \(query)")
+            case .completed:
+                return String(localized: "Searched tools for \(query)")
+            case .failed:
+                return String(localized: "Tool search failed")
+            }
         case ToolNames.listRunningApps:
             switch status {
             case .running:
@@ -618,6 +653,18 @@ extension ToolCall {
             return nativeDescription(status, running: "Creating Mail draft", completed: "Created Mail draft", failed: "Mail draft creation failed")
         case ToolNames.runAppleScript:
             return nativeDescription(status, running: "Running AppleScript", completed: "Ran AppleScript", failed: "AppleScript failed")
+        case ToolNames.createSchedule:
+            return nativeDescription(status, running: "Scheduling a task", completed: "Scheduled a task", failed: "Scheduling failed")
+        case ToolNames.listSchedules:
+            return nativeDescription(status, running: "Reading scheduled tasks", completed: "Read scheduled tasks", failed: "Reading scheduled tasks failed")
+        case ToolNames.updateSchedule:
+            return nativeDescription(status, running: "Updating a scheduled task", completed: "Updated a scheduled task", failed: "Scheduled task update failed")
+        case ToolNames.deleteSchedule:
+            return nativeDescription(status, running: "Deleting a scheduled task", completed: "Deleted a scheduled task", failed: "Scheduled task deletion failed")
+        case ToolNames.listWorkdays:
+            return nativeDescription(status, running: "Checking workdays", completed: "Checked workdays", failed: "Workday check failed")
+        case ToolNames.setWorkday:
+            return nativeDescription(status, running: "Updating workdays", completed: "Updated workdays", failed: "Workday update failed")
         default:
             guard let connector = Connector(toolName: function.name) else {
                 return String(localized: "Unknown Tool Call")
@@ -660,6 +707,7 @@ extension ToolCall {
         case ToolNames.textToVideo: "video"
         case ToolNames.textToAudio: "waveform"
         case ToolNames.activateSkill: "sparkles"
+        case ToolNames.searchTools: "wrench.and.screwdriver"
         case ToolNames.listRunningApps: "app.badge"
         case ToolNames.getUIHierarchy: "list.bullet.indent"
         case ToolNames.click, ToolNames.clickElement, ToolNames.move, ToolNames.drag: "pointer.arrow"
@@ -676,9 +724,71 @@ extension ToolCall {
         case ToolNames.searchMail, ToolNames.readMail,
              ToolNames.createMailDraft: "envelope"
         case ToolNames.runAppleScript: "applescript"
+        case ToolNames.createSchedule, ToolNames.listSchedules,
+             ToolNames.updateSchedule, ToolNames.deleteSchedule: "clock.arrow.circlepath"
+        case ToolNames.listWorkdays, ToolNames.setWorkday: "calendar.badge.clock"
+        default: "exclamationmark.triangle"
+        }
+    }
+}
+
+extension ToolCall {
+    /// The kinds of work this call does, each with what makes it one occurrence:
+    /// a file for file work, an app for app use, and the call itself otherwise.
+    func activities(id: String) -> [(ToolCallActivity, String)] {
+        let name = function.name
+        switch name {
+        case ToolNames.applyPatch:
+            return patchFileChanges.map { change in
+                (change.action == .delete ? .deleteFile : .editFile, change.path)
+            }
+        case ToolNames.readFile:
+            return [(.readFile, function.arguments["path"]?.stringValue ?? id)]
+        case ToolNames.listDirectory:
+            return [(.listDirectory, function.arguments["path"]?.stringValue ?? id)]
+        case ToolNames.executeCommand:
+            return [(.runCommand, id)]
+        case ToolNames.runAppleScript:
+            return [(.runScript, id)]
+        case ToolNames.searchMap, ToolNames.searchProject,
+             ToolNames.searchRelevantDocuments, ToolNames.searchTools:
+            return [(.search, id)]
+        case ToolNames.webFetch:
+            return [(.fetchWebPage, id)]
+        case ToolNames.captureFullScreen, ToolNames.captureAppWindow:
+            return [(.takeScreenshot, id)]
+        case ToolNames.click, ToolNames.move, ToolNames.drag, ToolNames.scroll,
+             ToolNames.listRunningApps, ToolNames.getUIHierarchy, ToolNames.clickElement,
+             ToolNames.typeText, ToolNames.pressKey:
+            return [(.controlComputer, id)]
+        case ToolNames.textToImage:
+            return [(.createImage, id)]
+        case ToolNames.textToVideo:
+            return [(.createVideo, id)]
+        case ToolNames.textToAudio:
+            return [(.createAudio, id)]
+        case ToolNames.activateSkill:
+            return [(.loadSkill, id)]
+        case ToolNames.requestUserInput:
+            return [(.askQuestion, id)]
+        case ToolNames.searchNotes, ToolNames.readNote, ToolNames.createNote, ToolNames.updateNote:
+            return [(.useApp, "Notes")]
+        case ToolNames.searchCalendar, ToolNames.readCalendarEvent,
+             ToolNames.createCalendarEvent, ToolNames.updateCalendarEvent:
+            return [(.useApp, "Calendar")]
+        case ToolNames.searchReminders, ToolNames.readReminder,
+             ToolNames.createReminder, ToolNames.updateReminder:
+            return [(.useApp, "Reminders")]
+        case ToolNames.searchMail, ToolNames.readMail, ToolNames.createMailDraft:
+            return [(.useApp, "Mail")]
+        case ToolNames.listSchedules, ToolNames.listWorkdays:
+            return [(.checkSchedule, id)]
+        case ToolNames.createSchedule, ToolNames.updateSchedule,
+             ToolNames.deleteSchedule, ToolNames.setWorkday:
+            return [(.changeSchedule, function.arguments["schedule_id"]?.stringValue ?? id)]
         default:
-            Connector(toolName: function.name) == nil
-                ? "exclamationmark.triangle" : "app.connected.to.app.below.fill"
+            guard let connector = Connector(toolName: name) else { return [] }
+            return [(.useApp, connector.rawValue)]
         }
     }
 }

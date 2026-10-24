@@ -7,5 +7,5 @@
 
 enum AppNavigationTab: Hashable {
     case chat(Chat)
-    case modelStore, downloadedModels, connectors
+    case modelStore, downloadedModels, connectors, schedules
 }

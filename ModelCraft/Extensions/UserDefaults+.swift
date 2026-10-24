@@ -12,13 +12,15 @@ extension UserDefaults {
     static let appearance = "appearance"
     static let language = "language"
     static let automaticallyScrollToBottom = "automaticallyScrollToBottom"
-    static let modelDownloadBaseDirectory = "modelDownloadBaseDirectory"
     static let imageOutputDirectory = "imageOutputDirectory"
     static let audioOutputDirectory = "audioOutputDirectory"
     static let videoOutputDirectory = "videoOutputDirectory"
     static let customSkillDirectories = "customSkillDirectories"
     static let imageGenerationModelID = "imageGenerationModelID"
     static let videoGenerationModelID = "videoGenerationModelID"
+    static let loadToolsWhenNeeded = "loadToolsWhenNeeded"
+    static let holidayRegion = "holidayRegion"
+    static let notifyWhenScheduledTasksFinish = "notifyWhenScheduledTasksFinish"
     
     func value<T>(forKey key: String, default defaultValue: T) -> T {
         return self.value(forKey: key) as? T ?? defaultValue
@@ -34,9 +36,12 @@ extension UserDefaults {
 enum UserDefaultSettings {
     static let appearance = Appearance.system
     static let automaticallyScrollToBottom = false
+    static let loadToolsWhenNeeded = true
+    static let holidayRegion = Locale.current.region?.identifier ?? ""
+    static let notifyWhenScheduledTasksFinish = false
     static let language = Locale.defaultLanguage
     static let modelDownloadBaseDirectory = URL.applicationSupportDirectory
-        .appending(path: "huggingface")
+        .appending(path: "ModelCraft")
     static let imageOutputDirectory = URL.picturesDirectory
     static let audioOutputDirectory = URL.musicDirectory
     static let videoOutputDirectory = URL.moviesDirectory

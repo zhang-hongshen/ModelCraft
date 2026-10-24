@@ -20,11 +20,18 @@ struct ModelCraftApp: App {
     @Environment(\.openWindow) private var openWindow
     @Environment(\.scenePhase) private var scenePhase
     
-    private let globalStore = GlobalStore()
-    @State private var localModelStore = LocalModelStore()
+    private let globalStore: GlobalStore
+    @State private var localModelStore: LocalModelStore
+    @State private var scheduler: Scheduler
     
     init() {
         _ = NetworkMonitor.shared
+        let globalStore = GlobalStore()
+        let localModelStore = LocalModelStore()
+        self.globalStore = globalStore
+        _localModelStore = State(initialValue: localModelStore)
+        _scheduler = State(initialValue: Scheduler(
+            localModelStore: localModelStore, globalStore: globalStore))
     }
     
     var body: some Scene {
@@ -42,6 +49,7 @@ struct ModelCraftApp: App {
                             try? self.handleModelTask()
                         }
                         SkillManager.shared.loadSkills()
+                        scheduler.start()
                     }
                     .onChange(of: scenePhase) { _, newPhase in
                         guard newPhase == .active else { return }
@@ -65,6 +73,7 @@ struct ModelCraftApp: App {
         .environment(SpeechManager())
         .environment(globalStore)
         .environment(localModelStore)
+        .environment(scheduler)
         .environment(UserSettings())
         .environment(STTService())
         .environment(TTSService())

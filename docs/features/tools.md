@@ -20,15 +20,23 @@ Only skill names and descriptions appear in the `activate_skill` schema. Activat
 
 The chat slash palette reloads the same catalog and presents functions separately from a labeled Skills section. Skill rows show the metadata name and description. Selecting one inserts an inline `/<skill-name>` token at the current insertion point; a message may contain multiple tokens in any position, and each explicitly requires `activate_skill` before the request is handled.
 
-## Fixed tool set and native applications
+## Tool set and on-demand loading
 
-`ToolDefinition.allToolSchema(for:)` returns the same tools on every request so the prompt prefix stays reusable; only `search_project` depends on the chat, and a chat's project does not change. Do not add or remove tools based on the user's message, the foreground application, or connectivity; a tool that cannot run reports that in its result.
+`ToolDefinition.allToolSchema(for:)` assembles the tools for a request from the chat's state alone. Do not add or remove tools based on the user's message, the foreground application, or connectivity; a tool that cannot run reports that in its result. `search_project` is added in project chats, and a chat's project does not change.
+
+Core tools (`ToolDefinition.coreTools`: user input, files, commands, skills, and `web_fetch`) and installed connector tools are offered on every request. Every other tool is a deferred tool (`ToolDefinition.deferredTools`): native applications, computer use, media generation, maps, and [scheduled tasks](schedules.md#tools).
+
+With **Load tools when needed** on (the default, `loadToolsWhenNeeded`), a request carries the core tools, installed connector tools, `search_tools`, and the deferred tools the chat has found. `search_tools` lists the names of all deferred tools in its own description, so the catalog stays in the schema rather than the system prompt. It ranks deferred tools by keyword (an exact name first, then words in the name, then the description) and returns only the matching names. The matches' full schemas are appended to the tool list for the following steps. The found set is derived from the chat's successful `search_tools` tool messages, in the order the tools were found and without duplicates. Nothing extra is persisted, so resends and relaunches rebuild the same list, and the list only grows within a chat. With the setting off, every deferred tool is offered on every request.
+
+A new tool is deferred unless nearly every conversation needs it. A tool whose description names another tool as a prerequisite must keep words that let a search return both.
+
+The MLX parser rejects a call to a tool missing from the request. `AgentExecutor` records any rejected call as a failed tool result; for a deferred tool that has not been found, the result tells the model to search for it by name.
 
 Every tool is exposed directly under its own name. The native-application tools are `notes_*`, `calendar_*`, `reminders_*`, and `mail_*` in `AppTool`; `run_applescript` is a separate, confirmed long-tail fallback. GUI control is owned by [Computer use](computer-use.md).
 
 Calendar and Reminders use EventKit. Notes and Mail use `AppleScriptRunner.run`, which launches the target application in the background when it is not running and then executes `NSAppleScript` off the main thread. A script error, including Automation denial, is thrown and becomes a failed tool result; denial tells the user where to enable it in System Settings. AppleScript literals assembled from tool arguments must use `AppleScriptLiteral`; interpolating model or user strings directly into source is not allowed.
 
-Additional providers add their schemas to the fixed tool set and dispatch through `ToolExecutor`; provider-specific routing does not belong in the system prompt. MCP tools from installed apps are owned by [Connectors](connectors.md).
+Additional providers add their schemas to the deferred tools (connectors excepted) and dispatch through `ToolExecutor`; provider-specific routing does not belong in the system prompt. MCP tools from installed apps are owned by [Connectors](connectors.md).
 
 ## Schema writing
 
@@ -53,7 +61,7 @@ A tool is complete only when every affected surface agrees:
 
 1. Define its stable name in `Core/Agent/Tools/ToolCall.swift`.
 2. Define the schema beside the implementation under `Core/Agent/Tools/`; keep input and output `Codable` types aligned with it.
-3. Expose it through `ToolDefinition.allTools`.
+3. Expose it through `ToolDefinition.coreTools` or `ToolDefinition.deferredTools`.
 4. Dispatch it in `ToolExecutor` when it does not execute through its schema closure.
 5. Return a structured `CallToolResult` and a model-facing tool message that faithfully describe the same outcome.
 6. Add concise running, completed, and failed presentation in `ToolCall` and a specialized SwiftUI renderer only when the result benefits from one.
@@ -65,6 +73,8 @@ Do not add a system-prompt rule to compensate for an ambiguous schema. Improve t
 
 Return the smallest structured result that supports the next model decision and the UI. Distinguish success from failure explicitly; do not report success before an effect is observable. Error text should name the failed operation and the corrective action available to the model without leaking implementation noise.
 
+Text and embedded-resource content is model-facing and is not shown to the user. Tool details render inline in the chat, never in a popover. A tool without a specialized renderer shows only its status line; it becomes a collapsed disclosure only when its result carries images, audio, or resource links. `execute_command` is a collapsed disclosure whose content shows the command and its output.
+
 Tool output is untrusted external or model-boundary data. Validate at file, process, network, accessibility, decoding, and model/tool JSON boundaries. Do not add redundant validation between typed same-process components.
 
 ## User input
@@ -73,7 +83,7 @@ Tool output is untrusted external or model-boundary data. Validate at file, proc
 
 ## Execution approval
 
-Application approval protects authority boundaries rather than every tool invocation. Observation, search, native-application reads, user-input collection, local media generation, skill activation, pointer movement, scrolling, and strictly recognized read-only commands execute without an application approval prompt. Native-application creates and updates require approval. An `apply_patch` call is validated against the current files before its approval prompt; a patch that cannot apply is returned to the model as a failed result without asking the user. macOS privacy permissions such as Automation, Calendars, Reminders, Accessibility, Screen Recording, and Microphone access remain separate platform requirements.
+Application approval protects authority boundaries rather than every tool invocation. Observation, search, native-application reads, user-input collection, local media generation, skill activation, tool search, pointer movement, scrolling, and strictly recognized read-only commands execute without an application approval prompt. Native-application creates and updates, and schedule and workday changes, require approval. An `apply_patch` call is validated against the current files before its approval prompt; a patch that cannot apply is returned to the model as a failed result without asking the user. macOS privacy permissions such as Automation, Calendars, Reminders, Accessibility, Screen Recording, and Microphone access remain separate platform requirements.
 
 An approval prompt offers `Deny`, `Allow Once`, and `Always Allow`. `Allow Once` authorizes only the pending execution. `Always Allow` stores the matching authorization in memory for the current conversation; it is not shared with another conversation or persisted across application sessions. A file selected through `request_user_input` authorizes that exact file; a selected directory authorizes the directory and its descendants. Approval of a write authorizes that exact path, approval of a semantic interface action authorizes further interaction with that application, and approval of coordinate interaction authorizes further coordinate interaction. Other approvals are reused only when their complete tool-call signature is unchanged.
 

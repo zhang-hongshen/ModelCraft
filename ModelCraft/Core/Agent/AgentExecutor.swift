@@ -14,11 +14,14 @@ import Tokenizers
 final class AgentExecutor {
 
     private let interactionCoordinator: UserInteractionCoordinator
+    /// Nobody is present to answer questions or approve actions.
+    private let isUnattended: Bool
     /// What the user chose to always allow, per conversation.
     private var authorizationContexts: [UUID: ToolAuthorizationContext] = [:]
 
-    init(interactionCoordinator: UserInteractionCoordinator) {
+    init(interactionCoordinator: UserInteractionCoordinator, isUnattended: Bool = false) {
         self.interactionCoordinator = interactionCoordinator
+        self.isUnattended = isUnattended
     }
     
     /// Stop offering tools after this many identical tool calls in a row (same name + arguments).
@@ -77,7 +80,10 @@ final class AgentExecutor {
                 chat.tokenCount = info.promptTokenCount + info.generationTokenCount
             }
             
-            if let toolCall = batch.toolCall {
+            // A call the parser rejected is recorded with a failed result, so the model
+            // learns why instead of the call vanishing.
+            let rejection = batch.rejectedToolCall
+            if let toolCall = batch.toolCall ?? rejection.map(Self.recordedToolCall) {
                 print("ToolCall \(toolCall)")
                 if assistantMessage.content.isEmpty {
                     ModelContainer.shared.mainContext.delete(assistantMessage)
@@ -103,6 +109,9 @@ final class AgentExecutor {
                     result = (
                         .error(Self.duplicateToolCallMessage),
                         .tool(Self.duplicateToolCallMessage))
+                } else if let rejection {
+                    let message = Self.rejectionMessage(rejection)
+                    result = (.error(message), .tool(message))
                 } else {
                     // Running media tools report progress into the tool message's content,
                     // which `Message` decodes until the result arrives.
@@ -112,7 +121,8 @@ final class AgentExecutor {
                         try await ToolExecutionProgressReporter.$videoGeneration.withValue({
                             toolMessage.content = $0.storedValue
                         }) {
-                            try await executeToolCall(toolCall, signature: signature, chat: chat)
+                            try await executeToolCall(
+                                toolCall, signature: signature, chat: chat, model: model)
                         }
                     }
                 }
@@ -140,14 +150,23 @@ final class AgentExecutor {
     private func executeToolCall(
         _ toolCall: ToolCall,
         signature: String,
-        chat: Chat
+        chat: Chat,
+        model: LocalModel
     ) async throws -> (CallToolResult, MLXLMCommon.Chat.Message) {
         if toolCall.function.name == ToolNames.requestUserInput {
+            if isUnattended {
+                let message = "This is a scheduled run and nobody is present to answer. Continue with reasonable assumptions and state them in the reply."
+                return (.error(message), .tool(message))
+            }
             return try await executeUserInput(toolCall, chat: chat)
         }
 
         if toolCall.requiresUserApproval,
            authorizationContexts[chat.id]?.allows(toolCall, signature: signature) != true {
+            if isUnattended {
+                let message = "This is a scheduled run and nobody is present to approve this action, so it was not performed. Describe what should be done in the reply instead."
+                return (.error(message), .tool(message))
+            }
             // A patch that cannot apply is returned to the model instead of being
             // approved by the user only to fail.
             if toolCall.function.name == ToolNames.applyPatch {
@@ -171,7 +190,35 @@ final class AgentExecutor {
             }
         }
 
-        return try await ToolExecutor.dispatch(toolCall, projectID: chat.project?.persistentModelID)
+        return try await ToolExecutor.dispatch(
+            toolCall,
+            projectID: chat.project?.persistentModelID,
+            modelID: model.id)
+    }
+
+    private static func recordedToolCall(_ rejection: RejectedToolCall) -> ToolCall {
+        ToolCall(
+            function: ToolCall.Function(
+                name: rejection.toolName ?? "",
+                arguments: [String: JSONValue]()),
+            id: rejection.callID)
+    }
+
+    private static func rejectionMessage(_ rejection: RejectedToolCall) -> String {
+        let name = rejection.toolName ?? ""
+        switch rejection.reason {
+        case .undeclaredTool:
+            if ToolDefinition.deferredTools.contains(where: { ToolDefinition.toolName(of: $0) == name }) {
+                return "\(name) is not loaded. Call \(ToolNames.searchTools) with \(name) as the query, then call \(name) again."
+            }
+            return "There is no tool named \(name). Call only tools that are available."
+        case .invalidArguments:
+            return "The arguments of the \(name) call were not a valid JSON object. Call it again with arguments that match its parameters."
+        case .missingToolName:
+            return "The tool call did not name a function. Call it again with the tool's name."
+        case .malformedSyntax, .incompleteOutput, .resourceLimitExceeded:
+            return "The tool call could not be parsed. Call it again as one complete, well-formed tool call."
+        }
     }
 
     private func toolName(from schema: ToolSpec) -> String? {

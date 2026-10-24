@@ -11,17 +11,6 @@ import SwiftUI
 @MainActor
 @Observable
 class UserSettings {
-    var modelDownloadBaseDirectory = UserDefaults.standard.url(
-        forKey: UserDefaults.modelDownloadBaseDirectory
-    ) ?? UserDefaultSettings.modelDownloadBaseDirectory {
-        didSet {
-            UserDefaults.standard.set(
-                modelDownloadBaseDirectory,
-                forKey: UserDefaults.modelDownloadBaseDirectory
-            )
-        }
-    }
-
     var imageOutputDirectory = UserDefaults.standard.url(
         forKey: UserDefaults.imageOutputDirectory
     ) ?? UserDefaultSettings.imageOutputDirectory {
@@ -73,6 +62,26 @@ class UserSettings {
         }
     }
     
+    var loadToolsWhenNeeded: Bool = UserDefaults.standard.value(
+        forKey: UserDefaults.loadToolsWhenNeeded,
+        default: UserDefaultSettings.loadToolsWhenNeeded
+    ) {
+        didSet {
+            UserDefaults.standard.set(loadToolsWhenNeeded, forKey: UserDefaults.loadToolsWhenNeeded)
+        }
+    }
+
+    var notifyWhenScheduledTasksFinish: Bool = UserDefaults.standard.value(
+        forKey: UserDefaults.notifyWhenScheduledTasksFinish,
+        default: UserDefaultSettings.notifyWhenScheduledTasksFinish
+    ) {
+        didSet {
+            UserDefaults.standard.set(
+                notifyWhenScheduledTasksFinish,
+                forKey: UserDefaults.notifyWhenScheduledTasksFinish)
+        }
+    }
+
     var appearance = UserDefaults.standard.string(forKey: UserDefaults.appearance)
         .flatMap(Appearance.init(rawValue:)) ?? UserDefaultSettings.appearance {
         didSet { UserDefaults.standard.set(appearance.rawValue, forKey: UserDefaults.appearance) }

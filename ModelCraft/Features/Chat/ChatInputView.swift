@@ -322,6 +322,9 @@ private struct ModelCraftTextEditor: NSViewRepresentable {
         }
 
         func updateIfNeeded(_ textView: NSTextView) {
+            // Re-rendering replaces the text storage, which would discard an input
+            // method's in-progress composition.
+            guard !textView.hasMarkedText() else { return }
             updateRegexIfNeeded(parent.tokens)
             let source = sourceString(from: textView.attributedString())
             let displaySelection = displayLocation(
@@ -373,6 +376,8 @@ private struct ModelCraftTextEditor: NSViewRepresentable {
         }
 
         private func synchronize(_ textView: NSTextView) {
+            // Composed text is published once the input method commits it.
+            guard !textView.hasMarkedText() else { return }
             let source = sourceString(from: textView.attributedString())
             let sourceSelection = sourceLocation(
                 for: textView.selectedRange().location,
@@ -383,7 +388,6 @@ private struct ModelCraftTextEditor: NSViewRepresentable {
                 in: source,
                 selectionLocation: sourceSelection,
                 hasSelection: textView.selectedRange().length > 0)
-            guard !textView.hasMarkedText() else { return }
             render(
                 source,
                 tokens: parent.tokens,
@@ -392,6 +396,7 @@ private struct ModelCraftTextEditor: NSViewRepresentable {
         }
 
         private func updateSelection(from textView: NSTextView) {
+            guard !textView.hasMarkedText() else { return }
             let attributed = textView.attributedString()
             let source = sourceString(from: attributed)
             let sourceSelection = sourceLocation(

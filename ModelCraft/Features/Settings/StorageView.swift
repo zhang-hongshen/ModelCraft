@@ -7,31 +7,16 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 struct StorageView: View {
-    @Environment(GlobalStore.self) private var globalStore
-    @Environment(LocalModelStore.self) private var localModelStore
     @Environment(UserSettings.self) private var userSettings
 
-    @State private var isChoosingModelDirectory = false
     @State private var isChoosingMediaDirectory = false
     @State private var isChoosingSkillDirectory = false
     @State private var selectedMediaDirectory: MediaDirectory?
-    @State private var isMovingModels = false
-    @State private var moveError: String?
 
     var body: some View {
         @Bindable var userSettings = userSettings
 
         Form {
-            ModelStorageRow(
-                directory: $userSettings.modelDownloadBaseDirectory,
-                isMoving: isMovingModels,
-                canChangeDirectory: globalStore.runningTasks.isEmpty,
-                onChoose: { isChoosingModelDirectory = true },
-                onRestore: {
-                    changeModelDownloadDirectory(to: UserDefaultSettings.modelDownloadBaseDirectory)
-                }
-            )
-
             MediaStorageRows(
                 imageDirectory: $userSettings.imageOutputDirectory,
                 videoDirectory: $userSettings.videoOutputDirectory,
@@ -48,10 +33,6 @@ struct StorageView: View {
             )
         }
         .formStyle(.grouped)
-        .fileImporter(isPresented: $isChoosingModelDirectory, allowedContentTypes: [.folder]) { result in
-            guard case .success(let url) = result else { return }
-            changeModelDownloadDirectory(to: url)
-        }
         .fileImporter(isPresented: $isChoosingMediaDirectory, allowedContentTypes: [.folder]) { result in
             defer { selectedMediaDirectory = nil }
             guard case .success(let url) = result,
@@ -78,85 +59,6 @@ struct StorageView: View {
         .onChange(of: userSettings.customSkillDirectories) {
             SkillManager.shared.loadSkills()
         }
-        .alert("Unable to Move Models", isPresented: .init(
-            get: { moveError != nil },
-            set: { if !$0 { moveError = nil } }
-        )) {
-            Button("OK") {}
-        } message: {
-            Text(moveError ?? "")
-        }
-    }
-
-    private func changeModelDownloadDirectory(to newDownloadBase: URL) {
-        guard newDownloadBase.standardizedFileURL
-                != userSettings.modelDownloadBaseDirectory.standardizedFileURL else {
-            return
-        }
-        isMovingModels = true
-        let oldDownloadBase = userSettings.modelDownloadBaseDirectory
-        let targetDownloadBase = newDownloadBase.standardizedFileURL
-
-        Task {
-            do {
-                try await Task.detached(priority: .userInitiated) {
-                    let fileManager = FileManager.default
-                    // User models and the app's system models move together.
-                    let folders = ["models", ".system"].filter {
-                        fileManager.fileExists(at: oldDownloadBase.appending(path: $0))
-                    }
-
-                    try fileManager.createDirectoryIfNotExists(at: targetDownloadBase)
-
-                    guard !folders.contains(where: {
-                        fileManager.fileExists(at: targetDownloadBase.appending(path: $0))
-                    }) else {
-                        throw RuntimeError(String(
-                            localized: "The selected location already contains a models folder."
-                        ))
-                    }
-                    for folder in folders {
-                        try fileManager.moveDirectory(
-                            at: oldDownloadBase.appending(path: folder),
-                            to: targetDownloadBase.appending(path: folder))
-                    }
-                }.value
-                userSettings.modelDownloadBaseDirectory = targetDownloadBase
-                localModelStore.reload()
-            } catch {
-                moveError = error.localizedDescription
-            }
-            isMovingModels = false
-        }
-    }
-}
-
-private struct ModelStorageRow: View {
-    @Binding var directory: URL
-    let isMoving: Bool
-    let canChangeDirectory: Bool
-    let onChoose: () -> Void
-    let onRestore: () -> Void
-
-    var body: some View {
-        HStack(spacing: 12) {
-            Text("Download Location")
-            Spacer(minLength: 8)
-            FolderLocationButton(directory: directory, action: onChoose)
-                .frame(maxWidth: 180)
-                .disabled(isMoving || !canChangeDirectory)
-            if isMoving {
-                ProgressView().controlSize(.small)
-            }
-            Button("Reset", systemImage: "arrow.counterclockwise", action: onRestore)
-                .labelStyle(.titleAndIcon)
-                .disabled(isMoving || !canChangeDirectory || isDefaultDirectory)
-        }
-    }
-
-    private var isDefaultDirectory: Bool {
-        directory.standardizedFileURL
-            == UserDefaultSettings.modelDownloadBaseDirectory.standardizedFileURL
     }
 }
 
@@ -313,7 +215,5 @@ private struct FolderLocationButton: View {
 
 #Preview {
     StorageView()
-        .environment(GlobalStore())
-        .environment(LocalModelStore())
         .environment(UserSettings())
 }

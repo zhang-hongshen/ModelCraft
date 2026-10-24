@@ -17,6 +17,9 @@ class Project {
     @Relationship(deleteRule: .cascade, inverse: \Chat.project)
     var chats: [Chat] = []
 
+    @Relationship(deleteRule: .cascade, inverse: \Schedule.project)
+    var schedules: [Schedule] = []
+
     var workingDirectory: URL?
     var resources: [URL]
     
