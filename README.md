@@ -11,22 +11,38 @@
   </p>
 </div>
 
-ModelCraft brings local language and media models into one native macOS app. Chat with a model, organize work into projects, provide files as context, and let the assistant use tools to complete multi-step tasks.
+ModelCraft brings local language and media models into one native macOS app. Chat with a model, organize work into projects, provide files as context, connect your Mac apps, schedule recurring tasks, and let the assistant use tools to complete multi-step tasks.
 
-<!-- Screenshot: Main chat showing a multi-step tool workflow in light and dark mode. -->
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Screenshots/chat-dark.png" />
+  <img alt="ModelCraft chat with a multi-step tool workflow" src="Screenshots/chat.png" />
+</picture>
 
 ## What ModelCraft does
 
-- **Local model conversations:** Browse, download, and switch between supported models without configuring a separate inference server.
+- **Local model conversations:** Browse, download, and switch between supported models without configuring a separate inference server. Follow-up turns reuse the prompt cache, and large mixture-of-experts models such as DeepSeek V4 Flash stream experts from disk when they do not fit in memory.
 - **Multimodal input:** Work with text, voice input, images, documents, and audio in the same conversation.
 - **Projects and document context:** Keep related chats and files together, then let the assistant search project documents when answering.
-- **Agent workflows:** Allow the assistant to work with files, run commands, fetch web pages, and interact with the screen through available tools.
+- **Agent workflows:** Allow the assistant to work with files, run commands, fetch web pages, use Notes, Calendar, Reminders, and Mail, and interact with the screen. Less common tools load on demand, so every request stays small.
+- **Connectors:** Install companion Mac apps (Arthub, Cellar, Keel, TuneStudio) and the assistant can read and act on their data through MCP tools, with approval for anything that changes it.
+- **Scheduled tasks:** Run a prompt once or on an hourly, daily, weekly, monthly, or yearly schedule. Rules can follow workdays and public holidays, and each run lands in a new chat with an optional notification.
 - **Local media creation:** Generate images, audio, music, and video with supported models and keep the results in the conversation.
 - **Context control:** Inspect context usage and compact long conversations when needed.
 
-<!-- Screenshot: Projects and document context. -->
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Screenshots/model-store-dark.png" />
+  <img alt="Model Store" src="Screenshots/model-store.png" />
+</picture>
 
-<!-- Screenshot: Model Store and model download management. -->
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Screenshots/connectors-dark.png" />
+  <img alt="Connectors" src="Screenshots/connectors.png" />
+</picture>
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Screenshots/scheduled-tasks-dark.png" />
+  <img alt="Scheduled Tasks" src="Screenshots/scheduled-tasks.png" />
+</picture>
 
 ## Getting started
 
@@ -55,11 +71,11 @@ xattr -cr /Applications/ModelCraft.app
 
 ModelCraft runs supported models directly on your device. A conversation can remain a simple local chat or become an agent workflow: attach context, enable the tools you want to expose, and let the model choose the appropriate tool from its description as the task develops.
 
-Projects provide a persistent workspace for related chats and documents. System capabilities are available for tasks that involve files, commands, or screen interaction.
+Projects provide a persistent workspace for related chats and documents. System capabilities are available for tasks that involve files, commands, or screen interaction, and connectors extend the same tool set to the apps you install. Scheduled tasks run the same agent loop unattended while ModelCraft is open.
 
 ## Privacy and network access
 
-Local inference and conversation data stay on your device. Model downloads, web access, and other explicitly connected features require a network connection and may send requests to the service you choose to use.
+Local inference and conversation data stay on your device; models are stored under `~/Library/Application Support/ModelCraft`. Connectors talk to apps on the same Mac. Model downloads, holiday calendars, web access, and other explicitly connected features require a network connection and may send requests to the service you choose to use.
 
 ## Documentation and contributing
 
