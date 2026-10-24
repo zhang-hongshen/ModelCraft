@@ -38,19 +38,17 @@ enum ConnectorTool {
         try FileManager.default.removeItem(at: connector.toolsFileURL)
     }
 
-    static var schemas: [ToolSpec] {
-        Connector.allCases.flatMap { connector in
-            installedTools(of: connector).map { tool -> ToolSpec in
-                let description = tool.description ?? tool.annotations.title ?? tool.name
-                return [
-                    "type": "function",
-                    "function": [
-                        "name": connector.toolNamePrefix + tool.name,
-                        "description": "\(connector.name): \(description)",
-                        "parameters": sendable(tool.inputSchema) ?? [String: any Sendable](),
-                    ] as [String: any Sendable],
-                ]
-            }
+    static func schemas(of connector: Connector) -> [ToolSpec] {
+        installedTools(of: connector).map { tool -> ToolSpec in
+            let description = tool.description ?? tool.annotations.title ?? tool.name
+            return [
+                "type": "function",
+                "function": [
+                    "name": connector.toolNamePrefix + tool.name,
+                    "description": "\(connector.modelDescription)\n\(description)",
+                    "parameters": sendable(tool.inputSchema) ?? [String: any Sendable](),
+                ] as [String: any Sendable],
+            ]
         }
     }
 

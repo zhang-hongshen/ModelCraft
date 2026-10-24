@@ -18,7 +18,6 @@ struct ConnectorsView: View {
                 ForEach(Connector.allCases) { connector in
                     ConnectorCard(
                         connector: connector,
-                        applicationURL: applicationURLs[connector],
                         state: state(of: connector),
                         onInstall: { install(connector) },
                         onUninstall: { uninstall(connector) })
@@ -99,7 +98,6 @@ private struct ConnectorCard: View {
     }
 
     let connector: Connector
-    let applicationURL: URL?
     let state: InstallState
     let onInstall: () -> Void
     let onUninstall: () -> Void
@@ -108,7 +106,7 @@ private struct ConnectorCard: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            ConnectorIcon(applicationURL: applicationURL, systemImage: connector.systemImage)
+            ConnectorIcon(name: connector.iconName)
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(connector.name)
@@ -145,38 +143,20 @@ private struct ConnectorCard: View {
                 .controlSize(.small)
                 .accessibilityLabel("Installing")
         case .installed:
-            Menu("Installed") {
-                Button("Uninstall", role: .destructive, action: onUninstall)
-            }
-            .fixedSize()
+            Button("Uninstall", role: .destructive, action: onUninstall)
         }
     }
 }
 
 private struct ConnectorIcon: View {
 
-    let applicationURL: URL?
-    let systemImage: String
-
-    private let size: CGFloat = 56
+    let name: String
 
     var body: some View {
-        Group {
-            if let applicationURL {
-                Image(nsImage: NSWorkspace.shared.icon(forFile: applicationURL.path))
-                    .resizable()
-            } else {
-                RoundedRectangle()
-                    .fill(.quaternary.opacity(0.4))
-                    .overlay {
-                        Image(systemName: systemImage)
-                            .font(.system(size: size * 0.45, weight: .light))
-                            .foregroundStyle(.primary.opacity(0.8))
-                    }
-            }
-        }
-        .frame(width: size, height: size)
-        .accessibilityHidden(true)
+        Image(name)
+            .resizable()
+            .frame(width: 56, height: 56)
+            .accessibilityHidden(true)
     }
 }
 
