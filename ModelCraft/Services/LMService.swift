@@ -11,6 +11,7 @@ import FoundationModels
 import UniformTypeIdentifiers
 
 import MLX
+import MLXLLM
 import MLXLMCommon
 import Hub
 import Tokenizers
@@ -22,6 +23,17 @@ final class LMService {
     static let shared = LMService()
 
     private let deepSeekFlashEvaluator = DeepSeekFlashEvaluator()
+
+    /// The KV cache the last text-only request left, with the prompt tokens it starts with.
+    private struct PromptCache {
+        let modelID: String
+        let tokenIDs: [Int]
+        let cache: [KVCache]
+    }
+
+    /// Taken by the request that resumes it, so a concurrent request starts from a fresh cache.
+    private var promptCache: PromptCache?
+    private let promptCacheLock = NSLock()
     
     /// Cache to store loaded model containers to avoid reloading.
     private let modelCache: NSCache<NSString, ModelContainer> = {
@@ -59,6 +71,19 @@ final class LMService {
         return container
     }
 
+    private func takePromptCache(modelID: String) -> PromptCache? {
+        promptCacheLock.withLock {
+            defer { promptCache = nil }
+            return promptCache?.modelID == modelID ? promptCache : nil
+        }
+    }
+
+    private func returnPromptCache(_ cache: PromptCache) {
+        promptCacheLock.withLock {
+            promptCache = cache
+        }
+    }
+
     private func isDeepSeekFlash(_ model: LocalModel) -> Bool {
         model.id == DeepSeekFlashEvaluator.repositoryID
     }
@@ -87,13 +112,16 @@ final class LMService {
     ///   - model: The language model to use for generation
     ///   - messages: Array of chat messages including user, assistant, and system messages
     ///   - tools: Array of available tools
+    ///   - reusesPromptCache: Whether the request resumes from the prompt prefix the previous
+    ///     such request left in memory, and leaves its own for the next one
     /// - Returns: An asynchronous stream of generated text tokens
     /// - Throws: Errors that might occur during generation
     func generate(
         model: LocalModel,
         messages: [MLXLMCommon.Chat.Message],
         tools: [ToolSpec] = [],
-        maxTokens: Int? = nil
+        maxTokens: Int? = nil,
+        reusesPromptCache: Bool = true
     ) async throws -> AsyncThrowingStream<Generation, Error> {
         if isDeepSeekFlash(model) {
             return try await deepSeekFlashEvaluator.generate(
@@ -101,7 +129,8 @@ final class LMService {
                 tools: tools,
                 maximumSequenceLength: min(model.contextWindow, 65_536),
                 maximumNewTokens: maxTokens,
-                temperature: 0.7)
+                temperature: 0.7,
+                reusesPromptCache: reusesPromptCache)
         }
 
         let modelContainer = try await load(model: model)
@@ -114,7 +143,52 @@ final class LMService {
         let stream = try await modelContainer.perform { (context: ModelContext) in
             let lmInput = try await context.processor.prepare(input: userInput)
             let parameters = GenerateParameters(temperature: 0.7)
-            return try MLXLMCommon.generate(input: lmInput, parameters: parameters, context: context)
+            // Media and explicit masks are anchored to a pass from the first token, and vision
+            // models carry per-call state, so only text-only language models resume a cache.
+            guard reusesPromptCache, context.model is LLMModel,
+                  lmInput.image == nil, lmInput.video == nil, lmInput.audio == nil,
+                  lmInput.text.mask == nil
+            else {
+                return try MLXLMCommon.generate(
+                    input: lmInput, parameters: parameters, context: context)
+            }
+
+            let tokens = lmInput.text.tokens.flattened().asType(.int32)
+            let tokenIDs = tokens.asArray(Int32.self).map(Int.init)
+            var cache = try context.model.newCache(parameters: parameters)
+            var input = lmInput
+            if let reused = takePromptCache(modelID: model.id),
+               let offset = reused.cache.first?.offset
+            {
+                let sharedCount = min(
+                    zip(reused.tokenIDs, tokenIDs).prefix { $0 == $1 }.count,
+                    offset,
+                    tokenIDs.count - 1)
+                let trimCount = offset - sharedCount
+                if sharedCount > 0,
+                   trimPromptCache(reused.cache, numTokens: trimCount) == trimCount
+                {
+                    cache = reused.cache
+                    input = LMInput(tokens: tokens[sharedCount...])
+                }
+            }
+
+            let iterator = try TokenIterator(
+                input: input, model: context.model, cache: cache, parameters: parameters)
+            let (stream, task) = generateTask(
+                promptTokenCount: tokenIDs.count,
+                modelConfiguration: context.configuration,
+                tokenizer: context.tokenizer,
+                iterator: iterator,
+                toolCallPolicy: parameters.toolCallPolicy)
+            // The cache holds the prompt followed by the reply; the reply is not kept as reusable
+            // because the next prompt renders it again from the persisted message.
+            Task {
+                await task.value
+                self.returnPromptCache(PromptCache(
+                    modelID: model.id, tokenIDs: tokenIDs, cache: cache))
+            }
+            return stream
         }
 
         return AsyncThrowingStream<Generation, Error> { continuation in
@@ -145,11 +219,13 @@ final class LMService {
         maxTokens: Int? = nil
     ) async throws -> String {
         var output = ""
+        // One-off requests such as titles and summaries would only evict the conversation's cache.
         for try await segment in try await generate(
             model: model,
             messages: messages,
             tools: tools,
-            maxTokens: maxTokens) {
+            maxTokens: maxTokens,
+            reusesPromptCache: false) {
             try Task.checkCancellation()
             if let chunk = segment.chunk {
                 output.append(chunk)

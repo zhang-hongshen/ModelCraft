@@ -15,37 +15,30 @@ struct DeepSeekFlashDSparkOutput {
 }
 
 final class DeepSeekFlashDSparkAttention: DeepSeekFlashAttention {
-    func callAsFunction(
+    /// Writes the main model's key-values for the committed positions `startPosition...`
+    /// into the draft window.
+    func observe(
+        mainHidden: MLXArray,
+        startPosition: Int,
+        state: DeepSeekFlashAttentionState
+    ) {
+        precondition(compressionRatio == 0)
+        state.storeWindow(
+            applyRoPE(keyValueNorm(keyValue(mainHidden)), start: startPosition),
+            startPosition: startPosition)
+    }
+
+    /// Attends the draft block placed at `startPosition`, the first uncommitted position, to the
+    /// main model's window and to itself.
+    func draft(
         _ x: MLXArray,
         startPosition: Int,
-        mainHidden: MLXArray,
         state: DeepSeekFlashAttentionState
     ) -> MLXArray {
         precondition(compressionRatio == 0)
-        let batchSize = mainHidden.dim(0)
-        let mainSequenceLength = mainHidden.dim(1)
-        let window = configuration.slidingWindow
-        let mainKeyValue = applyRoPE(
-            keyValueNorm(keyValue(mainHidden)), start: startPosition)
-
-        if startPosition == 0 {
-            if mainSequenceLength <= window {
-                state.keyValueCache[0 ..< batchSize, 0 ..< mainSequenceLength] = mainKeyValue
-            } else {
-                let cutoff = mainSequenceLength % window
-                let tail = mainKeyValue[0..., (mainSequenceLength - window)...]
-                state.keyValueCache[0 ..< batchSize, cutoff ..< window] =
-                    tail[0..., 0 ..< (window - cutoff)]
-                if cutoff > 0 {
-                    state.keyValueCache[0 ..< batchSize, 0 ..< cutoff] =
-                        tail[0..., (window - cutoff)...]
-                }
-            }
-            return x
-        }
-
+        let batchSize = x.dim(0)
         let blockSize = x.dim(1)
-        let draftStart = startPosition + mainSequenceLength
+        let window = configuration.slidingWindow
         let reducedQuery = queryNorm(queryA(x))
         var query = queryB(reducedQuery).reshaped([
             batchSize,
@@ -55,31 +48,26 @@ final class DeepSeekFlashDSparkAttention: DeepSeekFlashAttention {
         ])
         query = query * rsqrt(mean(query * query, axis: -1, keepDims: true)
             + configuration.rmsNormEpsilon)
-        query = applyRoPE(query, start: draftStart)
+        query = applyRoPE(query, start: startPosition)
         let draftKeyValue = applyRoPE(
-            keyValueNorm(keyValue(x)), start: draftStart)
+            keyValueNorm(keyValue(x)), start: startPosition)
 
-        state.keyValueCache[0 ..< batchSize, startPosition % window] = mainKeyValue[0..., 0]
-        let allKeyValue = MLX.concatenated(
-            [state.keyValueCache[0 ..< batchSize, 0 ..< window], draftKeyValue], axis: 1)
-        var indexValues = [Int32]()
-        let mainCount = min(window, startPosition + 1)
-        for _ in 0 ..< batchSize {
-            for _ in 0 ..< blockSize {
-                indexValues.append(contentsOf: (0 ..< mainCount).map(Int32.init))
-                indexValues.append(contentsOf: (0 ..< blockSize).map { Int32(window + $0) })
-            }
-        }
-        let indices = MLXArray(
-            indexValues,
-            [batchSize, blockSize, mainCount + blockSize])
+        let mainCount = min(window, startPosition)
+        let mainIndices = MLX.broadcast(
+            MLXArray((0 ..< mainCount).map(Int32.init)).reshaped([1, 1, mainCount]),
+            to: [batchSize, blockSize, mainCount])
+        let draftIndices = MLX.broadcast(
+            MLXArray((0 ..< blockSize).map(Int32.init)).reshaped([1, 1, blockSize]),
+            to: [batchSize, blockSize, blockSize])
         var output = deepSeekFlashSparseAttention(
             query: query,
-            keyValue: allKeyValue,
-            indices: indices,
+            sources: [
+                (state.keyValueCache[0 ..< batchSize, 0 ..< window], mainIndices),
+                (draftKeyValue, draftIndices),
+            ],
             attentionSink: attentionSink,
             scale: softmaxScale)
-        output = applyRoPE(output, start: draftStart, inverse: true)
+        output = applyRoPE(output, start: startPosition, inverse: true)
         return projectOutput(output)
     }
 }
@@ -148,7 +136,7 @@ final class DeepSeekFlashDSparkBlock: Module {
     var embedding: DeepSeekFlashEmbedding?
     var head: DeepSeekFlashHead?
 
-    init(stageID: Int, configuration: DeepSeekFlashConfiguration) {
+    init(stageID: Int, configuration: DeepSeekFlashConfiguration, streamsExperts: Bool) {
         self.stageID = stageID
         self.configuration = configuration
         layerID = configuration.numHiddenLayers + stageID
@@ -159,7 +147,7 @@ final class DeepSeekFlashDSparkBlock: Module {
         _attention.wrappedValue = DeepSeekFlashDSparkAttention(
             layerID: layerID, configuration: configuration)
         _feedForward.wrappedValue = DeepSeekFlashMoE(
-            layerID: layerID, configuration: configuration)
+            layerID: layerID, configuration: configuration, streamsExperts: streamsExperts)
         _attentionNorm.wrappedValue = DeepSeekFlashRMSNorm(
             dimensions: configuration.hiddenSize, epsilon: configuration.rmsNormEpsilon)
         _feedForwardNorm.wrappedValue = DeepSeekFlashRMSNorm(
@@ -205,39 +193,31 @@ final class DeepSeekFlashDSparkBlock: Module {
         super.init()
     }
 
-    func prepare(
-        mainHidden: MLXArray,
-        inputIDs: MLXArray
-    ) -> (hidden: MLXArray, mainHidden: MLXArray) {
-        let projectedMain = mainNorm!(mainProjection!(mainHidden))
-        let currentIDs = inputIDs.reshaped([inputIDs.dim(0), -1])[0..., -1]
-            .reshaped([inputIDs.dim(0), 1])
+    /// Projects the main model's target-layer hidden states for the draft windows.
+    func projectMain(_ mainHidden: MLXArray) -> MLXArray {
+        mainNorm!(mainProjection!(mainHidden))
+    }
+
+    /// The draft block: the current token followed by noise tokens for the positions to predict.
+    func prepare(currentTokenIDs: MLXArray) -> MLXArray {
+        let batchSize = currentTokenIDs.dim(0)
         let noise = MLXArray.full(
-            [inputIDs.dim(0), configuration.dsparkBlockSize - 1],
+            [batchSize, configuration.dsparkBlockSize - 1],
             values: MLXArray(Int32(configuration.dsparkNoiseTokenID)),
             dtype: .int32)
-        let draftIDs = MLX.concatenated([currentIDs.asType(.int32), noise], axis: 1)
-        var hidden = embedding!(draftIDs).expandedDimensions(axis: 2)
-        hidden = MLX.repeated(
+        let draftIDs = MLX.concatenated(
+            [currentTokenIDs.reshaped([batchSize, 1]).asType(.int32), noise], axis: 1)
+        let hidden = embedding!(draftIDs).expandedDimensions(axis: 2)
+        return MLX.repeated(
             hidden, count: configuration.hyperConnectionMultiplier, axis: 2)
-        return (hidden, projectedMain)
     }
 
     func callAsFunction(
         _ x: MLXArray,
         startPosition: Int,
         inputIDs: MLXArray,
-        mainHidden: MLXArray,
         state: DeepSeekFlashAttentionState
-    ) -> MLXArray {
-        if startPosition == 0 {
-            return attention(
-                x,
-                startPosition: startPosition,
-                mainHidden: mainHidden,
-                state: state)
-        }
-
+    ) throws -> MLXArray {
         var residual = x
         var connection = DeepSeekFlashHyperConnection.pre(
             x,
@@ -246,10 +226,9 @@ final class DeepSeekFlashDSparkBlock: Module {
             base: attentionHCBase,
             configuration: configuration)
         var hidden = attentionNorm(connection.hidden)
-        hidden = attention(
+        hidden = attention.draft(
             hidden,
             startPosition: startPosition,
-            mainHidden: mainHidden,
             state: state)
         hidden = DeepSeekFlashHyperConnection.post(
             hidden,
@@ -265,7 +244,7 @@ final class DeepSeekFlashDSparkBlock: Module {
             base: feedForwardHCBase,
             configuration: configuration)
         hidden = feedForwardNorm(connection.hidden)
-        hidden = feedForward(
+        hidden = try feedForward(
             hidden,
             inputIDs: inputIDs)
         return DeepSeekFlashHyperConnection.post(
@@ -310,38 +289,39 @@ final class DeepSeekFlashDSparkBlock: Module {
 }
 
 extension DeepSeekFlashTransformer {
-    func forwardSpeculative(
-        inputIDs: MLXArray,
+    /// Adds the committed positions `startPosition...` to every draft window. `mainHidden` holds
+    /// the target layers' hidden states for those positions.
+    func observeDSpark(
         mainHidden: MLXArray,
         startPosition: Int,
-        temperature: Float = 1
-    ) throws -> DeepSeekFlashDSparkOutput? {
-        if startPosition == 0 || dsparkAttentionStates.count != configuration.numNextPredictLayers {
-            dsparkAttentionStates = (0 ..< configuration.numNextPredictLayers).map { stageID in
-                DeepSeekFlashAttentionState(
-                    configuration: configuration,
-                    layerID: configuration.numHiddenLayers + stageID,
-                    batchSize: inputIDs.dim(0),
-                    maximumSequenceLength: maximumSequenceLength)
-            }
-        }
-
-        let prepared = mtp[0].prepare(
-            mainHidden: mainHidden,
-            inputIDs: inputIDs)
-        var hidden = prepared.hidden
-        let projectedMain = prepared.mainHidden
+        cache: DeepSeekFlashCache
+    ) {
+        let projectedMain = mtp[0].projectMain(mainHidden)
         for (stageID, block) in mtp.enumerated() {
-            hidden = block(
+            block.attention.observe(
+                mainHidden: projectedMain,
+                startPosition: startPosition,
+                state: cache.dsparkStates[stageID])
+        }
+    }
+
+    /// Drafts the tokens that follow `currentTokenIDs`, which sits at `startPosition`, the first
+    /// position not yet committed.
+    func draft(
+        currentTokenIDs: MLXArray,
+        startPosition: Int,
+        cache: DeepSeekFlashCache,
+        temperature: Float
+    ) throws -> DeepSeekFlashDSparkOutput {
+        var hidden = mtp[0].prepare(currentTokenIDs: currentTokenIDs)
+        for (stageID, block) in mtp.enumerated() {
+            hidden = try block(
                 hidden,
                 startPosition: startPosition,
-                inputIDs: inputIDs,
-                mainHidden: projectedMain,
-                state: dsparkAttentionStates[stageID])
-            eval(hidden)
+                inputIDs: currentTokenIDs,
+                state: cache.dsparkStates[stageID])
         }
-        guard startPosition > 0 else { return nil }
         return mtp.last!.finish(
-            hidden, inputIDs: inputIDs, temperature: temperature)
+            hidden, inputIDs: currentTokenIDs, temperature: temperature)
     }
 }

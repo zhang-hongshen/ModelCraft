@@ -55,22 +55,6 @@ enum DeepSeekFlashLoader {
         }
     }
 
-    private static func loadWeights(
-        from url: URL,
-        into model: Module,
-        mapper: (String, MLXArray) -> [(String, MLXArray)] = { [($0, $1)] }
-    ) throws {
-        let weights = try MLX.loadArrays(url: url).flatMap {
-            mapper($0.key, $0.value)
-        }
-        guard !weights.isEmpty else {
-            throw DeepSeekFlashLoaderError.emptyWeights(url)
-        }
-        try model.update(
-            parameters: ModuleParameters.unflattened(weights),
-            verify: .none)
-    }
-
     static func loadTransformer(
         hub: HubApi,
         configuration: DeepSeekFlashConfiguration,
@@ -78,64 +62,91 @@ enum DeepSeekFlashLoader {
     ) throws -> DeepSeekFlashTransformer {
         let indexURL = try resolve(hub: hub, path: "model.safetensors.index.json")
         let weightMap = try loadWeightMap(from: indexURL)
-        let layerURLs = try resolveLayerURLs(
-            hub: hub,
-            configuration: configuration,
-            weightMap: weightMap,
-            indexURL: indexURL)
         let shardURLs = try Set(weightMap.values).sorted().map {
             try resolve(hub: hub, path: $0)
         }
         let totalSize = try shardURLs.reduce(UInt64(0)) {
             $0 + (try fileSize($1))
         }
-        let fullLoad = totalSize <= ProcessInfo.processInfo.physicalMemory / 4 * 3
+        let memoryLimit = Int(ProcessInfo.processInfo.physicalMemory / 4 * 3)
+        let streamsExperts = totalSize > UInt64(memoryLimit)
 
         let transformer = DeepSeekFlashTransformer(
             configuration: configuration,
-            maximumSequenceLength: maximumSequenceLength)
-        if fullLoad {
-            transformer.layers = (0 ..< configuration.numHiddenLayers).map {
-                DeepSeekFlashTransformerBlock(
-                    layerID: $0,
-                    configuration: configuration)
+            maximumSequenceLength: maximumSequenceLength,
+            streamsExperts: streamsExperts)
+        let expertCache = DeepSeekFlashExpertCache()
+        if streamsExperts {
+            let blocks = transformer.layers.enumerated().map { ("layers.\($0).", $1.feedForward) }
+                + transformer.mtp.enumerated().map { ("mtp.\($0).", $1.feedForward) }
+            for (prefix, feedForward) in blocks {
+                feedForward.expertSource = DeepSeekFlashExpertSource(
+                    cache: expertCache,
+                    url: try resolveBlockURL(
+                        hub: hub, prefix: prefix, weightMap: weightMap, indexURL: indexURL),
+                    prefix: prefix + "ffn.experts.")
             }
-            for url in shardURLs {
-                try loadWeights(from: url, into: transformer)
-            }
-        } else {
-            // DSpark stages only draft tokens, so streaming leaves them unloaded.
-            transformer.mtp = []
-            let dsparkURLs = try Set(weightMap.compactMap { name, shardName in
-                name.hasPrefix("mtp.") ? shardName : nil
-            }).map { try resolve(hub: hub, path: $0) }
-            let streamedURLs = Set(layerURLs).union(dsparkURLs)
-            for url in shardURLs where !streamedURLs.contains(url) {
-                try loadWeights(from: url, into: transformer)
-            }
-            transformer.streamingLayerURLs = layerURLs
+        }
+
+        for url in shardURLs {
+            try loadWeights(from: url, into: transformer, stacksExperts: !streamsExperts)
         }
         eval(transformer)
+
+        if streamsExperts {
+            // Everything but the routed experts stays resident; the experts get what is left.
+            let residentBytes = transformer.parameters().flattened().reduce(0) {
+                $0 + $1.1.nbytes
+            }
+            let cacheBytes = DeepSeekFlashCache.byteCount(
+                configuration: configuration,
+                maximumSequenceLength: transformer.maximumSequenceLength)
+            let expertBytes = configuration.hiddenSize * configuration.moeIntermediateSize * 3
+                * 17 / 32
+            let workingBytes = 2 * 32 * expertBytes
+            expertCache.budget = max(memoryLimit - residentBytes - cacheBytes - workingBytes, 0)
+        }
         Memory.clearCache()
         return transformer
     }
 
-    /// Builds one Transformer block from its shard. Tensors stay lazy until the
-    /// forward pass evaluates them, so only the experts a step routes to are read.
-    static func loadTransformerBlock(
-        layerID: Int,
-        url: URL,
-        configuration: DeepSeekFlashConfiguration
-    ) throws -> DeepSeekFlashTransformerBlock {
-        let block = DeepSeekFlashTransformerBlock(
-            layerID: layerID,
-            configuration: configuration)
-        let prefix = "layers.\(layerID)."
-        try loadWeights(from: url, into: block) { name, array in
-            guard name.hasPrefix(prefix) else { return [] }
-            return [(String(name.dropFirst(prefix.count)), array)]
+    /// Loads one shard. Routed experts are stacked per projection when resident and skipped when
+    /// they are read from disk per step.
+    private static func loadWeights(
+        from url: URL,
+        into model: Module,
+        stacksExperts: Bool
+    ) throws {
+        var weights = [(String, MLXArray)]()
+        var experts = [String: [Int: MLXArray]]()
+        for (name, array) in try MLX.loadArrays(url: url) {
+            guard let range = name.range(of: ".ffn.experts.") else {
+                weights.append((name, array))
+                continue
+            }
+            guard stacksExperts else { continue }
+            // `<block>.ffn.experts.<expert>.<tensor>` becomes `<block>.ffn.experts.<tensor>`.
+            let suffix = name[range.upperBound...]
+            guard let dot = suffix.firstIndex(of: "."),
+                  let expertID = Int(suffix[..<dot])
+            else {
+                throw DeepSeekFlashLoaderError.invalidIndex(url)
+            }
+            let stackedName = String(name[..<range.upperBound] + suffix[suffix.index(after: dot)...])
+            experts[stackedName, default: [:]][expertID] = array
         }
-        return block
+        for (name, byExpert) in experts {
+            weights.append((name, MLX.stacked(
+                byExpert.keys.sorted().map { byExpert[$0]! }, axis: 0)))
+        }
+        guard !weights.isEmpty else {
+            throw DeepSeekFlashLoaderError.emptyWeights(url)
+        }
+        try model.update(
+            parameters: ModuleParameters.unflattened(weights),
+            verify: .none)
+        // Each shard holds whole blocks, so stacking them here bounds the peak to one shard.
+        eval(weights.map(\.1))
     }
 
     private static func loadWeightMap(from url: URL) throws -> [String: String] {
@@ -148,22 +159,20 @@ enum DeepSeekFlashLoader {
         }
     }
 
-    private static func resolveLayerURLs(
+    /// The shard holding every tensor of the block named by `prefix`, such as `layers.5.`.
+    private static func resolveBlockURL(
         hub: HubApi,
-        configuration: DeepSeekFlashConfiguration,
+        prefix: String,
         weightMap: [String: String],
         indexURL: URL
-    ) throws -> [URL] {
-        try (0 ..< configuration.numHiddenLayers).map { layerID in
-            let prefix = "layers.\(layerID)."
-            let shardNames = Set(weightMap.compactMap { name, shardName in
-                name.hasPrefix(prefix) ? shardName : nil
-            })
-            guard shardNames.count == 1, let shardName = shardNames.first else {
-                throw DeepSeekFlashLoaderError.invalidIndex(indexURL)
-            }
-            return try resolve(hub: hub, path: shardName)
+    ) throws -> URL {
+        let shardNames = Set(weightMap.compactMap { name, shardName in
+            name.hasPrefix(prefix) ? shardName : nil
+        })
+        guard shardNames.count == 1, let shardName = shardNames.first else {
+            throw DeepSeekFlashLoaderError.invalidIndex(indexURL)
         }
+        return try resolve(hub: hub, path: shardName)
     }
 
     private static func fileSize(_ url: URL) throws -> UInt64 {

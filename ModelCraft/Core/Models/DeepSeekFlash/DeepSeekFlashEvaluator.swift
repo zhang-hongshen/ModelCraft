@@ -32,7 +32,8 @@ final class DeepSeekFlashEvaluator {
         tools: [ToolSpec] = [],
         maximumSequenceLength: Int,
         maximumNewTokens: Int? = nil,
-        temperature: Float = 1
+        temperature: Float = 1,
+        reusesPromptCache: Bool = true
     ) async throws -> AsyncThrowingStream<Generation, Error> {
         let input = try render(messages: messages, tools: tools)
         let model = try await modelFactory.load(
@@ -41,7 +42,8 @@ final class DeepSeekFlashEvaluator {
             prompt: input.prompt,
             images: input.images,
             maximumNewTokens: maximumNewTokens,
-            temperature: temperature)
+            temperature: temperature,
+            reusesPromptCache: reusesPromptCache)
 
         return AsyncThrowingStream { continuation in
             let task = Task {

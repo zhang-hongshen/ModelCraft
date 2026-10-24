@@ -24,7 +24,7 @@ final class DeepSeekFlashTransformerBlock: Module {
     @ParameterInfo(key: "hc_ffn_fn") var feedForwardHCFunction: MLXArray
     @ParameterInfo(key: "hc_ffn_scale") var feedForwardHCScale: MLXArray
 
-    init(layerID: Int, configuration: DeepSeekFlashConfiguration) {
+    init(layerID: Int, configuration: DeepSeekFlashConfiguration, streamsExperts: Bool) {
         self.layerID = layerID
         self.configuration = configuration
         let multiplier = configuration.hyperConnectionMultiplier
@@ -33,7 +33,7 @@ final class DeepSeekFlashTransformerBlock: Module {
         _attention.wrappedValue = DeepSeekFlashAttention(
             layerID: layerID, configuration: configuration)
         _feedForward.wrappedValue = DeepSeekFlashMoE(
-            layerID: layerID, configuration: configuration)
+            layerID: layerID, configuration: configuration, streamsExperts: streamsExperts)
         _attentionNorm.wrappedValue = DeepSeekFlashRMSNorm(
             dimensions: configuration.hiddenSize, epsilon: configuration.rmsNormEpsilon)
         _feedForwardNorm.wrappedValue = DeepSeekFlashRMSNorm(
@@ -55,7 +55,7 @@ final class DeepSeekFlashTransformerBlock: Module {
         inputIDs: MLXArray,
         state: DeepSeekFlashAttentionState,
         imageVisibility: DeepSeekFlashImageVisibility?
-    ) -> MLXArray {
+    ) throws -> MLXArray {
         var residual = x
         var connection = DeepSeekFlashHyperConnection.pre(
             x,
@@ -83,7 +83,7 @@ final class DeepSeekFlashTransformerBlock: Module {
             base: feedForwardHCBase,
             configuration: configuration)
         hidden = feedForwardNorm(connection.hidden)
-        hidden = feedForward(
+        hidden = try feedForward(
             hidden,
             inputIDs: inputIDs)
         return DeepSeekFlashHyperConnection.post(

@@ -24,10 +24,17 @@ enum DeepSeekFlashGeneration: Sendable {
 }
 
 final class DeepSeekFlash {
+    /// Drafts whose confidence, as a probability, falls below this are not verified, so an unlikely
+    /// draft does not make the main model read extra experts.
+    private static let draftConfidenceThreshold: Float = 0.5
 
     let configuration: DeepSeekFlashConfiguration
     private let tokenizer: DeepSeekFlashTokenizer
     let transformer: DeepSeekFlashTransformer
+    /// The conversation memory for the next request that reuses its prompt. A running request
+    /// takes it, so a concurrent one starts from a fresh cache instead of sharing it.
+    private var promptCache: DeepSeekFlashCache?
+    private let promptCacheLock = NSLock()
 
     var maximumSequenceLength: Int {
         transformer.maximumSequenceLength
@@ -52,11 +59,14 @@ final class DeepSeekFlash {
         try prepare(prompt: prompt, images: images).tokenIDs.count
     }
 
+    /// Generates a reply to `prompt`. With `reusesPromptCache`, the request resumes from the
+    /// longest prefix the previous such request left in memory and leaves its own for the next.
     func generate(
         prompt: String,
         images: [UserInput.Image] = [],
         maximumNewTokens: Int? = nil,
-        temperature: Float = 1
+        temperature: Float = 1,
+        reusesPromptCache: Bool = true
     ) -> AsyncThrowingStream<DeepSeekFlashGeneration, Error> {
         let prepared: DeepSeekFlashPreparedInput
         do {
@@ -75,11 +85,17 @@ final class DeepSeekFlash {
                 let start = Date.timeIntervalSinceReferenceDate
                 var promptTime: TimeInterval?
                 let decoder = tokenizer.makeStreamingDecoder()
+                let cache = reusesPromptCache
+                    ? takePromptCache()
+                    : DeepSeekFlashCache(
+                        configuration: configuration,
+                        maximumSequenceLength: promptTokenIDs.count + generationLimit)
 
                 do {
                     let generated = try generateTokenIDs(
                         tokenIDs: promptTokenIDs,
                         images: prepared.images,
+                        cache: cache,
                         maximumNewTokens: generationLimit,
                         temperature: temperature,
                         endOfSentenceTokenID: tokenizer.endOfSentenceTokenID
@@ -90,6 +106,9 @@ final class DeepSeekFlash {
                         if let chunk = decoder.append(token: token) {
                             continuation.yield(.chunk(chunk))
                         }
+                    }
+                    if reusesPromptCache {
+                        returnPromptCache(cache)
                     }
 
                     let totalTime = Date.timeIntervalSinceReferenceDate - start
@@ -102,6 +121,11 @@ final class DeepSeekFlash {
                         reachedTokenLimit: generated.count >= generationLimit)))
                     continuation.finish()
                 } catch {
+                    // Cancellation stops between steps, so the cache is consistent; any other
+                    // failure may have left a pass half committed.
+                    if reusesPromptCache, error is CancellationError {
+                        returnPromptCache(cache)
+                    }
                     continuation.finish(throwing: error)
                 }
             }
@@ -109,9 +133,25 @@ final class DeepSeekFlash {
         }
     }
 
+    private func takePromptCache() -> DeepSeekFlashCache {
+        promptCacheLock.withLock {
+            defer { promptCache = nil }
+            return promptCache ?? DeepSeekFlashCache(
+                configuration: configuration,
+                maximumSequenceLength: maximumSequenceLength)
+        }
+    }
+
+    private func returnPromptCache(_ cache: DeepSeekFlashCache) {
+        promptCacheLock.withLock {
+            promptCache = cache
+        }
+    }
+
     private func generateTokenIDs(
         tokenIDs: [Int],
         images: [DeepSeekFlashImageInput],
+        cache: DeepSeekFlashCache,
         maximumNewTokens: Int,
         temperature: Float = 1,
         endOfSentenceTokenID: Int = 1,
@@ -120,87 +160,116 @@ final class DeepSeekFlash {
         precondition(!tokenIDs.isEmpty, "DeepSeekFlash requires at least one prompt token")
         guard maximumNewTokens > 0 else { return [] }
 
-        transformer.resetCache(batchSize: 1)
+        var position = cache.resume(tokenIDs: tokenIDs, images: images)
+        let promptSuffix = Array(tokenIDs[position...])
+        let promptImages = position == 0 ? images : []
         let prefill = try transformer(
-            MLXArray(tokenIDs).reshaped([1, tokenIDs.count]),
-            images: images,
-            startPosition: 0,
-            temperature: temperature)
-        eval(prefill.tokenIDs)
+            MLXArray(promptSuffix).reshaped([1, promptSuffix.count]),
+            images: promptImages,
+            startPosition: position,
+            cache: cache)
+        cache.commit(promptSuffix, images: promptImages)
+        transformer.observeDSpark(
+            mainHidden: prefill.dsparkHidden,
+            startPosition: tokenIDs.count - prefill.dsparkHidden.dim(1),
+            cache: cache)
+        cache.saveCheckpoint()
+        position = tokenIDs.count
 
         var generated = [Int]()
         generated.reserveCapacity(maximumNewTokens)
-        var currentTokenIDs = prefill.tokenIDs
-        var currentToken = Int(currentTokenIDs.asArray(Int32.self)[0])
-        guard currentToken != endOfSentenceTokenID else { return generated }
-        generated.append(currentToken)
-        onToken?(currentToken)
+        var currentToken = Int(DeepSeekFlashSampler.sample(
+            logits: prefill.logits[0..., -1], temperature: temperature
+        ).item(Int32.self))
 
-        guard generated.count < maximumNewTokens else {
-            return generated
-        }
-
-        if let mainHidden = prefill.dsparkHidden {
-            eval(mainHidden)
-            _ = try transformer.forwardSpeculative(
-                inputIDs: currentTokenIDs,
-                mainHidden: mainHidden,
-                startPosition: 0,
-                temperature: 0)
-        }
-
-        var activeDrafts = [Int]()
-        var activeDraftIndex = 0
-        var position = tokenIDs.count
-
-        while generated.count < maximumNewTokens {
-            try Task.checkCancellation()
-            let main = try transformer(
-                currentTokenIDs.reshaped([1, 1]),
-                startPosition: position,
-                temperature: temperature)
-            eval(main.tokenIDs)
-            let verifiedToken = Int(main.tokenIDs.asArray(Int32.self)[0])
-
-            var latestDrafts = [Int]()
-            if let mainHidden = main.dsparkHidden {
-                eval(mainHidden)
-                if let draft = try transformer.forwardSpeculative(
-                    inputIDs: main.tokenIDs,
-                    mainHidden: mainHidden,
-                    startPosition: position,
-                    temperature: 0)
-                {
-                    eval(draft.tokenIDs, draft.confidence)
-                    latestDrafts = Array(
-                        draft.tokenIDs.asArray(Int32.self).dropFirst().map(Int.init))
-                }
-            }
-
-            if activeDraftIndex < activeDrafts.count,
-               activeDrafts[activeDraftIndex] == verifiedToken
-            {
-                activeDraftIndex += 1
-                if activeDraftIndex == activeDrafts.count {
-                    activeDrafts = latestDrafts
-                    activeDraftIndex = 0
-                }
-            } else {
-                activeDrafts = latestDrafts
-                activeDraftIndex = 0
-            }
-
-            currentTokenIDs = main.tokenIDs
-            currentToken = verifiedToken
-            if currentToken == endOfSentenceTokenID {
-                break
-            }
+        while currentToken != endOfSentenceTokenID {
             generated.append(currentToken)
             onToken?(currentToken)
-            position += 1
+            let room = min(
+                maximumNewTokens - generated.count,
+                cache.maximumSequenceLength - position)
+            guard room > 0 else { break }
+            try Task.checkCancellation()
+
+            // Each accepted draft saves the main model one pass, and in particular one read of
+            // the experts it routes to.
+            var drafts = [Int]()
+            if room > 1 {
+                let draft = try transformer.draft(
+                    currentTokenIDs: MLXArray([Int32(currentToken)]).reshaped([1, 1]),
+                    startPosition: position,
+                    cache: cache,
+                    temperature: 0)
+                let confidence = MLX.sigmoid(draft.confidence[0]).asArray(Float.self)
+                let draftCount = min(
+                    room - 1,
+                    confidence.prefix { $0 >= Self.draftConfidenceThreshold }.count)
+                drafts = Array(draft.tokenIDs[0].asArray(Int32.self)
+                    .dropFirst().prefix(draftCount).map(Int.init))
+            }
+
+            let input = [currentToken] + drafts
+            let output = try transformer(
+                MLXArray(input).reshaped([1, input.count]),
+                startPosition: position,
+                cache: cache,
+                allLogits: true,
+                keepsStaged: true)
+            let verification = Self.verify(
+                logits: output.logits[0], drafts: drafts, temperature: temperature)
+            let committed = Array(input.prefix(verification.acceptedCount + 1))
+            cache.commit(committed)
+            transformer.observeDSpark(
+                mainHidden: output.dsparkHidden[0..., 0 ..< committed.count],
+                startPosition: position,
+                cache: cache)
+            position += committed.count
+
+            for token in drafts.prefix(verification.acceptedCount) {
+                guard token != endOfSentenceTokenID else { return generated }
+                generated.append(token)
+                onToken?(token)
+            }
+            currentToken = verification.nextToken
         }
 
         return generated
+    }
+
+    /// Accepts the longest prefix of the greedy `drafts` that sampling from the main model's
+    /// `logits` would also produce, keeping the main model's distribution, and samples the token
+    /// that follows it.
+    private static func verify(
+        logits: MLXArray,
+        drafts: [Int],
+        temperature: Float
+    ) -> (acceptedCount: Int, nextToken: Int) {
+        if temperature == 0 {
+            let targets = argMax(logits, axis: -1).asType(.int32).asArray(Int32.self)
+                .map(Int.init)
+            let acceptedCount = zip(drafts, targets).prefix { $0 == $1 }.count
+            return (acceptedCount, targets[acceptedCount])
+        }
+
+        let probabilities = softmax(logits / temperature, axis: -1)
+        var acceptedCount = 0
+        if !drafts.isEmpty {
+            let draftIndices = MLXArray(drafts.map(Int32.init)).reshaped([-1, 1])
+            let draftProbabilities = takeAlong(
+                probabilities[0 ..< drafts.count], draftIndices, axis: -1
+            ).flattened()
+            let draws = MLXRandom.uniform(0 ..< 1, [drafts.count])
+            acceptedCount = (draws .< draftProbabilities).asArray(Bool.self)
+                .prefix { $0 }.count
+        }
+        var residual = probabilities[acceptedCount]
+        if acceptedCount < drafts.count {
+            // A rejected greedy draft resamples from the main distribution without that token.
+            residual[drafts[acceptedCount]] = MLXArray(Float(0))
+        }
+        let nextToken = MLXRandom.categorical(MLX.log(residual), axis: -1)
+            .asType(.int32).item(Int32.self)
+        return (acceptedCount, Int(nextToken))
     }
 
     private func prepare(

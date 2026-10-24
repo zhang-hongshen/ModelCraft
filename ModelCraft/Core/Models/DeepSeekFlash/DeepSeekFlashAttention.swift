@@ -73,6 +73,9 @@ class DeepSeekFlashAttention: Module {
         super.init()
     }
 
+    /// Attends `x`, the tokens at `startPosition...`, to the committed window, the compressed
+    /// history, and each other. The new tokens are staged in `state`; they become part of the
+    /// window only when the state commits them, so a verification step can discard a rejected tail.
     func callAsFunction(
         _ x: MLXArray,
         startPosition: Int,
@@ -93,9 +96,9 @@ class DeepSeekFlashAttention: Module {
             + configuration.rmsNormEpsilon)
         query = applyRoPE(query, start: startPosition)
 
-        var currentKeyValue = applyRoPE(
+        let currentKeyValue = applyRoPE(
             keyValueNorm(keyValue(x)), start: startPosition)
-        var indices = windowIndices(
+        let windows = windowIndices(
             batchSize: batchSize,
             sequenceLength: sequenceLength,
             startPosition: startPosition,
@@ -103,57 +106,44 @@ class DeepSeekFlashAttention: Module {
             imageVisibility: imageVisibility,
             maximumImageTokens: configuration.visionMaximumTokenCount)
 
+        var cachedIndices = windows.cached.map { [$0] } ?? []
         if compressionRatio > 0 {
-            let offset = startPosition == 0 ? sequenceLength : window
-            let compressedIndices: MLXArray
-            if let indexer {
-                compressedIndices = indexer(
-                    x,
-                    reducedQuery: reducedQuery,
-                    startPosition: startPosition,
-                    offset: offset,
-                    state: state)
-            } else {
-                compressedIndices = compressionIndices(
-                    batchSize: batchSize,
-                    sequenceLength: sequenceLength,
-                    startPosition: startPosition,
-                    ratio: compressionRatio,
-                    offset: offset)
-            }
-            indices = MLX.concatenated([indices, compressedIndices], axis: -1)
-        }
-
-        let attentionKeyValue: MLXArray
-        if startPosition == 0 {
-            storePrefillWindow(currentKeyValue, in: state, window: window)
             if let compressor,
                let compressorState = state.compressor,
                let compressed = compressor(
                    x, startPosition: startPosition, state: compressorState)
             {
+                let first = window + startPosition / compressionRatio
                 state.keyValueCache[
-                    0 ..< batchSize,
-                    window ..< (window + compressed.dim(1))] = compressed
-                currentKeyValue = MLX.concatenated([currentKeyValue, compressed], axis: 1)
+                    0 ..< batchSize, first ..< (first + compressed.dim(1))] = compressed
             }
-            attentionKeyValue = currentKeyValue
-        } else {
-            state.keyValueCache[0 ..< batchSize, startPosition % window] = currentKeyValue[0..., 0]
-            if let compressor, let compressorState = state.compressor,
-               let compressed = compressor(
-                   x, startPosition: startPosition, state: compressorState)
-            {
-                state.keyValueCache[
-                    0 ..< batchSize, window + startPosition / compressionRatio] = compressed[0..., 0]
+            if let indexer {
+                cachedIndices.append(indexer(
+                    x,
+                    reducedQuery: reducedQuery,
+                    startPosition: startPosition,
+                    offset: window,
+                    state: state))
+            } else {
+                cachedIndices.append(compressionIndices(
+                    batchSize: batchSize,
+                    sequenceLength: sequenceLength,
+                    startPosition: startPosition,
+                    ratio: compressionRatio,
+                    offset: window))
             }
-            attentionKeyValue = state.keyValueCache[0 ..< batchSize]
         }
+        state.stage(currentKeyValue, startPosition: startPosition)
 
-        var output = sparseAttention(
+        var sources = [(keyValue: currentKeyValue, indices: windows.current)]
+        if !cachedIndices.isEmpty {
+            sources.append((
+                state.keyValueCache[0 ..< batchSize],
+                MLX.concatenated(cachedIndices, axis: -1)))
+        }
+        var output = deepSeekFlashSparseAttention(
             query: query,
-            keyValue: attentionKeyValue,
-            indices: indices,
+            sources: sources,
             attentionSink: attentionSink,
             scale: softmaxScale)
         output = applyRoPE(
@@ -196,34 +186,22 @@ class DeepSeekFlashAttention: Module {
             betaSlow: configuration.ropeBetaSlow,
             inverse: inverse)
     }
-
-    private func storePrefillWindow(
-        _ value: MLXArray,
-        in state: DeepSeekFlashAttentionState,
-        window: Int
-    ) {
-        let batchSize = value.dim(0)
-        let sequenceLength = value.dim(1)
-        if sequenceLength <= window {
-            state.keyValueCache[0 ..< batchSize, 0 ..< sequenceLength] = value
-        } else {
-            let cutoff = sequenceLength % window
-            let tail = value[0..., (sequenceLength - window)...]
-            state.keyValueCache[0 ..< batchSize, cutoff ..< window] =
-                tail[0..., 0 ..< (window - cutoff)]
-            if cutoff > 0 {
-                state.keyValueCache[0 ..< batchSize, 0 ..< cutoff] = tail[0..., (window - cutoff)...]
-            }
-        }
-    }
 }
 
-
+/// The unfinished compression group of one compressor. Committing replaces the arrays rather
+/// than writing into them, so a snapshot can hold on to the previous ones.
 final class DeepSeekFlashCompressorState {
-    var keyValue: MLXArray
-    var score: MLXArray
+    let ratio: Int
+    let overlapping: Bool
+    /// Overlapping compressors keep the previous complete group in `0 ..< ratio` and the current
+    /// one in `ratio ..< 2 * ratio`; the others keep the current group in `0 ..< ratio`.
+    private(set) var keyValue: MLXArray
+    private(set) var score: MLXArray
+    private var staged: (keyValue: MLXArray, score: MLXArray, startPosition: Int)?
 
     init(batchSize: Int, ratio: Int, headDimension: Int, overlapping: Bool) {
+        self.ratio = ratio
+        self.overlapping = overlapping
         let coefficient = overlapping ? 2 : 1
         keyValue = MLXArray.zeros(
             [batchSize, coefficient * ratio, coefficient * headDimension], dtype: .float32)
@@ -231,13 +209,109 @@ final class DeepSeekFlashCompressorState {
             [batchSize, coefficient * ratio, coefficient * headDimension],
             values: MLXArray(-Float.infinity), dtype: .float32)
     }
+
+    var arrays: [MLXArray] { [keyValue, score] }
+
+    /// The current group's committed tokens followed by `keyValue` and `score`, so the result
+    /// starts at a group boundary.
+    func pending(
+        keyValue newKeyValue: MLXArray,
+        score newScore: MLXArray,
+        startPosition: Int
+    ) -> (keyValue: MLXArray, score: MLXArray) {
+        let count = startPosition % ratio
+        guard count > 0 else { return (newKeyValue, newScore) }
+        let offset = overlapping ? ratio : 0
+        let batchSize = newKeyValue.dim(0)
+        return (
+            MLX.concatenated(
+                [keyValue[0 ..< batchSize, offset ..< (offset + count)], newKeyValue], axis: 1),
+            MLX.concatenated(
+                [score[0 ..< batchSize, offset ..< (offset + count)], newScore], axis: 1))
+    }
+
+    /// The previous complete group, which overlapping compressors blend into the next one.
+    func previousGroup(batchSize: Int) -> (keyValue: MLXArray, score: MLXArray) {
+        (keyValue[0 ..< batchSize, 0 ..< ratio], score[0 ..< batchSize, 0 ..< ratio])
+    }
+
+    func stage(keyValue: MLXArray, score: MLXArray, startPosition: Int) {
+        staged = (keyValue, score, startPosition)
+    }
+
+    /// Advances the group by the first `count` staged tokens.
+    func commit(count: Int) {
+        guard let staged else { return }
+        self.staged = nil
+        let batchSize = staged.keyValue.dim(0)
+        let tokens = pending(
+            keyValue: staged.keyValue[0..., 0 ..< count],
+            score: staged.score[0..., 0 ..< count],
+            startPosition: staged.startPosition)
+        let length = tokens.keyValue.dim(1)
+        let remainder = length % ratio
+        let cutoff = length - remainder
+
+        var keyValueParts = [MLXArray]()
+        var scoreParts = [MLXArray]()
+        if overlapping {
+            if cutoff > 0 {
+                keyValueParts.append(tokens.keyValue[0..., (cutoff - ratio) ..< cutoff])
+                scoreParts.append(tokens.score[0..., (cutoff - ratio) ..< cutoff])
+            } else {
+                let previous = previousGroup(batchSize: batchSize)
+                keyValueParts.append(previous.keyValue)
+                scoreParts.append(previous.score)
+            }
+        }
+        if remainder > 0 {
+            keyValueParts.append(tokens.keyValue[0..., cutoff...])
+            scoreParts.append(tokens.score[0..., cutoff...])
+        }
+        if remainder < ratio {
+            let width = keyValue.dim(2)
+            keyValueParts.append(MLXArray.zeros(
+                [batchSize, ratio - remainder, width], dtype: .float32))
+            scoreParts.append(MLXArray.full(
+                [batchSize, ratio - remainder, width],
+                values: MLXArray(-Float.infinity), dtype: .float32))
+        }
+        keyValue = MLX.concatenated(keyValueParts, axis: 1)
+        score = MLX.concatenated(scoreParts, axis: 1)
+    }
+
+    func restore(keyValue: MLXArray, score: MLXArray) {
+        self.keyValue = keyValue
+        self.score = score
+        staged = nil
+    }
+
+    /// Empties the group for a sequence that starts over.
+    func reset() {
+        restore(
+            keyValue: MLXArray.zeros(like: keyValue),
+            score: MLXArray.full(
+                keyValue.shape, values: MLXArray(-Float.infinity), dtype: .float32))
+    }
 }
 
+/// One layer's attention memory: a ring of the last `slidingWindow` key-values followed by the
+/// compressed history. Compressed rows are written as soon as their group completes; a row written
+/// by a rejected token is rewritten before any later token can see it, so only the ring and the
+/// compressor groups need committing and snapshots.
 final class DeepSeekFlashAttentionState {
+    struct Snapshot {
+        let window: MLXArray
+        let compressor: (keyValue: MLXArray, score: MLXArray)?
+        let indexCompressor: (keyValue: MLXArray, score: MLXArray)?
+    }
+
+    let window: Int
     var keyValueCache: MLXArray
     var indexKeyValueCache: MLXArray?
     let compressor: DeepSeekFlashCompressorState?
     let indexCompressor: DeepSeekFlashCompressorState?
+    private var staged: (keyValue: MLXArray, startPosition: Int)?
 
     init(
         configuration: DeepSeekFlashConfiguration,
@@ -245,6 +319,7 @@ final class DeepSeekFlashAttentionState {
         batchSize: Int,
         maximumSequenceLength: Int
     ) {
+        window = configuration.slidingWindow
         let ratio = configuration.compressRatios[layerID]
         let compressedCount = ratio == 0 ? 0 : (maximumSequenceLength + ratio - 1) / ratio
         keyValueCache = MLXArray.zeros(
@@ -276,6 +351,65 @@ final class DeepSeekFlashAttentionState {
             indexKeyValueCache = nil
             indexCompressor = nil
         }
+    }
+
+    var arrays: [MLXArray] {
+        [keyValueCache] + [indexKeyValueCache].compactMap { $0 }
+            + (compressor?.arrays ?? []) + (indexCompressor?.arrays ?? [])
+    }
+
+    func stage(_ keyValue: MLXArray, startPosition: Int) {
+        staged = (keyValue, startPosition)
+    }
+
+    /// Adds the first `count` staged tokens to the window and the compressor groups.
+    func commit(count: Int) {
+        if let staged {
+            storeWindow(staged.keyValue[0..., 0 ..< count], startPosition: staged.startPosition)
+            self.staged = nil
+        }
+        compressor?.commit(count: count)
+        indexCompressor?.commit(count: count)
+    }
+
+    /// Writes the key-values of positions `startPosition...` into their ring slots.
+    func storeWindow(_ value: MLXArray, startPosition: Int) {
+        let batchSize = value.dim(0)
+        let count = min(value.dim(1), window)
+        let tail = value[0..., (value.dim(1) - count)...]
+        let slot = (startPosition + value.dim(1) - count) % window
+        if slot + count <= window {
+            keyValueCache[0 ..< batchSize, slot ..< (slot + count)] = tail
+        } else {
+            let split = window - slot
+            keyValueCache[0 ..< batchSize, slot ..< window] = tail[0..., 0 ..< split]
+            keyValueCache[0 ..< batchSize, 0 ..< (count - split)] = tail[0..., split...]
+        }
+    }
+
+    func snapshot() -> Snapshot {
+        // `* 1` copies the ring so the snapshot does not keep the whole cache buffer alive.
+        Snapshot(
+            window: keyValueCache[0..., 0 ..< window] * 1,
+            compressor: compressor.map { ($0.keyValue, $0.score) },
+            indexCompressor: indexCompressor.map { ($0.keyValue, $0.score) })
+    }
+
+    func restore(_ snapshot: Snapshot) {
+        keyValueCache[0..., 0 ..< window] = snapshot.window
+        if let state = snapshot.compressor {
+            compressor?.restore(keyValue: state.keyValue, score: state.score)
+        }
+        if let state = snapshot.indexCompressor {
+            indexCompressor?.restore(keyValue: state.keyValue, score: state.score)
+        }
+        staged = nil
+    }
+
+    func reset() {
+        compressor?.reset()
+        indexCompressor?.reset()
+        staged = nil
     }
 }
 
@@ -316,6 +450,8 @@ final class DeepSeekFlashCompressor: Module {
         super.init()
     }
 
+    /// Stages the tokens at `startPosition...` in `state` and returns the groups they complete,
+    /// beginning with group `startPosition / ratio`, or `nil` when none completes.
     func callAsFunction(
         _ x: MLXArray,
         startPosition: Int,
@@ -325,102 +461,47 @@ final class DeepSeekFlashCompressor: Module {
         let sequenceLength = x.dim(1)
         let coefficient = overlapping ? 2 : 1
         let value = x.asType(.float32)
-        var keyValue = keyValueProjection(value).asType(.float32)
-        var scores = gateProjection(value).asType(.float32)
-        var shouldCompress: Bool
-        var compressionPosition: Int
+        let keyValue = keyValueProjection(value).asType(.float32)
+        let groupPositions = MLXArray((startPosition ..< (startPosition + sequenceLength)).map {
+            Int32($0 % ratio)
+        })
+        let scores = gateProjection(value).asType(.float32)
+            + absolutePositionEmbedding.take(groupPositions, axis: 0)
+        state.stage(keyValue: keyValue, score: scores, startPosition: startPosition)
 
-        if startPosition == 0 {
-            shouldCompress = sequenceLength >= ratio
-            let remainder = sequenceLength % ratio
-            let cutoff = sequenceLength - remainder
-            let offset = overlapping ? ratio : 0
-            compressionPosition = 0
+        let tokens = state.pending(
+            keyValue: keyValue, score: scores, startPosition: startPosition)
+        let groupCount = tokens.keyValue.dim(1) / ratio
+        guard groupCount > 0 else { return nil }
+        let cutoff = groupCount * ratio
+        var groupedKeyValue = tokens.keyValue[0..., 0 ..< cutoff]
+            .reshaped([batchSize, groupCount, ratio, coefficient * headDimension])
+        var groupedScore = tokens.score[0..., 0 ..< cutoff]
+            .reshaped([batchSize, groupCount, ratio, coefficient * headDimension])
 
-            if overlapping && cutoff >= ratio {
-                state.keyValue[0 ..< batchSize, 0 ..< ratio] =
-                    keyValue[0..., (cutoff - ratio) ..< cutoff]
-                state.score[0 ..< batchSize, 0 ..< ratio] =
-                    scores[0..., (cutoff - ratio) ..< cutoff] + absolutePositionEmbedding
+        if overlapping {
+            let previous = state.previousGroup(batchSize: batchSize)
+            var previousKeyValue = [previous.keyValue.expandedDimensions(axis: 1)]
+            var previousScore = [previous.score.expandedDimensions(axis: 1)]
+            if groupCount > 1 {
+                previousKeyValue.append(groupedKeyValue[0..., 0 ..< (groupCount - 1)])
+                previousScore.append(groupedScore[0..., 0 ..< (groupCount - 1)])
             }
-            if remainder > 0 {
-                state.keyValue[0 ..< batchSize, offset ..< (offset + remainder)] =
-                    keyValue[0..., cutoff...]
-                state.score[0 ..< batchSize, offset ..< (offset + remainder)] =
-                    scores[0..., cutoff...]
-                    + absolutePositionEmbedding[0 ..< remainder]
-            }
-            guard shouldCompress else { return nil }
-            keyValue = keyValue[0..., 0 ..< cutoff]
-                .reshaped([batchSize, cutoff / ratio, ratio, coefficient * headDimension])
-            scores = scores[0..., 0 ..< cutoff]
-                .reshaped([batchSize, cutoff / ratio, ratio, coefficient * headDimension])
-                + absolutePositionEmbedding
-
-            if overlapping {
-                let groupCount = cutoff / ratio
-                let emptyKeyValue = MLXArray.zeros(
-                    [batchSize, 1, ratio, headDimension], dtype: .float32)
-                let emptyScore = MLXArray.full(
-                    [batchSize, 1, ratio, headDimension],
-                    values: MLXArray(-Float.infinity), dtype: .float32)
-                let previousKeyValue = groupCount > 1
-                    ? keyValue[0..., 0 ..< (groupCount - 1), 0..., 0 ..< headDimension]
-                    : MLXArray.zeros([batchSize, 0, ratio, headDimension], dtype: .float32)
-                let previousScore = groupCount > 1
-                    ? scores[0..., 0 ..< (groupCount - 1), 0..., 0 ..< headDimension]
-                    : MLXArray.zeros([batchSize, 0, ratio, headDimension], dtype: .float32)
-                let overlapKeyValue = MLX.concatenated(
-                    [emptyKeyValue, previousKeyValue], axis: 1)
-                let overlapScore = MLX.concatenated([emptyScore, previousScore], axis: 1)
-                keyValue = MLX.concatenated(
-                    [overlapKeyValue, keyValue[.ellipsis, headDimension...]], axis: 2)
-                scores = MLX.concatenated(
-                    [overlapScore, scores[.ellipsis, headDimension...]], axis: 2)
-            }
-            keyValue = sum(keyValue * softmax(scores, axis: 2), axis: 2)
-        } else {
-            shouldCompress = (startPosition + 1) % ratio == 0
-            compressionPosition = startPosition + 1 - ratio
-            scores = scores + absolutePositionEmbedding[startPosition % ratio]
-            if overlapping {
-                let index = ratio + startPosition % ratio
-                state.keyValue[0 ..< batchSize, index] = keyValue[0..., 0]
-                state.score[0 ..< batchSize, index] = scores[0..., 0]
-                guard shouldCompress else { return nil }
-                let overlappingValues = state.keyValue[
-                    0 ..< batchSize, 0 ..< ratio, 0 ..< headDimension]
-                let currentValues = state.keyValue[
-                    0 ..< batchSize, ratio ..< (2 * ratio), headDimension...]
-                let overlappingScores = state.score[
-                    0 ..< batchSize, 0 ..< ratio, 0 ..< headDimension]
-                let currentScores = state.score[
-                    0 ..< batchSize, ratio ..< (2 * ratio), headDimension...]
-                let values = MLX.concatenated([overlappingValues, currentValues], axis: 1)
-                let weights = softmax(
-                    MLX.concatenated([overlappingScores, currentScores], axis: 1), axis: 1)
-                keyValue = sum(values * weights, axis: 1, keepDims: true)
-                state.keyValue[0 ..< batchSize, 0 ..< ratio] =
-                    state.keyValue[0 ..< batchSize, ratio ..< (2 * ratio)]
-                state.score[0 ..< batchSize, 0 ..< ratio] =
-                    state.score[0 ..< batchSize, ratio ..< (2 * ratio)]
-            } else {
-                let index = startPosition % ratio
-                state.keyValue[0 ..< batchSize, index] = keyValue[0..., 0]
-                state.score[0 ..< batchSize, index] = scores[0..., 0]
-                guard shouldCompress else { return nil }
-                keyValue = sum(
-                    state.keyValue[0 ..< batchSize]
-                        * softmax(state.score[0 ..< batchSize], axis: 1),
-                    axis: 1,
-                    keepDims: true)
-            }
+            groupedKeyValue = MLX.concatenated([
+                MLX.concatenated(previousKeyValue, axis: 1)[.ellipsis, 0 ..< headDimension],
+                groupedKeyValue[.ellipsis, headDimension...],
+            ], axis: 2)
+            groupedScore = MLX.concatenated([
+                MLX.concatenated(previousScore, axis: 1)[.ellipsis, 0 ..< headDimension],
+                groupedScore[.ellipsis, headDimension...],
+            ], axis: 2)
         }
+        let compressed = sum(groupedKeyValue * softmax(groupedScore, axis: 2), axis: 2)
 
-        var output = norm(keyValue.asType(x.dtype))
+        var output = norm(compressed.asType(x.dtype))
         output = DeepSeekFlashRoPE.apply(
             output,
-            start: compressionPosition,
+            start: startPosition - startPosition % ratio,
             step: ratio,
             dimension: ropeHeadDimension,
             base: configuration.compressRopeTheta,
@@ -469,12 +550,19 @@ final class DeepSeekFlashIndexer: Module {
     ) -> MLXArray {
         let batchSize = x.dim(0)
         let sequenceLength = x.dim(1)
-        let endPosition = startPosition + sequenceLength
-        let compressedCount = endPosition / ratio
-        guard compressedCount > 0,
-              var cache = state.indexKeyValueCache,
+        let compressedCount = (startPosition + sequenceLength) / ratio
+        guard var cache = state.indexKeyValueCache,
               let compressorState = state.indexCompressor
         else {
+            return MLXArray.zeros([batchSize, sequenceLength, 0], dtype: .int32)
+        }
+
+        if let compressed = compressor(x, startPosition: startPosition, state: compressorState) {
+            let first = startPosition / ratio
+            cache[0 ..< batchSize, first ..< (first + compressed.dim(1))] = compressed
+            state.indexKeyValueCache = cache
+        }
+        guard compressedCount > 0 else {
             return MLXArray.zeros([batchSize, sequenceLength, 0], dtype: .int32)
         }
 
@@ -496,15 +584,6 @@ final class DeepSeekFlashIndexer: Module {
             betaSlow: configuration.ropeBetaSlow)
         query = hadamardTransform(query)
 
-        if let compressed = compressor(x, startPosition: startPosition, state: compressorState) {
-            if startPosition == 0 {
-                cache[0 ..< batchSize, 0 ..< compressed.dim(1)] = compressed
-            } else {
-                cache[0 ..< batchSize, startPosition / ratio] = compressed[0..., 0]
-            }
-            state.indexKeyValueCache = cache
-        }
-
         let available = cache[0 ..< batchSize, 0 ..< compressedCount]
         var scores = MLX.einsum("bshd,btd->bsht", query, available)
         scores = MLX.maximum(scores, 0)
@@ -513,33 +592,24 @@ final class DeepSeekFlashIndexer: Module {
                 * (1 / Float(configuration.indexHeadCount).squareRoot()))
         scores = sum(scores * headWeights.expandedDimensions(axis: -1), axis: 2)
 
-        if startPosition == 0 {
-            var maskValues = [Float]()
-            maskValues.reserveCapacity(sequenceLength * compressedCount)
-            for position in 0 ..< sequenceLength {
-                let visible = (position + 1) / ratio
-                for compressedPosition in 0 ..< compressedCount {
-                    maskValues.append(compressedPosition < visible ? 0 : -Float.infinity)
-                }
-            }
-            scores = scores + MLXArray(maskValues, [1, sequenceLength, compressedCount])
-        }
+        // A token sees the groups completed up to and including itself.
+        let visible = MLXArray((0 ..< sequenceLength).map {
+            Int32((startPosition + $0 + 1) / ratio)
+        }).reshaped([1, sequenceLength, 1])
+        let groups = MLXArray((0 ..< compressedCount).map(Int32.init))
+            .reshaped([1, 1, compressedCount])
+        scores = MLX.where(groups .< visible, scores, MLXArray(-Float.infinity))
 
         let topK = min(configuration.indexTopK, compressedCount)
-        var indices = argPartition(
+        let indices = argPartition(
             scores, kth: compressedCount - topK, axis: -1)[.ellipsis, (compressedCount - topK)...]
             .asType(.int32)
-        if startPosition == 0 {
-            let visible = MLXArray((0 ..< sequenceLength).map { Int32(($0 + 1) / ratio) })
-                .reshaped([1, sequenceLength, 1])
-            indices = MLX.where(indices .< visible, indices + Int32(offset), MLXArray(Int32(-1)))
-        } else {
-            indices = indices + Int32(offset)
-        }
-        return indices
+        return MLX.where(indices .< visible, indices + Int32(offset), MLXArray(Int32(-1)))
     }
 }
 
+/// Window indices for the tokens at `startPosition...`: `cached` points into the ring of committed
+/// positions, `current` into the new tokens themselves.
 private func windowIndices(
     batchSize: Int,
     sequenceLength: Int,
@@ -547,7 +617,7 @@ private func windowIndices(
     window: Int,
     imageVisibility: DeepSeekFlashImageVisibility?,
     maximumImageTokens: Int
-) -> MLXArray {
+) -> (cached: MLXArray?, current: MLXArray) {
     if startPosition == 0, let imageVisibility {
         let width = min(sequenceLength, window + maximumImageTokens)
         var values = [Int32]()
@@ -562,31 +632,33 @@ private func windowIndices(
                 values.append(contentsOf: repeatElement(Int32(-1), count: width - row.count))
             }
         }
-        return MLXArray(values, [batchSize, sequenceLength, width])
+        return (nil, MLXArray(values, [batchSize, sequenceLength, width]))
     }
 
-    var values = [Int32]()
-    values.reserveCapacity(batchSize * sequenceLength * window)
+    let cachedWidth = min(startPosition, window - 1)
+    let currentWidth = min(sequenceLength, window)
+    var cached = [Int32]()
+    var current = [Int32]()
+    cached.reserveCapacity(batchSize * sequenceLength * cachedWidth)
+    current.reserveCapacity(batchSize * sequenceLength * currentWidth)
     for _ in 0 ..< batchSize {
         for token in 0 ..< sequenceLength {
             let absolute = startPosition + token
-            let visibleCount = min(window, absolute + 1)
-            var row: [Int]
-            if startPosition > 0 {
-                if absolute >= window - 1 {
-                    let current = absolute % window
-                    row = Array((current + 1) ..< window) + Array(0 ... current)
-                } else {
-                    row = Array(0 ... absolute)
-                }
-            } else {
-                row = Array(max(0, token - window + 1) ... token)
+            let first = max(0, absolute - window + 1)
+            let cachedRow = (first ..< max(first, startPosition)).map { Int32($0 % window) }
+            cached.append(contentsOf: cachedRow)
+            cached.append(contentsOf: repeatElement(Int32(-1), count: cachedWidth - cachedRow.count))
+            let currentRow = (max(first, startPosition) ... absolute).map {
+                Int32($0 - startPosition)
             }
-            values.append(contentsOf: row.suffix(visibleCount).map(Int32.init))
-            values.append(contentsOf: repeatElement(Int32(-1), count: window - visibleCount))
+            current.append(contentsOf: currentRow)
+            current.append(contentsOf: repeatElement(
+                Int32(-1), count: currentWidth - currentRow.count))
         }
     }
-    return MLXArray(values, [batchSize, sequenceLength, window])
+    return (
+        cachedWidth > 0 ? MLXArray(cached, [batchSize, sequenceLength, cachedWidth]) : nil,
+        MLXArray(current, [batchSize, sequenceLength, currentWidth]))
 }
 
 private func compressionIndices(
@@ -600,23 +672,20 @@ private func compressionIndices(
     guard count > 0 else {
         return MLXArray.zeros([batchSize, sequenceLength, 0], dtype: .int32)
     }
-    var values = [Int32]()
-    values.reserveCapacity(batchSize * sequenceLength * count)
-    for _ in 0 ..< batchSize {
-        for token in 0 ..< sequenceLength {
-            let visible = (startPosition + token + 1) / ratio
-            for position in 0 ..< count {
-                values.append(position < visible ? Int32(offset + position) : -1)
-            }
-        }
-    }
-    return MLXArray(values, [batchSize, sequenceLength, count])
+    let visible = MLXArray((0 ..< sequenceLength).map {
+        Int32((startPosition + $0 + 1) / ratio)
+    }).reshaped([1, sequenceLength, 1])
+    let groups = MLXArray((0 ..< count).map(Int32.init)).reshaped([1, 1, count])
+    return MLX.broadcast(
+        MLX.where(groups .< visible, groups + Int32(offset), MLXArray(Int32(-1))),
+        to: [batchSize, sequenceLength, count])
 }
 
+/// Attends each token to the rows its indices select from each source; `-1` marks an unused slot.
+/// Tokens are processed in chunks so the gathered rows stay small during long prefills.
 func deepSeekFlashSparseAttention(
     query: MLXArray,
-    keyValue: MLXArray,
-    indices: MLXArray,
+    sources: [(keyValue: MLXArray, indices: MLXArray)],
     attentionSink: MLXArray,
     scale: Float
 ) -> MLXArray {
@@ -624,40 +693,39 @@ func deepSeekFlashSparseAttention(
     let sequenceLength = query.dim(1)
     let headCount = query.dim(2)
     let headDimension = query.dim(3)
-    var batches = [MLXArray]()
-    for batch in 0 ..< batchSize {
-        var rows = [MLXArray]()
-        for token in 0 ..< sequenceLength {
-            let rowIndices = indices[batch, token]
-            let valid = rowIndices .>= 0
-            let safeIndices = MLX.where(valid, rowIndices, MLXArray(Int32(0)))
-            let selected = keyValue[batch].take(safeIndices, axis: 0)
-            var logits = MLX.einsum("hd,kd->hk", query[batch, token], selected) * scale
-            logits = MLX.where(
-                valid.expandedDimensions(axis: 0), logits, MLXArray(-Float.infinity))
-            logits = MLX.concatenated(
-                [logits, attentionSink.reshaped([headCount, 1])], axis: -1)
-            let probabilities = softmax(logits, axis: -1)[0..., 0 ..< rowIndices.dim(0)]
-            let attended = MLX.einsum("hk,kd->hd", probabilities, selected)
-            rows.append(attended)
-        }
-        batches.append(MLX.stacked(rows, axis: 0))
-    }
-    return MLX.stacked(batches, axis: 0)
-        .reshaped([batchSize, sequenceLength, headCount, headDimension])
-}
+    let sources = sources.filter { $0.indices.dim(-1) > 0 }
+    let chunkSize = 64
 
-private func sparseAttention(
-    query: MLXArray,
-    keyValue: MLXArray,
-    indices: MLXArray,
-    attentionSink: MLXArray,
-    scale: Float
-) -> MLXArray {
-    deepSeekFlashSparseAttention(
-        query: query,
-        keyValue: keyValue,
-        indices: indices,
-        attentionSink: attentionSink,
-        scale: scale)
+    var chunks = [MLXArray]()
+    for start in stride(from: 0, to: sequenceLength, by: chunkSize) {
+        let end = min(start + chunkSize, sequenceLength)
+        let length = end - start
+        var selected = [MLXArray]()
+        var valid = [MLXArray]()
+        for source in sources {
+            let rows = source.indices[0..., start ..< end]
+            let isValid = rows .>= 0
+            let safeRows = MLX.where(isValid, rows, MLXArray(Int32(0)))
+            let width = rows.dim(-1)
+            selected.append(MLX.stacked((0 ..< batchSize).map { batch in
+                source.keyValue[batch].take(safeRows[batch].flattened(), axis: 0)
+                    .reshaped([length, width, headDimension])
+            }, axis: 0))
+            valid.append(isValid)
+        }
+        let keyValue = MLX.concatenated(selected, axis: 2)
+        let mask = MLX.concatenated(valid, axis: 2)
+        var logits = MLX.einsum("blhd,blkd->blhk", query[0..., start ..< end], keyValue) * scale
+        logits = MLX.where(
+            mask.expandedDimensions(axis: 2), logits, MLXArray(-Float.infinity))
+        logits = MLX.concatenated([
+            logits,
+            MLX.broadcast(
+                attentionSink.reshaped([1, 1, headCount, 1]),
+                to: [batchSize, length, headCount, 1]),
+        ], axis: -1)
+        let probabilities = softmax(logits, axis: -1)[.ellipsis, 0 ..< keyValue.dim(2)]
+        chunks.append(MLX.einsum("blhk,blkd->blhd", probabilities, keyValue))
+    }
+    return MLX.concatenated(chunks, axis: 1)
 }

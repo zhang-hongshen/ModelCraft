@@ -47,12 +47,17 @@ final class DeepSeekFlashHead: Module {
 }
 
 struct DeepSeekFlashForwardOutput {
-    let tokenIDs: MLXArray
+    /// `[batch, positions, vocabulary]`: every input position when requested, otherwise the last.
     let logits: MLXArray
-    let dsparkHidden: MLXArray?
+    /// The DSpark target layers' hidden states for the last `min(positions, slidingWindow)` positions.
+    let dsparkHidden: MLXArray
 }
 
 final class DeepSeekFlashTransformer: Module {
+    /// Inputs up to this length run as one graph; longer ones are evaluated layer by layer to
+    /// bound their memory.
+    private static let singleGraphLength = 16
+
     let configuration: DeepSeekFlashConfiguration
     let maximumSequenceLength: Int
 
@@ -72,14 +77,12 @@ final class DeepSeekFlashTransformer: Module {
     @ParameterInfo(key: "hc_head_fn") var headHCFunction: MLXArray
     @ParameterInfo(key: "hc_head_scale") var headHCScale: MLXArray
 
-    private var attentionStates: [DeepSeekFlashAttentionState] = []
-    private var stateBatchSize = 0
-    var dsparkAttentionStates: [DeepSeekFlashAttentionState] = []
-    var streamingLayerURLs: [URL] = []
-
+    /// With `streamsExperts`, the routed experts are not part of the module; the loader gives
+    /// each MoE block an expert source instead.
     init(
         configuration: DeepSeekFlashConfiguration,
-        maximumSequenceLength: Int
+        maximumSequenceLength: Int,
+        streamsExperts: Bool
     ) {
         self.configuration = configuration
         self.maximumSequenceLength = min(
@@ -87,7 +90,10 @@ final class DeepSeekFlashTransformer: Module {
         _embedding.wrappedValue = DeepSeekFlashEmbedding(
             vocabularySize: configuration.vocabularySize,
             dimensions: configuration.hiddenSize)
-        _layers.wrappedValue = []
+        _layers.wrappedValue = (0 ..< configuration.numHiddenLayers).map {
+            DeepSeekFlashTransformerBlock(
+                layerID: $0, configuration: configuration, streamsExperts: streamsExperts)
+        }
         _norm.wrappedValue = DeepSeekFlashRMSNorm(
             dimensions: configuration.hiddenSize,
             epsilon: configuration.rmsNormEpsilon)
@@ -95,7 +101,8 @@ final class DeepSeekFlashTransformer: Module {
             vocabularySize: configuration.vocabularySize,
             dimensions: configuration.hiddenSize)
         _mtp.wrappedValue = (0 ..< configuration.numNextPredictLayers).map { stageID in
-            DeepSeekFlashDSparkBlock(stageID: stageID, configuration: configuration)
+            DeepSeekFlashDSparkBlock(
+                stageID: stageID, configuration: configuration, streamsExperts: streamsExperts)
         }
         _vision.wrappedValue = DeepSeekFlashVisionEncoder(configuration: configuration)
         _aligner.wrappedValue = DeepSeekFlashVisionAligner(configuration: configuration)
@@ -117,44 +124,33 @@ final class DeepSeekFlashTransformer: Module {
         mtp.last?.head = head
     }
 
-    func resetCache(batchSize: Int = 1) {
-        stateBatchSize = batchSize
-        attentionStates = (0 ..< configuration.numHiddenLayers).map { layerID in
-            DeepSeekFlashAttentionState(
-                configuration: configuration,
-                layerID: layerID,
-                batchSize: batchSize,
-                maximumSequenceLength: maximumSequenceLength)
-        }
-        dsparkAttentionStates = (0 ..< configuration.numNextPredictLayers).map { stageID in
-            DeepSeekFlashAttentionState(
-                configuration: configuration,
-                layerID: configuration.numHiddenLayers + stageID,
-                batchSize: batchSize,
-                maximumSequenceLength: maximumSequenceLength)
-        }
-    }
-
+    /// Runs `inputIDs`, the tokens at `startPosition...`, against `cache`. Each layer commits the
+    /// tokens as it finishes, so a long input never holds every layer's staged values at once;
+    /// with `keepsStaged` they stay staged until the caller commits the accepted part.
     func callAsFunction(
         _ inputIDs: MLXArray,
         images: [DeepSeekFlashImageInput] = [],
-        startPosition: Int = 0,
-        temperature: Float = 1
+        startPosition: Int,
+        cache: DeepSeekFlashCache,
+        allLogits: Bool = false,
+        keepsStaged: Bool = false
     ) throws -> DeepSeekFlashForwardOutput {
-        let batchSize = inputIDs.dim(0)
         let sequenceLength = inputIDs.dim(1)
         precondition(
-            startPosition + sequenceLength <= maximumSequenceLength,
+            startPosition + sequenceLength <= cache.maximumSequenceLength,
             "DeepSeekFlash sequence exceeds the configured cache length")
-        if startPosition == 0 || stateBatchSize != batchSize
-            || attentionStates.count != configuration.numHiddenLayers
-        {
-            resetCache(batchSize: batchSize)
+        precondition(images.isEmpty || startPosition == 0, "Images are placed from the first token")
+
+        // A long input routes to nearly every expert, so prefetching it would only hold them all at once.
+        if sequenceLength <= Self.singleGraphLength {
+            for block in layers.prefix(configuration.numHashLayers) {
+                try block.feedForward.prefetch(inputIDs: inputIDs)
+            }
         }
 
         var tokenEmbeddings = embedding(inputIDs)
         let imageVisibility: DeepSeekFlashImageVisibility?
-        if startPosition == 0, !images.isEmpty {
+        if !images.isEmpty {
             tokenEmbeddings = try mergeImageEmbeddings(images, into: tokenEmbeddings)
             imageVisibility = makeImageVisibility(inputIDs)
         } else {
@@ -163,78 +159,40 @@ final class DeepSeekFlashTransformer: Module {
         var hidden = tokenEmbeddings.expandedDimensions(axis: 2)
         hidden = MLX.repeated(
             hidden, count: configuration.hyperConnectionMultiplier, axis: 2)
-        var dsparkHidden = [MLXArray]()
 
-        if !streamingLayerURLs.isEmpty {
-            for layerID in 0 ..< configuration.numHiddenLayers {
-                let block = try DeepSeekFlashLoader.loadTransformerBlock(
-                    layerID: layerID,
-                    url: streamingLayerURLs[layerID],
-                    configuration: configuration)
-                layers = [block]
-                hidden = block(
-                    hidden,
-                    startPosition: startPosition,
-                    inputIDs: inputIDs,
-                    state: attentionStates[layerID],
-                    imageVisibility: imageVisibility)
-                if !mtp.isEmpty, configuration.dsparkTargetLayerIDs.contains(layerID) {
-                    let targetHidden = mean(hidden, axis: 2)
-                    eval(targetHidden)
-                    dsparkHidden.append(targetHidden)
-                }
-                // Nothing lazy may still reference the block once it leaves memory.
-                eval(hidden)
-                evaluateAttentionState(layerID: layerID)
-                Stream.gpu.synchronize()
-                layers = []
-                Memory.clearCache()
+        let dsparkStart = max(0, sequenceLength - configuration.slidingWindow)
+        var dsparkHidden = [MLXArray]()
+        for (layerID, block) in layers.enumerated() {
+            let state = cache.states[layerID]
+            hidden = try block(
+                hidden,
+                startPosition: startPosition,
+                inputIDs: inputIDs,
+                state: state,
+                imageVisibility: imageVisibility)
+            if configuration.dsparkTargetLayerIDs.contains(layerID) {
+                dsparkHidden.append(mean(hidden[0..., dsparkStart...], axis: 2))
             }
-        } else {
-            for (layerID, block) in layers.enumerated() {
-                hidden = block(
-                    hidden,
-                    startPosition: startPosition,
-                    inputIDs: inputIDs,
-                    state: attentionStates[layerID],
-                    imageVisibility: imageVisibility)
-                if configuration.dsparkTargetLayerIDs.contains(layerID) {
-                    dsparkHidden.append(mean(hidden, axis: 2))
-                }
-                eval(hidden)
+            if !keepsStaged {
+                state.commit(count: sequenceLength)
+            }
+            if sequenceLength > Self.singleGraphLength {
+                eval([hidden] + dsparkHidden + state.arrays)
             }
         }
 
-        let collapsed = DeepSeekFlashHyperConnection.head(
+        var collapsed = DeepSeekFlashHyperConnection.head(
             hidden,
             function: headHCFunction,
             scale: headHCScale,
             base: headHCBase,
             configuration: configuration)
-        let logits = head(norm(collapsed))
-        let tokenIDs = DeepSeekFlashSampler.sample(logits: logits, temperature: temperature)
+        if !allLogits {
+            collapsed = collapsed[0..., (sequenceLength - 1)...]
+        }
         return DeepSeekFlashForwardOutput(
-            tokenIDs: tokenIDs,
-            logits: logits,
-            dsparkHidden: dsparkHidden.isEmpty
-                ? nil : MLX.concatenated(dsparkHidden, axis: -1))
-    }
-
-    private func evaluateAttentionState(layerID: Int) {
-        let state = attentionStates[layerID]
-        var values = [state.keyValueCache]
-        if let indexKeyValueCache = state.indexKeyValueCache {
-            values.append(indexKeyValueCache)
-        }
-        if let compressor = state.compressor {
-            values.append(compressor.keyValue)
-            values.append(compressor.score)
-        }
-        if let indexCompressor = state.indexCompressor {
-            values.append(indexCompressor.keyValue)
-            values.append(indexCompressor.score)
-        }
-        eval(values)
+            logits: head(norm(collapsed), fullLogits: true),
+            dsparkHidden: MLX.concatenated(dsparkHidden, axis: -1))
     }
 
     private func mergeImageEmbeddings(

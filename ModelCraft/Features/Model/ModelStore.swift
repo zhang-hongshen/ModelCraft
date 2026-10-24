@@ -83,6 +83,7 @@ extension ModelStore {
 
             if isLoading {
                 ProgressView()
+                    .controlSize(.small)
             } else {
                 Button("Refresh", systemImage: "arrow.triangle.2.circlepath") {
                     Task {
