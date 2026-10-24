@@ -75,28 +75,9 @@ ModelCraft 将本地语言模型与媒体生成模型整合到一款原生应用
 xattr -cr /Applications/ModelCraft.app
 ```
 
-### 从源码构建
+## 文档
 
-1. 克隆此仓库。
-2. 使用 Xcode 打开 `ModelCraft.xcodeproj`。
-3. 选择 ModelCraft scheme 和 macOS 目标设备。
-4. 构建并运行应用。Xcode 会解析项目声明的 Swift Package 依赖。
-
-## 工作方式
-
-ModelCraft 直接在设备上运行受支持的模型。一次对话既可以是简单的本地聊天，也可以成为 Agent 工作流：添加上下文、启用希望提供给模型的工具，让模型随着任务推进，根据工具描述选择合适的能力。
-
-项目为相关对话和文档提供持续使用的工作空间。涉及文件、命令或屏幕交互的任务可以使用系统能力，连接器则把同一套工具扩展到你安装的应用。定时任务会在 ModelCraft 打开时，无人值守地运行同样的 Agent 流程。
-
-## 隐私与网络访问
-
-本地推理和对话数据保留在你的设备上，模型存放在 `~/Library/Application Support/ModelCraft`。连接器只与同一台 Mac 上的应用通信。模型下载、节假日数据、网页访问以及其他由你明确连接的功能需要网络，并可能向你选择使用的服务发送请求。
-
-## 文档与贡献
-
-- 阅读[项目文档](https://deepwiki.com/zhang-hongshen/ModelCraft)。
-- 通过 [GitHub Issues](https://github.com/zhang-hongshen/ModelCraft/issues) 报告问题或提出功能建议。
-- 欢迎贡献代码。较大的改动建议先创建 Issue，讨论并确认范围。
+阅读[项目文档](https://deepwiki.com/zhang-hongshen/ModelCraft)。
 
 ## 许可证
 

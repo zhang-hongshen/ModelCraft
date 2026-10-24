@@ -75,28 +75,9 @@ Release builds are ad-hoc signed and not notarized by Apple, so macOS blocks the
 xattr -cr /Applications/ModelCraft.app
 ```
 
-### Build from source
+## Documentation
 
-1. Clone this repository.
-2. Open `ModelCraft.xcodeproj` in Xcode.
-3. Select the ModelCraft scheme and a macOS destination.
-4. Build and run the app. Xcode resolves the Swift package dependencies declared by the project.
-
-## How it works
-
-ModelCraft runs supported models directly on your device. A conversation can remain a simple local chat or become an agent workflow: attach context, enable the tools you want to expose, and let the model choose the appropriate tool from its description as the task develops.
-
-Projects provide a persistent workspace for related chats and documents. System capabilities are available for tasks that involve files, commands, or screen interaction, and connectors extend the same tool set to the apps you install. Scheduled tasks run the same agent loop unattended while ModelCraft is open.
-
-## Privacy and network access
-
-Local inference and conversation data stay on your device; models are stored under `~/Library/Application Support/ModelCraft`. Connectors talk to apps on the same Mac. Model downloads, holiday calendars, web access, and other explicitly connected features require a network connection and may send requests to the service you choose to use.
-
-## Documentation and contributing
-
-- Read the [project documentation](https://deepwiki.com/zhang-hongshen/ModelCraft).
-- Report bugs or propose features through [GitHub Issues](https://github.com/zhang-hongshen/ModelCraft/issues).
-- Contributions are welcome. Please open an issue before starting a large change so its scope can be discussed first.
+Read the [project documentation](https://deepwiki.com/zhang-hongshen/ModelCraft).
 
 ## License
 
