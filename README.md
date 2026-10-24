@@ -14,6 +14,7 @@
 ModelCraft brings local language and media models into one native macOS app. Chat with a model, organize work into projects, provide files as context, connect your Mac apps, schedule recurring tasks, and let the assistant use tools to complete multi-step tasks.
 
 <picture>
+  <source media="(prefers-color-scheme: light)" srcset="Screenshots/chat.png" />
   <source media="(prefers-color-scheme: dark)" srcset="Screenshots/chat-dark.png" />
   <img alt="ModelCraft chat with a multi-step tool workflow" src="Screenshots/chat.png" />
 </picture>
@@ -29,20 +30,34 @@ ModelCraft brings local language and media models into one native macOS app. Cha
 - **Local media creation:** Generate images, audio, music, and video with supported models and keep the results in the conversation.
 - **Context control:** Inspect context usage and compact long conversations when needed.
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Screenshots/model-store-dark.png" />
-  <img alt="Model Store" src="Screenshots/model-store.png" />
-</picture>
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Screenshots/connectors-dark.png" />
-  <img alt="Connectors" src="Screenshots/connectors.png" />
-</picture>
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Screenshots/scheduled-tasks-dark.png" />
-  <img alt="Scheduled Tasks" src="Screenshots/scheduled-tasks.png" />
-</picture>
+<table>
+  <tr>
+    <td align="center" width="33%">
+      <picture>
+        <source media="(prefers-color-scheme: light)" srcset="Screenshots/model-store.png" />
+        <source media="(prefers-color-scheme: dark)" srcset="Screenshots/model-store-dark.png" />
+        <img alt="Model Store" src="Screenshots/model-store.png" />
+      </picture>
+      <br /><sub>Model Store</sub>
+    </td>
+    <td align="center" width="33%">
+      <picture>
+        <source media="(prefers-color-scheme: light)" srcset="Screenshots/connectors.png" />
+        <source media="(prefers-color-scheme: dark)" srcset="Screenshots/connectors-dark.png" />
+        <img alt="Connectors" src="Screenshots/connectors.png" />
+      </picture>
+      <br /><sub>Connectors</sub>
+    </td>
+    <td align="center" width="33%">
+      <picture>
+        <source media="(prefers-color-scheme: light)" srcset="Screenshots/scheduled-tasks.png" />
+        <source media="(prefers-color-scheme: dark)" srcset="Screenshots/scheduled-tasks-dark.png" />
+        <img alt="Scheduled Tasks" src="Screenshots/scheduled-tasks.png" />
+      </picture>
+      <br /><sub>Scheduled Tasks</sub>
+    </td>
+  </tr>
+</table>
 
 ## Getting started
 

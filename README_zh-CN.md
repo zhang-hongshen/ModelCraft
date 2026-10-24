@@ -14,6 +14,7 @@
 ModelCraft 将本地语言模型与媒体生成模型整合到一款原生应用中，支持 macOS。你可以与模型对话、使用项目整理工作、把文件作为上下文、连接 Mac 上的应用、安排定时任务，并让助手通过工具完成多步骤任务。
 
 <picture>
+  <source media="(prefers-color-scheme: light)" srcset="Screenshots/chat.png" />
   <source media="(prefers-color-scheme: dark)" srcset="Screenshots/chat-dark.png" />
   <img alt="ModelCraft 多步骤工具任务对话" src="Screenshots/chat.png" />
 </picture>
@@ -29,20 +30,34 @@ ModelCraft 将本地语言模型与媒体生成模型整合到一款原生应用
 - **本地媒体创作：** 使用受支持的模型生成图片、音频、音乐和视频，并在对话中查看结果。
 - **上下文管理：** 查看上下文使用情况，并在长对话中按需压缩上下文。
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Screenshots/model-store-dark.png" />
-  <img alt="模型商店" src="Screenshots/model-store.png" />
-</picture>
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Screenshots/connectors-dark.png" />
-  <img alt="连接器" src="Screenshots/connectors.png" />
-</picture>
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Screenshots/scheduled-tasks-dark.png" />
-  <img alt="定时任务" src="Screenshots/scheduled-tasks.png" />
-</picture>
+<table>
+  <tr>
+    <td align="center" width="33%">
+      <picture>
+        <source media="(prefers-color-scheme: light)" srcset="Screenshots/model-store.png" />
+        <source media="(prefers-color-scheme: dark)" srcset="Screenshots/model-store-dark.png" />
+        <img alt="模型商店" src="Screenshots/model-store.png" />
+      </picture>
+      <br /><sub>模型商店</sub>
+    </td>
+    <td align="center" width="33%">
+      <picture>
+        <source media="(prefers-color-scheme: light)" srcset="Screenshots/connectors.png" />
+        <source media="(prefers-color-scheme: dark)" srcset="Screenshots/connectors-dark.png" />
+        <img alt="连接器" src="Screenshots/connectors.png" />
+      </picture>
+      <br /><sub>连接器</sub>
+    </td>
+    <td align="center" width="33%">
+      <picture>
+        <source media="(prefers-color-scheme: light)" srcset="Screenshots/scheduled-tasks.png" />
+        <source media="(prefers-color-scheme: dark)" srcset="Screenshots/scheduled-tasks-dark.png" />
+        <img alt="定时任务" src="Screenshots/scheduled-tasks.png" />
+      </picture>
+      <br /><sub>定时任务</sub>
+    </td>
+  </tr>
+</table>
 
 ## 开始使用
 
