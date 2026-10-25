@@ -16,8 +16,6 @@ final class AgentExecutor {
     private let interactionCoordinator: UserInteractionCoordinator
     /// Nobody is present to answer questions or approve actions.
     private let isUnattended: Bool
-    /// What the user chose to always allow, per conversation.
-    private var authorizationContexts: [UUID: ToolAuthorizationContext] = [:]
 
     init(interactionCoordinator: UserInteractionCoordinator, isUnattended: Bool = false) {
         self.interactionCoordinator = interactionCoordinator
@@ -40,19 +38,24 @@ final class AgentExecutor {
         try Task.checkCancellation()
         let project = chat.project
         // Approvals are scoped to the working folder, so changing it starts over.
-        if authorizationContexts[chat.id]?.workingDirectory != project?.workingDirectory {
-            authorizationContexts[chat.id] = ToolAuthorizationContext(
-                workingDirectory: project?.workingDirectory)
+        if chat.toolAuthorization.map({ $0.workingDirectory != project?.workingDirectory }) ?? true {
+            chat.toolAuthorization = ToolAuthorizationContext(
+                workingDirectory: project?.workingDirectory,
+                chatDirectory: chat.directory)
         }
-        
+        try FileManager.default.createDirectory(
+            at: chat.directory, withIntermediateDirectories: true)
+
         try await ProjectToolContext.$workingDirectory.withValue(project?.workingDirectory) {
-            try await ProjectToolContext.$readOnlyFiles.withValue(project?.resources ?? []) {
-                try await run(
-                    model: model,
-                    chat: chat,
-                    messages: messages,
-                    lastToolSignature: nil,
-                    consecutiveSameToolCalls: 0)
+            try await ProjectToolContext.$chatDirectory.withValue(chat.directory) {
+                try await ProjectToolContext.$readOnlyFiles.withValue(project?.resources ?? []) {
+                    try await run(
+                        model: model,
+                        chat: chat,
+                        messages: messages,
+                        lastToolSignature: nil,
+                        consecutiveSameToolCalls: 0)
+                }
             }
         }
     }
@@ -161,8 +164,15 @@ final class AgentExecutor {
             return try await executeUserInput(toolCall, chat: chat)
         }
 
+        // Nobody can choose a mode for a scheduled run, so it always accepts edits only.
+        let permissionMode: ToolPermissionMode = isUnattended
+            ? .acceptEdits
+            : UserDefaults.standard.string(forKey: UserDefaults.toolPermissionMode)
+                .flatMap(ToolPermissionMode.init(rawValue:))
+                ?? UserDefaultSettings.toolPermissionMode
         if toolCall.requiresUserApproval,
-           authorizationContexts[chat.id]?.allows(toolCall, signature: signature) != true {
+           chat.toolAuthorization?.allows(
+            toolCall, signature: signature, mode: permissionMode) != true {
             if isUnattended {
                 let message = "This is a scheduled run and nobody is present to approve this action, so it was not performed. Describe what should be done in the reply instead."
                 return (.error(message), .tool(message))
@@ -186,7 +196,7 @@ final class AgentExecutor {
             case .allowOnce:
                 break
             case .alwaysAllow:
-                authorizationContexts[chat.id]?.authorize(toolCall, signature: signature)
+                chat.toolAuthorization?.authorize(toolCall, signature: signature)
             }
         }
 
@@ -233,7 +243,7 @@ final class AgentExecutor {
     ) async throws -> (CallToolResult, MLXLMCommon.Chat.Message) {
         let request = try await toolCall.execute(with: UserInputTool.requestUserInput)
         let output = try await interactionCoordinator.requestUserInput(request)
-        authorizationContexts[chat.id]?.authorize(request: request, output: output)
+        chat.toolAuthorization?.authorize(request: request, output: output)
         let data = try JSONEncoder().encode(output)
         let content = String(decoding: data, as: UTF8.self)
         var result = CallToolResult()
@@ -242,9 +252,10 @@ final class AgentExecutor {
     }
 }
 
-private struct ToolAuthorizationContext {
+/// Stored on `Chat`, so approvals last as long as the conversation.
+struct ToolAuthorizationContext: Codable {
 
-    private struct FileScope {
+    private struct FileScope: Codable {
         let url: URL
         let includesDescendants: Bool
 
@@ -254,30 +265,53 @@ private struct ToolAuthorizationContext {
         }
     }
 
+    /// Files and folders the user granted.
     private var fileScopes: [FileScope] = []
     private var applicationIDs: Set<String> = []
     private var allowsScreenInteraction = false
     private var approvedToolSignatures: Set<String> = []
     let workingDirectory: URL?
+    private let chatDirectory: URL
 
-    init(workingDirectory: URL? = nil) {
+    init(workingDirectory: URL?, chatDirectory: URL) {
         self.workingDirectory = workingDirectory
-        if let workingDirectory {
-            fileScopes.append(FileScope(
-                url: workingDirectory.standardizedFileURL.resolvingSymlinksInPath(),
-                includesDescendants: true))
+        self.chatDirectory = chatDirectory
+    }
+
+    /// The working folder and the chat's folder, where edits run without a prompt
+    /// unless the mode is `.ask`.
+    private var workingScopes: [FileScope] {
+        [workingDirectory, chatDirectory].compactMap { $0 }.map {
+            FileScope(
+                url: $0.standardizedFileURL.resolvingSymlinksInPath(),
+                includesDescendants: true)
         }
     }
 
-    func allows(_ toolCall: ToolCall, signature: String) -> Bool {
+    func allows(_ toolCall: ToolCall, signature: String, mode: ToolPermissionMode) -> Bool {
+        let scopes = mode == .ask ? fileScopes : fileScopes + workingScopes
         switch toolCall.function.name {
         case ToolNames.applyPatch:
             let paths = toolCall.patchFileChanges.map(\.path)
             guard !paths.isEmpty else { return false }
-            return paths.allSatisfy { path in
-                let candidate = normalizedURL(for: path)
-                return fileScopes.contains { $0.contains(candidate) }
+            return contains(paths, in: scopes)
+        case ToolNames.executeCommand:
+            if approvedToolSignatures.contains(signature) {
+                return true
             }
+            guard let command = toolCall.function.arguments["command"]?.stringValue,
+                  let targets = mode == .auto
+                    ? namedPaths(in: command)
+                    : scopedFileCommandTargets(command)
+            else {
+                return false
+            }
+            return contains(targets, in: scopes)
+        case ToolNames.runAppleScript:
+            // Every script needs a fresh decision.
+            return false
+        case _ where mode == .auto:
+            return true
         case ToolNames.clickElement, ToolNames.typeText, ToolNames.pressKey:
             guard let appID = toolCall.function.arguments["appID"]?.stringValue else {
                 return false
@@ -285,19 +319,6 @@ private struct ToolAuthorizationContext {
             return applicationIDs.contains(appID)
         case ToolNames.click, ToolNames.drag:
             return allowsScreenInteraction
-        case ToolNames.executeCommand:
-            if approvedToolSignatures.contains(signature) {
-                return true
-            }
-            guard let command = toolCall.function.arguments["command"]?.stringValue,
-                  let targets = scopedFileCommandTargets(command)
-            else {
-                return false
-            }
-            return targets.allSatisfy { target in
-                let candidate = normalizedURL(for: target)
-                return fileScopes.contains { $0.contains(candidate) }
-            }
         default:
             return approvedToolSignatures.contains(signature)
         }
@@ -347,8 +368,30 @@ private struct ToolAuthorizationContext {
     private func normalizedURL(for path: String) -> URL {
         URL(
             fileURLWithPath: path,
-            relativeTo: workingDirectory ?? .documentsDirectory
+            relativeTo: workingDirectory ?? chatDirectory
         ).standardizedFileURL.resolvingSymlinksInPath()
+    }
+
+    private func contains(_ paths: [String], in scopes: [FileScope]) -> Bool {
+        paths.allSatisfy { path in
+            let candidate = normalizedURL(for: path)
+            return scopes.contains { $0.contains(candidate) }
+        }
+    }
+
+    /// The paths a command names that could leave its working directory: absolute paths
+    /// and paths through `..`. Nil when the command can reach a location the text does not
+    /// show, through the home directory, a variable, or a substitution.
+    private func namedPaths(in command: String) -> [String]? {
+        guard command.rangeOfCharacter(from: CharacterSet(charactersIn: "~$`")) == nil else {
+            return nil
+        }
+        let separators = CharacterSet.whitespacesAndNewlines
+            .union(CharacterSet(charactersIn: ";|&<>()=\"'"))
+        return command.components(separatedBy: separators).filter { token in
+            token != "/dev/null"
+                && (token.hasPrefix("/") || token.split(separator: "/").contains(".."))
+        }
     }
 
     private func scopedFileCommandTargets(_ command: String) -> [String]? {
@@ -369,5 +412,34 @@ private struct ToolAuthorizationContext {
             $0.trimmingCharacters(in: CharacterSet(charactersIn: "\"'"))
         }
         return targets.isEmpty ? nil : targets
+    }
+}
+
+/// How much the agent may do without asking, chosen in the composer.
+enum ToolPermissionMode: String, CaseIterable, Identifiable {
+    /// Only what the user allowed in the conversation runs without a prompt.
+    case ask
+    /// Also file edits inside the working folder.
+    case acceptEdits
+    /// Every tool except `run_applescript`, while the paths it names stay inside the
+    /// working folder or what the user allowed.
+    case auto
+
+    var id: Self { self }
+
+    var title: LocalizedStringResource {
+        switch self {
+        case .ask: "Ask"
+        case .acceptEdits: "Accept Edits"
+        case .auto: "Auto"
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .ask: "hand.raised"
+        case .acceptEdits: "pencil"
+        case .auto: "bolt"
+        }
     }
 }

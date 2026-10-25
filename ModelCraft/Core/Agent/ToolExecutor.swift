@@ -30,9 +30,9 @@ enum ToolExecutor {
         do  {
             switch toolCall.function.name {
             case ToolNames.readFile:
-                let result = try await toolCall.execute(with: FileTool.readFile)
-                toolCallResult.content.append(.text(TextContent(text: result.content)))
-                message.content = result.toolResult
+                // The model gets the file text as is: JSON escaping (`\/`, `\"`, `\n`) gets
+                // copied into `apply_patch` lines, which then no longer match the file.
+                reply(try await toolCall.execute(with: FileTool.readFile).content)
             case ToolNames.applyPatch:
                 reply(try await toolCall.execute(with: FileTool.applyPatch).toolResult)
             case ToolNames.listDirectory:

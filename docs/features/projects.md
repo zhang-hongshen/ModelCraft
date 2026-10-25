@@ -1,6 +1,6 @@
 # Projects
 
-This document owns projects: the working folder and reference files, how project context reaches the model and tools, and the local project search index behind `search_project`. Read it before changing `Project`, project views, `PromptBuilder.environment`, `ProjectToolContext`, `ProjectSearchIndex`, `ProjectSearchReranker`, or `CodeStructureParser`.
+This document owns projects: the working folder and reference files, how project context reaches the model and tools, and the local project search index behind `search_project`. Read it before changing `Project`, project views, `PromptBuilder.system(project:summary:)`, `ProjectToolContext`, `ProjectSearchIndex`, `ProjectSearchReranker`, or `CodeStructureParser`.
 
 ## Model
 
@@ -15,14 +15,14 @@ The project views set the working directory from a folder import or a dropped fo
 
 ## Context delivered to the model
 
-For a project chat, `ChatService.buildPrompt` inserts `PromptBuilder.environment(project:)` after the system prompt. It lists the project name, root, and reference file paths, and states that the root is the default working directory and references are read-only. File contents are not inlined; the model reads or searches them through tools.
+For a project chat, `PromptBuilder.system(project:summary:)` appends a project context section to the system message. It lists the project name, root, and reference file paths, and states that the root is the default working directory and references are read-only. File contents are not inlined; the model reads or searches them through tools.
 
 `AgentExecutor.run` binds the task-local `ProjectToolContext.workingDirectory` and `ProjectToolContext.readOnlyFiles` for the whole agent turn. File and command tools read these values:
 
-- Relative paths resolve against the working directory, or the app's Documents directory outside a project.
+- Relative paths resolve against the working directory, or the chat's folder (`Chat.directory`) outside a project.
 - With a working directory, `apply_patch` rejects paths outside it. Without one, it rejects edits to reference files.
-- `execute_command` runs in the working directory and rejects a non-read-only command that names a reference file path.
-- The working directory is also the initial file scope for approval, so edits inside it do not ask again (see [Tools](tools.md#execution-approval)).
+- `execute_command` runs in the working directory, or the chat's folder outside a project, and rejects a non-read-only command that names a reference file path.
+- The working directory and the chat's folder are the initial file scopes for approval, so edits inside them do not ask again (see [Tools](tools.md#execution-approval)).
 
 `search_project` is added to the tool schemas only for project chats, in both `ChatService.availableTools` and `AgentExecutor`. Its schema is the model-facing contract.
 

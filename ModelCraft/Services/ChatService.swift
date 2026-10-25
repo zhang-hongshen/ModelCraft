@@ -47,6 +47,7 @@ final class ChatService {
     }
     
     func deleteChat(_ chat: Chat) {
+        chat.deleteDirectory()
         ModelContainer.shared.mainContext.delete(chat)
     }
     
@@ -68,6 +69,7 @@ final class ChatService {
         let requestID = UUID()
         currentRequestID = requestID
 
+        message.moveFiles(to: chat.directory)
         ModelContainer.shared.mainContext.persist(message)
         let generationTask = Task {
             try await compactContextIfNeeded(
@@ -88,6 +90,11 @@ final class ChatService {
         } catch {
             if currentRequestID == requestID {
                 currentTask = nil
+                // Leave no reply looking like it is still on its way.
+                chat.currentGeneratingAssistantMessage?.status = .generated
+                for message in chat.messages.filter(\.isWaitingForModelResponse) {
+                    ModelContainer.shared.mainContext.delete(message)
+                }
             }
             throw error
         }
@@ -237,14 +244,8 @@ final class ChatService {
         chat: Chat?
     ) -> [MLXLMCommon.Chat.Message] {
         var history: [Message] = []
-        var messages = [PromptBuilder.system]
+        var messages = [PromptBuilder.system(project: chat?.project, summary: chat?.summary)]
         if let chat {
-            if let project = chat.project {
-                messages.append(PromptBuilder.environment(project: project))
-            }
-            if let summary = chat.summary {
-                messages.append(PromptBuilder.summary(summary: summary))
-            }
             let messages = chat.sortedMessages
             let startIndex = min(chat.lastSummaryIndex, messages.count)
             history = Array(messages.suffix(from: startIndex))

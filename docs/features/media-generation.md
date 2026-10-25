@@ -8,11 +8,11 @@ Tool schema rules belong to [Tools](tools.md); chat language models to [Language
 
 | Tool | Model family | Default model | Output |
 | --- | --- | --- | --- |
-| `text_to_image` | `StableDiffusion` | SDXL Turbo (`stabilityai/sdxl-turbo`) | PNG in the image output directory |
-| `text_to_video` | `LTXVideo` or `MiniMaxH3` | LTX Video (`Lightricks/LTX-Video`); MiniMax H3 (`MiniMaxAI/MiniMax-H3`) is selectable | MP4 in the video output directory |
-| `text_to_audio` | `MusicGen` | MusicGen Small (`facebook/musicgen-small` with EnCodec and T5) | WAV in the audio output directory |
+| `text_to_image` | `StableDiffusion` | SDXL Turbo (`stabilityai/sdxl-turbo`) | PNG in the chat's folder |
+| `text_to_video` | `LTXVideo` or `MiniMaxH3` | LTX Video (`Lightricks/LTX-Video`); MiniMax H3 (`MiniMaxAI/MiniMax-H3`) is selectable | MP4 in the chat's folder |
+| `text_to_audio` | `MusicGen` | MusicGen Small (`facebook/musicgen-small` with EnCodec and T5) | WAV in the chat's folder |
 
-Output directories default to Pictures, Movies, and Music and are changed in Settings > Storage. Files are named with a new UUID. A file written before a failure or cancellation is removed.
+Output goes to `Chat.directory` (see [Chat](chat.md#chat-folder)), read by the tools through `ProjectToolContext.chatDirectory`, also in a project chat. Files are named with a new UUID. A file written before a failure or cancellation is removed.
 
 ## Selection and availability
 
@@ -30,7 +30,7 @@ Media models download and load through `HubApi.system`, so they live under `<bas
 
 Generation runs inside the tool call, so the agent turn waits for the file. `ToolExecutor` stores a `resourceLink` to the file in the `CallToolResult`, which drives the UI. The persisted tool message `content` carries the output file URL and MIME type. `LMService.append` rebuilds the model-facing tool message from the persisted message and attaches image and video `resourceLink`s from the `CallToolResult` as message images and videos, so a vision model sees the generated media in the current turn and in later requests.
 
-`ImageGenerationToolRenderer` and `VideoGenerationToolRenderer` show the result inline; image-generation messages stay standalone in the conversation (see [Chat](chat.md#conversation-presentation)). Audio results render through the default renderer's audio player.
+`ImageGenerationToolRenderer` and `VideoGenerationToolRenderer` show the result inline; image-generation messages stay standalone in the conversation (see [Chat](chat.md#conversation-presentation)). Audio results render through the default renderer's audio player. A generated image, video, or audio file has a context menu with Copy, which puts the file itself on the pasteboard as Finder does, and Show in Finder.
 
 Running progress is modeled by `StableDiffusionProgress` and `LTXVideoProgress`, which serialize to a `storedValue` string. `Message.imageGenerationProgress` and `videoGenerationProgress` decode that value from a running tool message's `content`. The tools report progress through the task-local handlers in `ToolExecutionProgressReporter`; `AgentExecutor` binds them around each tool call and writes each reported `storedValue` into the running tool message's `content` until the result replaces it.
 

@@ -6,7 +6,7 @@ This document maps the Settings window to its stored values and the code that co
 
 Settings are stored in `UserDefaults.standard` under the keys declared in `UserDefaults+.swift`; defaults live in `UserDefaultSettings`. `UserSettings` is the observable editor used by Settings views and writes each value back in `didSet`.
 
-Several consumers read `UserDefaults` directly instead of observing `UserSettings`, because they run outside the view hierarchy: `HubApi.downloadBaseDirectory`, the media tools, `ToolDefinition`, `SkillManager`, `HolidayStore`, `Scheduler`, and `SettingsModifier` (through `@AppStorage`). A key therefore is a persisted contract. Renaming one, or changing its value type, abandons the user's stored value unless a migration is added.
+Several consumers read `UserDefaults` directly instead of observing `UserSettings`, because they run outside the view hierarchy: `HubApi.downloadBaseDirectory`, the media tools, `ToolDefinition`, `SkillManager`, `HolidayStore`, `Scheduler`, `AgentExecutor`, and `SettingsModifier` and `ChatView` (through `@AppStorage`). A key therefore is a persisted contract. Renaming one, or changing its value type, abandons the user's stored value unless a migration is added.
 
 ## Tabs
 
@@ -18,8 +18,8 @@ Several consumers read `UserDefaults` directly instead of observing `UserSetting
 | General | Load tools when needed | `loadToolsWhenNeeded` | `ToolDefinition.allToolSchema(for:)` | [Tools](tools.md#tool-set-and-on-demand-loading) |
 | Models | Image generation model | `imageGenerationModelID` | `ImageTool.allTools` | [Media generation](media-generation.md) |
 | Models | Video generation model | `videoGenerationModelID` | `VideoTool` schema and evaluator choice | [Media generation](media-generation.md) |
-| Storage | Image, video, audio output folders | `imageOutputDirectory`, `videoOutputDirectory`, `audioOutputDirectory` | Media tools | [Media generation](media-generation.md) |
 | Storage | Skill directories | `customSkillDirectories` | `SkillManager.loadSkills` | [Tools](tools.md#skill-discovery) |
+| Chat composer | Permission mode | `toolPermissionMode` | `AgentExecutor.executeToolCall` | [Tools](tools.md#permission-modes) |
 | Scheduled Tasks page > Workdays | Holiday region | `holidayRegion` | `HolidayStore` | [Scheduled tasks](schedules.md#workdays) |
 | Permissions | macOS privacy states | none (read from the system) | — | [Computer use](computer-use.md#permissions) |
 

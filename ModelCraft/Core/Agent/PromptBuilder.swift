@@ -10,19 +10,28 @@ import MLXLMCommon
 
 enum PromptBuilder {
 
-    static let system: Message = {
+    private static let systemPrompt: String = {
         let url = Bundle.main.url(
             forResource: "system",
             withExtension: "md",
             subdirectory: "Prompts"
         )!
-        let content = try! String(contentsOf: url, encoding: .utf8)
-        return Message(role: .system, content: content)
+        return try! String(contentsOf: url, encoding: .utf8)
     }()
-    
-    static func environment(
-        project: Project
-    ) -> Message {
+
+    /// The one system message a chat request starts with. Chat templates such as Qwen3.5's
+    /// reject a system message anywhere but first, so the project context and the
+    /// conversation summary are sections of it rather than messages of their own.
+    static func system(project: Project?, summary: String?) -> Message {
+        let sections = [
+            systemPrompt,
+            project.map { environment(project: $0) },
+            summary.map { "<summary>\($0)</summary>" }
+        ].compactMap { $0 }
+        return Message(role: .system, content: sections.joined(separator: "\n\n"))
+    }
+
+    private static func environment(project: Project) -> String {
         var fields: [String] = [
             "<project_name>\(project.title)</project_name>"
         ]
@@ -42,27 +51,15 @@ enum PromptBuilder {
             """)
         }
 
-        return Message(
-            role: .system,
-            content: """
+        return """
             The following is the current project context. Use it when it is relevant to the user's request. The project root is the default working directory. Reference files provide additional context and are read-only.
 
             <project_context>
                 \(fields.joined(separator: "\n"))
             </project_context>
             """
-        )
-        
     }
-    
-    static func summary(summary: String) -> Message {
-        return Message(
-            role: .system,
-            content: """
-            <summary>\(summary)</summary>
-            """)
-    }
-    
+
     static func summarize(conversation: String) -> [Message] {
         [
             Message(

@@ -298,9 +298,6 @@
         }
       }
     },
-    "Audio" : {
-
-    },
     "Audio created" : {
 
     },
@@ -1221,9 +1218,6 @@
         }
       }
     },
-    "Folder" : {
-
-    },
     "Frequency" : {
 
     },
@@ -1345,9 +1339,6 @@
           }
         }
       }
-    },
-    "Images" : {
-
     },
     "Increasing" : {
 
@@ -2135,7 +2126,11 @@
         }
       }
     },
+    "Request Failed" : {
+
+    },
     "Reset" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -2667,9 +2662,6 @@
 
     },
     "Using %@" : {
-
-    },
-    "Video" : {
 
     },
     "Video created" : {

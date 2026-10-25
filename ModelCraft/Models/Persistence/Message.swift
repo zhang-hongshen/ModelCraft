@@ -124,7 +124,30 @@ extension Message {
         }
         files.append(contentsOf: addedFiles)
     }
-    
+
+    /// Moves the attachments into the chat's folder when the message is sent, so the
+    /// model works on them there. Files already in the folder stay where they are.
+    func moveFiles(to directory: URL) {
+        let fileManager = FileManager.default
+        files = files.map { url in
+            let destinationURL = directory.appendingPathComponent(url.lastPathComponent)
+            guard url.standardizedFileURL != destinationURL.standardizedFileURL else {
+                return url
+            }
+            do {
+                try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
+                if fileManager.fileExists(atPath: destinationURL.path) {
+                    try fileManager.removeItem(at: destinationURL)
+                }
+                try fileManager.moveItem(at: url, to: destinationURL)
+                return destinationURL
+            } catch {
+                print("Moving File failed \(url.lastPathComponent): \(error)")
+                return url
+            }
+        }
+    }
+
     func removeFiles<T>(_ urls: T) where T: Swift.Collection, T.Element == URL {
         var removedFiles: [URL] = []
         let fileManager = FileManager.default

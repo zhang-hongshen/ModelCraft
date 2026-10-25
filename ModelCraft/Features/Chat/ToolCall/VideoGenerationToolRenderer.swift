@@ -127,6 +127,7 @@ private struct GeneratedVideoView: View {
     var body: some View {
         VideoPlayer(player: AVPlayer(url: url))
             .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .fileContextMenu(url)
     }
 }
 

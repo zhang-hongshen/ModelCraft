@@ -90,6 +90,7 @@ struct AppNavigationView: View {
             globalStore.startNewChat()
         }
         project.deleteIndex()
+        project.chats.forEach { $0.deleteDirectory() }
         modelContext.delete(project)
         try? modelContext.save()
     }
@@ -98,6 +99,7 @@ struct AppNavigationView: View {
         if globalStore.currentTab == .chat(chat) {
             globalStore.startNewChat()
         }
+        chat.deleteDirectory()
         modelContext.delete(chat)
         try? modelContext.save()
     }

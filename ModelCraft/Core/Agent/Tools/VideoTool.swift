@@ -57,14 +57,12 @@ enum VideoTool {
         return Tool<TextToVideoInput, TextToVideoOutput>(
             name: "text_to_video",
             description: usesH3
-                ? "Generate an MP4 video with the selected MiniMax H3 model. H3 produces video at its supported 768p canvas. Saves the file in the configured video output directory and returns its file URL and MIME type. The app shows the generated file to the user, so do not repeat its path."
-                : "Generate an MP4 video with the selected LTX Video model. Before calling this tool, ask the user with request_user_input to choose aspect ratio, long-edge resolution, and duration. Saves the file in the configured video output directory and returns its file URL and MIME type. The app shows the generated file to the user, so do not repeat its path.",
+                ? "Generate an MP4 video with the selected MiniMax H3 model. H3 produces video at its supported 768p canvas. Saves the file in this chat's folder and returns its file URL and MIME type. The app shows the generated file to the user, so do not repeat its path."
+                : "Generate an MP4 video with the selected LTX Video model. Before calling this tool, ask the user with request_user_input to choose aspect ratio, long-edge resolution, and duration. Saves the file in this chat's folder and returns its file URL and MIME type. The app shows the generated file to the user, so do not repeat its path.",
             parameters: parameters
         ) { input in
             let type = UTType.mpeg4Movie
-            let outputDirectory = UserDefaults.standard.url(forKey: UserDefaults.videoOutputDirectory)
-                ?? UserDefaultSettings.videoOutputDirectory
-            let url = outputDirectory.appendingPathComponent(UUID().uuidString, conformingTo: type)
+            let url = ProjectToolContext.chatDirectory.appendingPathComponent(UUID().uuidString, conformingTo: type)
             guard input.duration >= (usesH3 ? 5 : LTXVideoEvaluateParameters.minimumDuration),
                   input.duration <= (usesH3 ? 15 : LTXVideoEvaluateParameters.maximumDuration) else {
                 throw LTXVideoToolError.unsupportedDuration(input.duration)

@@ -146,7 +146,7 @@ enum FileTool {
     static func fileURL(for path: String) -> URL {
         URL(
             fileURLWithPath: path,
-            relativeTo: ProjectToolContext.workingDirectory ?? .documentsDirectory
+            relativeTo: ProjectToolContext.workingDirectory ?? ProjectToolContext.chatDirectory
         ).standardizedFileURL
     }
 
@@ -170,9 +170,9 @@ enum FileTool {
 
     static let readFile = Tool<ReadFileInput, ReadFileOutput>(
         name: ToolNames.readFile,
-        description: "Reads text from a file. Relative paths resolve from the current project's working folder, or the app's Documents directory when no working folder is configured. Returns the complete file unless a line range is specified.",
+        description: "Reads text from a file. Relative paths resolve from the current project's working folder, or this chat's folder when no working folder is configured. Returns the complete file unless a line range is specified.",
         parameters: [
-            .required("path", type: .string, description: "The absolute path, or a path relative to the current project's working folder (Documents when no working folder is configured)."),
+            .required("path", type: .string, description: "The absolute path, or a path relative to the current project's working folder (this chat's folder when no working folder is configured)."),
             .optional("start_line", type: .int, description: "The first line to return, starting from 1."),
             .optional("line_count", type: .int, description: "The maximum number of lines to return.")
         ]
@@ -232,9 +232,9 @@ enum FileTool {
 
     static let listDirectory = Tool<ListDirectoryInput, ListDirectoryOutput>(
         name: ToolNames.listDirectory,
-        description: "List the direct children of one local directory without recursively reading descendants. Relative paths resolve from the current project's working folder, or Documents when no working folder is configured. Returns each child's name, path, and whether it is a directory.",
+        description: "List the direct children of one local directory without recursively reading descendants. Relative paths resolve from the current project's working folder, or this chat's folder when no working folder is configured. Returns each child's name, path, and whether it is a directory.",
         parameters: [
-            .optional("path", type: .string, description: "The absolute path, or a path relative to the current project's working folder (Documents when no working folder is configured). Omit it to list that default directory.")
+            .optional("path", type: .string, description: "The absolute path, or a path relative to the current project's working folder (this chat's folder when no working folder is configured). Omit it to list that default directory.")
         ]
     ) { input in
         let entries = try FileTool.listDirectory(input.path ?? "")

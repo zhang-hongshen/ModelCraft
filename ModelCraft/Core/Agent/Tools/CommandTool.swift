@@ -11,6 +11,8 @@ import MLXLMCommon
 
 enum ProjectToolContext {
     @TaskLocal static var workingDirectory: URL?
+    /// `Chat.directory` of the running chat; bound by `AgentExecutor.run` for every turn.
+    @TaskLocal static var chatDirectory: URL = .temporaryDirectory
     @TaskLocal static var readOnlyFiles: [URL] = []
 }
 
@@ -35,7 +37,7 @@ enum CommandTool {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
         process.arguments = ["sh", "-c", command]
-        process.currentDirectoryURL = ProjectToolContext.workingDirectory ?? .documentsDirectory
+        process.currentDirectoryURL = ProjectToolContext.workingDirectory ?? ProjectToolContext.chatDirectory
         
         let stdoutPipe = Pipe()
         let stderrPipe = Pipe()
@@ -75,7 +77,7 @@ enum CommandTool {
     
     static let executeCommand = Tool<ExecuteCommandInput, ExecuteCommandOutput>(
         name: "execute_command",
-        description: "Run one shell command from the current project's working folder, or the app's Documents directory when the project has no working folder. The command may read or modify files in the working folder and returns stdout, stderr, and the process exit code. Do not use it to write or edit file contents; use apply_patch for file changes. Project reference files are read-only and must not be changed or deleted.",
+        description: "Run one shell command from the current project's working folder, or this chat's folder when there is no working folder. The command may read or modify files in the working folder and returns stdout, stderr, and the process exit code. Do not use it to write or edit file contents; use apply_patch for file changes. Project reference files are read-only and must not be changed or deleted.",
         parameters: [
             .required("command", type: .string, description: "The complete command string passed to `sh -c`. Use paths relative to the current working folder or explicit absolute paths, include every required argument, and never modify a project reference file.")
         

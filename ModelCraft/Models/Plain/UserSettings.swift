@@ -11,30 +11,6 @@ import SwiftUI
 @MainActor
 @Observable
 class UserSettings {
-    var imageOutputDirectory = UserDefaults.standard.url(
-        forKey: UserDefaults.imageOutputDirectory
-    ) ?? UserDefaultSettings.imageOutputDirectory {
-        didSet {
-            UserDefaults.standard.set(imageOutputDirectory, forKey: UserDefaults.imageOutputDirectory)
-        }
-    }
-
-    var audioOutputDirectory = UserDefaults.standard.url(
-        forKey: UserDefaults.audioOutputDirectory
-    ) ?? UserDefaultSettings.audioOutputDirectory {
-        didSet {
-            UserDefaults.standard.set(audioOutputDirectory, forKey: UserDefaults.audioOutputDirectory)
-        }
-    }
-
-    var videoOutputDirectory = UserDefaults.standard.url(
-        forKey: UserDefaults.videoOutputDirectory
-    ) ?? UserDefaultSettings.videoOutputDirectory {
-        didSet {
-            UserDefaults.standard.set(videoOutputDirectory, forKey: UserDefaults.videoOutputDirectory)
-        }
-    }
-
     var imageGenerationModelID = UserDefaults.standard.string(
         forKey: UserDefaults.imageGenerationModelID
     ) ?? "sdxl-turbo" {

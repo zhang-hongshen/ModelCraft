@@ -23,7 +23,7 @@ enum ImageTool {
     
     static let textToImage = Tool<TextToImageInput, TextToImageOutput>(
             name: "text_to_image",
-            description: "Generate a new PNG image from a text description with the local image model. Saves the image in the configured image output directory and returns its file URL and MIME type. The app shows the generated file to the user, so do not repeat its path.",
+            description: "Generate a new PNG image from a text description with the local image model. Saves the image in this chat's folder and returns its file URL and MIME type. The app shows the generated file to the user, so do not repeat its path.",
             parameters: [
                 .required("prompt", type: .string, description: "Describe the desired image, including subject, composition, style, lighting, and colors that matter.")
             ]
@@ -38,9 +38,7 @@ enum ImageTool {
             await ToolExecutionProgressReporter.imageGeneration?(.saving)
             try Task.checkCancellation()
             let type = UTType.png
-            let outputDirectory = UserDefaults.standard.url(forKey: UserDefaults.imageOutputDirectory)
-                ?? UserDefaultSettings.imageOutputDirectory
-            let url = outputDirectory.appendingPathComponent(UUID().uuidString, conformingTo: type)
+            let url = ProjectToolContext.chatDirectory.appendingPathComponent(UUID().uuidString, conformingTo: type)
             var completed = false
             defer {
                 if !completed {

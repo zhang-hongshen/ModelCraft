@@ -30,7 +30,30 @@ class Chat {
     var messages: [Message] = []
     
     var tokenCount: Int = 0
-    
+
+    private var _toolAuthorization: String?
+
+    /// What the user chose to always allow in this conversation.
+    @Transient var toolAuthorization: ToolAuthorizationContext? {
+        get {
+            guard let data = _toolAuthorization?.data(using: .utf8) else { return nil }
+            return try? JSONDecoder().decode(ToolAuthorizationContext.self, from: data)
+        }
+
+        set {
+            guard let newValue else {
+                _toolAuthorization = nil
+                return
+            }
+
+            if let data = try? JSONEncoder().encode(newValue) {
+                _toolAuthorization = String(data: data, encoding: .utf8)
+            } else {
+                _toolAuthorization = nil
+            }
+        }
+    }
+
     init(title: String? = nil, project: Project? = nil) {
         self.title = title
         self.project = project
@@ -39,7 +62,20 @@ class Chat {
 }
 
 extension Chat {
-    
+
+    /// The chat's own folder for attachments and generated media. Outside a project it is
+    /// also the working directory for tools.
+    var directory: URL {
+        URL.applicationSupportDirectory.appending(
+            path: "ModelCraft/Chats/\(id.uuidString)",
+            directoryHint: .isDirectory)
+    }
+
+    /// Removes the chat's folder; called wherever a chat is deleted.
+    func deleteDirectory() {
+        try? FileManager.default.removeItem(at: directory)
+    }
+
     var status: MessageStatus {
         sortedMessages.last?.status ?? .generated
     }

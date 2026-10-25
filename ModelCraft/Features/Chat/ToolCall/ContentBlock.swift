@@ -92,10 +92,7 @@ struct ResourceLinkBlock: View {
                         .aspectRatio(image.aspectRatio, contentMode: .fit)
                         .frame(maxHeight: 300)
                         .cornerRadius()
-                        .contextMenu {
-                            CopyButton() { Pasteboard.setImage(image) }
-                            ShowInFinderButton(url: link.url)
-                        }
+                        .fileContextMenu(link.url)
                 }
 
             } else if mimeType.hasPrefix("video") {
@@ -105,15 +102,27 @@ struct ResourceLinkBlock: View {
                 )
                 .frame(height: 300)
                 .cornerRadius()
+                .fileContextMenu(link.url)
 
             } else if mimeType.hasPrefix("audio") {
 
                 AudioPlayer(url: link.url)
+                    .fileContextMenu(link.url)
             }
 
         } else {
 
             Link(link.title, destination: link.url)
+        }
+    }
+}
+
+extension View {
+    /// Copy and Show in Finder for a generated file shown in the chat.
+    func fileContextMenu(_ url: URL) -> some View {
+        contextMenu {
+            CopyButton() { Pasteboard.setFile(url) }
+            ShowInFinderButton(url: url)
         }
     }
 }

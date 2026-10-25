@@ -29,7 +29,10 @@ struct ChatView: View {
     @State private var composerSelectionLocation = 0
     @State private var slashCommandLocation: Int?
     @State private var projectEdition: Project?
-    
+    @State private var requestError: String?
+    @AppStorage(UserDefaults.toolPermissionMode)
+    private var toolPermissionMode = UserDefaultSettings.toolPermissionMode
+
     enum VoiceState {
         case idle
         case loading
@@ -63,6 +66,14 @@ struct ChatView: View {
             .sheet(item: $projectEdition) { project in
                 ProjectEdition(project: project)
                     .presentationDetents([.medium, .large])
+            }
+            .alert("Request Failed", isPresented: Binding(
+                get: { requestError != nil },
+                set: { if !$0 { requestError = nil } }
+            )) {
+                Button("OK") { requestError = nil }
+            } message: {
+                Text(requestError ?? "")
             }
             .onChange(of: localModelStore.models, initial: true) { _, availableModels in
                 guard globalStore.selectedModel == nil else { return }
@@ -139,6 +150,37 @@ private extension ChatView {
                 
             }
         }
+    }
+
+    @ViewBuilder
+    func PermissionModePickerButton() -> some View {
+        Menu {
+            Picker("Permission Mode", selection: $toolPermissionMode) {
+                ForEach(ToolPermissionMode.allCases) { mode in
+                    Label {
+                        Text(mode.title)
+                    } icon: {
+                        Image(systemName: mode.systemImage)
+                    }
+                }
+            }
+            .pickerStyle(.inline)
+            .labelsHidden()
+        } label: {
+            HStack(spacing: 4) {
+                Image(systemName: toolPermissionMode.systemImage)
+                    .accessibilityHidden(true)
+                Text(toolPermissionMode.title)
+                    .lineLimit(1)
+                Image(systemName: "chevron.down")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .menuIndicator(.hidden)
+        .menuStyle(.borderlessButton)
+        .fixedSize()
+        .help("Choose which actions run without asking")
     }
 
     @ViewBuilder
@@ -360,6 +402,8 @@ private extension ChatView {
                                 ContextWindowUsageView(tokenCount: chat.tokenCount, contextWindow: contextWindow)
                             }
 
+                            PermissionModePickerButton()
+
                             ModelPickerButton()
 
                             if chatService.isCompacting {
@@ -538,7 +582,12 @@ private extension ChatView {
                 return
             }
             Task {
-                try await chatService.compactContext(model: model, chat: chat)
+                do {
+                    try await chatService.compactContext(model: model, chat: chat)
+                } catch is CancellationError {
+                } catch {
+                    requestError = error.localizedDescription
+                }
             }
         case .skill(let name, _):
             replaceCommandSlash(with: "/\(name) ")
@@ -568,11 +617,17 @@ private extension ChatView {
             content: content,
             files: files)
         Task {
-            try await chatService.sendMessage(
-                model: model,
-                chat: activeChat,
-                message: message
-            )
+            do {
+                try await chatService.sendMessage(
+                    model: model,
+                    chat: activeChat,
+                    message: message
+                )
+            } catch is CancellationError {
+                // Stopped by the user or superseded by a newer request.
+            } catch {
+                requestError = error.localizedDescription
+            }
         }
         return true
     }
@@ -701,7 +756,8 @@ private extension ChatView {
     }
 
     func resolvedPreviewURL(for path: String) -> URL? {
-        let baseURL = chat?.project?.workingDirectory ?? .documentsDirectory
+        guard let chat else { return nil }
+        let baseURL = chat.project?.workingDirectory ?? chat.directory
         let url = URL(
             fileURLWithPath: (path as NSString).expandingTildeInPath,
             relativeTo: baseURL
@@ -715,11 +771,11 @@ private extension ChatView {
             return nil
         }
 
-        guard let project = chat?.project else {
+        guard let project = chat.project else {
             return url
         }
 
-        let roots = [project.workingDirectory].compactMap { $0 } + project.resources
+        let roots = [project.workingDirectory, chat.directory].compactMap { $0 } + project.resources
         guard roots.contains(where: { contains(url, root: $0) }) else {
             return nil
         }
@@ -1229,27 +1285,23 @@ private struct ToolApprovalRequestView: View {
 
             Text(request.title)
             if let detail = request.detail, !detail.isEmpty {
-                if request.allowsAlways {
-                    Text(detail)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .textSelection(.enabled)
-                } else {
-                    // An AppleScript: show the whole script so the user knows what runs.
-                    let script = Text(verbatim: detail)
-                        .font(.system(.caption, design: .monospaced))
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .textSelection(.enabled)
-                    ViewThatFits(in: .vertical) {
-                        script
-                        ScrollView {
-                            script
-                        }
+                // Show the whole command, patch, or script so the user knows what runs, but
+                // scroll a long one instead of letting it push the buttons off screen.
+                let content = Text(verbatim: detail)
+                    .font(.system(.caption, design: .monospaced))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .textSelection(.enabled)
+                ViewThatFits(in: .vertical) {
+                    content
+                    ScrollView {
+                        content
                     }
-                    .frame(maxHeight: 240)
-                    .padding(8)
-                    .background(.quaternary, in: RoundedRectangle(cornerRadius: 8))
+                }
+                .frame(maxHeight: 240)
+                .padding(8)
+                .background(.quaternary, in: RoundedRectangle(cornerRadius: 8))
 
+                if !request.allowsAlways {
                     if detail.localizedCaseInsensitiveContains("do shell script") {
                         Label(
                             "This script can run shell commands with ModelCraft's permissions.",

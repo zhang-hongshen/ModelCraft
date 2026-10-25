@@ -12,15 +12,13 @@ extension UserDefaults {
     static let appearance = "appearance"
     static let language = "language"
     static let automaticallyScrollToBottom = "automaticallyScrollToBottom"
-    static let imageOutputDirectory = "imageOutputDirectory"
-    static let audioOutputDirectory = "audioOutputDirectory"
-    static let videoOutputDirectory = "videoOutputDirectory"
     static let customSkillDirectories = "customSkillDirectories"
     static let imageGenerationModelID = "imageGenerationModelID"
     static let videoGenerationModelID = "videoGenerationModelID"
     static let loadToolsWhenNeeded = "loadToolsWhenNeeded"
     static let holidayRegion = "holidayRegion"
     static let notifyWhenScheduledTasksFinish = "notifyWhenScheduledTasksFinish"
+    static let toolPermissionMode = "toolPermissionMode"
     
     func value<T>(forKey key: String, default defaultValue: T) -> T {
         return self.value(forKey: key) as? T ?? defaultValue
@@ -39,12 +37,10 @@ enum UserDefaultSettings {
     static let loadToolsWhenNeeded = true
     static let holidayRegion = Locale.current.region?.identifier ?? ""
     static let notifyWhenScheduledTasksFinish = false
+    static let toolPermissionMode = ToolPermissionMode.acceptEdits
     static let language = Locale.defaultLanguage
     static let modelDownloadBaseDirectory = URL.applicationSupportDirectory
         .appending(path: "ModelCraft")
-    static let imageOutputDirectory = URL.picturesDirectory
-    static let audioOutputDirectory = URL.musicDirectory
-    static let videoOutputDirectory = URL.moviesDirectory
     static let skillDirectory = FileManager.default.homeDirectoryForCurrentUser
         .appendingPathComponent(".agents/skills")
 }

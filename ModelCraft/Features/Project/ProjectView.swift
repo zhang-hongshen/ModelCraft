@@ -76,6 +76,7 @@ extension ProjectView {
                 }
                 DeleteButton(style: .iconAndText) {
                     project.deleteIndex()
+                    project.chats.forEach { $0.deleteDirectory() }
                     modelContext.delete(project)
                     globalStore.currentTab = nil
                 }
