@@ -26,7 +26,9 @@ struct ModelCraftApp: App {
     
     init() {
         _ = NetworkMonitor.shared
-        let globalStore = GlobalStore()
+        URL.moveLegacyAppSupportDirectory()
+        try? FileManager.default.removeItem(at: Message.draftDirectory)
+        let globalStore = GlobalStore.shared
         let localModelStore = LocalModelStore()
         self.globalStore = globalStore
         _localModelStore = State(initialValue: localModelStore)
@@ -74,7 +76,7 @@ struct ModelCraftApp: App {
         .environment(globalStore)
         .environment(localModelStore)
         .environment(scheduler)
-        .environment(UserSettings())
+        .environment(UserSettings.shared)
         .environment(STTService())
         .environment(TTSService())
         .windowResizability(.contentSize)

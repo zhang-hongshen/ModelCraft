@@ -12,6 +12,7 @@
 		70097F7F2D6C04BB00DDDEDF /* MessageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70097F7E2D6C04BB00DDDEDF /* MessageView.swift */; };
 		70097F832D6DA73C00DDDEDF /* RuntimeError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70097F822D6DA73C00DDDEDF /* RuntimeError.swift */; };
 		70097F892D6EB0DC00DDDEDF /* GlobalStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70097F882D6EB0DA00DDDEDF /* GlobalStore.swift */; };
+		70C0A5E22FF0C0A500C0A5E2 /* ContextUsage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70C0A5E12FF0C0A500C0A5E1 /* ContextUsage.swift */; };
 		70097F8B2D6EB11800DDDEDF /* UserSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70097F8A2D6EB11800DDDEDF /* UserSettings.swift */; };
 		700C702A2E52FE830008EF5B /* TagStreamParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 700C70292E52FE820008EF5B /* TagStreamParser.swift */; };
 		700C702C2E52FF730008EF5B /* TagStreamParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 700C702B2E52FF710008EF5B /* TagStreamParserTests.swift */; };
@@ -189,6 +190,7 @@
 		70D1A0042FD1A00400D1A004 /* WorkdayCalendar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70D1A0032FD1A00300D1A003 /* WorkdayCalendar.swift */; };
 		70D1A0062FD1A00600D1A006 /* Scheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70D1A0052FD1A00500D1A005 /* Scheduler.swift */; };
 		70D1A0082FD1A00800D1A008 /* ScheduleTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70D1A0072FD1A00700D1A007 /* ScheduleTool.swift */; };
+		70E1C0022FE1C00200E1C002 /* ModelCraftTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70E1C0012FE1C00100E1C001 /* ModelCraftTool.swift */; };
 		70D1A00A2FD1A00A00D1A00A /* SchedulesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70D1A0092FD1A00900D1A009 /* SchedulesView.swift */; };
 		70D1A00C2FD1A00C00D1A00C /* ScheduleEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70D1A00B2FD1A00B00D1A00B /* ScheduleEditor.swift */; };
 		70D1A00E2FD1A00E00D1A00E /* WorkdaysView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70D1A00D2FD1A00D00D1A00D /* WorkdaysView.swift */; };
@@ -240,6 +242,7 @@
 		70097F7E2D6C04BB00DDDEDF /* MessageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageView.swift; sourceTree = "<group>"; };
 		70097F822D6DA73C00DDDEDF /* RuntimeError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RuntimeError.swift; sourceTree = "<group>"; };
 		70097F882D6EB0DA00DDDEDF /* GlobalStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlobalStore.swift; sourceTree = "<group>"; };
+		70C0A5E12FF0C0A500C0A5E1 /* ContextUsage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContextUsage.swift; sourceTree = "<group>"; };
 		70097F8A2D6EB11800DDDEDF /* UserSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserSettings.swift; sourceTree = "<group>"; };
 		700C70292E52FE820008EF5B /* TagStreamParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagStreamParser.swift; sourceTree = "<group>"; };
 		700C702B2E52FF710008EF5B /* TagStreamParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagStreamParserTests.swift; sourceTree = "<group>"; };
@@ -394,6 +397,7 @@
 		70D1A0032FD1A00300D1A003 /* WorkdayCalendar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkdayCalendar.swift; sourceTree = "<group>"; };
 		70D1A0052FD1A00500D1A005 /* Scheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Scheduler.swift; sourceTree = "<group>"; };
 		70D1A0072FD1A00700D1A007 /* ScheduleTool.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduleTool.swift; sourceTree = "<group>"; };
+		70E1C0012FE1C00100E1C001 /* ModelCraftTool.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelCraftTool.swift; sourceTree = "<group>"; };
 		70D1A0092FD1A00900D1A009 /* SchedulesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SchedulesView.swift; sourceTree = "<group>"; };
 		70D1A00B2FD1A00B00D1A00B /* ScheduleEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduleEditor.swift; sourceTree = "<group>"; };
 		70D1A00D2FD1A00D00D1A00D /* WorkdaysView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkdaysView.swift; sourceTree = "<group>"; };
@@ -477,6 +481,7 @@
 				7078AB132F4EDE9600711940 /* ToolDefinitions.swift */,
 				70C0FF1330C0FF1300C0FF13 /* ConnectorTool.swift */,
 				70D1A0072FD1A00700D1A007 /* ScheduleTool.swift */,
+				70E1C0012FE1C00100E1C001 /* ModelCraftTool.swift */,
 				7039EF5B2F8F46C60099F491 /* VideoTool.swift */,
 				70B4A00130C3A00100B4A001 /* WebTool.swift */,
 				70FD4805304C351F00B70A9B /* UserInputTool.swift */,
@@ -852,6 +857,7 @@
 				704DEF642F63C94900BA7F4C /* ViewMode.swift */,
 				7014F9A72F5C878200552108 /* Skill.swift */,
 				70097F882D6EB0DA00DDDEDF /* GlobalStore.swift */,
+				70C0A5E12FF0C0A500C0A5E1 /* ContextUsage.swift */,
 				708EC0E42F49A27A0055D765 /* MapPlace.swift */,
 				70097F822D6DA73C00DDDEDF /* RuntimeError.swift */,
 				706D82632F1E1ED400029818 /* AppNavigationTab.swift */,
@@ -1159,6 +1165,7 @@
 				70D1A0042FD1A00400D1A004 /* WorkdayCalendar.swift in Sources */,
 				70D1A0062FD1A00600D1A006 /* Scheduler.swift in Sources */,
 				70D1A0082FD1A00800D1A008 /* ScheduleTool.swift in Sources */,
+				70E1C0022FE1C00200E1C002 /* ModelCraftTool.swift in Sources */,
 				70D1A00A2FD1A00A00D1A00A /* SchedulesView.swift in Sources */,
 				70D1A00C2FD1A00C00D1A00C /* ScheduleEditor.swift in Sources */,
 				70D1A00E2FD1A00E00D1A00E /* WorkdaysView.swift in Sources */,
@@ -1216,6 +1223,7 @@
 				702477B62F48B3E8003B72D5 /* Array+.swift in Sources */,
 				70097F8B2D6EB11800DDDEDF /* UserSettings.swift in Sources */,
 				70097F892D6EB0DC00DDDEDF /* GlobalStore.swift in Sources */,
+				70C0A5E22FF0C0A500C0A5E2 /* ContextUsage.swift in Sources */,
 				7014FA1F2F5DE53500552108 /* FilePreviewView.swift in Sources */,
 				70C215862FBAB81A00DCA77C /* MockData.swift in Sources */,
 				708EC0EB2F4A315D0055D765 /* String+.swift in Sources */,

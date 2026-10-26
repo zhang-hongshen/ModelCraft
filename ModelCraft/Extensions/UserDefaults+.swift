@@ -39,8 +39,7 @@ enum UserDefaultSettings {
     static let notifyWhenScheduledTasksFinish = false
     static let toolPermissionMode = ToolPermissionMode.acceptEdits
     static let language = Locale.defaultLanguage
-    static let modelDownloadBaseDirectory = URL.applicationSupportDirectory
-        .appending(path: "ModelCraft")
+    static let modelDownloadBaseDirectory = URL.appSupportDirectory
     static let skillDirectory = FileManager.default.homeDirectoryForCurrentUser
         .appendingPathComponent(".agents/skills")
 }

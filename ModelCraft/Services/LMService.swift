@@ -107,6 +107,23 @@ final class LMService {
         }
     }
 
+    /// Counts the tokens of each text on its own, without chat-template formatting. Uses the
+    /// loaded model's tokenizer when there is one; otherwise loads only the tokenizer.
+    func tokenCounts(model: LocalModel, texts: [String], hub: HubApi = .default) async throws -> [Int] {
+        if isDeepSeekFlash(model) {
+            return try await deepSeekFlashEvaluator.tokenCounts(texts: texts)
+        }
+
+        if let container = modelCache.object(forKey: model.id as NSString) {
+            return await container.perform { context in
+                texts.map { context.tokenizer.encode(text: $0, addSpecialTokens: false).count }
+            }
+        }
+        let tokenizer = try await TransformersTokenizerLoader().load(
+            from: hub.localRepoLocation(.init(id: model.id)))
+        return texts.map { tokenizer.encode(text: $0, addSpecialTokens: false).count }
+    }
+
     /// Generates text based on the provided messages using the specified model.
     /// - Parameters:
     ///   - model: The language model to use for generation

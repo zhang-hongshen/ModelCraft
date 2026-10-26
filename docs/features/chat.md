@@ -14,11 +14,11 @@ Tool schemas and execution are owned by [Tools](tools.md); `ui` blocks in assist
 
 Messages are ordered by `createdAt` through `Chat.sortedMessages`; never rely on the order of the `messages` relationship array. `Message.toolCallStatus` derives `running`, `completed`, or `failed` from whether `toolCallResult` exists and whether it is an error.
 
-Attachments are copied into the app's Documents directory by `Message.addFiles` while the message is a draft; `ChatService.sendMessage` then moves them into the chat's folder with `Message.moveFiles(to:)`. `Message.files` stores the copies, not the user's originals. An existing file with the same name is replaced.
+`Message.addFiles` copies attachments into the message's chat folder, or into `Message.draftDirectory` (`Application Support/<bundle ID>/Drafts/`) while a new draft has no chat; `ChatService.sendMessage` then moves them into the chat's folder with `Message.moveFiles(to:)`. `Message.files` stores the copies, not the user's originals. An existing file with the same name is replaced. Drafts are not persisted, so the app removes the draft folder at launch.
 
 ### Chat folder
 
-Every chat owns `Chat.directory`, `Application Support/ModelCraft/Chats/<chat-id>/`. It holds the chat's attachments and generated media. Outside a project it is also the working directory for relative tool paths and `execute_command`. `AgentExecutor.run` creates it and binds it as `ProjectToolContext.chatDirectory` for every turn. Deleting a chat, or the project that owns it, removes the folder with `Chat.deleteDirectory()`.
+Every chat owns `Chat.directory`, `Application Support/<bundle ID>/Chats/<chat-id>/`. It holds the chat's attachments and generated media. Outside a project it is also the working directory for relative tool paths and `execute_command`. `AgentExecutor.run` creates it and binds it as `ProjectToolContext.chatDirectory` for every turn. Deleting a chat, or the project that owns it, removes the folder with `Chat.deleteDirectory()`.
 
 ## Request lifecycle
 
@@ -55,12 +55,13 @@ Compaction keeps long conversations inside the model's context window without de
 
 Titles are generated once, in the background after the first completed turn, with `PromptBuilder.generateTitle`. Titles and compaction summaries go through `LMService.generateAuxiliary`, which prefers Apple's on-device model when available; see [Language models](models.md#inference). A failure or cancellation is ignored; a later turn tries again while the title is still `nil`. Users can rename chats from the sidebar.
 
-`ContextWindowUsageView` shows `Chat.tokenCount` against `LocalModel.contextWindow`. `tokenCount` is the prompt plus generated tokens reported by the latest generation; it is not recomputed independently.
+`ContextWindowUsageView` shows `Chat.tokenCount` against `LocalModel.contextWindow`. `tokenCount` is the prompt plus generated tokens reported by the latest generation; it is not recomputed independently. Hovering it shows the system prompt, tools, and messages, largest first. `ContextUsage.measure` tokenizes the system prompt and tool schemas with `LMService.tokenCounts` (the loaded model's tokenizer, or the tokenizer alone without loading weights); messages are the rest of `tokenCount`, including chat-template formatting and attached media.
 
 ## Composer
 
 `ChatInputView` edits a draft `Message` that is never persisted until submission.
 
+- Return sends the draft (or runs the selected command while the palette is open); Command-Return inserts a new line. Return that confirms an input method's composition is consumed by the input method and does not send.
 - Images and movies can be attached through the file importer or Photos picker; drag and drop accepts any file URL. Attachments are sent as images or videos to vision-capable models by `LMService.toMessage`, based on the file's UTType.
 - Typing `/` opens the command palette. `/compact` compacts the current chat. Skill entries insert an inline `/<skill-name>` token; the skill catalog and activation contract belong to [Tools](tools.md#skill-discovery).
 - The model picker selects `GlobalStore.selectedModel` from `LocalModelStore`; when nothing is selected, the first discovered model is chosen.

@@ -6,7 +6,7 @@ This document maps the Settings window to its stored values and the code that co
 
 Settings are stored in `UserDefaults.standard` under the keys declared in `UserDefaults+.swift`; defaults live in `UserDefaultSettings`. `UserSettings` is the observable editor used by Settings views and writes each value back in `didSet`.
 
-Several consumers read `UserDefaults` directly instead of observing `UserSettings`, because they run outside the view hierarchy: `HubApi.downloadBaseDirectory`, the media tools, `ToolDefinition`, `SkillManager`, `HolidayStore`, `Scheduler`, `AgentExecutor`, and `SettingsModifier` and `ChatView` (through `@AppStorage`). A key therefore is a persisted contract. Renaming one, or changing its value type, abandons the user's stored value unless a migration is added.
+Several consumers read `UserDefaults` directly instead of observing `UserSettings`, because they run outside the view hierarchy: `HubApi.downloadBaseDirectory`, the media tools, `ToolDefinition`, `SkillManager`, `HolidayStore`, `Scheduler`, `AgentExecutor`, and `SettingsModifier` and `ChatView` (through `@AppStorage`). `settings_update` changes the General settings through `UserSettings.shared`, the instance the app puts in the environment, so the Settings window shows its changes; a setting it should offer is added to that tool's schema as well (see [Tools](tools.md#operating-modelcraft)). A key therefore is a persisted contract. Renaming one, or changing its value type, abandons the user's stored value unless a migration is added.
 
 ## Tabs
 

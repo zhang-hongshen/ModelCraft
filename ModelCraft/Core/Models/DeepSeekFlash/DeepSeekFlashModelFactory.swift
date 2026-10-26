@@ -91,6 +91,21 @@ actor DeepSeekFlashModelFactory {
         }
     }
 
+    /// Counts the tokens of each text with the loaded model's tokenizer, or with a tokenizer
+    /// loaded alone when the model is not loaded.
+    func tokenCounts(texts: [String], hub: HubApi = .default) async throws -> [Int] {
+        let tokenizer: DeepSeekFlashTokenizer
+        if case .loaded(let model) = state {
+            tokenizer = model.tokenizer
+        } else {
+            tokenizer = try await DeepSeekFlashTokenizer(
+                hub: hub,
+                directory: hub.localRepoLocation(
+                    Hub.Repo(id: DeepSeekFlashConfiguration.repositoryID)))
+        }
+        return texts.map { tokenizer.encode(text: $0).count }
+    }
+
     private func waitForLoad(
         _ task: Task<DeepSeekFlash, Error>
     ) async throws -> DeepSeekFlash {

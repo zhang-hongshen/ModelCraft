@@ -66,8 +66,8 @@ extension Chat {
     /// The chat's own folder for attachments and generated media. Outside a project it is
     /// also the working directory for tools.
     var directory: URL {
-        URL.applicationSupportDirectory.appending(
-            path: "ModelCraft/Chats/\(id.uuidString)",
+        URL.appSupportDirectory.appending(
+            path: "Chats/\(id.uuidString)",
             directoryHint: .isDirectory)
     }
 
@@ -323,6 +323,7 @@ enum ToolCallActivity: Hashable {
     case createImage, createVideo, createAudio
     case loadSkill, askQuestion
     case checkSchedule, changeSchedule
+    case checkModelCraft, changeModelCraft
 
     func description(isPlural: Bool) -> String {
         let resource: LocalizedStringResource = switch (self, isPlural) {
@@ -360,6 +361,8 @@ enum ToolCallActivity: Hashable {
         case (.checkSchedule, _): "Checked scheduled tasks"
         case (.changeSchedule, false): "Changed a scheduled task"
         case (.changeSchedule, true): "Changed scheduled tasks"
+        case (.checkModelCraft, _): "Checked ModelCraft"
+        case (.changeModelCraft, _): "Changed ModelCraft"
         }
         return String(localized: resource)
     }

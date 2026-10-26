@@ -10,6 +10,9 @@ import SwiftUI
 @MainActor
 @Observable
 class GlobalStore {
+    /// The app's one store, shared with tools that run outside the view hierarchy.
+    static let shared = GlobalStore()
+
     var selectedModel: LocalModel? = nil
     var currentTab: AppNavigationTab? = nil
     var newChatProject: Project? = nil

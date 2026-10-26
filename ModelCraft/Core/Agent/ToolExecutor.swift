@@ -77,54 +77,35 @@ enum ToolExecutor {
                 message.content = result.toolResult
             case ToolNames.searchTools:
                 reply(try await toolCall.execute(with: ToolDefinition.searchTools).toolResult)
-            case ToolNames.captureFullScreen:
-                if let result = try await toolCall.execute(with: ScreenControlTool.captureFullScreen) {
-                    let description = "Captured all displays at \(Int(result.size.width))x\(Int(result.size.height)) points."
-                    toolCallResult.content.append(.text(TextContent(text: description)))
-                    toolCallResult.content.append(.image(ImageContent(data: result.imageData.base64EncodedString(), mimeType: result.mimeType)))
-                    message.content = description
-                } else {
-                    let errorDescription = "Failed to capture the full screen."
-                    toolCallResult.isError = true
-                    toolCallResult.content.append(.text(TextContent(text: errorDescription)))
-                    message.content = errorDescription
-                }
-            case ToolNames.captureAppWindow:
-                let screenshots = try await toolCall.execute(with: ScreenControlTool.captureAppWindow)
-                if screenshots.isEmpty {
-                    let resultDescription = "No application windows were captured."
-                    toolCallResult.isError = true
-                    toolCallResult.content.append(.text(TextContent(text: resultDescription)))
-                    message.content = resultDescription
-                } else {
-                    var descriptions: [String] = []
-                    for screenshot in screenshots {
-                        let frame = screenshot.windowFrame
-                        let description = "Window \(screenshot.windowID): x=\(Int(frame.minX)), y=\(Int(frame.minY)), width=\(Int(frame.width)), height=\(Int(frame.height))."
-                        toolCallResult.content.append(.text(TextContent(text: description)))
-                        toolCallResult.content.append(.image(ImageContent(data: screenshot.imageData.base64EncodedString(), mimeType: screenshot.mimeType)))
-                        descriptions.append(description)
-                    }
-                    message.content = descriptions.joined(separator: "\n")
-                }
-            case ToolNames.click:
-                reply(try await toolCall.execute(with: ScreenControlTool.click).toolResult)
-            case ToolNames.move:
-                reply(try await toolCall.execute(with: ScreenControlTool.move).toolResult)
-            case ToolNames.drag:
-                reply(try await toolCall.execute(with: ScreenControlTool.drag).toolResult)
-            case ToolNames.scroll:
-                reply(try await toolCall.execute(with: ScreenControlTool.scroll).toolResult)
-            case ToolNames.listRunningApps:
-                reply(try await toolCall.execute(with: ComputerUseTool.listRunningApplication).toolResult)
-            case ToolNames.getUIHierarchy:
-                reply(try await toolCall.execute(with: ComputerUseTool.getUIHierarchy).toolResult)
-            case ToolNames.clickElement:
-                reply(try await toolCall.execute(with: ComputerUseTool.clickElement).toolResult)
-            case ToolNames.typeText:
-                reply(try await toolCall.execute(with: ComputerUseTool.typeText).toolResult)
-            case ToolNames.pressKey:
-                reply(try await toolCall.execute(with: ComputerUseTool.pressKey).toolResult)
+            case ToolNames.appScreenshot:
+                let result = try await toolCall.execute(with: ScreenControlTool.appScreenshot)
+                reply(result.summary)
+                toolCallResult.content.append(
+                    .resourceLink(ResourceLink(name: "", title: "", url: result.imageURL, mimeType: result.mimeType)))
+            case ToolNames.appZoom:
+                let result = try await toolCall.execute(with: ScreenControlTool.appZoom)
+                reply(result.summary)
+                toolCallResult.content.append(
+                    .resourceLink(ResourceLink(name: "", title: "", url: result.imageURL, mimeType: result.mimeType)))
+            case ToolNames.listApps:
+                reply(try await toolCall.execute(with: ComputerUseTool.listApps).toolResult)
+            case ToolNames.openApp:
+                reply(try await toolCall.execute(with: ComputerUseTool.openApp).toolResult)
+            case ToolNames.appFind:
+                // One element per line reads better than a JSON array of escaped strings.
+                reply(try await toolCall.execute(with: ComputerUseTool.appFind).joined(separator: "\n"))
+            case ToolNames.appClick:
+                reply(try await toolCall.execute(with: ComputerUseTool.appClick).result)
+            case ToolNames.appType:
+                reply(try await toolCall.execute(with: ComputerUseTool.appType).result)
+            case ToolNames.appKey:
+                reply(try await toolCall.execute(with: ComputerUseTool.appKey).result)
+            case ToolNames.appScroll:
+                reply(try await toolCall.execute(with: ComputerUseTool.appScroll).result)
+            case ToolNames.appDrag:
+                reply(try await toolCall.execute(with: ComputerUseTool.appDrag).result)
+            case ToolNames.appMenu:
+                reply(try await toolCall.execute(with: ComputerUseTool.appMenu).result)
             case ToolNames.searchNotes:
                 reply(try await toolCall.execute(with: AppTool.searchNotes).toolResult)
             case ToolNames.readNote:
@@ -172,6 +153,18 @@ enum ToolExecutor {
                 reply(try await toolCall.execute(with: ScheduleTool.listWorkdays).toolResult)
             case ToolNames.setWorkday:
                 reply(try await toolCall.execute(with: ScheduleTool.setWorkday).toolResult)
+            case ToolNames.readSettings:
+                reply(try await toolCall.execute(with: ModelCraftTool.readSettings).toolResult)
+            case ToolNames.updateSettings:
+                reply(try await toolCall.execute(with: ModelCraftTool.updateSettings).toolResult)
+            case ToolNames.openPage:
+                reply(try await toolCall.execute(with: ModelCraftTool.openPage).toolResult)
+            case ToolNames.listProjects:
+                reply(try await toolCall.execute(with: ModelCraftTool.listProjects).toolResult)
+            case ToolNames.createProject:
+                reply(try await toolCall.execute(with: ModelCraftTool.createProject).toolResult)
+            case ToolNames.updateProject:
+                reply(try await toolCall.execute(with: ModelCraftTool.updateProject).toolResult)
             default:
                 if let connector = Connector(toolName: toolCall.function.name) {
                     (toolCallResult, message) = try await ConnectorTool.call(toolCall, connector: connector)

@@ -27,6 +27,10 @@ final class DeepSeekFlashEvaluator {
             images: input.images)
     }
 
+    func tokenCounts(texts: [String]) async throws -> [Int] {
+        try await modelFactory.tokenCounts(texts: texts)
+    }
+
     func generate(
         messages: [MLXLMCommon.Chat.Message],
         tools: [ToolSpec] = [],

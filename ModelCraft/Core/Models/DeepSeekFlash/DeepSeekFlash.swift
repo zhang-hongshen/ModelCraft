@@ -29,7 +29,7 @@ final class DeepSeekFlash {
     private static let draftConfidenceThreshold: Float = 0.5
 
     let configuration: DeepSeekFlashConfiguration
-    private let tokenizer: DeepSeekFlashTokenizer
+    let tokenizer: DeepSeekFlashTokenizer
     let transformer: DeepSeekFlashTransformer
     /// The conversation memory for the next request that reuses its prompt. A running request
     /// takes it, so a concurrent one starts from a fresh cache instead of sharing it.

@@ -11,6 +11,9 @@ import SwiftUI
 @MainActor
 @Observable
 class UserSettings {
+    /// The app's one editor, shared with tools so the Settings window shows their changes.
+    static let shared = UserSettings()
+
     var imageGenerationModelID = UserDefaults.standard.string(
         forKey: UserDefaults.imageGenerationModelID
     ) ?? "sdxl-turbo" {

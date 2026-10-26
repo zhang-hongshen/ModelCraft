@@ -29,12 +29,8 @@ struct ToolNames {
     static let webFetch = "web_fetch"
 
     // MARK: Screen Control Tool
-    static let captureFullScreen = "capture_full_screen"
-    static let captureAppWindow = "capture_app_window"
-    static let move = "move"
-    static let click = "click"
-    static let drag = "drag"
-    static let scroll = "scroll"
+    static let appScreenshot = "app_screenshot"
+    static let appZoom = "app_zoom"
 
     // MARK: Skill Tool
     static let activateSkill = "activate_skill"
@@ -52,11 +48,15 @@ struct ToolNames {
     static let textToAudio = "text_to_audio"
 
     // MARK: Computer Use Tool
-    static let listRunningApps = "list_running_application"
-    static let getUIHierarchy = "get_ui_hierarchy"
-    static let clickElement = "click_element"
-    static let typeText = "type_text"
-    static let pressKey = "press_key"
+    static let listApps = "list_apps"
+    static let openApp = "open_app"
+    static let appFind = "app_find"
+    static let appClick = "app_click"
+    static let appType = "app_type"
+    static let appKey = "app_key"
+    static let appScroll = "app_scroll"
+    static let appDrag = "app_drag"
+    static let appMenu = "app_menu"
 
     // MARK: Native Application Tool
     static let searchNotes = "notes_search"
@@ -83,6 +83,14 @@ struct ToolNames {
     static let deleteSchedule = "schedule_delete"
     static let listWorkdays = "workdays_list"
     static let setWorkday = "workdays_set"
+
+    // MARK: ModelCraft Tool
+    static let readSettings = "settings_read"
+    static let updateSettings = "settings_update"
+    static let openPage = "open_page"
+    static let listProjects = "project_list"
+    static let createProject = "project_create"
+    static let updateProject = "project_update"
 }
 
 typealias VideoGenerationProgressHandler = @MainActor @Sendable (LTXVideoProgress) -> Void
@@ -260,11 +268,11 @@ extension ToolCall {
     var requiresUserApproval: Bool {
         switch function.name {
         case ToolNames.applyPatch,
-             ToolNames.click,
-             ToolNames.drag,
-             ToolNames.clickElement,
-             ToolNames.typeText,
-             ToolNames.pressKey,
+             ToolNames.appClick,
+             ToolNames.appDrag,
+             ToolNames.appType,
+             ToolNames.appKey,
+             ToolNames.appMenu,
              ToolNames.createNote,
              ToolNames.updateNote,
              ToolNames.createCalendarEvent,
@@ -308,8 +316,8 @@ extension ToolCall {
             return function.arguments["command"]?.stringValue
         case ToolNames.textToImage, ToolNames.textToVideo, ToolNames.textToAudio:
             return function.arguments["prompt"]?.stringValue
-        case ToolNames.clickElement, ToolNames.typeText, ToolNames.pressKey:
-            return function.arguments["appID"]?.stringValue
+        case ToolNames.appClick, ToolNames.appDrag, ToolNames.appType, ToolNames.appKey, ToolNames.appMenu:
+            return function.arguments["app"]?.stringValue ?? String(localized: "Any window on screen")
         case ToolNames.createNote:
             return function.arguments["title"]?.stringValue
         case ToolNames.updateNote:
@@ -485,64 +493,12 @@ extension ToolCall {
             case .failed:
                 return String(localized: "Web fetch failed")
             }
-        case ToolNames.click:
-            let x = arguments["x"]?.doubleValue ?? 0
-            let y = arguments["y"]?.doubleValue ?? 0
-            switch status {
-            case .running:
-                return String(localized: "Clicking (\(x), \(y))")
-            case .completed:
-                return String(localized: "Clicked (\(x), \(y))")
-            case .failed:
-                return String(localized: "Click failed at (\(x), \(y))")
-            }
-        case ToolNames.move:
-            let x = arguments["x"]?.doubleValue ?? 0
-            let y = arguments["y"]?.doubleValue ?? 0
-            switch status {
-            case .running:
-                return String(localized: "Moving pointer to (\(x), \(y))")
-            case .completed:
-                return String(localized: "Moved to (\(x), \(y))")
-            case .failed:
-                return String(localized: "Move failed")
-            }
-        case ToolNames.captureFullScreen:
-            switch status {
-            case .running:
-                return String(localized: "Taking full screenshot")
-            case .completed:
-                return String(localized: "Full screenshot captured")
-            case .failed:
-                return String(localized: "Full screenshot failed")
-            }
-        case ToolNames.captureAppWindow:
-            switch status {
-            case .running:
-                return String(localized: "Capturing application windows")
-            case .completed:
-                return String(localized: "Captured application windows")
-            case .failed:
-                return String(localized: "Application window capture failed")
-            }
-        case ToolNames.drag:
-            switch status {
-            case .running:
-                return String(localized: "Dragging pointer")
-            case .completed:
-                return String(localized: "Dragged pointer")
-            case .failed:
-                return String(localized: "Drag failed")
-            }
-        case ToolNames.scroll:
-            switch status {
-            case .running:
-                return String(localized: "Scrolling")
-            case .completed:
-                return String(localized: "Scrolled")
-            case .failed:
-                return String(localized: "Scroll failed")
-            }
+        case ToolNames.appScreenshot:
+            let app = arguments["app"]?.stringValue ?? String(localized: "the screen")
+            return nativeDescription(status, running: "Taking a screenshot of \(app)", completed: "Took a screenshot of \(app)", failed: "Screenshot of \(app) failed")
+        case ToolNames.appZoom:
+            let app = arguments["app"]?.stringValue ?? String(localized: "the screen")
+            return nativeDescription(status, running: "Zooming into \(app)", completed: "Zoomed into \(app)", failed: "Zooming into \(app) failed")
         case ToolNames.textToImage:
             switch status {
             case .running:
@@ -590,51 +546,32 @@ extension ToolCall {
             case .failed:
                 return String(localized: "Tool search failed")
             }
-        case ToolNames.listRunningApps:
-            switch status {
-            case .running:
-                return String(localized: "Listing running applications")
-            case .completed:
-                return String(localized: "Listed running applications")
-            case .failed:
-                return String(localized: "Failed to list running applications")
-            }
-        case ToolNames.getUIHierarchy:
-            switch status {
-            case .running:
-                return String(localized: "Inspecting UI hierarchy")
-            case .completed:
-                return String(localized: "Inspected UI hierarchy")
-            case .failed:
-                return String(localized: "UI hierarchy inspection failed")
-            }
-        case ToolNames.clickElement:
-            switch status {
-            case .running:
-                return String(localized: "Clicking an element")
-            case .completed:
-                return String(localized: "Clicked an element")
-            case .failed:
-                return String(localized: "Element click failed")
-            }
-        case ToolNames.typeText:
-            switch status {
-            case .running:
-                return String(localized: "Typing text")
-            case .completed:
-                return String(localized: "Typed text")
-            case .failed:
-                return String(localized: "Text input failed")
-            }
-        case ToolNames.pressKey:
-            switch status {
-            case .running:
-                return String(localized: "Pressing a key")
-            case .completed:
-                return String(localized: "Pressed a key")
-            case .failed:
-                return String(localized: "Key press failed")
-            }
+        case ToolNames.listApps:
+            return nativeDescription(status, running: "Listing running applications", completed: "Listed running applications", failed: "Failed to list running applications")
+        case ToolNames.openApp:
+            let app = arguments["app"]?.stringValue ?? ""
+            return nativeDescription(status, running: "Opening \(app)", completed: "Opened \(app)", failed: "Opening \(app) failed")
+        case ToolNames.appFind:
+            let app = arguments["app"]?.stringValue ?? ""
+            return nativeDescription(status, running: "Finding elements in \(app)", completed: "Found elements in \(app)", failed: "Finding elements in \(app) failed")
+        case ToolNames.appClick:
+            let app = arguments["app"]?.stringValue ?? String(localized: "the screen")
+            return nativeDescription(status, running: "Clicking in \(app)", completed: "Clicked in \(app)", failed: "Click in \(app) failed")
+        case ToolNames.appType:
+            let app = arguments["app"]?.stringValue ?? ""
+            return nativeDescription(status, running: "Typing in \(app)", completed: "Typed in \(app)", failed: "Typing in \(app) failed")
+        case ToolNames.appKey:
+            let keys = arguments["keys"]?.stringValue ?? ""
+            return nativeDescription(status, running: "Pressing \(keys)", completed: "Pressed \(keys)", failed: "Pressing \(keys) failed")
+        case ToolNames.appScroll:
+            let app = arguments["app"]?.stringValue ?? String(localized: "the screen")
+            return nativeDescription(status, running: "Scrolling in \(app)", completed: "Scrolled in \(app)", failed: "Scrolling in \(app) failed")
+        case ToolNames.appDrag:
+            let app = arguments["app"]?.stringValue ?? String(localized: "the screen")
+            return nativeDescription(status, running: "Dragging in \(app)", completed: "Dragged in \(app)", failed: "Dragging in \(app) failed")
+        case ToolNames.appMenu:
+            let path = arguments["path"]?.arrayValue?.compactMap(\.stringValue).joined(separator: " > ") ?? ""
+            return nativeDescription(status, running: "Choosing \(path)", completed: "Chose \(path)", failed: "Choosing \(path) failed")
         case ToolNames.searchNotes, ToolNames.readNote:
             return nativeDescription(status, running: "Reading Notes", completed: "Read Notes", failed: "Notes operation failed")
         case ToolNames.createNote, ToolNames.updateNote:
@@ -665,6 +602,18 @@ extension ToolCall {
             return nativeDescription(status, running: "Checking workdays", completed: "Checked workdays", failed: "Workday check failed")
         case ToolNames.setWorkday:
             return nativeDescription(status, running: "Updating workdays", completed: "Updated workdays", failed: "Workday update failed")
+        case ToolNames.readSettings:
+            return nativeDescription(status, running: "Reading settings", completed: "Read settings", failed: "Reading settings failed")
+        case ToolNames.updateSettings:
+            return nativeDescription(status, running: "Changing settings", completed: "Changed settings", failed: "Settings change failed")
+        case ToolNames.openPage:
+            return nativeDescription(status, running: "Opening a page", completed: "Opened a page", failed: "Opening the page failed")
+        case ToolNames.listProjects:
+            return nativeDescription(status, running: "Reading projects", completed: "Read projects", failed: "Reading projects failed")
+        case ToolNames.createProject:
+            return nativeDescription(status, running: "Creating a project", completed: "Created a project", failed: "Project creation failed")
+        case ToolNames.updateProject:
+            return nativeDescription(status, running: "Renaming a project", completed: "Renamed a project", failed: "Project rename failed")
         default:
             guard let connector = Connector(toolName: function.name) else {
                 return String(localized: "Unknown Tool Call")
@@ -708,13 +657,17 @@ extension ToolCall {
         case ToolNames.textToAudio: "waveform"
         case ToolNames.activateSkill: "sparkles"
         case ToolNames.searchTools: "wrench.and.screwdriver"
-        case ToolNames.listRunningApps: "app.badge"
-        case ToolNames.getUIHierarchy: "list.bullet.indent"
-        case ToolNames.click, ToolNames.clickElement, ToolNames.move, ToolNames.drag: "pointer.arrow"
-        case ToolNames.scroll: "arrow.up.and.down"
-        case ToolNames.captureFullScreen: "display.2"
-        case ToolNames.captureAppWindow: "macwindow"
-        case ToolNames.typeText, ToolNames.pressKey: "keyboard"
+        case ToolNames.listApps: "app.badge"
+        case ToolNames.openApp: "arrow.up.forward.app"
+        case ToolNames.appFind: "list.bullet.indent"
+        case ToolNames.appClick: "cursorarrow.click"
+        case ToolNames.appDrag: "hand.draw"
+        case ToolNames.appScroll: "arrow.up.and.down"
+        case ToolNames.appScreenshot: "macwindow"
+        case ToolNames.appZoom: "plus.magnifyingglass"
+        case ToolNames.appType: "keyboard"
+        case ToolNames.appKey: "command"
+        case ToolNames.appMenu: "filemenu.and.selection"
         case ToolNames.searchNotes, ToolNames.readNote,
              ToolNames.createNote, ToolNames.updateNote: "note.text"
         case ToolNames.searchCalendar, ToolNames.readCalendarEvent,
@@ -727,6 +680,9 @@ extension ToolCall {
         case ToolNames.createSchedule, ToolNames.listSchedules,
              ToolNames.updateSchedule, ToolNames.deleteSchedule: "clock.arrow.circlepath"
         case ToolNames.listWorkdays, ToolNames.setWorkday: "calendar.badge.clock"
+        case ToolNames.readSettings, ToolNames.updateSettings: "gearshape"
+        case ToolNames.openPage: "sidebar.left"
+        case ToolNames.listProjects, ToolNames.createProject, ToolNames.updateProject: "folder.badge.gearshape"
         default: "exclamationmark.triangle"
         }
     }
@@ -755,11 +711,11 @@ extension ToolCall {
             return [(.search, id)]
         case ToolNames.webFetch:
             return [(.fetchWebPage, id)]
-        case ToolNames.captureFullScreen, ToolNames.captureAppWindow:
+        case ToolNames.appScreenshot, ToolNames.appZoom:
             return [(.takeScreenshot, id)]
-        case ToolNames.click, ToolNames.move, ToolNames.drag, ToolNames.scroll,
-             ToolNames.listRunningApps, ToolNames.getUIHierarchy, ToolNames.clickElement,
-             ToolNames.typeText, ToolNames.pressKey:
+        case ToolNames.listApps, ToolNames.openApp, ToolNames.appFind, ToolNames.appClick,
+             ToolNames.appType, ToolNames.appKey, ToolNames.appScroll, ToolNames.appDrag,
+             ToolNames.appMenu:
             return [(.controlComputer, id)]
         case ToolNames.textToImage:
             return [(.createImage, id)]
@@ -786,6 +742,11 @@ extension ToolCall {
         case ToolNames.createSchedule, ToolNames.updateSchedule,
              ToolNames.deleteSchedule, ToolNames.setWorkday:
             return [(.changeSchedule, function.arguments["schedule_id"]?.stringValue ?? id)]
+        case ToolNames.readSettings, ToolNames.listProjects:
+            return [(.checkModelCraft, id)]
+        case ToolNames.updateSettings, ToolNames.openPage,
+             ToolNames.createProject, ToolNames.updateProject:
+            return [(.changeModelCraft, id)]
         default:
             guard let connector = Connector(toolName: name) else { return [] }
             return [(.useApp, connector.rawValue)]

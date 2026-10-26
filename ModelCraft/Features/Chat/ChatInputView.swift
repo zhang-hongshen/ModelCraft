@@ -304,6 +304,14 @@ private struct ModelCraftTextEditor: NSViewRepresentable {
             _ textView: NSTextView,
             doCommandBy commandSelector: Selector
         ) -> Bool {
+            // Return sends, so Command-Return is the way to start a new line.
+            if let event = NSApp.currentEvent,
+               event.type == .keyDown,
+               event.keyCode == 36 || event.keyCode == 76,
+               event.modifierFlags.contains(.command) {
+                textView.insertNewlineIgnoringFieldEditor(nil)
+                return true
+            }
             let command: ChatComposerCommand?
             switch commandSelector {
             case #selector(NSResponder.moveUp(_:)):

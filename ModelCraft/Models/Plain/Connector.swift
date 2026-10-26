@@ -87,7 +87,7 @@ enum Connector: String, CaseIterable, Identifiable {
 
     /// The tool list cached at install time. Its presence is what makes the connector installed.
     var toolsFileURL: URL {
-        URL.applicationSupportDirectory.appending(path: "ModelCraft/Connectors/\(rawValue).json")
+        URL.appSupportDirectory.appending(path: "Connectors/\(rawValue).json")
     }
 
     /// Model-visible tool names are `<connector>__<server tool name>`.

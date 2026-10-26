@@ -71,9 +71,6 @@
     "%lld%%" : {
 
     },
-    "%lld%% full" : {
-
-    },
     ">" : {
 
     },
@@ -87,6 +84,9 @@
 
     },
     "A workday position replaces weekdays and days of the month; choose one or the other." : {
+
+    },
+    "Accept Edits" : {
 
     },
     "Accessibility" : {
@@ -186,6 +186,9 @@
     "An hourly schedule can only skip days that are not workdays, not move to another day." : {
 
     },
+    "Any window on screen" : {
+
+    },
     "Appearance" : {
       "localizations" : {
         "zh-Hans" : {
@@ -232,9 +235,6 @@
     "AppleScript failed" : {
 
     },
-    "Application window capture failed" : {
-
-    },
     "Are you sure to delete these models" : {
       "localizations" : {
         "zh-Hans" : {
@@ -264,6 +264,9 @@
           }
         }
       }
+    },
+    "Ask" : {
+
     },
     "Ask to Fix" : {
 
@@ -302,6 +305,9 @@
 
     },
     "Audio creation failed" : {
+
+    },
+    "Auto" : {
 
     },
     "Automation" : {
@@ -362,19 +368,22 @@
         }
       }
     },
-    "Captured application windows" : {
-
-    },
-    "Capturing application windows" : {
-
-    },
     "Category" : {
 
     },
     "Changed a scheduled task" : {
 
     },
+    "Changed ModelCraft" : {
+
+    },
     "Changed scheduled tasks" : {
+
+    },
+    "Changed settings" : {
+
+    },
+    "Changing settings" : {
 
     },
     "Chat Title" : {
@@ -396,6 +405,9 @@
           }
         }
       }
+    },
+    "Checked ModelCraft" : {
+
     },
     "Checked scheduled tasks" : {
 
@@ -449,23 +461,29 @@
     "Choose Project" : {
 
     },
+    "Choose which actions run without asking" : {
+
+    },
+    "Choosing %@" : {
+
+    },
+    "Choosing %@ failed" : {
+
+    },
+    "Chose %@" : {
+
+    },
     "Chosen days" : {
 
     },
     "Chosen weekdays" : {
 
     },
-    "Click failed at (%lf, %lf)" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Click failed at (%1$lf, %2$lf)"
-          }
-        }
-      }
+    "Click in %@ failed" : {
+
     },
     "Clicked (%lf, %lf)" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -481,20 +499,10 @@
         }
       }
     },
-    "Clicked an element" : {
+    "Clicked in %@" : {
 
     },
-    "Clicking (%lf, %lf)" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Clicking (%1$lf, %2$lf)"
-          }
-        }
-      }
-    },
-    "Clicking an element" : {
+    "Clicking in %@" : {
 
     },
     "Close File Preview" : {
@@ -554,7 +562,7 @@
     "Context window usage" : {
 
     },
-    "Context window:" : {
+    "Context window: %lld%% full" : {
 
     },
     "Controlled the computer" : {
@@ -594,6 +602,9 @@
 
     },
     "Create" : {
+
+    },
+    "Created a project" : {
 
     },
     "Created a video" : {
@@ -658,6 +669,9 @@
           }
         }
       }
+    },
+    "Creating a project" : {
+
     },
     "Creating audio" : {
 
@@ -903,13 +917,13 @@
         }
       }
     },
-    "Drag failed" : {
+    "Dragged in %@" : {
 
     },
-    "Dragged pointer" : {
+    "Dragging in %@" : {
 
     },
-    "Dragging pointer" : {
+    "Dragging in %@ failed" : {
 
     },
     "Each run starts a new chat with this prompt. Nobody is present during a run, so questions go unanswered and actions that need approval are not performed." : {
@@ -955,9 +969,6 @@
 
     },
     "Editing %@" : {
-
-    },
-    "Element click failed" : {
 
     },
     "Enabled" : {
@@ -1218,13 +1229,16 @@
         }
       }
     },
+    "Finding elements in %@" : {
+
+    },
+    "Finding elements in %@ failed" : {
+
+    },
+    "Found elements in %@" : {
+
+    },
     "Frequency" : {
-
-    },
-    "Full screenshot captured" : {
-
-    },
-    "Full screenshot failed" : {
 
     },
     "General" : {
@@ -1343,19 +1357,10 @@
     "Increasing" : {
 
     },
-    "Inspected UI hierarchy" : {
-
-    },
-    "Inspecting UI hierarchy" : {
-
-    },
     "Install" : {
 
     },
     "Installing" : {
-
-    },
-    "Key press failed" : {
 
     },
     "Kind" : {
@@ -1523,6 +1528,9 @@
         }
       }
     },
+    "Messages" : {
+
+    },
     "MiniMax H3" : {
       "localizations" : {
         "zh-Hans" : {
@@ -1599,9 +1607,6 @@
     "More" : {
 
     },
-    "Move failed" : {
-
-    },
     "Move to project" : {
       "localizations" : {
         "zh-Hans" : {
@@ -1617,26 +1622,6 @@
     },
     "Move to the previous workday" : {
 
-    },
-    "Moved to (%lf, %lf)" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Moved to (%1$lf, %2$lf)"
-          }
-        }
-      }
-    },
-    "Moving pointer to (%lf, %lf)" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Moving pointer to (%1$lf, %2$lf)"
-          }
-        }
-      }
     },
     "Mute Microphone" : {
 
@@ -1763,6 +1748,16 @@
     "Notes update failed" : {
 
     },
+    "Notifications" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "通知"
+          }
+        }
+      }
+    },
     "Notifications for ModelCraft are turned off in System Settings." : {
 
     },
@@ -1804,7 +1799,28 @@
     "Open System Settings" : {
 
     },
+    "Opened %@" : {
+
+    },
+    "Opened a page" : {
+
+    },
+    "Opening %@" : {
+
+    },
+    "Opening %@ failed" : {
+
+    },
+    "Opening a page" : {
+
+    },
+    "Opening the page failed" : {
+
+    },
     "Paused" : {
+
+    },
+    "Permission Mode" : {
 
     },
     "Permissions" : {
@@ -1843,13 +1859,19 @@
         }
       }
     },
-    "Pressed a key" : {
+    "Pressed %@" : {
 
     },
-    "Pressing a key" : {
+    "Pressing %@" : {
+
+    },
+    "Pressing %@ failed" : {
 
     },
     "Project" : {
+
+    },
+    "Project creation failed" : {
 
     },
     "Project Documentation" : {
@@ -1861,6 +1883,9 @@
           }
         }
       }
+    },
+    "Project rename failed" : {
+
     },
     "Project search failed" : {
 
@@ -1989,10 +2014,16 @@
     "Read Notes" : {
 
     },
+    "Read projects" : {
+
+    },
     "Read Reminders" : {
 
     },
     "Read scheduled tasks" : {
+
+    },
+    "Read settings" : {
 
     },
     "Reading" : {
@@ -2017,6 +2048,12 @@
     "Reading Notes" : {
 
     },
+    "Reading projects" : {
+
+    },
+    "Reading projects failed" : {
+
+    },
     "Reading Reminders" : {
 
     },
@@ -2024,6 +2061,12 @@
 
     },
     "Reading scheduled tasks failed" : {
+
+    },
+    "Reading settings" : {
+
+    },
+    "Reading settings failed" : {
 
     },
     "Reason (optional)" : {
@@ -2112,6 +2155,12 @@
           }
         }
       }
+    },
+    "Renamed a project" : {
+
+    },
+    "Renaming a project" : {
+
     },
     "Repeat" : {
 
@@ -2237,6 +2286,9 @@
         }
       }
     },
+    "Screenshot of %@ failed" : {
+
+    },
     "Script" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -2248,13 +2300,13 @@
         }
       }
     },
-    "Scroll failed" : {
+    "Scrolled in %@" : {
 
     },
-    "Scrolled" : {
+    "Scrolling in %@" : {
 
     },
-    "Scrolling" : {
+    "Scrolling in %@ failed" : {
 
     },
     "Search the pages, databases, and notes in your knowledge base." : {
@@ -2281,7 +2333,7 @@
     "Select Model" : {
 
     },
-    "Show a notification when a scheduled task's run completes or fails. Click it to open the run's chat." : {
+    "Settings change failed" : {
 
     },
     "Show in Finder" : {
@@ -2345,9 +2397,6 @@
         }
       }
     },
-    "Start each chat with essential tools only, and let the model load others when a task needs them. This keeps prompts shorter and responses faster." : {
-
-    },
     "Start Voice Mode" : {
 
     },
@@ -2390,7 +2439,10 @@
         }
       }
     },
-    "Taking full screenshot" : {
+    "System prompt" : {
+
+    },
+    "Taking a screenshot of %@" : {
 
     },
     "Taking screenshot" : {
@@ -2405,9 +2457,6 @@
       }
     },
     "Text" : {
-
-    },
-    "Text input failed" : {
 
     },
     "The `ui` block failed: %@. Rewrite it with the supported SwiftUI subset." : {
@@ -2432,6 +2481,9 @@
 
     },
     "The run finished." : {
+
+    },
+    "the screen" : {
 
     },
     "the second workday" : {
@@ -2496,6 +2548,9 @@
         }
       }
     },
+    "Took a screenshot of %@" : {
+
+    },
     "Took screenshots" : {
       "localizations" : {
         "zh-Hans" : {
@@ -2512,6 +2567,9 @@
     "Tool search failed" : {
 
     },
+    "Tools" : {
+
+    },
     "Type Anything" : {
       "localizations" : {
         "zh-Hans" : {
@@ -2522,13 +2580,13 @@
         }
       }
     },
-    "Typed text" : {
+    "Typed in %@" : {
 
     },
-    "Typing text" : {
+    "Typing in %@" : {
 
     },
-    "UI hierarchy inspection failed" : {
+    "Typing in %@ failed" : {
 
     },
     "Unable to create an image generator with model ID '%@'." : {
@@ -2857,6 +2915,15 @@
           }
         }
       }
+    },
+    "Zoomed into %@" : {
+
+    },
+    "Zooming into %@" : {
+
+    },
+    "Zooming into %@ failed" : {
+
     }
   },
   "version" : "1.0"

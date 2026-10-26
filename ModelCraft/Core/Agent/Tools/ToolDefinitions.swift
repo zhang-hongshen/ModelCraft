@@ -44,6 +44,7 @@ enum ToolDefinition {
             AudioTool.allTools,
             SearchTool.allTools,
             ScheduleTool.allTools,
+            ModelCraftTool.allTools,
         ].flatMap { $0 }.map(\.schema)
     }
 

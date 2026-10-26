@@ -319,7 +319,6 @@ private extension ChatView {
         .buttonBorderShape(.circle)
         .controlSize(.large)
         .disabled(disabled)
-        .keyboardShortcut(.return, modifiers: .command)
     }
     
     @ViewBuilder
@@ -387,7 +386,7 @@ private extension ChatView {
                     placeholder: voicePhase == nil ? "Type Anything" : "Add text or files to what you say next",
                     selectionLocation: $composerSelectionLocation,
                     slashCommandLocation: $slashCommandLocation,
-                    onCommand: handleComposerCommand,
+                    onCommand: handleEditorCommand,
                     header: {
                         // The utterance being recorded, shown until it is sent.
                         if voicePhase != nil, !sttService.transcript.isEmpty {
@@ -398,8 +397,8 @@ private extension ChatView {
                     },
                     trailing: {
                         HStack {
-                            if let chat, let contextWindow = globalStore.selectedModel?.contextWindow, contextWindow > 0 {
-                                ContextWindowUsageView(tokenCount: chat.tokenCount, contextWindow: contextWindow)
+                            if let chat, let model = globalStore.selectedModel, model.contextWindow > 0 {
+                                ContextWindowUsageView(chat: chat, model: model)
                             }
 
                             PermissionModePickerButton()
@@ -544,6 +543,16 @@ private extension ChatView {
             return .ignored
         }
         return handleComposerCommand(command) ? .handled : .ignored
+    }
+
+    /// Return in the text editor runs the selected palette command, or else sends the draft.
+    func handleEditorCommand(_ command: ChatComposerCommand) -> Bool {
+        if handleComposerCommand(command) { return true }
+        guard command == .select else { return false }
+        if globalStore.selectedModel != nil, !draft.content.isEmpty {
+            submitDraft()
+        }
+        return true
     }
 
     func handleComposerCommand(_ command: ChatComposerCommand) -> Bool {
@@ -1278,6 +1287,8 @@ private struct ToolApprovalRequestView: View {
     let request: ToolApprovalRequest
     let onResolve: (ToolApprovalDecision) -> Void
 
+    @State private var detailHeight: CGFloat = 0
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Allow this action?")
@@ -1287,17 +1298,18 @@ private struct ToolApprovalRequestView: View {
             if let detail = request.detail, !detail.isEmpty {
                 // Show the whole command, patch, or script so the user knows what runs, but
                 // scroll a long one instead of letting it push the buttons off screen.
-                let content = Text(verbatim: detail)
-                    .font(.system(.caption, design: .monospaced))
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .textSelection(.enabled)
-                ViewThatFits(in: .vertical) {
-                    content
-                    ScrollView {
-                        content
-                    }
+                ScrollView {
+                    Text(verbatim: detail)
+                        .font(.system(.caption, design: .monospaced))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .textSelection(.enabled)
+                        .onGeometryChange(for: CGFloat.self) { proxy in
+                            proxy.size.height
+                        } action: { height in
+                            detailHeight = height
+                        }
                 }
-                .frame(maxHeight: 240)
+                .frame(height: min(detailHeight, 240))
                 .padding(8)
                 .background(.quaternary, in: RoundedRectangle(cornerRadius: 8))
 

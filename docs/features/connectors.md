@@ -21,7 +21,7 @@ A sandboxed server app needs the incoming network connections entitlement.
 
 ## Installation and calls
 
-Installing connects to the app, launching it in the background when it is not running, and stores the complete `tools/list` result at `~/Library/Application Support/ModelCraft/Connectors/<connector>.json`. That file is the installed state; uninstalling deletes it.
+Installing connects to the app, launching it in the background when it is not running, and stores the complete `tools/list` result at `~/Library/Application Support/<bundle ID>/Connectors/<connector>.json`. That file is the installed state; uninstalling deletes it.
 
 Cached connector tools are offered on every request, even when tools load on demand ([Tools](tools.md#tool-set-and-on-demand-loading)): the user installed them to be used, and a model left to find them through `search_tools` tends to answer from nothing instead. They are exposed as `<connector>__<tool>` with the description prefixed by `Connector.modelDescription`, which says what the app's data is and which user requests it answers, so the model picks the connector without the user naming the app. `ToolExecutor` routes those names to `ConnectorTool.call`, which opens one connection per call. When the app is not running it is launched, and the call waits up to ten seconds for an endpoint file written after the launch; a stale file is never used. Failures to launch, find the endpoint, or connect become failed tool results that tell the user to update the app and allow connections.
 

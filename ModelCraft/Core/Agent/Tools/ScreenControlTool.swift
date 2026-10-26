@@ -6,175 +6,116 @@
 //
 
 import Foundation
+import AppKit
 import UniformTypeIdentifiers
 
 import MLXLMCommon
 
 enum ScreenControlTool {
-    
+
     static let allTools: [any ToolProtocol] = [
-        captureFullScreen,
-        captureAppWindow,
-        click,
-        move,
-        drag,
-        scroll,
+        appScreenshot,
+        appZoom,
     ]
-    
-    static let captureFullScreen = Tool<CaptureFullScreenInput, CaptureFullScreenOutput?>(
-        name: "capture_full_screen",
-        description: "Capture all displays as one screenshot for visual context or global screen coordinates. Use capture_app_window for a known application, or get_ui_hierarchy when semantic labels and actionable element indexes are needed. For Notes, Reminders, Calendar, or Mail data operations, prefer typed native-application tools and use screenshots only as a fallback. Returns image data, MIME type, and total size in screen points.",
-        parameters: []
+
+    static let appScreenshot = Tool<AppScreenshotInput, ScreenshotOutput>(
+        name: ToolNames.appScreenshot,
+        description: "Take a screenshot of an application's windows, or of all displays when `app` is omitted, to see visual state, layout, and content that app_find does not expose. An application screenshot shows only its own windows, including its open menus and sheets. The image is at most 1280 pixels on its longer side. The `x` and `y` parameters of app_click, app_scroll, app_drag, and app_zoom are pixels of the latest screenshot taken with the same `app`, measured from its top-left corner; they go stale when its windows move or resize. Read-only. Requires Screen Recording permission.",
+        parameters: [
+            .optional("app", type: .string, description: "\(ComputerUseTool.appDescription) Omit it to capture all displays."),
+        ]
     ) { input in
-        try Task.checkCancellation()
-        guard let screenshot = try await ScreenControlManager.shared.takeFullScreenshot() else { return nil }
-        try Task.checkCancellation()
-        guard let data = screenshot.image.data(type: .png) else {
-            return nil
+        try checkScreenRecordingPermission()
+        let app: NSRunningApplication? = if let name = input.app {
+            try await ComputerUseTool.resolveApp(name)
+        } else { nil }
+        let image = try await ScreenControlManager.shared.screenshot(of: app)
+        return try ScreenshotOutput(image, title: app?.localizedName ?? input.app ?? "the screen")
+    }
+
+    static let appZoom = Tool<AppZoomInput, ScreenshotOutput>(
+        name: ToolNames.appZoom,
+        description: "Take a sharper, magnified screenshot of a rectangle of the latest app_screenshot with the same `app`, at up to the display's native pixel density, to read small text or tell icons apart. The zoomed image is for viewing only: coordinates for app_click, app_scroll, and app_drag always refer to the app_screenshot, never to the zoomed image. Read-only. Requires Screen Recording permission.",
+        parameters: [
+            .optional("app", type: .string, description: "The application whose latest app_screenshot the rectangle is in. Omit it for a screenshot of all displays."),
+            .required("x", type: .double, description: "Left edge of the rectangle, in pixels of the latest app_screenshot."),
+            .required("y", type: .double, description: "Top edge of the rectangle, in pixels of the latest app_screenshot."),
+            .required("width", type: .double, description: "Width of the rectangle, in pixels of the latest app_screenshot."),
+            .required("height", type: .double, description: "Height of the rectangle, in pixels of the latest app_screenshot."),
+        ]
+    ) { input in
+        try checkScreenRecordingPermission()
+        let app: NSRunningApplication? = if let name = input.app {
+            try await ComputerUseTool.resolveApp(name)
+        } else { nil }
+        guard let frame = ScreenControlManager.shared.screenshotFrames[app?.processIdentifier ?? 0] else {
+            throw ComputerUseToolError.screenshotRequired
         }
-        return CaptureFullScreenOutput(
-            imageData: data,
-            mimeType: UTType.png.preferredMIMEType!,
-            size: screenshot.size)
+        let rect = CGRect(
+            x: frame.origin.x + input.x / frame.scale,
+            y: frame.origin.y + input.y / frame.scale,
+            width: input.width / frame.scale,
+            height: input.height / frame.scale)
+        let image = try await ScreenControlManager.shared.zoom(into: rect)
+        return try ScreenshotOutput(image, title: "a zoomed region of \(app?.localizedName ?? input.app ?? "the screen")")
     }
-    
-    static let captureAppWindow = Tool<CaptureAppWindowInput, [AppWindow]>(
-        name: "capture_app_window",
-        description: "Capture every visible window of one application for visual layout, state, and global screen coordinates. Use get_ui_hierarchy instead when semantic labels or actionable element indexes are needed. For Notes, Reminders, Calendar, or Mail data operations, prefer typed native-application tools and use screenshots only as a fallback. Returns each window's image, identifier, and frame in screen points.",
-        parameters: [
-            .required("appID", type: .string, description: "The bundle identifier of the target app (e.g., com.apple.Finder)")
-        ]
-    ) { input in
-        try Task.checkCancellation()
-        let windows = try await ScreenControlManager.shared.takeAppWindowScreenshot(appID: input.appID)
-        
-        var results: [AppWindow] = []
-        for window in windows {
-            try Task.checkCancellation()
-            guard let data = window.image.data(type: .png) else {
-                continue
-            }
-            results.append(
-                AppWindow(
-                    imageData: data,
-                    mimeType: UTType.png.preferredMIMEType!,
-                    windowFrame: window.windowFrame,
-                    windowID: window.windowID))
+
+    private static func checkScreenRecordingPermission() throws {
+        guard CGPreflightScreenCaptureAccess() else {
+            CGRequestScreenCaptureAccess()
+            throw ScreenControlToolError.screenRecordingPermissionNotGranted
         }
-        return results
-    }
-    
-    
-    static let move = Tool<MoveInput, MoveOutput>(
-        name: "move",
-        description: "Move the pointer to a global screen coordinate without clicking. Obtain coordinates from a recent screen or application-window capture.",
-        parameters: [
-            .required("x", type: .double, description: "Horizontal coordinate in global screen points."),
-            .required("y", type: .double, description: "Vertical coordinate in global screen points.")
-        ]
-    ) { input in
-        try Task.checkCancellation()
-        ScreenControlManager.shared.move(x: input.x, y: input.y)
-        return MoveOutput(success: true)
-    }
-    
-    static let drag = Tool<DragInput, DragOutput>(
-        name: "drag",
-        description: "Press at one global screen coordinate and drag to another. Use recent visual coordinates when semantic accessibility actions are unavailable, then capture or inspect the application again to verify the resulting state.",
-        parameters: [
-            .required("startX", type: .double, description: "Starting horizontal coordinate in global screen points."),
-            .required("startY", type: .double, description: "Starting vertical coordinate in global screen points."),
-            .required("endX", type: .double, description: "Destination horizontal coordinate in global screen points."),
-            .required("endY", type: .double, description: "Destination vertical coordinate in global screen points.")
-        ]
-    ) { input in
-        try Task.checkCancellation()
-        ScreenControlManager.shared.drag(
-            from: CGPoint(x: input.startX, y: input.startY),
-            to: CGPoint(x: input.endX, y: input.endY)
-        )
-        return DragOutput(success: true)
-    }
-    
-    static let scroll = Tool<ScrollInput, ScrollOutput>(
-        name: "scroll",
-        description: "Scroll vertically in the application under the current pointer. Position the pointer over the intended scroll area first, then capture or inspect the application again to verify the resulting state.",
-        parameters: [
-            .required("deltaY", type: .int, description: "Scroll amount in pixels. Negative scrolls down, positive scrolls up.")
-        ]
-    ) { input in
-        try Task.checkCancellation()
-        ScreenControlManager.shared.scroll(deltaY: input.deltaY)
-        return ScrollOutput(success: true)
-    }
-    
-    
-    static let click = Tool<ClickInput, ClickOutput>(
-        name: "click",
-        description: "Click one global screen coordinate. Use a current visual capture when a semantic click_element action is unavailable, then capture or inspect the application again to verify the resulting state.",
-        parameters: [
-            .required("x", type: .double, description: "Horizontal coordinate in global screen points."),
-            .required("y", type: .double, description: "Vertical coordinate in global screen points.")
-        ]
-    ) { input in
-        try Task.checkCancellation()
-        ScreenControlManager.shared.click(x: input.x, y: input.y)
-        return ClickOutput(success: true)
     }
 }
 
-struct CaptureFullScreenInput: Codable {}
+enum ScreenControlToolError: LocalizedError {
+    case screenRecordingPermissionNotGranted
+    case encodingFailed
 
-struct CaptureFullScreenOutput: Codable {
-    let imageData: Data
-    let mimeType: String
-    let size: CGSize
+    var errorDescription: String? {
+        switch self {
+        case .screenRecordingPermissionNotGranted:
+            "Screen Recording permission not granted. Enable ModelCraft in System Settings > Privacy & Security > Screen & System Audio Recording."
+        case .encodingFailed:
+            "The screenshot could not be encoded."
+        }
+    }
 }
 
-struct CaptureAppWindowInput: Codable {
-    let appID: String
+struct AppScreenshotInput: Codable {
+    let app: String?
 }
 
-struct AppWindow: Codable {
-    let imageData: Data
-    let mimeType: String
-    let windowFrame: CGRect
-    let windowID: Int
-}
-
-struct ClickInput: Codable {
+struct AppZoomInput: Codable {
+    let app: String?
     let x: Double
     let y: Double
+    let width: Double
+    let height: Double
 }
 
-struct ClickOutput: Codable {
-    let success: Bool
-}
+struct ScreenshotOutput: Codable {
+    /// The JPEG saved in the chat's folder, like other media the tools produce.
+    let imageURL: URL
+    let mimeType: String
+    let width: Int
+    let height: Int
+    /// What the image shows, such as an application's name.
+    let title: String
 
-struct MoveInput: Codable {
-    let x: Double
-    let y: Double
-}
+    init(_ image: CGImage, title: String) throws {
+        guard let data = image.data(type: .jpeg) else { throw ScreenControlToolError.encodingFailed }
+        let type = UTType.jpeg
+        imageURL = ProjectToolContext.chatDirectory.appendingPathComponent(UUID().uuidString, conformingTo: type)
+        try data.write(to: imageURL)
+        mimeType = type.preferredMIMEType!
+        width = image.width
+        height = image.height
+        self.title = title
+    }
 
-struct MoveOutput: Codable {
-    let success: Bool
-}
-
-struct DragInput: Codable {
-    let startX: Double
-    let startY: Double
-    let endX: Double
-    let endY: Double
-}
-
-struct DragOutput: Codable {
-    let success: Bool
-}
-
-struct ScrollInput: Codable {
-    let deltaY: Int32
-}
-
-struct ScrollOutput: Codable {
-    let success: Bool
+    /// The model-facing text that accompanies the image.
+    var summary: String {
+        "Screenshot of \(title), \(width)x\(height) pixels."
+    }
 }

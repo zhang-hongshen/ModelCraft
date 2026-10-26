@@ -43,12 +43,9 @@ struct GeneralView: View {
 
             Section {
                 Toggle("Load tools when needed", isOn: $userSettings.loadToolsWhenNeeded)
-            } footer: {
-                Text("Start each chat with essential tools only, and let the model load others when a task needs them. This keeps prompts shorter and responses faster.")
-                    .foregroundStyle(.secondary)
             }
 
-            Section {
+            Section("Notifications") {
                 Toggle("Notify when scheduled tasks finish", isOn: $userSettings.notifyWhenScheduledTasksFinish)
                 if userSettings.notifyWhenScheduledTasksFinish && areNotificationsDenied {
                     LabeledContent {
@@ -59,9 +56,6 @@ struct GeneralView: View {
                         Label("Notifications for ModelCraft are turned off in System Settings.", systemImage: "exclamationmark.triangle")
                     }
                 }
-            } footer: {
-                Text("Show a notification when a scheduled task's run completes or fails. Click it to open the run's chat.")
-                    .foregroundStyle(.secondary)
             }
         }
         .formStyle(.grouped)

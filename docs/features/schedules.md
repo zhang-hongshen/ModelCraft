@@ -29,7 +29,7 @@ Occurrence search is bounded; a rule that names no day within the bound has no n
 
 `WorkdayCalendar` is a value that decides a day in this order: the user's `WorkdayException` for that day, then the holiday region's `SpecialDay`, then `Calendar.isDateInWeekend` for the user's locale. Holidays can therefore make a weekday a day off, and makeup workdays (调休) make a weekend day a workday.
 
-`HolidayStore` owns the holiday region (`holidayRegion`, default the locale's region, empty for none) and the loaded holidays. `refresh()` loads this year and next year once each, from the on-disk cache in `Application Support/ModelCraft/Holidays/<region>-<year>.json` or from the network:
+`HolidayStore` owns the holiday region (`holidayRegion`, default the locale's region, empty for none) and the loaded holidays. `refresh()` loads this year and next year once each, from the on-disk cache in `Application Support/<bundle ID>/Holidays/<region>-<year>.json` or from the network:
 
 - `CN` uses the State Council schedule from `NateScarlet/holiday-cn` via jsDelivr, which includes makeup workdays;
 - other regions use Nager.Date nationwide public holidays (`global` and type `Public`), which have no makeup workdays.

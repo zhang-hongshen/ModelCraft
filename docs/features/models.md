@@ -6,7 +6,7 @@ Image, video, and audio models are managed separately; see [Media generation](me
 
 ## Storage layout
 
-All models download through `HubApi.default`, whose base directory is `~/Library/Application Support/ModelCraft`. Repositories live under `<base>/models/<author>/<name>`, the standard Hugging Face snapshot layout. `HubApi` also conforms to MLX's `Downloader`, so MLX loading writes to the same place.
+All models download through `HubApi.default`, whose base directory is `URL.appSupportDirectory`, `~/Library/Application Support/<bundle ID>` (`com.zhanghongshen.ModelCraft`). At launch, `URL.moveLegacyAppSupportDirectory()` moves the earlier `Application Support/ModelCraft` folder there when the new one does not exist yet. Repositories live under `<base>/models/<author>/<name>`, the standard Hugging Face snapshot layout. `HubApi` also conforms to MLX's `Downloader`, so MLX loading writes to the same place.
 
 System models (image, video, music, voice) use `HubApi.system`, whose base is `<base>/.system`, so they live under `<base>/.system/models/<author>/<name>`, apart from the chat models users download.
 

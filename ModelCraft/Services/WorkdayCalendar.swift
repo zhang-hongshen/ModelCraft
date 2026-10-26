@@ -96,7 +96,7 @@ final class HolidayStore {
     /// Years whose holidays could not be loaded; their workdays follow the weekend only.
     private(set) var unavailableYears: Set<Int> = []
 
-    private static let cacheDirectory = UserDefaultSettings.modelDownloadBaseDirectory
+    private static let cacheDirectory = URL.appSupportDirectory
         .appending(path: "Holidays")
 
     private init() {}

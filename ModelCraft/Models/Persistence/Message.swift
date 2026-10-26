@@ -106,13 +106,27 @@ extension Message {
         return status == .new
     }
     
+    /// Holds attachments of drafts that have no chat yet. Drafts are not persisted, so
+    /// anything left here at launch is abandoned.
+    static let draftDirectory = URL.appSupportDirectory.appending(
+        path: "Drafts",
+        directoryHint: .isDirectory)
+
+    /// Copies the attachments into the chat's folder, or the draft folder before the
+    /// message belongs to a chat.
     func addFiles<T>(_ urls: T) where T: Swift.Collection, T.Element == URL {
         var addedFiles: [URL] = []
         let fileManager = FileManager.default
+        let directory = chat?.directory ?? Message.draftDirectory
         for url in urls {
-            let destinationURL = URL.documentsDirectory.appendingPathComponent(url.lastPathComponent)
-            
+            let destinationURL = directory.appendingPathComponent(url.lastPathComponent)
+            guard url.standardizedFileURL != destinationURL.standardizedFileURL else {
+                addedFiles.append(url)
+                continue
+            }
+
             do {
+                try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
                 if fileManager.fileExists(atPath: destinationURL.path) {
                     try fileManager.removeItem(at: destinationURL)
                 }

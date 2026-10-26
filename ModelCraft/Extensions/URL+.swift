@@ -15,6 +15,22 @@ import MLXAudioSTT
 import MLXAudioCore
 
 extension URL {
+
+    /// The app's own folder in Application Support, named after its bundle ID.
+    static let appSupportDirectory = URL.applicationSupportDirectory.appending(
+        path: Bundle.main.bundleIdentifier!,
+        directoryHint: .isDirectory)
+
+    /// Moves the `Application Support/ModelCraft` folder used before the app's folder was
+    /// named after its bundle ID.
+    static func moveLegacyAppSupportDirectory() {
+        let fileManager = FileManager.default
+        let legacy = URL.applicationSupportDirectory.appending(path: "ModelCraft", directoryHint: .isDirectory)
+        guard fileManager.fileExists(at: legacy), !fileManager.fileExists(at: appSupportDirectory) else {
+            return
+        }
+        try? fileManager.moveDirectory(at: legacy, to: appSupportDirectory)
+    }
     
     func readContent() async throws -> String {
         guard isFileURL, let type = UTType(filenameExtension: pathExtension) else { return "" }

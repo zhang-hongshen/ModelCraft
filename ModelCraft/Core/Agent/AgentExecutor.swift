@@ -312,13 +312,13 @@ struct ToolAuthorizationContext: Codable {
             return false
         case _ where mode == .auto:
             return true
-        case ToolNames.clickElement, ToolNames.typeText, ToolNames.pressKey:
-            guard let appID = toolCall.function.arguments["appID"]?.stringValue else {
-                return false
+        case ToolNames.appClick, ToolNames.appDrag, ToolNames.appType, ToolNames.appKey, ToolNames.appMenu:
+            // Approval covers one application, or any window on screen for coordinates
+            // taken from a screenshot of all displays.
+            guard let app = toolCall.function.arguments["app"]?.stringValue else {
+                return allowsScreenInteraction
             }
-            return applicationIDs.contains(appID)
-        case ToolNames.click, ToolNames.drag:
-            return allowsScreenInteraction
+            return applicationIDs.contains(app.lowercased())
         default:
             return approvedToolSignatures.contains(signature)
         }
@@ -330,11 +330,12 @@ struct ToolAuthorizationContext: Codable {
             for path in toolCall.patchFileChanges.map(\.path) {
                 appendFileScope(path: path, includesDescendants: false)
             }
-        case ToolNames.clickElement, ToolNames.typeText, ToolNames.pressKey:
-            guard let appID = toolCall.function.arguments["appID"]?.stringValue else { return }
-            applicationIDs.insert(appID)
-        case ToolNames.click, ToolNames.drag:
-            allowsScreenInteraction = true
+        case ToolNames.appClick, ToolNames.appDrag, ToolNames.appType, ToolNames.appKey, ToolNames.appMenu:
+            if let app = toolCall.function.arguments["app"]?.stringValue {
+                applicationIDs.insert(app.lowercased())
+            } else {
+                allowsScreenInteraction = true
+            }
         default:
             approvedToolSignatures.insert(signature)
         }
