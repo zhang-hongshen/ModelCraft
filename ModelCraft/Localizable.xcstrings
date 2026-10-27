@@ -1786,6 +1786,9 @@
     "Once on %@" : {
 
     },
+    "Open Image" : {
+
+    },
     "Open Settings" : {
       "localizations" : {
         "zh-Hans" : {
@@ -2924,6 +2927,46 @@
     },
     "Zooming into %@ failed" : {
 
+    },
+    "New Project…" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "新建项目…"
+          }
+        }
+      }
+    },
+    "Chat" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "对话"
+          }
+        }
+      }
+    },
+    "Rename Chat…" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重命名对话…"
+          }
+        }
+      }
+    },
+    "Delete Chat" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "删除对话"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

@@ -63,6 +63,7 @@ struct ModelCraftApp: App {
                         openWindow(id: "acknowledgments")
                     }
                 }
+                AppMenuCommands(globalStore: globalStore)
             }
             Settings {
                 SettingsView().background(.ultraThinMaterial)
@@ -89,8 +90,53 @@ struct ModelCraftApp: App {
     
 }
 
+/// The sidebar's actions in the menu bar: File ▸ New Chat and New Project…, View ▸ sections, and the Chat menu.
+private struct AppMenuCommands: Commands {
+
+    let globalStore: GlobalStore
+
+    @FocusedValue(\.sidebarCommands) private var sidebarCommands
+
+    var body: some Commands {
+        CommandGroup(after: .newItem) {
+            Button("New Chat") {
+                globalStore.startNewChat()
+            }
+            .keyboardShortcut("n", modifiers: [.command, .shift])
+            Button("New Project…") {
+                sidebarCommands?.newProject()
+            }
+            .disabled(sidebarCommands == nil)
+        }
+        CommandGroup(before: .sidebar) {
+            tabButton("Model Store", tab: .modelStore, key: "1")
+            tabButton("Downloaded Models", tab: .downloadedModels, key: "2")
+            tabButton("Connectors", tab: .connectors, key: "3")
+            tabButton("Scheduled Tasks", tab: .schedules, key: "4")
+            Divider()
+        }
+        CommandMenu("Chat") {
+            Button("Rename Chat…") {
+                sidebarCommands?.renameChat?()
+            }
+            .disabled(sidebarCommands?.renameChat == nil)
+            Button("Delete Chat") {
+                sidebarCommands?.deleteChat?()
+            }
+            .disabled(sidebarCommands?.deleteChat == nil)
+        }
+    }
+
+    private func tabButton(_ title: LocalizedStringKey, tab: AppNavigationTab, key: KeyEquivalent) -> some View {
+        Button(title) {
+            globalStore.currentTab = tab
+        }
+        .keyboardShortcut(key, modifiers: .command)
+    }
+}
+
 extension ModelCraftApp {
-    
+
     private func handleModelTask() throws {
         let tasks = try ModelContainer.shared.mainContext.fetch(ModelTask.fetchByStatus(.new))
         for task in tasks {

@@ -74,6 +74,18 @@ struct AppNavigationView: View {
             }
             .disabled(chatTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         }
+        .focusedSceneValue(\.sidebarCommands, sidebarCommands)
+    }
+
+    /// The File and Chat menus' actions, the same as the sidebar's buttons and context menus.
+    private var sidebarCommands: SidebarMenuCommands {
+        guard case .chat(let chat) = globalStore.currentTab else {
+            return SidebarMenuCommands(newProject: createProject)
+        }
+        return SidebarMenuCommands(
+            newProject: createProject,
+            renameChat: { beginRenaming(chat) },
+            deleteChat: { deleteChat(chat) })
     }
 
     private func createProject() {
@@ -316,6 +328,17 @@ private struct ChatProjectMenu: View {
             }
         }
     }
+}
+
+/// Sidebar actions for the menu bar. A `nil` chat action is disabled in the menu.
+struct SidebarMenuCommands {
+    var newProject: () -> Void
+    var renameChat: (() -> Void)?
+    var deleteChat: (() -> Void)?
+}
+
+extension FocusedValues {
+    @Entry var sidebarCommands: SidebarMenuCommands?
 }
 
 #if DEBUG
