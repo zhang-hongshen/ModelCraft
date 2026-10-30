@@ -92,9 +92,7 @@ final class ChatService {
                 currentTask = nil
                 // Leave no reply looking like it is still on its way.
                 chat.currentGeneratingAssistantMessage?.status = .generated
-                for message in chat.messages.filter(\.isWaitingForModelResponse) {
-                    ModelContainer.shared.mainContext.delete(message)
-                }
+                chat.deleteMessages(chat.messages.filter(\.isWaitingForModelResponse))
             }
             throw error
         }
@@ -118,14 +116,10 @@ final class ChatService {
         message: Message
     ) async throws {
         await cancelCurrentGeneration()
-        guard let index = chat.sortedMessages.firstIndex (where: { $0.id == message.id }) else { return }
-        let messagesToDelete = Array(chat.sortedMessages[(index+1)...])
-        chat.truncateMessages(messages: messagesToDelete)
-        ModelContainer.shared.mainContext.delete(messagesToDelete)
-        if index < chat.lastSummaryIndex {
-            chat.lastSummaryIndex = 0
-            chat.summary = nil
-        }
+        let conversation = chat.conversation
+        guard let index = conversation.firstIndex(where: { $0.id == message.id }) else { return }
+        chat.deleteMessages(Array(conversation[(index+1)...]))
+        chat.discardStaleSummary()
         try await sendMessage(
             model: model,
             chat: chat,
@@ -136,8 +130,8 @@ final class ChatService {
         model: LocalModel,
         chat: Chat
     ) async throws {
-        let messages = chat.sortedMessages
-        let startIndex = min(chat.lastSummaryIndex, messages.count)
+        let messages = chat.conversation
+        let startIndex = summaryStartIndex(of: chat, in: messages)
 
         guard let endIndex = messages.indices.last(where: {
             $0 > startIndex && messages[$0].role == .user
@@ -164,7 +158,7 @@ final class ChatService {
         )
 
         chat.summary = summary
-        chat.lastSummaryIndex = endIndex
+        chat.summaryBoundaryID = messages[endIndex].id
         try ModelContainer.shared.mainContext.save()
         
         let tokenCount = try await LMService.shared.tokenCount(
@@ -198,7 +192,7 @@ final class ChatService {
         if chat.title != nil {
             return
         }
-        let prompt = PromptBuilder.generateTitle(messages: chat.messages)
+        let prompt = PromptBuilder.generateTitle(messages: chat.conversation)
         chat.title = try await LMService.shared.generateAuxiliary(
             model: model,
             messages: prompt)
@@ -213,9 +207,7 @@ final class ChatService {
             currentMessage.status = .generated
         }
         // A reply cancelled before its first token has no content to keep.
-        for message in chat.messages.filter(\.isWaitingForModelResponse) {
-            ModelContainer.shared.mainContext.delete(message)
-        }
+        chat.deleteMessages(chat.messages.filter(\.isWaitingForModelResponse))
     }
 
     private func summarize(
@@ -246,12 +238,17 @@ final class ChatService {
         var history: [Message] = []
         var messages = [PromptBuilder.system(project: chat?.project, summary: chat?.summary)]
         if let chat {
-            let messages = chat.sortedMessages
-            let startIndex = min(chat.lastSummaryIndex, messages.count)
-            history = Array(messages.suffix(from: startIndex))
+            let messages = chat.conversation
+            history = Array(messages.suffix(from: summaryStartIndex(of: chat, in: messages)))
         }
         messages.append(contentsOf: history)
         return LMService.shared.protocolMessages(messages)
+    }
+
+    /// Where the messages the summary does not cover begin in `conversation`.
+    private func summaryStartIndex(of chat: Chat, in conversation: [Message]) -> Int {
+        chat.summaryBoundaryID
+            .flatMap { id in conversation.firstIndex { $0.id == id } } ?? 0
     }
 
     private func availableTools(for chat: Chat?) -> [ToolSpec] {

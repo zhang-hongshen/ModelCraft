@@ -79,7 +79,7 @@ enum ToolDefinition {
     static func foundToolNames(in chat: Chat?) -> [String] {
         guard let chat else { return [] }
         var names: [String] = []
-        for message in chat.sortedMessages
+        for message in chat.conversation
         where message.role == .tool && message.status == .generated
             && message.toolCall?.function.name == ToolNames.searchTools {
             guard let output = try? JSONDecoder().decode(

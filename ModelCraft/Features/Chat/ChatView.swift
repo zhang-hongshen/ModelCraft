@@ -88,9 +88,9 @@ struct ChatView: View {
                 globalStore.isFileInspectorPresented = false
                 globalStore.previewURL = nil
             }
-            .onChange(of: chat?.sortedMessages.last?.content) {
+            .onChange(of: chat?.leafMessage?.content) {
                 guard voiceState == .responding,
-                      let message = chat?.sortedMessages.last,
+                      let message = chat?.leafMessage,
                       message.role == .assistant else { return }
                 ttsService.feed(message.content, messageID: message.id)
             }
@@ -325,7 +325,7 @@ private extension ChatView {
     func MainView() -> some View {
         if let chat = chat {
             ZStack(alignment: .bottom) {
-                let messages = chat.sortedMessages
+                let messages = chat.conversation
                 let items = ConversationContentBuilder.items(from: messages)
                 let lastItemID = items.last?.id
                 ScrollViewReader { proxy in
@@ -698,7 +698,7 @@ private extension ChatView {
                 clearDraft()
                 try? await chatService.sendMessage(model: model, chat: chat, message: message)
                 // Speak the text that arrived after the last streamed change.
-                for reply in chat.sortedMessages.drop(while: { $0 != message }) where reply.role == .assistant {
+                for reply in chat.conversation.drop(while: { $0 != message }) where reply.role == .assistant {
                     ttsService.feed(reply.content, messageID: reply.id, isComplete: true)
                 }
                 await ttsService.finish()

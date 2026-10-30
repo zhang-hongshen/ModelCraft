@@ -233,7 +233,7 @@ extension MessageView {
     
     func regenerateAssistantMessage() {
         guard let chat = message.chat, let model = globalStore.selectedModel else { return }
-        let messages = chat.sortedMessages
+        let messages = chat.conversation
         guard let index = messages.firstIndex(of: message),
             let userMessage = messages[..<index].reversed().first(where: { $0.role == .user }) else {
             return

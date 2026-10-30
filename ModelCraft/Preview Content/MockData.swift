@@ -104,6 +104,9 @@ extension Chat {
                 ])
             )
         ]
+        for (parent, message) in zip(messages, messages.dropFirst()) {
+            message.parentID = parent.id
+        }
         chat.messages = messages
         return chat
     }()

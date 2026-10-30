@@ -8,11 +8,11 @@ Tool schemas and execution are owned by [Tools](tools.md); `ui` blocks in assist
 
 | Type | Role |
 | --- | --- |
-| `Chat` | One conversation. Owns `messages` (cascade delete), optional `project`, `title`, `summary`, `lastSummaryIndex`, `tokenCount` from the latest generation, and `toolAuthorization`, the approvals the user chose to always allow (see [Tools](tools.md#execution-approval)). |
-| `Message` | One protocol message: `role` (`user`, `assistant`, `system`, `tool`), `content`, attached `files`, `status`, and for tool messages a JSON-encoded `toolCall` and `toolCallResult`. |
-| `MessageStatus` | `new` (assistant placeholder, waiting for the first token), `generating`, `generated`, `failed`. `Chat.isGenerating` reads the last message's status. |
+| `Chat` | One conversation. Owns `messages` (cascade delete), optional `project`, `title`, `summary`, `summaryBoundaryID`, `tokenCount` from the latest generation, and `toolAuthorization`, the approvals the user chose to always allow (see [Tools](tools.md#execution-approval)). |
+| `Message` | One protocol message: `parentID`, `role` (`user`, `assistant`, `system`, `tool`), `content`, attached `files`, `status`, and for tool messages a JSON-encoded `toolCall` and `toolCallResult`. |
+| `MessageStatus` | `new` (assistant placeholder, waiting for the first token), `generating`, `generated`, `failed`. `Chat.isGenerating` reads the leaf message's status. |
 
-Messages are ordered by `createdAt` through `Chat.sortedMessages`; never rely on the order of the `messages` relationship array. `Message.toolCallStatus` derives `running`, `completed`, or `failed` from whether `toolCallResult` exists and whether it is an error.
+Messages form a chain, as in Claude Code transcripts: each message records the message it follows in `parentID`, and the first message has none. `Message.init` with a chat sets `parentID` to `Chat.leafMessage` before joining the chat, so every new message follows the current end of the conversation. `Chat.leafMessage` is the latest message nothing follows; `Chat.conversation` walks `parentID` up from it and returns the messages first to last. Read conversations through `Chat.conversation` and never rely on the order of the `messages` relationship array. Remove messages with `Chat.deleteMessages`, which drops them from the relationship immediately so the next message cannot link to a deleted one, and re-links any message that followed a deleted one to what the deleted one followed. `Message.toolCallStatus` derives `running`, `completed`, or `failed` from whether `toolCallResult` exists and whether it is an error.
 
 `Message.addFiles` copies attachments into the message's chat folder, or into `Message.draftDirectory` (`Application Support/<bundle ID>/Drafts/`) while a new draft has no chat; `ChatService.sendMessage` then moves them into the chat's folder with `Message.moveFiles(to:)`. `Message.files` stores the copies, not the user's originals. An existing file with the same name is replaced. Drafts are not persisted, so the app removes the draft folder at launch.
 
@@ -26,7 +26,7 @@ Each `ChatView` owns one `ChatService`, which owns one `AgentExecutor` and one `
 
 1. `ChatView.submitMessage` requires a selected model and no compaction in progress. Without a chat it creates one through `ChatService.createChat(project: globalStore.newChatProject)` and moves navigation to it.
 2. `ChatService.sendMessage` cancels background metadata work and any running generation, persists the user message, then runs `compactContextIfNeeded` followed by `AgentExecutor.run` inside one generation task identified by a request ID.
-3. `ChatService.buildPrompt` assembles protocol messages: one system message from `PromptBuilder.system(project:summary:)`, which joins the bundled system prompt (`Resources/Prompts/system.md`), the project context when the chat belongs to a project, and the compaction summary when present, followed by the messages from `lastSummaryIndex` onward. The request carries exactly one system message, first, because chat templates such as Qwen3.5's reject a system message in any other position. `LMService.protocolMessages` pairs each tool message with the assistant tool call that produced it.
+3. `ChatService.buildPrompt` assembles protocol messages: one system message from `PromptBuilder.system(project:summary:)`, which joins the bundled system prompt (`Resources/Prompts/system.md`), the project context when the chat belongs to a project, and the compaction summary when present, followed by the conversation from the summary boundary onward. The request carries exactly one system message, first, because chat templates such as Qwen3.5's reject a system message in any other position. `LMService.protocolMessages` pairs each tool message with the assistant tool call that produced it.
 4. `AgentExecutor.run` persists an assistant message in `new` status and streams from `LMService.generate`. Text chunks append to that message and move it to `generating`; generation info updates `Chat.tokenCount`.
 5. On a tool call, an empty assistant placeholder is deleted, a tool message is persisted in `generating` status, and the call is executed (see [Tools](tools.md) for approval and dispatch). The result is written into the same tool message, which is then appended to the protocol history, and `AgentExecutor` recurses for the next model step.
 6. After the turn completes, `ChatService` starts a background task that generates a title when `Chat.title` is `nil`.
@@ -39,16 +39,16 @@ A request that fails, for example because the chat template rejects the prompt o
 
 - `stopGenerating` cancels any pending approval or user-input prompt, cancels metadata and generation tasks, and settles the current generating assistant message as `generated`. Partial text stays visible; an assistant message still waiting for its first token is deleted.
 - A newer `sendMessage` supersedes the previous request; request IDs prevent a cancelled request from clearing the newer request's task.
-- `resendMessage` deletes every message after the chosen user message and sends it again. If the deleted range reaches into the summarized prefix, the summary is discarded.
+- `resendMessage` deletes every message after the chosen user message in the conversation and sends it again. If that removes the summary's boundary message, `Chat.discardStaleSummary` discards the summary.
 
 ## Context compaction
 
 Compaction keeps long conversations inside the model's context window without deleting persisted messages.
 
 - Before each request, `compactContextIfNeeded` counts tokens for the prompt and current tool schemas. At 75% of `LocalModel.contextWindow` or more, it compacts.
-- `compactContext` summarizes messages from `lastSummaryIndex` up to, but not including, the latest user message, merging any previous summary. It refuses to summarize while a message in that range is still generating.
+- `compactContext` summarizes the conversation from the summary boundary up to, but not including, the latest user message, merging any previous summary. It refuses to summarize while a message in that range is still generating.
 - The summary prompt is `PromptBuilder.summarize`; message serialization is `PromptBuilder.compressionText`, which omits binary data and keeps tool names, arguments, results, and statuses.
-- The result is stored in `Chat.summary` and `Chat.lastSummaryIndex`. Later prompts send the summary as a section of the system message and only the messages after the index.
+- The result is stored in `Chat.summary`, and that latest user message's ID in `Chat.summaryBoundaryID`. Later prompts send the summary as a section of the system message and only the messages from the boundary on.
 - Users can compact manually with the `/compact` composer command. `ChatService.isCompacting` disables sending while it runs.
 
 ## Titles and context usage
@@ -79,11 +79,22 @@ Cancelling the task or calling `cancel()` resumes the continuation with `Cancell
 
 ## Conversation presentation
 
-Presentation is a projection over `Chat.sortedMessages` and must not reorder or mutate messages.
+Presentation is a projection over `Chat.conversation` and must not reorder or mutate messages.
 
 - `ConversationContentBuilder` groups each run of assistant and tool messages after a user message into one `AssistantTurn`, which is what the user perceives as a single reply.
 - Within a turn, `ChatContentBuilder` collapses adjacent tool messages into a `toolCallGroup`, summarized by `ToolCallGroupSummary` (files read or edited, commands run). `text_to_image` messages always stay standalone so their visual result occupies the conversation.
 - `MessageView` renders assistant text as Markdown and `ui` blocks; tool messages render through `ToolCallView`, which selects a specialized renderer or `DefaultToolRenderer`.
+
+## Importing Claude Code sessions
+
+File ▸ Import Claude Code Session… opens a file importer at `~/.claude/projects` (`Chat.claudeCodeSessionsDirectory`) for a session's `.jsonl` transcript. `Chat.importClaudeCodeSession` reads it the way Claude Code does: from the latest non-sidechain message entry up through `parentUuid`, following `logicalParentUuid` across compaction boundaries, so entries such as attachments link the chain without becoming messages. It creates a new chat:
+
+- User text becomes user messages; base64 images are written to the chat folder as attachments. Meta entries and compaction summaries are skipped.
+- Assistant text becomes assistant messages, with the entries of one reply joined into one message; thinking is left out.
+- Each `tool_use` becomes a tool message whose `toolCall` keeps Claude Code's tool name, arguments, and ID; the matching `tool_result` fills its result and status. A call without a result is recorded as failed.
+- The latest `custom-title` becomes the title, and a session whose `cwd` is a project's working folder joins that project.
+
+Imported messages get new IDs, so the same session can be imported more than once.
 
 ## File preview
 
@@ -91,4 +102,4 @@ Links in assistant content that use the `modelcraft-file-preview` scheme (`FileP
 
 ## Persistence notes
 
-`ModelContainer.shared` uses an in-memory store in `DEBUG` builds, so chats do not survive relaunching a debug build. Release builds use the default persistent store. Changes to `Chat` or `Message` stored properties must keep existing release stores readable.
+`ModelContainer.shared` uses an in-memory store in `DEBUG` builds, so chats do not survive relaunching a debug build. Release builds use the default persistent store. Changes to `Chat` or `Message` stored properties must keep existing release stores readable. Stores written before `parentID` existed are migrated at launch by `Chat.linkLegacyMessages`, which links each chat with more than one root message in `createdAt` order; a summary from such a chat is discarded because its old position-based boundary did not survive the migration.

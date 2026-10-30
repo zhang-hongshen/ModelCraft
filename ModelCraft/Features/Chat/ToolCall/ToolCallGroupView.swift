@@ -49,7 +49,7 @@ struct ToolCallGroupView: View {
 
 #if DEBUG
 #Preview {
-    let messages = Array(Chat.preview.sortedMessages.dropFirst(2).prefix(2))
+    let messages = Array(Chat.preview.conversation.dropFirst(2).prefix(2))
 
     ScrollView {
         ToolCallGroupView(messages: messages)

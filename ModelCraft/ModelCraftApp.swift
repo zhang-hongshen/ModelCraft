@@ -28,6 +28,7 @@ struct ModelCraftApp: App {
         _ = NetworkMonitor.shared
         URL.moveLegacyAppSupportDirectory()
         try? FileManager.default.removeItem(at: Message.draftDirectory)
+        Chat.linkLegacyMessages()
         let globalStore = GlobalStore.shared
         let localModelStore = LocalModelStore()
         self.globalStore = globalStore
@@ -90,7 +91,7 @@ struct ModelCraftApp: App {
     
 }
 
-/// The sidebar's actions in the menu bar: File ▸ New Chat and New Project…, View ▸ sections, and the Chat menu.
+/// The sidebar's actions in the menu bar: File ▸ New Chat, New Project… and Import Claude Code Session…, View ▸ sections, and the Chat menu.
 private struct AppMenuCommands: Commands {
 
     let globalStore: GlobalStore
@@ -105,6 +106,12 @@ private struct AppMenuCommands: Commands {
             .keyboardShortcut("n", modifiers: [.command, .shift])
             Button("New Project…") {
                 sidebarCommands?.newProject()
+            }
+            .disabled(sidebarCommands == nil)
+        }
+        CommandGroup(replacing: .importExport) {
+            Button("Import Claude Code Session…") {
+                sidebarCommands?.importSession()
             }
             .disabled(sidebarCommands == nil)
         }

@@ -15,6 +15,9 @@ class Message {
     @Attribute(.unique) var id = UUID()
     
     var createdAt: Date = Date.now
+    /// The message this one follows. A chat's conversation is read by walking these links
+    /// up from its leaf, so the order of `Chat.messages` never matters.
+    var parentID: UUID?
     var chat: Chat?
     var role: MessageRole
     var content: String
@@ -67,6 +70,8 @@ class Message {
     init(role: MessageRole = .user, chat: Chat? = nil, content: String = "",
          files: [URL] = [], toolCall: ToolCall? = nil, toolCallResult: CallToolResult? = nil,
          status: MessageStatus = .generated) {
+        // Read before joining the chat, while this message is not yet its leaf.
+        self.parentID = chat?.leafMessage?.id
         self.chat = chat
         self.role = role
         self.content = content

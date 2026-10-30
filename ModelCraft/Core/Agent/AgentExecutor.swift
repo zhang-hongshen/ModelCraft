@@ -89,7 +89,8 @@ final class AgentExecutor {
             if let toolCall = batch.toolCall ?? rejection.map(Self.recordedToolCall) {
                 print("ToolCall \(toolCall)")
                 if assistantMessage.content.isEmpty {
-                    ModelContainer.shared.mainContext.delete(assistantMessage)
+                    // The tool message then follows what the placeholder followed.
+                    chat.deleteMessages([assistantMessage])
                 } else {
                     allMessages.append(LMService.shared.toMessage(assistantMessage))
                 }

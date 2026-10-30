@@ -7,6 +7,7 @@
 
 import SwiftUI
 import SwiftData
+import UniformTypeIdentifiers
 
 struct AppNavigationView: View {
 
@@ -16,6 +17,8 @@ struct AppNavigationView: View {
     @State private var chatToRename: Chat?
     @State private var chatTitle = ""
     @State private var isRenamePresented = false
+    @State private var isImportingSession = false
+    @State private var importError: String?
 
     @Query(Project.fetch()) private var projects: [Project]
 
@@ -74,22 +77,53 @@ struct AppNavigationView: View {
             }
             .disabled(chatTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         }
+        .fileImporter(
+            isPresented: $isImportingSession,
+            allowedContentTypes: [UTType(filenameExtension: "jsonl", conformingTo: .text) ?? .text],
+            onCompletion: importSession)
+        .fileDialogDefaultDirectory(Chat.claudeCodeSessionsDirectory)
+        .alert("Import Failed", isPresented: Binding(
+            get: { importError != nil },
+            set: { if !$0 { importError = nil } })) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(importError ?? "")
+        }
         .focusedSceneValue(\.sidebarCommands, sidebarCommands)
     }
 
     /// The File and Chat menus' actions, the same as the sidebar's buttons and context menus.
     private var sidebarCommands: SidebarMenuCommands {
         guard case .chat(let chat) = globalStore.currentTab else {
-            return SidebarMenuCommands(newProject: createProject)
+            return SidebarMenuCommands(newProject: createProject, importSession: beginImportingSession)
         }
         return SidebarMenuCommands(
             newProject: createProject,
+            importSession: beginImportingSession,
             renameChat: { beginRenaming(chat) },
             deleteChat: { deleteChat(chat) })
     }
 
     private func createProject() {
         selectedProject = Project()
+    }
+
+    private func beginImportingSession() {
+        isImportingSession = true
+    }
+
+    private func importSession(_ result: Result<URL, any Error>) {
+        do {
+            let url = try result.get()
+            let isAccessing = url.startAccessingSecurityScopedResource()
+            defer {
+                if isAccessing { url.stopAccessingSecurityScopedResource() }
+            }
+            let chat = try Chat.importClaudeCodeSession(at: url, projects: projects)
+            globalStore.currentTab = .chat(chat)
+        } catch {
+            importError = error.localizedDescription
+        }
     }
 
     private func editProject(_ project: Project) {
@@ -333,6 +367,7 @@ private struct ChatProjectMenu: View {
 /// Sidebar actions for the menu bar. A `nil` chat action is disabled in the menu.
 struct SidebarMenuCommands {
     var newProject: () -> Void
+    var importSession: () -> Void
     var renameChat: (() -> Void)?
     var deleteChat: (() -> Void)?
 }

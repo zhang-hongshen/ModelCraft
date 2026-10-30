@@ -19,7 +19,8 @@ class Chat {
     
     var summary: String? = nil
     
-    var lastSummaryIndex: Int = 0
+    /// The first message after the part of the conversation `summary` replaces.
+    var summaryBoundaryID: UUID? = nil
 
     var project: Project? = nil
 
@@ -77,25 +78,89 @@ extension Chat {
     }
 
     var status: MessageStatus {
-        sortedMessages.last?.status ?? .generated
+        leafMessage?.status ?? .generated
     }
-    
-    var sortedMessages: [Message] {
-        messages.sorted{ $0.createdAt < $1.createdAt }
+
+    /// The latest message nothing follows; the conversation ends here.
+    var leafMessage: Message? {
+        let parentIDs = Set(messages.compactMap(\.parentID))
+        return messages
+            .filter { !parentIDs.contains($0.id) }
+            .max { $0.createdAt < $1.createdAt }
     }
-    
+
+    /// The conversation from its first message to the leaf, found by following each
+    /// message's `parentID` up from the leaf.
+    var conversation: [Message] {
+        let messagesByID = Dictionary(messages.map { ($0.id, $0) }) { first, _ in first }
+        var conversation: [Message] = []
+        var message = leafMessage
+        while let current = message {
+            conversation.append(current)
+            message = current.parentID.flatMap { messagesByID[$0] }
+        }
+        return conversation.reversed()
+    }
+
     var currentGeneratingAssistantMessage: Message? {
-        sortedMessages.last { $0.role == .assistant && $0.status == .generating }
+        conversation.last { $0.role == .assistant && $0.status == .generating }
     }
-    
+
     var isGenerating: Bool {
-        sortedMessages.last?.status == .generating
+        leafMessage?.status == .generating
     }
-    
-    func truncateMessages(messages: [Message]){
-        self.messages.removeAll { messages.map { $0.id }.contains($0.id) }
+
+    /// Removes the messages from the chat right away, so the next message's parent is read
+    /// without them, and deletes them. A message that followed a deleted one then follows
+    /// what the deleted one followed, so the chain stays unbroken.
+    @MainActor
+    func deleteMessages(_ messages: [Message]) {
+        let parentIDs = Dictionary(messages.map { ($0.id, $0.parentID) }) { first, _ in first }
+        self.messages.removeAll { parentIDs.keys.contains($0.id) }
+        for message in self.messages {
+            while let parentID = message.parentID, let grandparentID = parentIDs[parentID] {
+                message.parentID = grandparentID
+            }
+        }
+        ModelContainer.shared.mainContext.delete(messages)
     }
-    
+
+    /// The summary stops applying once its boundary message is gone, for example after a
+    /// resend removed it.
+    func discardStaleSummary() {
+        guard let summaryBoundaryID,
+              !messages.contains(where: { $0.id == summaryBoundaryID })
+        else { return }
+        self.summaryBoundaryID = nil
+        summary = nil
+    }
+
+    /// Stores written before messages recorded their parent kept each chat in `createdAt`
+    /// order. Links those chats' messages in that order; a chat whose messages are linked
+    /// has a single root and is left alone.
+    @MainActor
+    static func linkLegacyMessages() {
+        let context = ModelContainer.shared.mainContext
+        let roots = (try? context.fetch(FetchDescriptor<Message>(
+            predicate: #Predicate { $0.parentID == nil }))) ?? []
+        let legacyChats = Dictionary(grouping: roots.compactMap(\.chat), by: \.id)
+            .values
+            .filter { $0.count > 1 }
+            .map { $0[0] }
+        guard !legacyChats.isEmpty else { return }
+        for chat in legacyChats {
+            let messages = chat.messages.sorted { $0.createdAt < $1.createdAt }
+            for (parent, message) in zip(messages, messages.dropFirst()) {
+                message.parentID = parent.id
+            }
+            // Its old boundary was a position that did not survive the migration.
+            if chat.summaryBoundaryID == nil {
+                chat.summary = nil
+            }
+        }
+        try? context.save()
+    }
+
     var displayCreatedAt: String {
         if Calendar.current.isDateInToday(createdAt) {
             return createdAt.formatted(date: .omitted, time: .shortened)

@@ -81,7 +81,7 @@ final class Scheduler {
             do {
                 try await service.sendMessage(model: model, chat: chat, message: message)
                 schedule.lastError = nil
-                let reply = chat.sortedMessages.last { $0.role == .assistant && !$0.content.isEmpty }
+                let reply = chat.conversation.last { $0.role == .assistant && !$0.content.isEmpty }
                 notify(chat: chat, title: schedule.name, body: reply.map {
                     String($0.content.trimmingCharacters(in: .whitespacesAndNewlines)
                         .prefix(Self.notificationBodyLength))

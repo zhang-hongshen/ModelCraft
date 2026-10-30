@@ -59,7 +59,7 @@ struct ChatCard: View {
                         .foregroundStyle(Color.secondary)
                 }
                 
-                Text(chat.sortedMessages.first?.content ?? String(localized: "No messages"))
+                Text(chat.conversation.first?.content ?? String(localized: "No messages"))
                     .font(.subheadline)
                     .foregroundStyle(Color.secondary)
                     .lineLimit(1)

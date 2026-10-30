@@ -1354,6 +1354,26 @@
         }
       }
     },
+    "Import Claude Code Session…" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "导入 Claude Code 会话…"
+          }
+        }
+      }
+    },
+    "Import Failed" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "导入失败"
+          }
+        }
+      }
+    },
     "Increasing" : {
 
     },
@@ -2468,6 +2488,16 @@
     "The end must be after the start." : {
 
     },
+    "The file has no Claude Code conversation." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "该文件中没有 Claude Code 对话。"
+          }
+        }
+      }
+    },
     "the first workday" : {
 
     },
@@ -2494,6 +2524,16 @@
     },
     "the second-to-last workday" : {
 
+    },
+    "The session ended before this tool returned." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "会话在此工具返回前已结束。"
+          }
+        }
+      }
     },
     "the third workday" : {
 
