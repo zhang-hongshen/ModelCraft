@@ -6,7 +6,7 @@
 //
 
 import Foundation
-import Hub
+import HuggingFace
 import MLX
 import MLXNN
 
@@ -53,19 +53,19 @@ public enum H3LoaderError: Error, LocalizedError {
 }
 
 public enum H3Loader {
-    /// Resolves a configured file inside HubApi's local snapshot.
+    /// Resolves a configured file inside HubCache's local snapshot.
     ///
-    /// HubApi owns cache lookup and download. This resolver only translates
-    /// the Configuration key into the materialized local URL after download.
+    /// HubCache owns cache lookup and download. This resolver only translates
+    /// the Configuration key into the cached file URL after download.
     static func resolve(
-        hub: HubApi,
+        hub: HubCache,
         configuration: H3Configuration,
         key: H3FileKey
     ) throws -> URL {
         guard let path = configuration.files[key] else {
             throw H3LoaderError.missingFileKey(key)
         }
-        let url = hub.localRepoLocation(Hub.Repo(id: configuration.id))
+        let url = try hub.modelDirectory(id: configuration.id)
             .appending(component: path)
         guard FileManager.default.isReadableFile(atPath: url.path) else {
             throw H3LoaderError.fileNotFound(url)
@@ -341,7 +341,7 @@ public enum H3Loader {
     /// ``loadTransformerBlocks(url:config:body:)`` while sampling.
     static func loadRoot(
         into transformer: H3OmniTransformer,
-        hub: HubApi,
+        hub: HubCache,
         configuration: H3Configuration
     ) throws {
         let url = try resolve(hub: hub, configuration: configuration, key: .transformerWeights)
@@ -388,7 +388,7 @@ public enum H3Loader {
     /// shape disagrees. An unfilled parameter would otherwise leave its
     /// placeholder in place and decode a plausible-looking wrong frame.
     static func loadVisualVAE(
-        hub: HubApi,
+        hub: HubCache,
         configuration: H3Configuration
     ) throws -> H3VisualVAE {
         var configuration = configuration
@@ -430,7 +430,7 @@ public enum H3Loader {
     /// The configuration with the video VAE's dimensions read out of its own
     /// `config.json` and stored in it.
     static func loadVideoVAEConfig(
-        hub: HubApi,
+        hub: HubCache,
         configuration: H3Configuration
     ) throws -> H3VideoVAEConfiguration {
         let url = try resolve(hub: hub, configuration: configuration, key: .videoVAEConfig)
@@ -493,7 +493,7 @@ public enum H3Loader {
     /// half. Both directions are checked, as they are for the video VAE — see
     /// ``loadVisualVAE(hub:configuration:)``.
     static func loadAudioVAE(
-        hub: HubApi,
+        hub: HubCache,
         configuration: H3Configuration
     ) throws -> H3AudioVAE {
         var configuration = configuration
@@ -590,7 +590,7 @@ public enum H3Loader {
     /// The configuration with the audio VAE's dimensions read out of its own
     /// `config.json` and stored in it.
     static func loadAudioVAEConfig(
-        hub: HubApi,
+        hub: HubCache,
         configuration: H3Configuration
     ) throws -> H3AudioVAEConfiguration {
         let url = try resolve(hub: hub, configuration: configuration, key: .audioVAEConfig)
@@ -645,7 +645,7 @@ public enum H3Loader {
     /// outside the language stack; the 62.41 GB behind those tensors is still read
     /// a layer at a time as the pass reaches it.
     static func loadEncoder(
-        hub: HubApi,
+        hub: HubCache,
         configuration: H3Configuration
     ) throws -> H3Encoder {
         guard configuration.runtimeProfile.loadsComponentsEagerly else {
@@ -668,7 +668,7 @@ public enum H3Loader {
     /// Loads the tokenizer out of the checkpoint's own `vocab.json`, `merges.txt`
     /// and `tokenizer_config.json`.
     static func loadTokenizer(
-        hub: HubApi,
+        hub: HubCache,
         configuration: H3Configuration
     ) throws -> H3Tokenizer {
         let vocabularyURL = try resolve(
@@ -703,7 +703,7 @@ public enum H3Loader {
     /// path reads it, and a text encoder has no next-token prediction to want it
     /// for.
     static func loadEncoderGlobals(
-        hub: HubApi,
+        hub: HubCache,
         configuration: H3Configuration
     ) throws -> [String: MLXArray] {
         var weights = try loadWeights(
@@ -729,7 +729,7 @@ public enum H3Loader {
     /// reads each one as the pass reaches it.
     static func loadTextEncoder(
         globals: [String: MLXArray],
-        hub: HubApi,
+        hub: HubCache,
         configuration: H3Configuration
     ) throws -> H3TextEncoder {
         let prefix: String

@@ -7,7 +7,7 @@
 
 
 import Foundation
-import Hub
+import HuggingFace
 
 /// Configuration for one MiniMax H3 Base task checkpoint.
 ///
@@ -47,7 +47,7 @@ public struct H3Configuration: Sendable {
 
     /// Internal for the same reason Stable Diffusion keeps its factory
     /// internal: callers select a preset, while the preset owns construction.
-    let factory: @Sendable (HubApi, H3Configuration) throws -> H3Base
+    let factory: @Sendable (HubCache, H3Configuration) throws -> H3Base
 
     /// H3-Base-FL2VA: text-to-video plus first/last-frame conditioning.
     ///
@@ -125,7 +125,7 @@ public struct H3Configuration: Sendable {
         defaultParameters: @escaping @Sendable () -> H3GenerationParameters = {
             H3GenerationParameters()
         },
-        factory: @escaping @Sendable (HubApi, H3Configuration) throws -> H3Base = {
+        factory: @escaping @Sendable (HubCache, H3Configuration) throws -> H3Base = {
             hub, configuration in
             try H3Base(hub: hub, configuration: configuration)
         }
@@ -139,17 +139,16 @@ public struct H3Configuration: Sendable {
         self.factory = factory
     }
 
-    /// Downloads the selected configuration through HubApi.
+    /// Downloads the selected configuration through HubCache.
     ///
-    /// HubApi checks its materialized local snapshot and downloads only files
-    /// not already present. No model root or local repository path is passed
+    /// HubClient resolves a shared HubCache snapshot and downloads missing files. No model root or local repository path is passed
     /// through the H3 API.
     public func download(
-        hub: HubApi = .system,
+        hub: HubCache = .default,
         progressHandler: @escaping (Progress) -> Void = { _ in }
     ) async throws {
-        try await hub.snapshot(
-            from: Hub.Repo(id: id),
+        try await hub.downloadSnapshot(
+            id: id,
             matching: Array(files.values),
             progressHandler: progressHandler)
     }

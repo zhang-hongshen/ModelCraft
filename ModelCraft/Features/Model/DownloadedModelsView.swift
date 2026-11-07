@@ -46,7 +46,7 @@ struct DownloadedModelsView: View {
         }
         .listStyle(.inset)
         .toolbar(content: ToolbarItems)
-        .confirmationDialog("Are you sure to delete these models",
+        .confirmationDialog("Delete these models? Files in the shared cache may also be used by other apps.",
                             isPresented: $confirmationDialogPresented) {
             DeleteButton(style: .textOnly,
                          action: createDeleteModelTask)

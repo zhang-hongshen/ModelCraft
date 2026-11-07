@@ -6,7 +6,7 @@
 //
 
 import Foundation
-import Hub
+import HuggingFace
 
 public struct DeepSeekFlashConfiguration: Decodable, Sendable {
     public static let repositoryID = "deepseek-ai/DeepSeek-V4-Flash-Vision-Exp"
@@ -188,11 +188,11 @@ public struct DeepSeekFlashConfiguration: Decodable, Sendable {
     }
 
     public static func download(
-        hub: HubApi = .default,
+        hub: HubCache = .default,
         progressHandler: @escaping (Progress) -> Void = { _ in }
     ) async throws {
-        try await hub.snapshot(
-            from: Hub.Repo(id: repositoryID),
+        try await hub.downloadSnapshot(
+            id: repositoryID,
             matching: [
                 "config.json",
                 "tokenizer.json",

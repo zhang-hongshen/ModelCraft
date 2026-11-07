@@ -7,7 +7,7 @@
 
 
 import Foundation
-import Hub
+import HuggingFace
 import MLX
 import MLXFast
 import MLXNN
@@ -52,7 +52,7 @@ final class H3VisualVAE: Module {
     /// Both directions are owned here rather than by the caller: it is one
     /// checkpoint, read once, and a reference-conditioned render needs the
     /// encoder's pass and then the decoder's.
-    init(hub: HubApi, configuration: H3Configuration) {
+    init(hub: HubCache, configuration: H3Configuration) {
         self.configuration = configuration
         self.latentsMean = configuration.videoVAE.latentsMean
         self.latentsStd = configuration.videoVAE.latentsStd
@@ -651,7 +651,7 @@ final class H3VisualVAEDecoder: Module {
         dim: Int(Float(config.decoderAttentionHeadDim) * config.decoderRopeDimRatio),
         theta: config.decoderRopeTheta)
     /// Where the checkpoint lives, and which file of it this is.
-    private let hub: HubApi
+    private let hub: HubCache
     let configuration: H3Configuration
     /// Every dimension this VAE has, as `vae/config.json` states them. The
     /// widths were confirmed against the checkpoint's own shapes: `norm1` is
@@ -672,7 +672,7 @@ final class H3VisualVAEDecoder: Module {
     /// the next tile read it again.
     /// The declaration, with every parameter present but unread and no block
     /// built.
-    init(hub: HubApi, configuration: H3Configuration) {
+    init(hub: HubCache, configuration: H3Configuration) {
         self.hub = hub
         self.configuration = configuration
         let config = configuration.videoVAE

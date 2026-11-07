@@ -16,13 +16,38 @@ extension Chat {
         path: ".claude/projects",
         directoryHint: .isDirectory)
 
+    /// Imports every Claude Code session not imported before, skipping transcripts with no
+    /// conversation. Yields between sessions so the UI stays responsive.
+    @MainActor
+    static func importClaudeCodeSessions() async throws {
+        let context = ModelContainer.shared.mainContext
+        var projects = try context.fetch(Project.fetch())
+        let importedIDs = try importedSessionIDs()
+        let fileManager = FileManager.default
+        // Each working directory's folder holds its sessions at the top level; subagent
+        // transcripts sit in subfolders and are not sessions of their own.
+        for folder in try fileManager.contentsOfDirectory(
+            at: claudeCodeSessionsDirectory, includingPropertiesForKeys: nil) {
+            let files = (try? fileManager.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil)) ?? []
+            for file in files where file.pathExtension == "jsonl" {
+                let sessionID = file.deletingPathExtension().lastPathComponent
+                guard !importedIDs.contains(sessionID),
+                      let chat = try? importClaudeCodeSession(at: file, projects: &projects)
+                else { continue }
+                chat.importedSessionID = sessionID
+                await Task.yield()
+            }
+        }
+        try context.save()
+    }
+
     /// Creates a chat from a Claude Code session transcript, the JSONL file Claude Code
     /// writes with one entry per line. The conversation is read the way Claude Code reads
     /// it: from the latest entry up through each entry's parent, plus the side branches
-    /// parallel tool calls leave. Thinking is left out; a session whose working directory
-    /// is a project's folder joins that project.
+    /// parallel tool calls leave. Thinking is left out; the session joins the project for
+    /// its working directory (see `Project.forImportedSession`).
     @MainActor
-    static func importClaudeCodeSession(at url: URL, projects: [Project]) throws -> Chat {
+    static func importClaudeCodeSession(at url: URL, projects: inout [Project]) throws -> Chat {
         let decoder = JSONDecoder()
         var entries: [ClaudeCodeEntry] = []
         for line in try String(contentsOf: url, encoding: .utf8).split(whereSeparator: \.isNewline) {
@@ -66,9 +91,7 @@ extension Chat {
 
         let chat = Chat(
             title: entries.last { $0.customTitle != nil }?.customTitle,
-            project: path.last?.cwd.flatMap { cwd in
-                projects.first { $0.workingDirectory?.path == URL(filePath: cwd).standardizedFileURL.path }
-            })
+            project: path.last?.cwd.flatMap { Project.forImportedSession(workingDirectory: $0, projects: &projects) })
         ModelContainer.shared.mainContext.insert(chat)
 
         var messages: [Message] = []
@@ -153,15 +176,10 @@ extension Chat {
         guard let source = block.source, source.type == "base64",
               let data = Data(base64Encoded: source.data ?? "")
         else { return nil }
-        let pathExtension = source.mediaType?.split(separator: "/").last.map(String.init) ?? "png"
-        let file = directory.appending(path: "\(name).\(pathExtension)")
-        do {
-            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-            try data.write(to: file)
-            return file
-        } catch {
-            return nil
-        }
+        return saveImportedImage(
+            data,
+            named: name,
+            pathExtension: source.mediaType?.split(separator: "/").last.map(String.init) ?? "png")
     }
 }
 

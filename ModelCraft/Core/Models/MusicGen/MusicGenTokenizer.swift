@@ -6,7 +6,7 @@
 //
 
 import MLX
-import Hub
+import struct Hub.Config
 import Tokenizers
 
 public class MusicGenTokenizer {

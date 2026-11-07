@@ -9,7 +9,6 @@ import Foundation
 import MLX
 import MLXNN
 import MLXFast
-import Hub
 
 
 public class MusicGen: Module {

@@ -12,7 +12,7 @@
 
 import Foundation
 
-import Hub
+import HuggingFace
 
 public enum LTXVideoFileKey: String, Sendable, Codable {
     case transformerWeights
@@ -196,11 +196,11 @@ public struct LTXVideoConfiguration: Sendable {
         @Sendable (String, LTXVideoAspectRatio, LTXVideoResolution, Int) -> LTXVideoEvaluateParameters
 
     public func download(
-        hub: HubApi = .system,
+        hub: HubCache = .default,
         progressHandler: @escaping (Progress) -> Void = { _ in }
     ) async throws {
-        let directory = try await hub.snapshot(
-            from: Hub.Repo(id: id),
+        try await hub.downloadSnapshot(
+            id: id,
             matching: [
                 files[.transformerWeights]!,
                 "text_encoder/*.safetensors",
@@ -210,17 +210,11 @@ public struct LTXVideoConfiguration: Sendable {
             ],
             progressHandler: progressHandler)
 
-        let tokenizerDirectory = try await hub.snapshot(
-            from: Hub.Repo(id: Self.tokenizerRepositoryID),
+        try await hub.downloadSnapshot(
+            id: Self.tokenizerRepositoryID,
             matching: ["tokenizer.json"],
             progressHandler: progressHandler)
-        let tokenizerData = try Data(
-            contentsOf: tokenizerDirectory.appending(component: "tokenizer.json"))
-        try tokenizerData.write(
-            to: directory
-                .appending(component: files[.tokenizer]!)
-                .appending(component: "tokenizer.json"),
-            options: .atomic)
+
     }
 
     public static let ltxv2BDistilled = LTXVideoConfiguration(

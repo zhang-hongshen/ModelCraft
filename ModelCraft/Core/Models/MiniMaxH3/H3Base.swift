@@ -7,7 +7,7 @@
 
 
 import Foundation
-import Hub
+import HuggingFace
 import MLX
 
 /// The composed MiniMax H3 Base model.
@@ -43,7 +43,7 @@ public final class H3Base: @unchecked Sendable {
     let configuration: H3Configuration
     let scheduler: H3Scheduler
 
-    private let hub: HubApi
+    private let hub: HubCache
 
     private let tokenizer: H3Tokenizer
     private var encoder: H3Encoder?
@@ -51,7 +51,7 @@ public final class H3Base: @unchecked Sendable {
     private let audioVAE: H3AudioVAE
     private var omniTransformer: H3OmniTransformer?
 
-    public init(hub: HubApi, configuration: H3Configuration) throws {
+    public init(hub: HubCache, configuration: H3Configuration) throws {
         self.hub = hub
         self.configuration = configuration
         self.scheduler = H3Scheduler(shift: configuration.videoSigmaShift)

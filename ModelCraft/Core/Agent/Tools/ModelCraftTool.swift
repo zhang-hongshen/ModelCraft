@@ -14,6 +14,28 @@ import MLXLMCommon
 /// Tools that operate ModelCraft itself: its settings, the page its window shows, and projects.
 enum ModelCraftTool {
 
+    static func projectMemory(projectID: PersistentIdentifier) -> Tool<ProjectMemoryInput, TaskToolOutput> {
+        Tool(
+            name: ToolNames.projectMemory,
+            description: "Read or replace this project's long-term memory shared by all its conversations. Omit memory to read; provide memory to replace it (empty clears it). Save only durable project facts, conventions and user decisions relevant across tasks. Never copy conversation summaries, transient progress, task status, or execution checkpoints here. Change it only when the user asks to remember, correct or forget project knowledge; preserve unrelated facts when replacing. Returns the current memory.",
+            parameters: [
+                .optional("memory", type: .string, description: "Complete replacement of project memory, only on the user's request. Omit to read."),
+            ]
+        ) { input in
+            try await MainActor.run {
+                let context = ModelContainer.shared.mainContext
+                guard let project = context.model(for: projectID) as? Project else {
+                    throw ModelCraftToolError.projectNotFound("current project")
+                }
+                if let memory = input.memory {
+                    project.memory = memory
+                    try context.save()
+                }
+                return TaskToolOutput(content: project.memory)
+            }
+        }
+    }
+
     static var allTools: [any ToolProtocol] {
         [readSettings, updateSettings, openPage, listProjects, createProject, updateProject]
     }
@@ -130,6 +152,8 @@ enum ModelCraftTool {
         }
     }
 }
+
+struct ProjectMemoryInput: Codable { let memory: String? }
 
 // MARK: - Helpers
 

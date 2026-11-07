@@ -4,7 +4,7 @@ This document owns the `ui` block contract: the model-visible format, the SwiftU
 
 ## Contract
 
-The assistant renders native UI by writing SwiftUI code in a fenced code block tagged `ui`. The block is ordinary message text: it is persisted in `Message.content`, returned to the model with the conversation history, copied with the message, and skipped by `TTSService` like any code block. No separate storage or tool call is involved. The format is taught in the system prompt because it is an output format rather than a tool; tool selection still belongs to tool schemas as described in [Tools](tools.md).
+The assistant renders native UI by writing SwiftUI code in a fenced code block tagged `ui`. The block is ordinary message text: it is persisted in `Message.content`, returned to the model with the conversation history, and copied with the message. No separate storage or tool call is involved. The format is taught in the system prompt because it is an output format rather than a tool; tool selection still belongs to tool schemas as described in [Tools](tools.md).
 
 SwiftUI cannot be compiled at run time, so the app interprets a subset of Swift instead of compiling it. Code is parsed with `SwiftParser` and run by `UIInterpreter`; it can only do what the interpreter implements, so a block cannot reach files, the network, other processes, or app state, and an error in it cannot crash the app. A block is either top-level views or a `struct ContentView: View`; without `ContentView`, the first view type declared is the root.
 

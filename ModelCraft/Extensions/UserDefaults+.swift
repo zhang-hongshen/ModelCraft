@@ -19,6 +19,8 @@ extension UserDefaults {
     static let holidayRegion = "holidayRegion"
     static let notifyWhenScheduledTasksFinish = "notifyWhenScheduledTasksFinish"
     static let toolPermissionMode = "toolPermissionMode"
+    static let voiceInputHotKey = "voiceInputHotKey"
+    static let quickEntryHotKey = "quickEntryHotKey"
     
     func value<T>(forKey key: String, default defaultValue: T) -> T {
         return self.value(forKey: key) as? T ?? defaultValue
@@ -37,9 +39,8 @@ enum UserDefaultSettings {
     static let loadToolsWhenNeeded = true
     static let holidayRegion = Locale.current.region?.identifier ?? ""
     static let notifyWhenScheduledTasksFinish = false
-    static let toolPermissionMode = ToolPermissionMode.acceptEdits
+    static let toolPermissionMode = ToolPermissionMode.auto
     static let language = Locale.defaultLanguage
-    static let modelDownloadBaseDirectory = URL.appSupportDirectory
     static let skillDirectory = FileManager.default.homeDirectoryForCurrentUser
         .appendingPathComponent(".agents/skills")
 }

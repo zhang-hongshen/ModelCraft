@@ -86,9 +86,6 @@
     "A workday position replaces weekdays and days of the month; choose one or the other." : {
 
     },
-    "Accept Edits" : {
-
-    },
     "Accessibility" : {
       "localizations" : {
         "zh-Hans" : {
@@ -125,8 +122,16 @@
     "Add Skill Directory…" : {
 
     },
-    "Add text or files to what you say next" : {
-
+    "Additional Information" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "补充信息"
+          }
+        }
+      }
     },
     "Allow for This Task" : {
       "extractionState" : "stale",
@@ -236,6 +241,7 @@
 
     },
     "Are you sure to delete these models" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -265,7 +271,17 @@
         }
       }
     },
-    "Ask" : {
+    "Ask Every Time" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "每次询问"
+          }
+        }
+      }
+    },
+    "Ask ModelCraft" : {
 
     },
     "Ask to Fix" : {
@@ -308,7 +324,14 @@
 
     },
     "Auto" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自动"
+          }
+        }
+      }
     },
     "Automation" : {
       "localizations" : {
@@ -325,6 +348,27 @@
     },
     "Binary data (%@)" : {
 
+    },
+    "Blocked" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "受阻"
+          }
+        }
+      }
+    },
+    "Blocker" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "阻塞原因"
+          }
+        }
+      }
     },
     "Browse and edit the keys in your Redis databases." : {
 
@@ -368,6 +412,9 @@
         }
       }
     },
+    "Cancel Voice Input" : {
+
+    },
     "Category" : {
 
     },
@@ -385,6 +432,16 @@
     },
     "Changing settings" : {
 
+    },
+    "Chat" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "对话"
+          }
+        }
+      }
     },
     "Chat Title" : {
       "localizations" : {
@@ -505,8 +562,15 @@
     "Clicking in %@" : {
 
     },
-    "Close File Preview" : {
-
+    "Close Inspector" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "关闭检查器"
+          }
+        }
+      }
     },
     "Coming Up" : {
 
@@ -564,6 +628,28 @@
     },
     "Context window: %lld%% full" : {
 
+    },
+    "Continue Task" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "继续任务"
+          }
+        }
+      }
+    },
+    "Continue this task from its latest progress. Check existing results and complete the remaining work without repeating completed actions." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "从最新进展继续此任务。先检查已有结果，再完成剩余工作，不要重复已完成的操作。"
+          }
+        }
+      }
     },
     "Controlled the computer" : {
       "localizations" : {
@@ -699,6 +785,16 @@
         }
       }
     },
+    "Current" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "当前"
+          }
+        }
+      }
+    },
     "Custom" : {
 
     },
@@ -772,6 +868,16 @@
         }
       }
     },
+    "Delete Chat" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "删除对话"
+          }
+        }
+      }
+    },
     "Delete Model" : {
       "localizations" : {
         "zh-Hans" : {
@@ -782,7 +888,28 @@
         }
       }
     },
+    "Delete these models? Files in the shared cache may also be used by other apps." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "删除模型？其他 App 可能也在使用共享缓存中的这些文件。"
+          }
+        }
+      }
+    },
+    "Delete this model? Files in the shared cache may also be used by other apps." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "删除模型？其他 App 可能也在使用共享缓存中的这些文件。"
+          }
+        }
+      }
+    },
     "Delete this model? Its downloaded files will be removed." : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -888,6 +1015,7 @@
       }
     },
     "Downloaded Models" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -975,9 +1103,6 @@
 
     },
     "End" : {
-
-    },
-    "End Voice Mode" : {
 
     },
     "Ends" : {
@@ -1086,6 +1211,47 @@
     "Exceptions" : {
 
     },
+    "Execution History · %lld" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "执行记录 · %lld"
+          }
+        }
+      }
+    },
+    "Execution started." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "开始执行。"
+          }
+        }
+      }
+    },
+    "Execution stopped. Continue when you are ready." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "执行已停止，可随时继续。"
+          }
+        }
+      }
+    },
+    "Execution was interrupted by an app restart. Check recorded tool results and current files before repeating any side effect. Continue when the user requests it." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "应用重启中断了执行。再次操作前，请先核对已记录的工具结果和当前文件状态。收到用户继续的请求后再执行。"
+          }
+        }
+      }
+    },
     "Failed" : {
       "localizations" : {
         "zh-Hans" : {
@@ -1190,6 +1356,17 @@
         }
       }
     },
+    "Failure" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "失败原因"
+          }
+        }
+      }
+    },
     "Fetched a web page" : {
       "localizations" : {
         "zh-Hans" : {
@@ -1241,6 +1418,16 @@
     "Frequency" : {
 
     },
+    "Full Access" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "完全权限"
+          }
+        }
+      }
+    },
     "General" : {
       "localizations" : {
         "zh-Hans" : {
@@ -1287,6 +1474,17 @@
     "Get %@" : {
 
     },
+    "Goal" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "目标"
+          }
+        }
+      }
+    },
     "Grid" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1324,6 +1522,9 @@
         }
       }
     },
+    "Image" : {
+
+    },
     "Image created" : {
       "localizations" : {
         "zh-Hans" : {
@@ -1354,7 +1555,11 @@
         }
       }
     },
+    "Image in %@:" : {
+
+    },
     "Import Claude Code Session…" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -1374,8 +1579,31 @@
         }
       }
     },
+    "Import from" : {
+
+    },
+    "In Progress" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "进行中"
+          }
+        }
+      }
+    },
     "Increasing" : {
 
+    },
+    "Inspector" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "检查器"
+          }
+        }
+      }
     },
     "Install" : {
 
@@ -1398,6 +1626,17 @@
     },
     "Last" : {
 
+    },
+    "Latest Progress" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "最新进展"
+          }
+        }
+      }
     },
     "Light" : {
       "localizations" : {
@@ -1456,10 +1695,23 @@
     "Listed running applications" : {
 
     },
+    "Listening" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "聆听中"
+          }
+        }
+      }
+    },
     "Listing directory" : {
 
     },
     "Listing running applications" : {
+
+    },
+    "Load" : {
 
     },
     "Load tools when needed" : {
@@ -1550,6 +1802,16 @@
     },
     "Messages" : {
 
+    },
+    "Microphone" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "麦克风"
+          }
+        }
+      }
     },
     "MiniMax H3" : {
       "localizations" : {
@@ -1643,9 +1905,6 @@
     "Move to the previous workday" : {
 
     },
-    "Mute Microphone" : {
-
-    },
     "Name" : {
 
     },
@@ -1679,8 +1938,29 @@
         }
       }
     },
+    "New Project…" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "新建项目…"
+          }
+        }
+      }
+    },
     "New Scheduled Task" : {
 
+    },
+    "New Task" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "新建任务"
+          }
+        }
+      }
     },
     "Next" : {
 
@@ -1718,6 +1998,38 @@
     },
     "No Scheduled Tasks" : {
 
+    },
+    "No Task Memory" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "暂无任务记忆"
+          }
+        }
+      }
+    },
+    "No Task Selected" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "未选择任务"
+          }
+        }
+      }
+    },
+    "No Tasks" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "暂无任务"
+          }
+        }
+      }
     },
     "No upcoming runs" : {
 
@@ -1809,6 +2121,9 @@
     "Open Image" : {
 
     },
+    "Open in %@:" : {
+
+    },
     "Open Settings" : {
       "localizations" : {
         "zh-Hans" : {
@@ -1821,6 +2136,17 @@
     },
     "Open System Settings" : {
 
+    },
+    "Open Tasks" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "未完成任务"
+          }
+        }
+      }
     },
     "Opened %@" : {
 
@@ -1841,7 +2167,14 @@
 
     },
     "Paused" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已暂停"
+          }
+        }
+      }
     },
     "Permission Mode" : {
 
@@ -1907,6 +2240,16 @@
         }
       }
     },
+    "Project Memory" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "项目记忆"
+          }
+        }
+      }
+    },
     "Project rename failed" : {
 
     },
@@ -1926,10 +2269,24 @@
     "Prompt" : {
 
     },
+    "Provide Information" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "补充信息"
+          }
+        }
+      }
+    },
     "Public holidays for %@ aren't available yet. Until they load, those years follow the weekend only." : {
 
     },
     "Put sung vocals on pitch and export the corrected audio." : {
+
+    },
+    "Quick Entry" : {
 
     },
     "Ran a command" : {
@@ -2037,6 +2394,16 @@
     "Read Notes" : {
 
     },
+    "Read Only" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "只读"
+          }
+        }
+      }
+    },
     "Read projects" : {
 
     },
@@ -2091,6 +2458,16 @@
     },
     "Reading settings failed" : {
 
+    },
+    "Ready to Continue" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "待继续"
+          }
+        }
+      }
     },
     "Reason (optional)" : {
 
@@ -2179,6 +2556,16 @@
         }
       }
     },
+    "Rename Chat…" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重命名对话…"
+          }
+        }
+      }
+    },
     "Renamed a project" : {
 
     },
@@ -2223,6 +2610,17 @@
         }
       }
     },
+    "Result" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "结果"
+          }
+        }
+      }
+    },
     "Resume Download" : {
 
     },
@@ -2232,6 +2630,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "重试"
+          }
+        }
+      }
+    },
+    "Rewind" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "回退"
           }
         }
       }
@@ -2271,12 +2679,33 @@
         }
       }
     },
+    "Save Failed" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "保存失败"
+          }
+        }
+      }
+    },
     "Saving image..." : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "正在保存"
+          }
+        }
+      }
+    },
+    "Scheduled" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已计划"
           }
         }
       }
@@ -2288,9 +2717,6 @@
 
     },
     "Scheduled task update failed" : {
-
-    },
-    "Scheduled Tasks" : {
 
     },
     "Scheduling a task" : {
@@ -2332,6 +2758,17 @@
     "Scrolling in %@ failed" : {
 
     },
+    "Search Tasks" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "搜索任务"
+          }
+        }
+      }
+    },
     "Search the pages, databases, and notes in your knowledge base." : {
 
     },
@@ -2356,8 +2793,31 @@
     "Select Model" : {
 
     },
+    "Selected in %@:" : {
+
+    },
+    "Send Message" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "发送消息"
+          }
+        }
+      }
+    },
     "Settings change failed" : {
 
+    },
+    "Shortcuts" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "快捷键"
+          }
+        }
+      }
     },
     "Show in Finder" : {
       "localizations" : {
@@ -2420,16 +2880,40 @@
         }
       }
     },
-    "Start Voice Mode" : {
+    "Start Task" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "开始任务"
+          }
+        }
+      }
+    },
+    "Start Voice Input" : {
 
     },
     "Starts" : {
 
     },
     "Stop" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "停止"
+          }
+        }
+      }
     },
     "Stop Download" : {
+
+    },
+    "Stop Generating" : {
+
+    },
+    "Stop Recording and Transcribe" : {
 
     },
     "Stopped" : {
@@ -2479,6 +2963,38 @@
         }
       }
     },
+    "Task Memory" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "任务记忆"
+          }
+        }
+      }
+    },
+    "Task Name" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "任务名称"
+          }
+        }
+      }
+    },
+    "Tasks" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "任务"
+          }
+        }
+      }
+    },
     "Text" : {
 
     },
@@ -2498,6 +3014,15 @@
         }
       }
     },
+    "The file has no Codex conversation." : {
+
+    },
+    "The file has no WorkBuddy conversation." : {
+
+    },
+    "The file is a subagent session." : {
+
+    },
     "the first workday" : {
 
     },
@@ -2512,6 +3037,16 @@
     },
     "The model %@ is not downloaded." : {
 
+    },
+    "The model returned an empty context checkpoint." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "模型返回了空的上下文检查点。"
+          }
+        }
+      }
     },
     "The run finished." : {
 
@@ -2565,6 +3100,16 @@
         }
       }
     },
+    "This task is already running." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此任务正在执行中。"
+          }
+        }
+      }
+    },
     "Thought" : {
 
     },
@@ -2613,6 +3158,16 @@
     "Tools" : {
 
     },
+    "Transcribing" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在转写"
+          }
+        }
+      }
+    },
     "Type Anything" : {
       "localizations" : {
         "zh-Hans" : {
@@ -2650,11 +3205,18 @@
     "Unknown Tool Call" : {
 
     },
-    "Unmute Microphone" : {
-
-    },
     "Unsupported audio type" : {
 
+    },
+    "Untitled Task" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "未命名任务"
+          }
+        }
+      }
     },
     "Upcoming Runs" : {
 
@@ -2795,6 +3357,17 @@
         }
       }
     },
+    "View Running Conversation" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "查看执行中的对话"
+          }
+        }
+      }
+    },
     "Vision" : {
       "localizations" : {
         "zh-Hans" : {
@@ -2805,7 +3378,13 @@
         }
       }
     },
-    "Voice Mode" : {
+    "Voice input" : {
+
+    },
+    "Voice Input" : {
+
+    },
+    "Voice Input Failed" : {
 
     },
     "Waiting for user input" : {
@@ -2866,6 +3445,16 @@
     },
     "Workdays are the days outside the weekend, adjusted for the region's public holidays and, in mainland China, its makeup workdays. Exceptions take precedence over both." : {
 
+    },
+    "Working" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "进行中"
+          }
+        }
+      }
     },
     "Working Folder" : {
 
@@ -2967,46 +3556,6 @@
     },
     "Zooming into %@ failed" : {
 
-    },
-    "New Project…" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "新建项目…"
-          }
-        }
-      }
-    },
-    "Chat" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "对话"
-          }
-        }
-      }
-    },
-    "Rename Chat…" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "重命名对话…"
-          }
-        }
-      }
-    },
-    "Delete Chat" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "删除对话"
-          }
-        }
-      }
     }
   },
   "version" : "1.0"

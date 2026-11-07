@@ -6,7 +6,7 @@
 //
 
 import Foundation
-import Hub
+import HuggingFace
 import MLX
 import MLXNN
 
@@ -404,25 +404,25 @@ public struct StableDiffusionConfiguration: Sendable {
     let files: [StableDiffusionFileKey: String]
     public let defaultParameters: @Sendable () -> StableDiffusionEvaluateParameters
     let factory:
-        @Sendable (HubApi, StableDiffusionConfiguration, LoadConfiguration) throws ->
+        @Sendable (HubCache, StableDiffusionConfiguration, LoadConfiguration) throws ->
             StableDiffusion
 
     public func download(
-        hub: HubApi = .system, progressHandler: @escaping (Progress) -> Void = { _ in }
+        hub: HubCache = .default, progressHandler: @escaping (Progress) -> Void = { _ in }
     ) async throws {
-        let repo = Hub.Repo(id: self.id)
-        try await hub.snapshot(
-            from: repo, matching: Array(files.values), progressHandler: progressHandler)
+        let repo = self.id
+        try await hub.downloadSnapshot(
+            id: repo, matching: Array(files.values), progressHandler: progressHandler)
     }
 
-    func isDownloaded(hub: HubApi = .system) -> Bool {
-        let directory = hub.localRepoLocation(Hub.Repo(id: id))
+    func isDownloaded(hub: HubCache = .default) -> Bool {
+        guard let directory = try? hub.modelDirectory(id: id) else { return false }
         return files.values.allSatisfy { path in
             FileManager.default.fileExists(atPath: directory.appending(path: path).path)
         }
     }
 
-    public func textToImageGenerator(hub: HubApi = .system, configuration: LoadConfiguration)
+    public func textToImageGenerator(hub: HubCache = .default, configuration: LoadConfiguration)
         throws -> TextToImageGenerator?
     {
         try factory(hub, self, configuration) as? TextToImageGenerator

@@ -37,6 +37,8 @@ struct ToolNames {
 
     // MARK: Tool Search
     static let searchTools = "search_tools"
+    static let task = "task"
+    static let projectMemory = "project_memory"
 
     // MARK: Image Tool
     static let textToImage = "text_to_image"
@@ -106,10 +108,7 @@ struct ToolApprovalRequest: Sendable {
     let title: String
     let detail: String?
 
-    /// AppleScript can do anything the app can, so every script needs a fresh decision.
-    var allowsAlways: Bool {
-        toolName != ToolNames.runAppleScript
-    }
+    var allowsAlways: Bool
 }
 
 enum ToolApprovalDecision: Sendable {
@@ -294,6 +293,36 @@ extension ToolCall {
         }
     }
 
+    /// Read-only mode also blocks local writes that normally need no approval.
+    var isReadOnly: Bool {
+        switch function.name {
+        case ToolNames.task:
+            return ["list", "read"].contains(function.arguments["action"]?.stringValue ?? "")
+        case ToolNames.projectMemory:
+            return function.arguments["memory"]?.stringValue == nil
+        case ToolNames.textToImage, ToolNames.textToVideo, ToolNames.textToAudio,
+             ToolNames.updateSettings, ToolNames.createProject, ToolNames.updateProject:
+            return false
+        default:
+            return !requiresUserApproval
+        }
+    }
+
+    /// A remembered approval must not suppress confirmation for these actions.
+    var requiresFreshApproval: Bool {
+        switch function.name {
+        case ToolNames.executeCommand, ToolNames.runAppleScript, ToolNames.deleteSchedule:
+            return true
+        case ToolNames.applyPatch:
+            let patch = function.arguments["patch"]?.stringValue ?? ""
+            return patch
+                .components(separatedBy: "\n")
+                .contains(where: { $0.hasPrefix("*** Delete File: ") })
+        default:
+            return false
+        }
+    }
+
     private var isReadOnlyCommand: Bool {
         guard let command = function.arguments["command"]?.stringValue else {
             return false
@@ -305,7 +334,8 @@ extension ToolCall {
         ToolApprovalRequest(
             toolName: function.name,
             title: localizedDescription(.running),
-            detail: approvalDetail)
+            detail: approvalDetail,
+            allowsAlways: !requiresFreshApproval)
     }
 
     private var approvalDetail: String? {
@@ -767,16 +797,17 @@ enum ReadOnlyCommandPolicy {
     ]
 
     static func allows(_ command: String) -> Bool {
-        let forbiddenCharacters = CharacterSet(charactersIn: "\n\r;|&><`")
-        guard command.rangeOfCharacter(from: forbiddenCharacters) == nil,
-              !command.contains("$("),
-              !command.contains("${")
-        else {
+        let forbiddenCharacters = CharacterSet(charactersIn: "\n\r;|&><`$\\\"'(){}")
+        guard command.rangeOfCharacter(from: forbiddenCharacters) == nil else {
             return false
         }
 
         let arguments = command.split(whereSeparator: \.isWhitespace).map(String.init)
-        guard let executable = arguments.first.map({ ($0 as NSString).lastPathComponent }) else {
+        guard let first = arguments.first else {
+            return false
+        }
+        let executable = (first as NSString).lastPathComponent
+        guard first == executable || first == "/bin/\(executable)" || first == "/usr/bin/\(executable)" else {
             return false
         }
 
@@ -786,7 +817,9 @@ enum ReadOnlyCommandPolicy {
 
         switch executable {
         case "rg":
-            return arguments.dropFirst().allSatisfy { !$0.hasPrefix("--pre") }
+            return arguments.dropFirst().allSatisfy {
+                !$0.hasPrefix("--pre") && !$0.hasPrefix("--hostname-bin")
+            }
         case "find":
             let mutatingPrimaries: Set<String> = [
                 "-delete", "-exec", "-execdir", "-fls", "-fprint", "-fprint0",
@@ -805,7 +838,8 @@ enum ReadOnlyCommandPolicy {
             }
             guard readOnlyGitSubcommands.contains(arguments[1]) else { return false }
             return arguments.dropFirst(2).allSatisfy {
-                !$0.hasPrefix("--output") && $0 != "--ext-diff"
+                !$0.hasPrefix("--output") && $0 != "--ext-diff" && $0 != "--textconv"
+                    && !$0.hasPrefix("--open-files-in-pager") && !$0.hasPrefix("-O")
             }
         default:
             return false

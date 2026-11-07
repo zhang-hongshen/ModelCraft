@@ -7,7 +7,7 @@
 
 
 import Foundation
-import Hub
+import HuggingFace
 import MLX
 import MLXFast
 import MLXNN
@@ -37,7 +37,7 @@ final class H3Encoder: @unchecked Sendable {
     /// Where the `text_encoder` checkpoint lives. Handed to
     /// ``H3Loader`` when a half is loaded; the URL is resolved there from the
     /// configuration's file keys rather than carried around.
-    private let hub: HubApi
+    private let hub: HubCache
     let configuration: H3Configuration
 
     /// Everything that is not a language layer: the embedding table and the
@@ -61,7 +61,7 @@ final class H3Encoder: @unchecked Sendable {
     /// passes none of them otherwise, so the first use of either half fills it —
     /// see the text and visual encoding entry points below.
     init(
-        hub: HubApi,
+        hub: HubCache,
         configuration: H3Configuration,
         globals: [String: MLXArray]? = nil,
         textEncoder: H3TextEncoder? = nil,
@@ -209,7 +209,7 @@ final class H3TextEncoder {
     /// time, long after the key scan that discovered it.
     let prefix: String
     let embedTokens: MLXArray
-    private let hub: HubApi
+    private let hub: HubCache
     let configuration: H3Configuration
     private var url: URL {
         get throws { try H3Loader.resolve(
@@ -228,7 +228,7 @@ final class H3TextEncoder {
     init(
         embedTokens: MLXArray,
         prefix: String,
-        hub: HubApi,
+        hub: HubCache,
         configuration: H3Configuration,
         config: H3TextEncoderConfiguration
     ) {

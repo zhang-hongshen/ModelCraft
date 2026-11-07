@@ -30,7 +30,9 @@ extension ContextUsage {
         let counts = try await LMService.shared.tokenCounts(
             model: model,
             texts: [
-                PromptBuilder.system(project: chat.project, summary: chat.summary).content,
+                PromptBuilder.system(project: chat.project,
+                                     summary: chat.activeTicket == nil ? chat.summary : chat.activeTicket?.session?.checkpoint,
+                                     ticket: chat.activeTicket).content,
                 toolSchemas.joined(separator: "\n")
             ])
         return ContextUsage(systemPrompt: counts[0], tools: counts[1])

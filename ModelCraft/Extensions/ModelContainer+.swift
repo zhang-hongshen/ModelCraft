@@ -13,6 +13,7 @@ extension ModelContainer {
         let schema = Schema([
             Message.self, Chat.self, ModelTask.self,
             Project.self, Schedule.self, WorkdayException.self,
+            Ticket.self, ExecutorSession.self, Assignment.self, TaskInput.self, TaskReport.self,
         ])
 #if DEBUG
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)

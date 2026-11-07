@@ -12,6 +12,11 @@ struct ModelStoreModel: Decodable, ModelEntity {
     let downloads: Int
     let tags: [String]
     let pipelineTag: String?
+    let config: Configuration?
+
+    struct Configuration: Decodable {
+        let modelType: String?
+    }
     
     var category: ModelCategory? {
         pipelineTag.flatMap(ModelCategory.init(rawValue:))

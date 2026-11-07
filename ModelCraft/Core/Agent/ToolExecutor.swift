@@ -29,6 +29,9 @@ enum ToolExecutor {
 
         do  {
             switch toolCall.function.name {
+            case ToolNames.projectMemory:
+                guard let projectID else { throw ToolExecutorError.projectUnavailable }
+                reply(try await toolCall.execute(with: ModelCraftTool.projectMemory(projectID: projectID)).content)
             case ToolNames.readFile:
                 // The model gets the file text as is: JSON escaping (`\/`, `\"`, `\n`) gets
                 // copied into `apply_patch` lines, which then no longer match the file.

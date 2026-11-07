@@ -10,7 +10,6 @@ import SwiftData
 import AVFoundation
 
 import MLX
-import Hub
 
 @main
 struct ModelCraftApp: App {
@@ -21,17 +20,29 @@ struct ModelCraftApp: App {
     @Environment(\.scenePhase) private var scenePhase
     
     private let globalStore: GlobalStore
+    private let sttService: STTService
+    private let quickEntry: QuickEntry
     @State private var localModelStore: LocalModelStore
     @State private var scheduler: Scheduler
+
+    static let mainWindowID = "main"
     
     init() {
         _ = NetworkMonitor.shared
         URL.moveLegacyAppSupportDirectory()
         try? FileManager.default.removeItem(at: Message.draftDirectory)
         Chat.linkLegacyMessages()
+        do {
+            try Assignment.recoverInterrupted()
+        } catch {
+            fatalError("Could not recover interrupted assignments: \(error)")
+        }
         let globalStore = GlobalStore.shared
         let localModelStore = LocalModelStore()
+        let sttService = STTService()
         self.globalStore = globalStore
+        self.sttService = sttService
+        self.quickEntry = QuickEntry(globalStore: globalStore, sttService: sttService)
         _localModelStore = State(initialValue: localModelStore)
         _scheduler = State(initialValue: Scheduler(
             localModelStore: localModelStore, globalStore: globalStore))
@@ -39,24 +50,33 @@ struct ModelCraftApp: App {
     
     var body: some Scene {
         Group {
-            WindowGroup {
+            WindowGroup(id: Self.mainWindowID) {
                 ContentView()
                     .background(.ultraThinMaterial)
                     .tint(.accent)
                     .applyUserSettings()
+                    // Files dropped on the Dock icon or opened from Finder start a new chat
+                    // in an open window rather than a new one.
+                    .handlesExternalEvents(preferring: ["*"], allowing: ["*"])
+                    .onOpenURL { url in
+                        guard url.isFileURL else { return }
+                        globalStore.startNewChat(attaching: [url])
+                    }
                     .task {
-                        HubApi.moveSystemModels(ids: ToolDefinition.modelIDs)
-                        localModelStore.reload()
+                        await localModelStore.reload()
                         modelTaskTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { timer in
                             guard timer.isValid else { return }
                             try? self.handleModelTask()
                         }
                         SkillManager.shared.loadSkills()
                         scheduler.start()
+                        quickEntry.start {
+                            openWindow(id: Self.mainWindowID)
+                        }
                     }
                     .onChange(of: scenePhase) { _, newPhase in
                         guard newPhase == .active else { return }
-                        localModelStore.reload()
+                        Task { await localModelStore.reload() }
                     }
             }.commands {
                 CommandGroup(after: .help) {
@@ -79,8 +99,7 @@ struct ModelCraftApp: App {
         .environment(localModelStore)
         .environment(scheduler)
         .environment(UserSettings.shared)
-        .environment(STTService())
-        .environment(TTSService())
+        .environment(sttService)
         .windowResizability(.contentSize)
         .commands {
             SidebarCommands()
@@ -91,7 +110,7 @@ struct ModelCraftApp: App {
     
 }
 
-/// The sidebar's actions in the menu bar: File ▸ New Chat, New Project… and Import Claude Code Session…, View ▸ sections, and the Chat menu.
+/// The sidebar's actions in the menu bar: File ▸ New Chat, and New Project…, View ▸ sections, and the Chat menu.
 private struct AppMenuCommands: Commands {
 
     let globalStore: GlobalStore
@@ -109,17 +128,11 @@ private struct AppMenuCommands: Commands {
             }
             .disabled(sidebarCommands == nil)
         }
-        CommandGroup(replacing: .importExport) {
-            Button("Import Claude Code Session…") {
-                sidebarCommands?.importSession()
-            }
-            .disabled(sidebarCommands == nil)
-        }
         CommandGroup(before: .sidebar) {
             tabButton("Model Store", tab: .modelStore, key: "1")
-            tabButton("Downloaded Models", tab: .downloadedModels, key: "2")
+            tabButton("Downloaded", tab: .downloadedModels, key: "2")
             tabButton("Connectors", tab: .connectors, key: "3")
-            tabButton("Scheduled Tasks", tab: .schedules, key: "4")
+            tabButton("Scheduled", tab: .schedules, key: "4")
             Divider()
         }
         CommandMenu("Chat") {
@@ -169,7 +182,7 @@ extension ModelCraftApp {
                     task.fractionCompleted = progress.fractionCompleted
                 }
                 try Task.checkCancellation()
-                localModelStore.reload()
+                await localModelStore.reload()
                 task.status = .completed
                 
                 ModelContainer.shared.mainContext.delete(task)
@@ -195,7 +208,7 @@ extension ModelCraftApp {
                 try ModelService.deleteModel(modelID: task.modelID)
                 task.status = .completed
                 ModelContainer.shared.mainContext.delete(task)
-                localModelStore.reload()
+                await localModelStore.reload()
                 if globalStore.selectedModel?.id == task.modelID {
                     globalStore.selectedModel = nil
                 }

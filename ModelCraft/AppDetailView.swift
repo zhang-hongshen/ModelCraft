@@ -20,11 +20,11 @@ struct AppDetailView: View {
         case .modelStore:
             ModelStore().navigationTitle("Model Store")
         case .downloadedModels:
-            DownloadedModelsView().navigationTitle("Downloaded Models")
+            DownloadedModelsView().navigationTitle("Downloaded")
         case .connectors:
             ConnectorsView().navigationTitle("Connectors")
         case .schedules:
-            SchedulesView().navigationTitle("Scheduled Tasks")
+            SchedulesView().navigationTitle("Scheduled")
         }
     }
 

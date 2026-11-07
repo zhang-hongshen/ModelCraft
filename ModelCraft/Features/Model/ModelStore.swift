@@ -153,15 +153,20 @@ private struct ModelStoreContent: View {
 extension ModelStore {
     
     func fetchModels() async throws -> [ModelStoreModel] {
-        let models = try await ModelService.searchModel(
-            keyword: searchText,
-            category: category,
-            page: page,
-            pageSize: ModelStore.pageSize)
-        if models.count < ModelStore.pageSize {
-            canLoadMore = false
+        while true {
+            let result = try await ModelService.searchModel(
+                keyword: searchText,
+                category: category,
+                page: page,
+                pageSize: ModelStore.pageSize)
+            try Task.checkCancellation()
+            canLoadMore = result.hasMore
+            if !result.models.isEmpty || !result.hasMore {
+                return result.models
+            }
+            // A full Hub page can contain only unsupported architectures.
+            page += 1
         }
-        return models
     }
     
     func reloadModels() async {
@@ -188,11 +193,12 @@ extension ModelStore {
     }
     
     func loadMoreModels() async {
+        let previousPage = page
         page += 1
         do {
             models.append(contentsOf: try await fetchModels())
         } catch {
-            page -= 1
+            page = previousPage
         }
         
     }

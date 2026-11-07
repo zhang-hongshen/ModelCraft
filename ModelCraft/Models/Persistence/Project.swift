@@ -22,6 +22,8 @@ class Project {
 
     var workingDirectory: URL?
     var resources: [URL]
+    /// Curated project knowledge, independent of conversations and task checkpoints.
+    var memory: String = ""
     
     init(title: String = "", workingDirectory: URL? = nil, resources: [URL] = []) {
         self.title = title
@@ -38,6 +40,33 @@ extension Project {
         descriptor.fetchOffset = offset
         descriptor.sortBy = [.init(\.createdAt, order: .reverse)]
         return descriptor
+    }
+}
+
+extension Project {
+
+    /// The project for an imported session that ran in `path`: the project with that working
+    /// folder, or a new one named after the folder. Sessions run in the home folder, in an
+    /// app's folder under `~/Library` (such as an agent's scratch workspace), or in a folder
+    /// that no longer exists stay outside projects. A new project joins `projects` so later
+    /// sessions in the same folder reuse it.
+    @MainActor
+    static func forImportedSession(workingDirectory path: String, projects: inout [Project]) -> Project? {
+        let directory = URL(filePath: path, directoryHint: .isDirectory).standardizedFileURL
+        if let project = projects.first(where: { $0.workingDirectory?.path == directory.path }) {
+            return project
+        }
+        var isDirectory: ObjCBool = false
+        let home = URL.homeDirectory.standardizedFileURL
+        guard directory.path != home.path,
+              !directory.path.hasPrefix(home.appending(path: "Library").path + "/"),
+              FileManager.default.fileExists(atPath: directory.path, isDirectory: &isDirectory),
+              isDirectory.boolValue
+        else { return nil }
+        let project = Project(title: directory.lastPathComponent, workingDirectory: directory)
+        ModelContainer.shared.mainContext.insert(project)
+        projects.append(project)
+        return project
     }
 }
 

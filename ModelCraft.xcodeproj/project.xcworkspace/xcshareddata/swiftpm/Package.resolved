@@ -1,5 +1,5 @@
 {
-  "originHash" : "786eb2930464a5d708ef6f5ddc87b2b70b782b246f91eb2848e06b3d4c7abb96",
+  "originHash" : "bc483e2d9c2046723aa5e76bb3177ff5d74fbbdd4bc1284e88d1c979d05fa017",
   "pins" : [
     {
       "identity" : "alamofire",
@@ -42,6 +42,15 @@
       "location" : "https://github.com/junyan72/iosMath",
       "state" : {
         "revision" : "ba9ab7729b151329c54fd895a7c1859981d9484c"
+      }
+    },
+    {
+      "identity" : "keyboardshortcuts",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/sindresorhus/KeyboardShortcuts",
+      "state" : {
+        "revision" : "772133d9dbe800fdac0473226822994c5c162c58",
+        "version" : "3.1.0"
       }
     },
     {

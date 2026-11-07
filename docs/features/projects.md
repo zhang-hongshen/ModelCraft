@@ -4,18 +4,18 @@ This document owns projects: the working folder and reference files, how project
 
 ## Model
 
-`Project` is a SwiftData entity with a `title`, optional `workingDirectory`, `resources` (reference files or folders), and `chats` (cascade delete). URLs are stored standardized. A chat belongs to at most one project through `Chat.project`; recent chats are those with no project.
+`Project` is a SwiftData entity with a `title`, optional `workingDirectory`, `resources` (reference files or folders), long-term `memory` (empty by default), and `chats` (cascade delete). URLs are stored standardized. A chat belongs to at most one project through `Chat.project`; recent chats are those with no project.
 
 | Location | Meaning |
 | --- | --- |
 | Working directory | The project root. It is the default directory for relative tool paths and command execution, and the only place file writes may land. |
 | Resources | Additional read-only context. A resource may be a file or a folder; folders are searched recursively. |
 
-The project views set the working directory from a folder import or a dropped folder; dropped or imported files become resources. The app is not sandboxed, so URLs are stored directly rather than as security-scoped bookmarks.
+The project editor has a Project Memory disclosure with an editable text field, saved with the other project fields. The project views set the working directory from a folder import or a dropped folder; dropped or imported files become resources. The app is not sandboxed, so URLs are stored directly rather than as security-scoped bookmarks.
 
 ## Context delivered to the model
 
-For a project chat, `PromptBuilder.system(project:summary:)` appends a project context section to the system message. It lists the project name, root, and reference file paths, and states that the root is the default working directory and references are read-only. File contents are not inlined; the model reads or searches them through tools.
+For a project chat, `PromptBuilder.system(project:summary:)` appends a project context section to the system message. It lists the project name, root, and reference file paths, and states that the root is the default working directory and references are read-only. File contents are not inlined; the model reads or searches them through tools. Project Memory is supplied as a separate system-message section on every model step. It holds durable project facts, conventions and user decisions, independent of Thread summaries, Ticket memory and execution checkpoints. The project-scoped `project_memory` tool reads it or replaces it only on a user request to remember, correct or forget project knowledge. Task completion and compaction never promote content into Project Memory automatically.
 
 `AgentExecutor.run` binds the task-local `ProjectToolContext.workingDirectory` and `ProjectToolContext.readOnlyFiles` for the whole agent turn. File and command tools read these values:
 

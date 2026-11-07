@@ -13,6 +13,8 @@ struct SettingsView: View {
         case general
         case models
         case storage
+        case notifications
+        case shortcuts
         case permissions
         var id: Self { self }
     }
@@ -36,6 +38,16 @@ struct SettingsView: View {
                 .tabItem {
                     Image(systemName: "externaldrive")
                     Text("Storage")
+                }
+            NotificationsView().tag(Tab.notifications as Tab?)
+                .tabItem {
+                    Image(systemName: "bell.badge")
+                    Text("Notifications")
+                }
+            ShortcutsView().tag(Tab.shortcuts as Tab?)
+                .tabItem {
+                    Image(systemName: "keyboard")
+                    Text("Shortcuts")
                 }
             PermissionsView().tag(Tab.permissions as Tab?)
                 .tabItem {

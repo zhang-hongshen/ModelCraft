@@ -6,25 +6,31 @@ Image, video, and audio models are managed separately; see [Media generation](me
 
 ## Storage layout
 
-All models download through `HubApi.default`, whose base directory is `URL.appSupportDirectory`, `~/Library/Application Support/<bundle ID>` (`com.zhanghongshen.ModelCraft`). At launch, `URL.moveLegacyAppSupportDirectory()` moves the earlier `Application Support/ModelCraft` folder there when the new one does not exist yet. Repositories live under `<base>/models/<author>/<name>`, the standard Hugging Face snapshot layout. `HubApi` also conforms to MLX's `Downloader`, so MLX loading writes to the same place.
+All new chat, image, video, music, and voice downloads use `HubClient(cache: HubCache.default)` and return the cache snapshot directly. There is no per-app output copy and no separate `.system` cache. `HubCache` also implements MLX's `Downloader` through the app's extension in `Extensions/HubCache+.swift`.
 
-System models (image, video, music, voice) use `HubApi.system`, whose base is `<base>/.system`, so they live under `<base>/.system/models/<author>/<name>`, apart from the chat models users download.
+The cache root follows swift-huggingface's location rules: `HF_HUB_CACHE`, then `$HF_HOME/hub`, then `~/.cache/huggingface/hub` for the current non-sandboxed macOS app. Repositories use `models--<author>--<name>/`, containing `blobs/` (file contents), `refs/` (branch-to-commit references), and `snapshots/<commit>/` (file links). Loaders read the resolved snapshot, never the blobs directory.
 
-Changing the location in Settings > Storage moves the existing `models` and `.system` folders to the new base and reloads `LocalModelStore`. It is disabled while any model task is running and refuses a destination that already contains either folder.
+Model discovery, loading, downloading, and deletion use only the shared cache. ModelCraft does not scan, reuse, migrate, or remove the former private `models` or `.system/models` directories. Manual migration must produce the standard Hub cache structure, including repository refs and versioned snapshots; copying an author/model folder directly into the cache root does not make it discoverable.
+
+Settings > Storage manages skill directories; it does not relocate the shared model cache. Cache environment overrides apply to the running App's environment, which may differ from a terminal shell.
+
+## Package dependencies
+
+The resolved `mlx-swift-lm` 3.32.3 package depends on `mlx-swift` and `swift-syntax`; it accepts host-provided downloading and tokenization. ModelCraft directly links `HuggingFace` from `swift-huggingface` for its shared cache/client, and `Tokenizers` plus `Hub` from `swift-transformers` for tokenization and `Hub.Config`. The `HubApi` downloader is not used. `mlx-audio-swift` 0.1.5 also depends transitively on both Hugging Face packages. Removing the direct package declarations would hide actual App dependencies, rather than remove these libraries from the graph.
 
 ## Discovery and download
 
-- `ModelStore` searches Hugging Face through `ModelService.searchModel`, restricted to the `mlx-community` author and `mlx` filter, sorted by downloads, and to the `pipeline_tag` of the selected `ModelCategory` (Text `text-generation`, Vision `image-text-to-text`, Omni `any-to-any`). The API accepts one `pipeline_tag` per request and no exclusions, so categories are separate lists rather than a combined one. The search endpoint cannot return `usedStorage`, so each card fetches its size with `expand[]=usedStorage` when it appears; `ModelStore` keeps fetched sizes for its lifetime and a card scrolled away cancels its request. A card's icon is the avatar of `ModelStoreModel.organization`, resolved from a known family name prefix or else the `base_model` tag, falling back to the category symbol.
+- `ModelStore` searches Hugging Face through `ModelService.searchModel`, restricted to the `mlx-community` author and `mlx` filter, sorted by downloads, and to the `pipeline_tag` of the selected `ModelCategory` (Text `text-generation`, Vision `image-text-to-text`, Omni `any-to-any`). The API accepts one `pipeline_tag` per request and no exclusions, so categories are separate lists rather than a combined one. Search requests include `config=true`; only models whose `config.model_type` is registered in the linked `LLMTypeRegistry` or `VLMTypeRegistry` appear. Missing or unregistered types are excluded, including standalone MTP drafters. Pagination uses the unfiltered Hub page size and skips fully unsupported pages so filtering does not hide later supported results. Architecture registration establishes loader support, not a guarantee that every checkpoint has valid weights or a compatible chat template. The search endpoint cannot return `usedStorage`, so each card fetches its size with `expand[]=usedStorage` when it appears; `ModelStore` keeps fetched sizes for its lifetime and a card scrolled away cancels its request. A card's icon is the avatar of `ModelStoreModel.organization`, resolved from a known family name prefix or else the `base_model` tag, falling back to the category symbol.
 - Downloading or deleting creates a persisted `ModelTask` (`download` or `delete`) whose ID is `<model-id>-<type>`, so one model has at most one task of each type.
 - `ModelCraftApp` polls for `new` tasks every 5 seconds, marks them `running`, and stores the running `Task` in `GlobalStore.runningTasks` keyed by model ID so the UI can cancel it.
 - Download progress is written into the task's unit counts and fraction. A completed task is deleted and `LocalModelStore` reloads. Cancellation sets `stopped`; other errors set `failed`. Resuming or retrying sets the task back to `new` so the poller picks it up; removing a task deletes it and cancels its running `Task`.
-- Deleting a model removes its repository folder. If it was the selected model, `GlobalStore.selectedModel` is cleared.
+- Deleting a model explicitly removes its shared cache repository (all cached revisions). Confirmation identifies the cross-app consequence. If it was the selected model, `GlobalStore.selectedModel` is cleared. Other apps may need to download it again; models are never automatically evicted by ModelCraft.
 
 ## Local models
 
-`LocalModel` is a plain value, not a SwiftData entity. `LocalModelStore.reload()` scans `<base>/models/*/*` and builds one `LocalModel` per repository folder with its size and creation date, newest first. It runs at launch, when the app becomes active, and after download, delete, or relocation, so models copied in by other tools appear without a separate registry.
+`LocalModel` is a plain value, not a SwiftData entity. `LocalModelStore.reload()` asynchronously scans only the shared cache's resolved `main` snapshots, producing one entry per model ID. It requires a registered LLM/VLM architecture (or the custom DeepSeekFlash model), excludes known media repositories, and checks for SafeTensors weights and every indexed shard. Speech and other unsupported models in the shared cache do not enter the chat picker. Sizes follow snapshot symlinks to their actual files instead of counting link lengths or every historical revision.
 
-The app's own image, video, music, and voice models download through `HubApi.system` into `<base>/.system/models`, so the scan never sees them.
+Reload runs at launch, when the app becomes active, and after download or delete. A later reload supersedes an older suspended reload so it cannot restore a stale list. Supported models downloaded by another App into the same cache appear on the next reload.
 
 `contextWindow` is resolved from the repository:
 

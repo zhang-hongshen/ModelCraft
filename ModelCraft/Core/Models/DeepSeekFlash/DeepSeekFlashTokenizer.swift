@@ -6,7 +6,7 @@
 //
 
 import Foundation
-import Hub
+import struct Hub.Config
 import Tokenizers
 import MLXLMCommon
 
@@ -14,11 +14,9 @@ final class DeepSeekFlashTokenizer {
     static let imagePlaceholder = "<｜deepseek_image｜>"
     private let tokenizer: Tokenizers.Tokenizer
 
-    init(hub: HubApi, directory: URL) async throws {
-        let tokenizerData = try hub.configuration(
-            fileURL: directory.appending(component: "tokenizer.json"))
-        let tokenizerConfiguration = try hub.configuration(
-            fileURL: directory.appending(component: "tokenizer_config.json"))
+    init(directory: URL) async throws {
+        let tokenizerData = try JSONDecoder().decode(Config.self, from: Data(contentsOf: directory.appending(component: "tokenizer.json")))
+        let tokenizerConfiguration = try JSONDecoder().decode(Config.self, from: Data(contentsOf: directory.appending(component: "tokenizer_config.json")))
         tokenizer = try AutoTokenizer.from(
             tokenizerConfig: tokenizerConfiguration,
             tokenizerData: tokenizerData)

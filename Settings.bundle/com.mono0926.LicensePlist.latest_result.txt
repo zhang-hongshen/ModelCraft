@@ -8,6 +8,8 @@ name: highlightswift, nameSpecified: HighlightSwift, owner: appstefan, version: 
 
 name: iosMath, nameSpecified: iosMath, owner: junyan72, version: , source: https://github.com/junyan72/iosMath
 
+name: KeyboardShortcuts, nameSpecified: KeyboardShortcuts, owner: sindresorhus, version: 3.1.0, source: https://github.com/sindresorhus/KeyboardShortcuts
+
 name: mlx-audio-swift, nameSpecified: MLXAudio, owner: Blaizzy, version: 0.1.5, source: https://github.com/Blaizzy/mlx-audio-swift
 
 name: mlx-swift, nameSpecified: mlx-swift, owner: ml-explore, version: 0.32.3, source: https://github.com/ml-explore/mlx-swift
@@ -67,6 +69,8 @@ name: EventSource, nameSpecified: EventSource, owner: mattt, version: 1.5.1, sou
 name: highlightswift, nameSpecified: HighlightSwift, owner: appstefan, version: , source: https://github.com/appstefan/highlightswift
 
 name: iosMath, nameSpecified: iosMath, owner: junyan72, version: , source: https://github.com/junyan72/iosMath
+
+name: KeyboardShortcuts, nameSpecified: KeyboardShortcuts, owner: sindresorhus, version: 3.1.0, source: https://github.com/sindresorhus/KeyboardShortcuts
 
 name: mlx-audio-swift, nameSpecified: MLXAudio, owner: Blaizzy, version: 0.1.5, source: https://github.com/Blaizzy/mlx-audio-swift
 

@@ -34,11 +34,10 @@ enum FilePreviewLink {
 struct FileInspectorView: View {
 
     let url: URL?
-    @Binding var isPresented: Bool
 
     var body: some View {
         VStack(spacing: 0) {
-            FileInspectorHeader(url: url, isPresented: $isPresented)
+            FileInspectorHeader(url: url)
             Divider()
 
             if let url {
@@ -50,14 +49,12 @@ struct FileInspectorView: View {
                 )
             }
         }
-        .inspectorColumnWidth(min: 280, ideal: 420, max: 700)
     }
 }
 
 private struct FileInspectorHeader: View {
 
     let url: URL?
-    @Binding var isPresented: Bool
 
     var body: some View {
         HStack(spacing: 10) {
@@ -72,15 +69,6 @@ private struct FileInspectorHeader: View {
             }
 
             Spacer(minLength: 0)
-
-            Button {
-                isPresented = false
-            } label: {
-                Image(systemName: "xmark")
-            }
-            .buttonStyle(.plain)
-            .help("Close File Preview")
-            .accessibilityLabel("Close File Preview")
         }
         .padding()
     }

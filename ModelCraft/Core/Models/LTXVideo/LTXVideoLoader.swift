@@ -12,7 +12,8 @@
 
 import Foundation
 
-import Hub
+import HuggingFace
+import struct Hub.Config
 import MLX
 import MLXNN
 import Tokenizers
@@ -36,19 +37,19 @@ public enum LTXVideoLoaderError: Error, LocalizedError {
 
 public enum LTXVideoLoader {
     public static func localDirectory(
-        hub: HubApi = .system,
+        hub: HubCache = .default,
         configuration: LTXVideoConfiguration
-    ) -> URL {
-        hub.localRepoLocation(Hub.Repo(id: configuration.id))
+    ) throws -> URL {
+        try hub.modelDirectory(id: configuration.id)
     }
 
     public static func resolve(
-        hub: HubApi = .system,
+        hub: HubCache = .default,
         configuration: LTXVideoConfiguration,
         key: LTXVideoFileKey
     ) throws -> URL {
         precondition(configuration.files.keys.contains(key), "configuration \(configuration.id) missing key: \(key)")
-        return localDirectory(hub: hub, configuration: configuration)
+        return try localDirectory(hub: hub, configuration: configuration)
             .appending(component: configuration.files[key]!)
     }
 
@@ -146,7 +147,7 @@ public enum LTXVideoLoader {
     }
 
     public static func loadTextEncoder(
-        hub: HubApi = .system,
+        hub: HubCache = .default,
         configuration: LTXVideoConfiguration
     ) throws -> LTXVideoTextEncoder {
         try loadTextEncoder(
@@ -156,7 +157,7 @@ public enum LTXVideoLoader {
     }
 
     static func loadTextEncoder(
-        hub: HubApi = .system,
+        hub: HubCache = .default,
         configuration: LTXVideoConfiguration,
         quantization: LTXVideoQuantization?
     ) throws -> LTXVideoTextEncoder {
@@ -173,21 +174,21 @@ public enum LTXVideoLoader {
     }
 
     public static func loadTokenizer(
-        hub: HubApi = .system,
+        hub: HubCache = .default,
         configuration: LTXVideoConfiguration
     ) async throws -> Tokenizer {
         let directory = try resolve(hub: hub, configuration: configuration, key: .tokenizer)
-        let tokenizerData = try hub.configuration(
-            fileURL: directory.appending(component: "tokenizer.json"))
-        let tokenizerConfig = try hub.configuration(
-            fileURL: directory.appending(component: "tokenizer_config.json"))
+        let tokenizerDirectory = try hub.modelDirectory(id: LTXVideoConfiguration.tokenizerRepositoryID)
+        let tokenizerData = try JSONDecoder().decode(
+            Config.self, from: Data(contentsOf: tokenizerDirectory.appending(component: "tokenizer.json")))
+        let tokenizerConfig = try JSONDecoder().decode(Config.self, from: Data(contentsOf: directory.appending(component: "tokenizer_config.json")))
         return try AutoTokenizer.from(
             tokenizerConfig: tokenizerConfig,
             tokenizerData: tokenizerData)
     }
 
     public static func loadTransformer(
-        hub: HubApi = .system,
+        hub: HubCache = .default,
         configuration: LTXVideoConfiguration
     ) throws -> LTXVideoTransformer3DModel {
         try loadTransformer(
@@ -197,7 +198,7 @@ public enum LTXVideoLoader {
     }
 
     static func loadTransformer(
-        hub: HubApi = .system,
+        hub: HubCache = .default,
         configuration: LTXVideoConfiguration,
         quantization: LTXVideoQuantization?
     ) throws -> LTXVideoTransformer3DModel {
@@ -223,7 +224,7 @@ public enum LTXVideoLoader {
     }
 
     public static func loadVAE(
-        hub: HubApi = .system,
+        hub: HubCache = .default,
         configuration: LTXVideoConfiguration
     ) throws -> LTXVideoVAE {
         let model = LTXVideoVAE(configuration: configuration.vae)

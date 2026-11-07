@@ -11,7 +11,7 @@ import Tokenizers
 
 enum ToolDefinition {
 
-    /// Repositories downloaded for media tools, which live in `HubApi.system`.
+    /// Repositories downloaded for media tools, which live in `HubCache.default`.
     static let modelIDs: Set<String> = [
         StableDiffusionConfiguration.presetSDXLTurbo.id,
         LTXVideoConfiguration.ltxv2BDistilled.id,
@@ -56,8 +56,10 @@ enum ToolDefinition {
     /// connector, and are never deferred because the user installed them to be used.
     static func allToolSchema(for chat: Chat?) -> [ToolSpec] {
         var tools = coreTools.map(\.schema)
+        if let chat { tools.append(TaskTool.task(chatID: chat.id).schema) }
         if let projectID = chat?.project?.persistentModelID {
             tools.append(SearchTool.searchProject(projectID: projectID).schema)
+            tools.append(ModelCraftTool.projectMemory(projectID: projectID).schema)
         }
         tools += Connector.allCases.flatMap(ConnectorTool.schemas(of:))
         if UserDefaults.standard.value(
@@ -79,7 +81,7 @@ enum ToolDefinition {
     static func foundToolNames(in chat: Chat?) -> [String] {
         guard let chat else { return [] }
         var names: [String] = []
-        for message in chat.conversation
+        for message in chat.activeTicket?.session?.history ?? chat.conversation
         where message.role == .tool && message.status == .generated
             && message.toolCall?.function.name == ToolNames.searchTools {
             guard let output = try? JSONDecoder().decode(

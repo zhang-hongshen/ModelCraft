@@ -17,7 +17,7 @@ enum ChatComposerCommand {
     case dismiss
 }
 
-struct ChatInputView<Header: View, Content: View>: View {
+struct ChatInputView<VoiceContent: View, Content: View>: View {
     
     @Bindable var userInput: Message
     let skillNames: [String]?
@@ -25,9 +25,12 @@ struct ChatInputView<Header: View, Content: View>: View {
     @Binding var selectionLocation: Int
     @Binding var slashCommandLocation: Int?
     let onCommand: (ChatComposerCommand) -> Bool
-    var header: () -> Header
+    let isVoiceInputActive: Bool
+    var voiceContent: () -> VoiceContent
     var trailing: () -> Content
     
+    @Environment(\.isEnabled) private var isEnabled
+
     @State private var fileImporterPresented = false
     @State private var photosPickerPresented = false
     @State private var selectedImages: [PhotosPickerItem] = []
@@ -39,7 +42,8 @@ struct ChatInputView<Header: View, Content: View>: View {
         selectionLocation: Binding<Int> = .constant(0),
         slashCommandLocation: Binding<Int?> = .constant(nil),
         onCommand: @escaping (ChatComposerCommand) -> Bool = { _ in false },
-        @ViewBuilder header: @escaping () -> Header,
+        isVoiceInputActive: Bool,
+        @ViewBuilder voiceContent: @escaping () -> VoiceContent,
         @ViewBuilder trailing: @escaping () -> Content
     ) {
         self._userInput = Bindable(userInput)
@@ -48,30 +52,11 @@ struct ChatInputView<Header: View, Content: View>: View {
         self._selectionLocation = selectionLocation
         self._slashCommandLocation = slashCommandLocation
         self.onCommand = onCommand
-        self.header = header
+        self.isVoiceInputActive = isVoiceInputActive
+        self.voiceContent = voiceContent
         self.trailing = trailing
     }
 
-    init(
-        userInput: Message,
-        skillNames: [String]? = nil,
-        placeholder: LocalizedStringKey = "Type Anything",
-        selectionLocation: Binding<Int> = .constant(0),
-        slashCommandLocation: Binding<Int?> = .constant(nil),
-        onCommand: @escaping (ChatComposerCommand) -> Bool = { _ in false },
-        @ViewBuilder trailing: @escaping () -> Content
-    ) where Header == EmptyView {
-        self.init(
-            userInput: userInput,
-            skillNames: skillNames,
-            placeholder: placeholder,
-            selectionLocation: selectionLocation,
-            slashCommandLocation: slashCommandLocation,
-            onCommand: onCommand,
-            header: EmptyView.init,
-            trailing: trailing)
-    }
-    
     var body: some View {
         MainView()
             .dropDestination(for: URL.self){ items, location in
@@ -107,9 +92,7 @@ extension ChatInputView {
     
     @ViewBuilder
     func MainView() -> some View {
-        VStack(alignment: .leading) {
-            header()
-
+        VStack(alignment: .leading, spacing: 8) {
             if !userInput.files.isEmpty {
                 ScrollView(.horizontal) {
                     HStack(alignment: .center) {
@@ -123,43 +106,58 @@ extension ChatInputView {
                 }
             }
             
-            if let skillNames {
-                ZStack(alignment: .topLeading) {
-                    if userInput.content.isEmpty {
-                        Text(placeholder)
-                            .foregroundStyle(.tertiary)
-                            .allowsHitTesting(false)
-                    }
-
-                    ModelCraftTextEditor(
-                        text: $userInput.content,
-                        tokens: skillNames.map { "/\($0)" },
-                        tokenSystemImage: "cube",
-                        selectionLocation: $selectionLocation,
-                        slashCommandLocation: $slashCommandLocation,
-                        onCommand: onCommand)
-                }
-            } else {
-                TextField(placeholder, text: $userInput.content, axis: .vertical)
-                    .lineLimit(1...3)
-                    .textFieldStyle(.plain)
-                    .contentMargins(.trailing, 0, for: .scrollIndicators)
-                    .scrollIndicators(.automatic)
-                    .padding(.trailing, -16)
-            }
-            
-            HStack(alignment: .center) {
+            HStack(alignment: .center, spacing: 8) {
                 UploadButton()
-                Spacer()
+                    .disabled(isVoiceInputActive)
+
+                ZStack {
+                    Editor()
+                        .opacity(isVoiceInputActive ? 0 : 1)
+                        .disabled(isVoiceInputActive)
+                        .accessibilityHidden(isVoiceInputActive)
+                        .frame(maxHeight: isVoiceInputActive ? 36 : nil)
+                        .clipped()
+
+                    if isVoiceInputActive {
+                        voiceContent()
+                    }
+                }
+                .frame(maxWidth: .infinity, minHeight: 36)
+
                 trailing()
             }
         }
-        .padding()
-        .background(
-            RoundedRectangle().fill(.surface)
-        )
+        .padding(8)
+        .background(.surface, in: RoundedRectangle(cornerRadius: 26))
     }
-    
+
+    @ViewBuilder
+    private func Editor() -> some View {
+        if let skillNames {
+            ZStack(alignment: .topLeading) {
+                if userInput.content.isEmpty {
+                    Text(placeholder)
+                        .foregroundStyle(.tertiary)
+                        .allowsHitTesting(false)
+                }
+
+                ModelCraftTextEditor(
+                    text: $userInput.content,
+                    tokens: skillNames.map { "/\($0)" },
+                    tokenSystemImage: "cube",
+                    isEditable: !isVoiceInputActive && isEnabled,
+                    selectionLocation: $selectionLocation,
+                    slashCommandLocation: $slashCommandLocation,
+                    onCommand: onCommand)
+            }
+        } else {
+            TextField(placeholder, text: $userInput.content, axis: .vertical)
+                .lineLimit(1...6)
+                .textFieldStyle(.plain)
+                .scrollIndicators(.hidden)
+        }
+    }
+
     @ViewBuilder
     func UploadButton() -> some View {
         Menu {
@@ -178,10 +176,14 @@ extension ChatInputView {
             Image(systemName: "plus")
                 .font(.title3)
                 .frame(width: 36, height: 36)
+                .background(.quaternary, in: Circle())
+                .contentShape(Circle())
         }
         .menuIndicator(.hidden)
         .menuStyle(.borderlessButton)
+        .fixedSize()
         .help("Add Files")
+        .accessibilityLabel("Add Files")
     }
 }
 
@@ -198,6 +200,7 @@ private struct ModelCraftTextEditor: NSViewRepresentable {
     @Binding var text: String
     let tokens: [String]
     let tokenSystemImage: String
+    let isEditable: Bool
     @Binding var selectionLocation: Int
     @Binding var slashCommandLocation: Int?
     let onCommand: (ChatComposerCommand) -> Bool
@@ -210,9 +213,8 @@ private struct ModelCraftTextEditor: NSViewRepresentable {
         let scrollView = NSScrollView()
         scrollView.drawsBackground = false
         scrollView.borderType = .noBorder
-        scrollView.hasVerticalScroller = true
-        scrollView.autohidesScrollers = true
-        scrollView.scrollerStyle = .overlay
+        scrollView.hasVerticalScroller = false
+        scrollView.hasHorizontalScroller = false
 
         let textView = NSTextView()
         textView.delegate = context.coordinator
@@ -243,6 +245,17 @@ private struct ModelCraftTextEditor: NSViewRepresentable {
     func updateNSView(_ scrollView: NSScrollView, context: Context) {
         guard let textView = scrollView.documentView as? NSTextView else { return }
         context.coordinator.parent = self
+        textView.isEditable = isEditable
+        textView.isSelectable = isEditable
+        if !isEditable {
+            context.coordinator.restoreFocus = true
+            if textView.window?.firstResponder === textView {
+                textView.window?.makeFirstResponder(nil)
+            }
+        } else if isEditable, context.coordinator.restoreFocus {
+            context.coordinator.restoreFocus = false
+            textView.window?.makeFirstResponder(textView)
+        }
         context.coordinator.updateIfNeeded(textView)
     }
 
@@ -267,15 +280,19 @@ private struct ModelCraftTextEditor: NSViewRepresentable {
         layoutManager.ensureLayout(for: textContainer)
 
         let lineHeight = layoutManager.defaultLineHeight(for: Self.font)
-        let contentHeight = ceil(layoutManager.usedRect(for: textContainer).height)
+        // Include the insertion line after a trailing newline when sizing the editor.
+        let contentHeight = ceil(max(
+            layoutManager.usedRect(for: textContainer).maxY,
+            layoutManager.extraLineFragmentRect.maxY))
         return CGSize(
             width: width,
-            height: min(max(contentHeight, lineHeight), lineHeight * 3))
+            height: min(max(contentHeight, ceil(lineHeight)), ceil(lineHeight * 6)))
     }
 
     final class Coordinator: NSObject, NSTextViewDelegate {
 
         var parent: ModelCraftTextEditor
+        var restoreFocus = false
         private var isRendering = false
         private var renderedTokens: [String] = []
         private var tokenRegex: NSRegularExpression?
@@ -529,6 +546,8 @@ private extension NSAttributedString.Key {
 #Preview(traits: .preview) {
     ChatInputView(
         userInput: Message(chat: .preview),
+        isVoiceInputActive: false,
+        voiceContent: { EmptyView() },
         trailing: {})
 }
 #endif

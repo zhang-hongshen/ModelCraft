@@ -105,6 +105,13 @@ struct ProjectEdition: View {
                 .frame(minHeight: 150)
             }
             
+            DisclosureGroup("Project Memory") {
+                TextEditor(text: $project.memory)
+                    .font(.body)
+                    .frame(minHeight: 100)
+                    .accessibilityLabel("Project Memory")
+            }
+
             OpearationButtons()
         }
         .padding()

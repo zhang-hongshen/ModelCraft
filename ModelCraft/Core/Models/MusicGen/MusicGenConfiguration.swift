@@ -7,7 +7,7 @@
 
 import Foundation
 
-import Hub
+import HuggingFace
 
 public struct MusicGenConfiguration: Sendable {
     
@@ -27,13 +27,13 @@ public struct MusicGenConfiguration: Sendable {
     
     
     public func download(
-        hub: HubApi = .system, progressHandler: @escaping (Progress) -> Void = { _ in }
+        hub: HubCache = .default, progressHandler: @escaping (Progress) -> Void = { _ in }
     ) async throws {
-        let repo = Hub.Repo(id: self.id)
-        try await hub.snapshot(
-            from: repo, matching: ["*.json", "state_dict.bin"], progressHandler: progressHandler)
-        try await audioEncoderParameters.download()
-        try await textEncoderParameters.download()
+        let repo = self.id
+        try await hub.downloadSnapshot(
+            id: repo, matching: ["*.json", "state_dict.bin"], progressHandler: progressHandler)
+        try await audioEncoderParameters.download(hub: hub, progressHandler: progressHandler)
+        try await textEncoderParameters.download(hub: hub, progressHandler: progressHandler)
     }
     
     public static let small = MusicGenConfiguration(
@@ -221,11 +221,11 @@ public struct MusicGenAudioEncoderParameters: Codable, Sendable {
     public let useConvShortcut: Bool?
     
     public func download(
-        hub: HubApi = .system, progressHandler: @escaping (Progress) -> Void = { _ in }
+        hub: HubCache = .default, progressHandler: @escaping (Progress) -> Void = { _ in }
     ) async throws {
-        let repo = Hub.Repo(id: self.id)
-        try await hub.snapshot(
-            from: repo, matching: ["*.json", "*.safetensors", "*.model"], progressHandler: progressHandler)
+        let repo = self.id
+        try await hub.downloadSnapshot(
+            id: repo, matching: ["*.json", "*.safetensors", "*.model"], progressHandler: progressHandler)
     }
 }
 
@@ -246,11 +246,11 @@ public struct MusicGenTextEncoderParameters: Codable, Sendable {
     public let vocabSize: Int
     
     public func download(
-        hub: HubApi = .system, progressHandler: @escaping (Progress) -> Void = { _ in }
+        hub: HubCache = .default, progressHandler: @escaping (Progress) -> Void = { _ in }
     ) async throws {
-        let repo = Hub.Repo(id: self.id)
-        try await hub.snapshot(
-            from: repo, matching: ["*.json", "*.safetensors", "*.model"], progressHandler: progressHandler)
+        let repo = self.id
+        try await hub.downloadSnapshot(
+            id: repo, matching: ["*.json", "*.safetensors", "*.model"], progressHandler: progressHandler)
     }
     
 }

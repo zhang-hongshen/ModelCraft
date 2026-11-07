@@ -6,7 +6,7 @@
 //
 
 import Foundation
-import Hub
+import HuggingFace
 import MLX
 import MLXNN
 
@@ -19,7 +19,7 @@ struct StableDiffusionConditioning {
 /// Base class for Stable Diffusion.
 open class StableDiffusion {
 
-    let hub: HubApi
+    let hub: HubCache
     let configuration: StableDiffusionConfiguration
     let loadConfiguration: LoadConfiguration
     let dType: DType
@@ -40,7 +40,7 @@ open class StableDiffusion {
     }
 
     internal init(
-        hub: HubApi, configuration: StableDiffusionConfiguration,
+        hub: HubCache, configuration: StableDiffusionConfiguration,
         loadConfiguration: LoadConfiguration,
         diffusionConfiguration: DiffusionConfiguration? = nil,
         sampler: SimpleEulerSampler? = nil,
@@ -265,7 +265,7 @@ open class StableDiffusion {
 open class StableDiffusionBase: StableDiffusion, TextToImageGenerator {
 
     public init(
-        hub: HubApi, configuration: StableDiffusionConfiguration,
+        hub: HubCache, configuration: StableDiffusionConfiguration,
         loadConfiguration: LoadConfiguration
     ) throws {
         try super.init(
@@ -295,7 +295,7 @@ open class StableDiffusionXL: StableDiffusion, TextToImageGenerator {
     let tokenizer2: StableDiffusionTokenizer
 
     public init(
-        hub: HubApi, configuration: StableDiffusionConfiguration,
+        hub: HubCache, configuration: StableDiffusionConfiguration,
         loadConfiguration: LoadConfiguration
     ) throws {
         let diffusionConfiguration = try StableDiffusionLoader.loadConfiguration(

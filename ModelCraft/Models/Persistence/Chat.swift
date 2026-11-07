@@ -22,10 +22,17 @@ class Chat {
     /// The first message after the part of the conversation `summary` replaces.
     var summaryBoundaryID: UUID? = nil
 
+    @Relationship(inverse: \Ticket.activeThreads) var activeTicket: Ticket?
+
+    @Relationship(deleteRule: .cascade, inverse: \Ticket.thread)
+    var tickets: [Ticket] = []
     var project: Project? = nil
 
     /// The schedule whose run created this chat.
     var schedule: Schedule? = nil
+
+    /// The Claude Code or Codex session this chat was imported from.
+    var importedSessionID: String? = nil
     
     @Relationship(deleteRule: .cascade, inverse: \Message.chat)
     var messages: [Message] = []
@@ -115,6 +122,17 @@ extension Chat {
     /// what the deleted one followed, so the chain stays unbroken.
     @MainActor
     func deleteMessages(_ messages: [Message]) {
+        let deletedIDs = Set(messages.map(\.id))
+        for session in messages.flatMap(\.executorSessions) {
+            let history = session.history
+            if let boundary = session.checkpointThroughID,
+               let index = history.firstIndex(where: { $0.id == boundary }),
+               history.prefix(index + 1).contains(where: { deletedIDs.contains($0.id) }) {
+                session.discardCheckpoint()
+            }
+            session.messages.removeAll { deletedIDs.contains($0.id) }
+            session.eventIDs.removeAll { deletedIDs.contains($0) }
+        }
         let parentIDs = Dictionary(messages.map { ($0.id, $0.parentID) }) { first, _ in first }
         self.messages.removeAll { parentIDs.keys.contains($0.id) }
         for message in self.messages {
@@ -133,6 +151,21 @@ extension Chat {
         else { return }
         self.summaryBoundaryID = nil
         summary = nil
+    }
+
+    @MainActor
+    func settleInterruptedMessages() {
+        for message in messages where message.status == .generating || message.status == .new {
+            if message.role == .tool && message.toolCallResult == nil {
+                let text = "Execution interrupted. The action may have taken effect; verify its current state before repeating it."
+                message.content = text
+                message.toolCallResult = .error(text)
+                message.status = .failed
+            } else {
+                message.status = .generated
+            }
+        }
+        deleteMessages(messages.filter { $0.role == .assistant && $0.content.isEmpty && $0.toolCall == nil })
     }
 
     /// Stores written before messages recorded their parent kept each chat in `createdAt`

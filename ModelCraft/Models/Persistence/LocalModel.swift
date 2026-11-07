@@ -8,7 +8,9 @@
 import Foundation
 import Observation
 
-import Hub
+import HuggingFace
+import MLXLLM
+import MLXVLM
 
 struct LocalModel: ModelEntity, Hashable, Sendable {
 
@@ -42,16 +44,14 @@ final class LocalModelStore {
 
     private(set) var models: [LocalModel]
 
-    private let modelsDirectory: URL?
+    private var reloadGeneration = 0
     private let fileManager: FileManager
 
     init(
         models: [LocalModel] = [],
-        modelsDirectory: URL? = nil,
         fileManager: FileManager = .default
     ) {
         self.models = models
-        self.modelsDirectory = modelsDirectory
         self.fileManager = fileManager
     }
 
@@ -59,57 +59,58 @@ final class LocalModelStore {
         models.contains { $0.id == modelID }
     }
 
-    func reload() {
-        models = discoverModels()
-    }
-
-    private func discoverModels() -> [LocalModel] {
-        let modelsDirectory = modelsDirectory ?? HubApi.modelsDirectory
-        guard let authors = try? fileManager.contentsOfDirectory(
-            at: modelsDirectory,
-            includingPropertiesForKeys: [.isDirectoryKey],
-            options: [.skipsHiddenFiles]
-        ) else {
-            return []
-        }
-
-        return authors.flatMap { authorDirectory -> [LocalModel] in
-            guard isDirectory(authorDirectory),
-                  let modelDirectories = try? fileManager.contentsOfDirectory(
-                    at: authorDirectory,
-                    includingPropertiesForKeys: [
-                        .isDirectoryKey,
-                        .creationDateKey,
-                        .contentModificationDateKey,
-                    ],
-                    options: [.skipsHiddenFiles]
-                  ) else {
-                return []
-            }
-
-            return modelDirectories.compactMap { modelDirectory in
-                let modelID = "\(authorDirectory.lastPathComponent)/\(modelDirectory.lastPathComponent)"
-                guard isDirectory(modelDirectory) else {
-                    return nil
-                }
-                let values = try? modelDirectory.resourceValues(forKeys: [
-                    .creationDateKey,
-                    .contentModificationDateKey,
-                ])
-                return LocalModel(
-                    id: modelID,
-                    size: directorySize(at: modelDirectory),
-                    createdAt: values?.creationDate ?? values?.contentModificationDate ?? .distantPast,
-                    contextWindow: ModelContextConfiguration.contextWindow(
-                        in: modelDirectory)
-                )
+    func reload() async {
+        reloadGeneration += 1
+        let generation = reloadGeneration
+        var discovered: [String: URL] = [:]
+        let cache = HubCache.default
+        let repositories = (try? fileManager.contentsOfDirectory(
+            at: cache.cacheDirectory, includingPropertiesForKeys: [.isDirectoryKey],
+            options: [.skipsHiddenFiles])) ?? []
+        for repository in repositories where repository.lastPathComponent.hasPrefix("models--") {
+            let id = String(repository.lastPathComponent.dropFirst("models--".count))
+                .replacingOccurrences(of: "--", with: "/")
+            if let directory = cache.cachedModelDirectory(id: id) {
+                discovered[id] = directory
             }
         }
-        .sorted { $0.createdAt > $1.createdAt }
+
+        var result: [LocalModel] = []
+        for (id, directory) in discovered {
+            guard !ToolDefinition.modelIDs.contains(id) else { continue }
+            guard let data = try? Data(contentsOf: directory.appending(path: "config.json")),
+                  let config = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let modelType = config["model_type"] as? String else { continue }
+            // A shared cache also contains speech, diffusion and Python-only models.
+            let supported = await LLMTypeRegistry.shared.contains(modelType)
+            let visionSupported = await VLMTypeRegistry.shared.contains(modelType)
+            guard supported || visionSupported || id == DeepSeekFlashConfiguration.repositoryID,
+                  hasWeights(in: directory) else { continue }
+            let values = try? directory.resourceValues(forKeys: [.creationDateKey, .contentModificationDateKey])
+            result.append(LocalModel(
+                id: id, size: directorySize(at: directory),
+                createdAt: values?.creationDate ?? values?.contentModificationDate ?? .distantPast,
+                contextWindow: ModelContextConfiguration.contextWindow(in: directory)))
+        }
+        guard generation == reloadGeneration, !Task.isCancelled else { return }
+        models = result.sorted {
+            $0.createdAt == $1.createdAt ? $0.id < $1.id : $0.createdAt > $1.createdAt
+        }
     }
 
-    private func isDirectory(_ url: URL) -> Bool {
-        (try? url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true
+    private func hasWeights(in directory: URL) -> Bool {
+        let indexURL = directory.appending(path: "model.safetensors.index.json")
+        if fileManager.fileExists(atPath: indexURL.path) {
+            guard let data = try? Data(contentsOf: indexURL),
+                  let index = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let weights = index["weight_map"] as? [String: String], !weights.isEmpty else { return false }
+            return Set(weights.values).allSatisfy {
+                fileManager.fileExists(atPath: directory.appending(path: $0).path)
+            }
+        }
+        let files = (try? fileManager.contentsOfDirectory(
+            at: directory, includingPropertiesForKeys: nil)) ?? []
+        return files.contains { $0.pathExtension == "safetensors" }
     }
 
     private func directorySize(at directory: URL) -> Int64 {
@@ -123,7 +124,7 @@ final class LocalModelStore {
 
         return enumerator.reduce(into: Int64(0)) { result, item in
             guard let fileURL = item as? URL,
-                  let values = try? fileURL.resourceValues(forKeys: [
+                  let values = try? fileURL.resolvingSymlinksInPath().resourceValues(forKeys: [
                     .isRegularFileKey,
                     .fileSizeKey,
                   ]),

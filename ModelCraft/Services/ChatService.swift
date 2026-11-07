@@ -23,6 +23,9 @@ final class ChatService {
     private var currentRequestID: UUID?
 
     private(set) var isCompacting = false
+    private(set) var executingChatID: UUID?
+
+    var isRunning: Bool { currentTask != nil }
 
     private static let compressionTrigger = 0.75
 
@@ -44,6 +47,7 @@ final class ChatService {
         guard currentRequestID == requestID else { return }
         currentTask = nil
         currentRequestID = nil
+        executingChatID = nil
     }
     
     func deleteChat(_ chat: Chat) {
@@ -55,6 +59,26 @@ final class ChatService {
         let chat = Chat(project: project)
         ModelContainer.shared.mainContext.persist(chat)
         return chat
+    }
+
+    func startTask(title: String, goal: String, model: LocalModel, chat: Chat) async throws {
+        guard !isRunning, !isCompacting else { throw TaskExecutionError.alreadyRunning }
+        let ticket = Ticket(goal: goal, thread: chat, title: title)
+        ModelContainer.shared.mainContext.insert(ticket)
+        chat.activeTicket = ticket
+        try ModelContainer.shared.mainContext.save()
+        try await sendMessage(model: model, chat: chat,
+                              message: Message(role: .user, chat: chat, content: goal))
+    }
+
+    func resumeTask(_ ticket: Ticket, content: String, model: LocalModel, chat: Chat) async throws {
+        guard !isRunning, !isCompacting, ticket.runningAssignment == nil else {
+            throw TaskExecutionError.alreadyRunning
+        }
+        chat.activeTicket = ticket
+        try ModelContainer.shared.mainContext.save()
+        try await sendMessage(model: model, chat: chat,
+                              message: Message(role: .user, chat: chat, content: content))
     }
     
     func sendMessage(
@@ -68,17 +92,12 @@ final class ChatService {
 
         let requestID = UUID()
         currentRequestID = requestID
+        executingChatID = chat.id
 
         message.moveFiles(to: chat.directory)
         ModelContainer.shared.mainContext.persist(message)
         let generationTask = Task {
-            try await compactContextIfNeeded(
-                model: model,
-                chat: chat)
-            try await executor.run(
-                model: model,
-                chat: chat,
-                messages: buildPrompt(chat: chat))
+            try await runAssignments(model: model, chat: chat, message: message)
         }
         currentTask = generationTask
         do {
@@ -90,9 +109,8 @@ final class ChatService {
         } catch {
             if currentRequestID == requestID {
                 currentTask = nil
-                // Leave no reply looking like it is still on its way.
-                chat.currentGeneratingAssistantMessage?.status = .generated
-                chat.deleteMessages(chat.messages.filter(\.isWaitingForModelResponse))
+                executingChatID = nil
+                chat.settleInterruptedMessages()
             }
             throw error
         }
@@ -108,6 +126,7 @@ final class ChatService {
         }
         guard currentRequestID == requestID else { return }
         currentTask = nil
+        executingChatID = nil
     }
     
     func resendMessage(
@@ -120,16 +139,41 @@ final class ChatService {
         guard let index = conversation.firstIndex(where: { $0.id == message.id }) else { return }
         chat.deleteMessages(Array(conversation[(index+1)...]))
         chat.discardStaleSummary()
+        // A resend starts from the retained thread, without memories of discarded work.
+        chat.activeTicket = nil
         try await sendMessage(
             model: model,
             chat: chat,
             message: message)
     }
 
+    /// Restores a user turn to a draft and discards that turn and its following messages.
+    func rewindMessage(chat: Chat, message: Message) async throws -> Message? {
+        await stopGenerating(chat: chat)
+        let conversation = chat.conversation
+        guard message.role == .user,
+              let index = conversation.firstIndex(where: { $0.id == message.id })
+        else { return nil }
+        let draft = Message(role: .user, content: message.content)
+        draft.addFiles(message.files)
+        chat.deleteMessages(Array(conversation[index...]))
+        chat.discardStaleSummary()
+        chat.activeTicket = nil
+        chat.tokenCount = 0
+        try ModelContainer.shared.mainContext.save()
+        return draft
+    }
+
     func compactContext(
         model: LocalModel,
         chat: Chat
     ) async throws {
+        if let session = chat.activeTicket?.session {
+            try await compactSession(model: model, session: session)
+            chat.tokenCount = try await LMService.shared.tokenCount(
+                model: model, messages: buildPrompt(chat: chat), tools: availableTools(for: chat))
+            return
+        }
         let messages = chat.conversation
         let startIndex = summaryStartIndex(of: chat, in: messages)
 
@@ -161,31 +205,98 @@ final class ChatService {
         chat.summaryBoundaryID = messages[endIndex].id
         try ModelContainer.shared.mainContext.save()
         
-        let tokenCount = try await LMService.shared.tokenCount(
+        chat.tokenCount = try await LMService.shared.tokenCount(
             model: model,
             messages: buildPrompt(
                 chat: chat),
             tools: availableTools(for: chat))
     }
 
-    private func compactContextIfNeeded(
-        model: LocalModel,
-        chat: Chat
-    ) async throws {
-        let tokenCount = try await LMService.shared.tokenCount(
-            model: model,
-            messages: buildPrompt(chat: chat),
-            tools: availableTools(for: chat))
-
-        guard tokenCount >= Int(
-            Self.compressionTrigger * Double(model.contextWindow)
-        ) else {
-            return
+    private func runAssignments(model: LocalModel, chat: Chat, message: Message) async throws {
+        let context = ModelContainer.shared.mainContext
+        if chat.activeTicket == nil {
+            chat.settleInterruptedMessages()
+            let ticket = Ticket(goal: message.content, thread: chat)
+            context.insert(ticket)
+            chat.activeTicket = ticket
+            // Adopt legacy history once. A newly started task does not inherit another
+            // task's session or turn a thread checkpoint into task memory.
+            let history = chat.conversation.filter { $0.id != message.id }
+            ticket.session?.messages = history
+            ticket.session?.eventIDs = history.map(\.id)
+            if let boundary = chat.summaryBoundaryID,
+               let index = history.firstIndex(where: { $0.id == boundary }), index > 0 {
+                ticket.session?.checkpoint = chat.summary
+                ticket.session?.checkpointThroughID = history[index - 1].id
+            } else if chat.summaryBoundaryID == message.id, let last = history.last {
+                ticket.session?.checkpoint = chat.summary
+                ticket.session?.checkpointThroughID = last.id
+            }
         }
-        try await compactContext(
-            model: model,
-            chat: chat
-        )
+        while let ticket = chat.activeTicket, let session = ticket.session {
+            try Task.checkCancellation()
+            guard !ticket.assignments.contains(where: { $0.endedAt == nil }) else {
+                throw TaskExecutionError.alreadyRunning
+            }
+            let assignment = Assignment(ticket: ticket, thread: chat, modelID: model.id)
+            context.insert(assignment)
+            if !session.inputs.contains(where: { $0.sourceMessageID == message.id && $0.consumedAt == nil }) {
+                context.insert(TaskInput(message: message, session: session, assignmentID: assignment.id))
+            }
+            let previousReport = ticket.assignments.flatMap(\.reports).max { $0.createdAt < $1.createdAt }
+            assignment.report(.working, content: previousReport?.content ?? String(localized: "Execution started."))
+            try context.save()
+            do {
+                try await executor.run(model: model, chat: chat, assignment: assignment) {
+                    var prompt = self.buildPrompt(chat: chat, ticket: ticket)
+                    let count = try await LMService.shared.tokenCount(
+                        model: model, messages: prompt, tools: self.availableTools(for: chat))
+                    if count >= Int(Self.compressionTrigger * Double(model.contextWindow)) {
+                        try await self.compactSession(model: model, session: session)
+                        prompt = self.buildPrompt(chat: chat, ticket: ticket)
+                    }
+                    try Task.checkCancellation()
+                    for input in session.inputs where input.consumedAt == nil {
+                        input.assignmentID = assignment.id
+                        input.consumedAt = .now
+                    }
+                    try context.save()
+                    return prompt
+                }
+                try Task.checkCancellation()
+                let switchedTask = chat.activeTicket?.id != ticket.id
+                let status = ticket.status == .working ? TicketStatus.waiting : ticket.status
+                let reply = session.history.last(where: { $0.role == .assistant })?.content ?? ""
+                try assignment.finish(status, content: switchedTask
+                    ? "Execution handed off to the selected task." : reply)
+                if !switchedTask { break }
+            } catch {
+                chat.settleInterruptedMessages()
+                try assignment.finish(Task.isCancelled ? .paused : .failed,
+                                      content: Task.isCancelled
+                                        ? String(localized: "Execution stopped. Continue when you are ready.")
+                                        : error.localizedDescription)
+                throw error
+            }
+        }
+    }
+
+    private func compactSession(model: LocalModel, session: ExecutorSession) async throws {
+        let messages = session.context
+        // Keep a complete protocol tail; even a single long tool turn can compact.
+        let latestUser = messages.lastIndex { $0.role == .user }
+        let endIndex = latestUser.map { $0 > 0 ? $0 : messages.count - 1 }
+            ?? (messages.count - 1)
+        guard endIndex > 0 else { return }
+        let prefix = Array(messages.prefix(endIndex))
+        guard !prefix.contains(where: { $0.status == .generating || $0.status == .new }) else { return }
+        isCompacting = true
+        defer { isCompacting = false }
+        let summary = try await summarize(model: model, previousSummary: session.checkpoint, messages: prefix)
+        try Task.checkCancellation()
+        session.checkpoint = summary
+        session.checkpointThroughID = prefix.last?.id
+        try ModelContainer.shared.mainContext.save()
     }
     
     private func generateTitleIfNeeded (model: LocalModel, chat: Chat) async throws {
@@ -203,11 +314,7 @@ final class ChatService {
         metadataTask?.cancel()
         metadataTask = nil
         await cancelCurrentGeneration()
-        if let currentMessage = chat.currentGeneratingAssistantMessage {
-            currentMessage.status = .generated
-        }
-        // A reply cancelled before its first token has no content to keep.
-        chat.deleteMessages(chat.messages.filter(\.isWaitingForModelResponse))
+        chat.settleInterruptedMessages()
     }
 
     private func summarize(
@@ -224,17 +331,26 @@ final class ChatService {
 
         parts.append(PromptBuilder.compressionText(messages))
 
-        return try await LMService.shared.generateAuxiliary(
+        let summary = try await LMService.shared.generateAuxiliary(
             model: model,
             messages: PromptBuilder.summarize(
                 conversation: parts.joined(separator: "\n")
             )
         )
+        guard !summary.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            throw TaskExecutionError.emptyCheckpoint
+        }
+        return summary
     }
 
     private func buildPrompt(
-        chat: Chat?
+        chat: Chat?, ticket: Ticket? = nil
     ) -> [MLXLMCommon.Chat.Message] {
+        if let ticket = ticket ?? chat?.activeTicket, let session = ticket.session {
+            return LMService.shared.protocolMessages([
+                PromptBuilder.system(project: chat?.project, summary: session.checkpoint, ticket: ticket)
+            ] + session.context)
+        }
         var history: [Message] = []
         var messages = [PromptBuilder.system(project: chat?.project, summary: chat?.summary)]
         if let chat {
@@ -253,6 +369,17 @@ final class ChatService {
 
     private func availableTools(for chat: Chat?) -> [ToolSpec] {
         ToolDefinition.allToolSchema(for: chat)
+    }
+}
+
+private enum TaskExecutionError: LocalizedError {
+    case alreadyRunning, emptyCheckpoint
+
+    var errorDescription: String? {
+        switch self {
+        case .alreadyRunning: String(localized: "This task is already running.")
+        case .emptyCheckpoint: String(localized: "The model returned an empty context checkpoint.")
+        }
     }
 }
 

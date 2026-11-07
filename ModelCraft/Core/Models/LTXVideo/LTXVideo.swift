@@ -12,7 +12,6 @@
 
 import Foundation
 
-import Hub
 import MLX
 
 public final class LTXVideo {

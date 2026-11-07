@@ -19,6 +19,7 @@ class Message {
     /// up from its leaf, so the order of `Chat.messages` never matters.
     var parentID: UUID?
     var chat: Chat?
+    var executorSessions: [ExecutorSession] = []
     var role: MessageRole
     var content: String
     var files: [URL]

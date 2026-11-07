@@ -196,7 +196,6 @@ struct PreviewEnvironment: PreviewModifier {
                 globalStore: GlobalStore()))
             .environment(UserSettings())
             .environment(STTService())
-            .environment(TTSService())
     }
 }
 

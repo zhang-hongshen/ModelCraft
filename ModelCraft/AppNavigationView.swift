@@ -7,7 +7,6 @@
 
 import SwiftUI
 import SwiftData
-import UniformTypeIdentifiers
 
 struct AppNavigationView: View {
 
@@ -17,8 +16,6 @@ struct AppNavigationView: View {
     @State private var chatToRename: Chat?
     @State private var chatTitle = ""
     @State private var isRenamePresented = false
-    @State private var isImportingSession = false
-    @State private var importError: String?
 
     @Query(Project.fetch()) private var projects: [Project]
 
@@ -34,14 +31,15 @@ struct AppNavigationView: View {
                 Label("New Chat", systemImage: "square.and.pencil")
             }
             .buttonStyle(.borderless)
+            .modifier(FileDropTarget { globalStore.startNewChat(attaching: $0) })
 
             Label("Model Store", systemImage: "storefront")
                 .tag(AppNavigationTab.modelStore)
-            Label("Downloaded Models", systemImage: "shippingbox")
+            Label("Downloaded", systemImage: "shippingbox")
                 .tag(AppNavigationTab.downloadedModels)
             Label("Connectors", systemImage: "app.connected.to.app.below.fill")
                 .tag(AppNavigationTab.connectors)
-            Label("Scheduled Tasks", systemImage: "clock.arrow.circlepath")
+            Label("Scheduled", systemImage: "clock.arrow.circlepath")
                 .tag(AppNavigationTab.schedules)
 
             ProjectSidebarSection(
@@ -77,53 +75,22 @@ struct AppNavigationView: View {
             }
             .disabled(chatTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         }
-        .fileImporter(
-            isPresented: $isImportingSession,
-            allowedContentTypes: [UTType(filenameExtension: "jsonl", conformingTo: .text) ?? .text],
-            onCompletion: importSession)
-        .fileDialogDefaultDirectory(Chat.claudeCodeSessionsDirectory)
-        .alert("Import Failed", isPresented: Binding(
-            get: { importError != nil },
-            set: { if !$0 { importError = nil } })) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text(importError ?? "")
-        }
         .focusedSceneValue(\.sidebarCommands, sidebarCommands)
     }
 
     /// The File and Chat menus' actions, the same as the sidebar's buttons and context menus.
     private var sidebarCommands: SidebarMenuCommands {
         guard case .chat(let chat) = globalStore.currentTab else {
-            return SidebarMenuCommands(newProject: createProject, importSession: beginImportingSession)
+            return SidebarMenuCommands(newProject: createProject)
         }
         return SidebarMenuCommands(
             newProject: createProject,
-            importSession: beginImportingSession,
             renameChat: { beginRenaming(chat) },
             deleteChat: { deleteChat(chat) })
     }
 
     private func createProject() {
         selectedProject = Project()
-    }
-
-    private func beginImportingSession() {
-        isImportingSession = true
-    }
-
-    private func importSession(_ result: Result<URL, any Error>) {
-        do {
-            let url = try result.get()
-            let isAccessing = url.startAccessingSecurityScopedResource()
-            defer {
-                if isAccessing { url.stopAccessingSecurityScopedResource() }
-            }
-            let chat = try Chat.importClaudeCodeSession(at: url, projects: projects)
-            globalStore.currentTab = .chat(chat)
-        } catch {
-            importError = error.localizedDescription
-        }
     }
 
     private func editProject(_ project: Project) {
@@ -222,6 +189,7 @@ private struct ProjectSidebarRow: View {
 
     @State private var isExpanded = true
     @Query private var chats: [Chat]
+    @Environment(GlobalStore.self) private var globalStore
 
     init(
         project: Project,
@@ -284,6 +252,7 @@ private struct ProjectSidebarRow: View {
                 .buttonStyle(.borderless)
                 .help("New Chat")
             }
+            .modifier(FileDropTarget { globalStore.startNewChat(in: project, attaching: $0) })
             .contextMenu {
                 Button("Edit", action: onEdit)
                 DeleteButton(style: .textOnly, action: onDelete)
@@ -367,7 +336,6 @@ private struct ChatProjectMenu: View {
 /// Sidebar actions for the menu bar. A `nil` chat action is disabled in the menu.
 struct SidebarMenuCommands {
     var newProject: () -> Void
-    var importSession: () -> Void
     var renameChat: (() -> Void)?
     var deleteChat: (() -> Void)?
 }
@@ -381,3 +349,29 @@ extension FocusedValues {
     AppNavigationView()
 }
 #endif
+
+/// Starts a new chat with the files dropped on a sidebar row, highlighting the row while
+/// files are over it.
+private struct FileDropTarget: ViewModifier {
+
+    let onDrop: ([URL]) -> Void
+
+    @State private var isTargeted = false
+
+    func body(content: Content) -> some View {
+        content
+            .background {
+                if isTargeted {
+                    RoundedRectangle()
+                        .fill(.tint.opacity(0.15))
+                        .padding(-4)
+                }
+            }
+            .dropDestination(for: URL.self) { urls, _ in
+                onDrop(urls)
+                return true
+            } isTargeted: {
+                isTargeted = $0
+            }
+    }
+}

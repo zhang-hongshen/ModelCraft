@@ -11,154 +11,109 @@ import Foundation
 import MLXAudioSTT
 import MLXAudioCore
 import MLX
-import Hub
+import HuggingFace
 
 @MainActor
 @Observable
 final class STTService {
-    /// The transcript of the utterance being recorded, including provisional text, shown
-    /// while the user speaks.
-    private(set) var transcript: String = ""
-    /// The microphone level while listening, scaled to 0...1; zero while muted.
-    private(set) var level: Float = 0
-    /// Whether an utterance has started and is being recorded.
-    private(set) var isHearingSpeech = false
-    /// While muted, the microphone is ignored: no utterance starts and an utterance in
-    /// progress ends as if the user stopped speaking.
-    var isMuted = false
 
-    // Streaming parameters
-    var streamingDelayMs: Int = 480  // .agent default
+    enum State {
+        case idle
+        case loading
+        case recording
+        /// Recording stopped and the remaining audio is being transcribed.
+        case transcribing
+    }
 
-    // Model configuration
-    var modelId: String = "mlx-community/Qwen3-ASR-0.6B-4bit"
+    private(set) var state: State = .idle
+    /// Read by the waveform at its display cadence; metering never gates capture.
+    var level: Float { recorder.level }
 
-    private var model: Qwen3ASRModel?
+    private let recognizer = VoiceRecognizer()
     private let recorder = AudioRecorder()
+    private var isStopRequested = false
 
     init() {}
 
-    func loadModel() async {
-        guard model == nil else { return }
-        do {
-            model = try await Self.loadModel(id: modelId)
-        } catch {
-            print("Failed to load model: \(error.localizedDescription)")
-        }
-    }
-
-    /// Loads a Qwen3-ASR model from `HubApi.system`, downloading it there when absent.
+    /// Loads a Qwen3-ASR model from the shared cache, downloading it there when absent.
     nonisolated static func loadModel(id: String) async throws -> Qwen3ASRModel {
-        try await HubApi.system.loadModel(
+        try await HubCache.default.loadModel(
             id: id,
             matching: ["*.safetensors", "*.json", "*.txt"],
             using: Qwen3ASRModel.fromModelDirectory)
     }
 
-    // MARK: - Listening
+    // MARK: - Recording
 
-    private static let levelPollInterval: Duration = .milliseconds(100)
-    private static let speechLevel: Float = 0.1
-    /// Speech must last this long before it counts, so short noises or residual echo
-    /// of the assistant's voice do not start an utterance.
-    private static let speechOnset: Duration = .milliseconds(300)
-    private static let endOfUtterancePause: Duration = .milliseconds(1000)
-    /// Audio kept from before the onset was confirmed so the first syllable is transcribed.
-    private static let preRollSamples = Int(VoiceAudioEngine.captureSampleRate * 0.5)
-
-    /// Records one utterance: waits for speech, calls `onSpeech` when it starts, ends after
-    /// a pause, and returns the trimmed transcript. Returns `nil` when recording could not
-    /// start or the calling task was cancelled.
-    func listen(onSpeech: () -> Void = {}) async -> String? {
-        guard let model else {
-            print("Model not loaded")
-            return nil
-        }
-        do {
-            try await recorder.start()
-        } catch {
-            print(error.localizedDescription)
-            return nil
-        }
+    /// Records until `stop()` is called, then transcribes the captured audio locally.
+    func record() async throws -> String {
+        isStopRequested = false
+        state = .loading
         defer {
             recorder.stop()
-            transcript = ""
-            level = 0
-            isHearingSpeech = false
+            state = .idle
         }
 
-        var speech: Duration = .zero
-        while speech < Self.speechOnset {
-            guard await waitForNextPoll() else { return nil }
-            speech = level > Self.speechLevel ? speech + Self.levelPollInterval : .zero
-        }
-        isHearingSpeech = true
-        onSpeech()
-
-        let config = StreamingConfig(
-            decodeIntervalSeconds: 1.0,
-            maxCachedWindows: 60,
-            delayPreset: .custom(ms: streamingDelayMs),
-            // The session defaults to English, which garbles other languages; `nil` lets the
-            // model detect the language itself.
-            language: nil,
-            maxTokensPerPass: 1024
-        )
-        let session = StreamingInferenceSession(model: model, config: config)
-        let events = Task {
-            for await event in session.events {
-                switch event {
-                case .provisional, .stats:
-                    break
-                case .displayUpdate(let confirmedText, let provisionalText):
-                    // Provisional text can end with a tag that is still being decoded.
-                    transcript = Self.removingLanguageTags(confirmedText + provisionalText)
-                        .replacing(/(^|\s)language(\s+[A-Za-z]*)?\s*(<[a-z_]*)?$/, with: "")
-                case .confirmed(let text), .ended(let text):
-                    transcript = Self.removingLanguageTags(text)
-                }
-            }
+        try Task.checkCancellation()
+        try await recorder.start()
+        try Task.checkCancellation()
+        state = .recording
+        while !isStopRequested {
+            try await Task.sleep(for: .milliseconds(30))
         }
 
-        var readPosition = max(0, recorder.sampleCount - Self.preRollSamples)
-        var silence: Duration = .zero
-        while silence < Self.endOfUtterancePause {
-            guard await waitForNextPoll() else {
-                session.cancel()
-                events.cancel()
-                return nil
-            }
-            readPosition = feed(session, from: readPosition)
-            silence = level > Self.speechLevel ? .zero : silence + Self.levelPollInterval
-        }
-
-        _ = feed(session, from: readPosition)
-        session.stop()
-        await events.value
-        return transcript.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Freeze capture before inference so transcription never includes later speech.
+        let samples = recorder.finish()
+        state = .transcribing
+        guard !samples.isEmpty else { return "" }
+        let text = try await recognizer.transcribe(samples)
+        try Task.checkCancellation()
+        return text
     }
 
-    /// Without a language hint the model prefixes each decoded window with
-    /// `language <Name><asr_text>`, which the streaming session leaves in the text.
-    private static func removingLanguageTags(_ text: String) -> String {
-        text.replacing(/language\s+[A-Za-z]+\s*<asr_text>/, with: "")
+    func stop() {
+        guard state == .recording else { return }
+        isStopRequested = true
     }
 
-    /// Waits one poll interval and samples the microphone level. Returns `false` once the
-    /// listening task is cancelled.
-    private func waitForNextPoll() async -> Bool {
-        try? await Task.sleep(for: Self.levelPollInterval)
-        level = isMuted ? 0 : recorder.level
-        return !Task.isCancelled
+    /// Release the microphone immediately, including while inference is settling.
+    func cancel() {
+        recorder.stop()
     }
+}
 
-    /// Sends the samples captured since `position` to the session and returns the new
-    /// position. Samples captured while muted are skipped.
-    private func feed(_ session: StreamingInferenceSession, from position: Int) -> Int {
-        let (samples, end) = recorder.recordedSamples(from: position)
-        if !samples.isEmpty, !isMuted {
-            session.feedAudio(samples: samples)
+/// Owns the cached ASR runtime and keeps synchronous MLX inference off the main actor.
+private actor VoiceRecognizer {
+    private var model: WhisperModel?
+
+    func transcribe(_ samples: [Float]) async throws -> String {
+        try Task.checkCancellation()
+        let recognizer: WhisperModel
+        if let model {
+            recognizer = model
+        } else {
+            recognizer = try await HubCache.default.loadModel(
+                id: "mlx-community/whisper-large-v3-turbo-4bit",
+                matching: ["*.safetensors", "*.json", "*.txt", "*.model"],
+                using: { try await WhisperModel.fromDirectory($0) })
+            model = recognizer
         }
-        return end
+        try Task.checkCancellation()
+        var parts: [String] = []
+        let windowSize = Int(AudioRecorder.sampleRate * 30)
+        for start in stride(from: 0, to: samples.count, by: windowSize) {
+            try Task.checkCancellation()
+            let audio = MLXArray(Array(samples[start..<min(start + windowSize, samples.count)]))
+            let output = recognizer.generate(
+                audio: audio,
+                generationParameters: STTGenerateParameters(
+                    maxTokens: recognizer.defaultGenerationParameters.maxTokens,
+                    temperature: 0, topP: 1,
+                    chunkDuration: 30))
+            try Task.checkCancellation()
+            let text = output.text.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !text.isEmpty { parts.append(text) }
+        }
+        return parts.joined(separator: " ")
     }
 }

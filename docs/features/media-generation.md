@@ -24,7 +24,9 @@ Settings > Models stores the selected image and video model IDs (`sdxl-turbo`, `
 
 Settings > Models downloads and deletes media models directly through each family's configuration, not through `ModelTask`. Deleting the selected model clears the image selection or falls back to another downloaded video model. A model that is selected but not downloaded is fetched on first use by its model factory.
 
-Media models download and load through `HubApi.system`, so they live under `<base>/.system/models/<author>/<name>` and never appear as chat models. New media families default their `hub` parameters to `.system`. `ToolDefinition.modelIDs` lists the media repositories so `HubApi.moveSystemModels` can move copies downloaded before this layout out of `<base>/models` at launch; add every new media repository there.
+Media model families accept `HubCache = .default` and download through the shared cache described in [Language models](models.md#storage-layout). `ToolDefinition.modelIDs` lists media repositories excluded from the chat-model picker; add every new media repository there. Only shared-cache snapshots are read; model files are not migrated automatically.
+
+Cached snapshots are shared source files. LTX Video reads its replacement tokenizer vocabulary directly from `LTXVideoConfiguration.tokenizerRepositoryID` and the tokenizer configuration from the LTX repository; it never writes the replacement vocabulary into the LTX snapshot.
 
 ## Execution and presentation
 
@@ -40,7 +42,7 @@ Each family under `Core/Models/<Family>/` keeps its architecture, weights, and m
 
 | Role | Responsibility |
 | --- | --- |
-| `<Family>Configuration` | Repository IDs, required files, presets, default parameters, and `download(progressHandler:)` through `HubApi.default`. |
+| `<Family>Configuration` | Repository IDs, required files, presets, default parameters, and `download(progressHandler:)` through `HubCache.default`. |
 | `<Family>Loader` / `IO` | Reading SafeTensors weights and decoding or writing media. |
 | `<Family>ModelFactory` (actor) | Lazy download and load with an `idle` / `loading` / `loaded` state so concurrent callers share one load; releases weights on failure or eviction. |
 | `<Family>Evaluator` | The public generation API used by the tool. |

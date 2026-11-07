@@ -16,7 +16,10 @@ import SwiftStreamingMarkdown
 
 extension MarkdownRenderConfig {
 
-    static let modelCraft: MarkdownRenderConfig = {
+    static let modelCraft = makeModelCraft(animateText: false)
+    static let modelCraftStreaming = makeModelCraft(animateText: true)
+
+    private static func makeModelCraft(animateText: Bool) -> MarkdownRenderConfig {
         let base = MarkdownRenderConfig.default
         let bodyFonts = textFonts(for: .body)
         let calloutFonts = textFonts(for: .callout)
@@ -26,7 +29,7 @@ extension MarkdownRenderConfig {
         let separator = Color(nsColor: .separatorColor)
 
         return MarkdownRenderConfig(
-            shouldAnimateText: base.shouldAnimateText,
+            shouldAnimateText: animateText,
             blockQuoteStyle: .init(
                 textFonts: bodyFonts,
                 textColor: .secondary
@@ -86,7 +89,7 @@ extension MarkdownRenderConfig {
             thematicBreakColor: separator,
             imageConfig: base.imageConfig
         )
-    }()
+    }
 
     private static func textFonts(
         for textStyle: NSFont.TextStyle,

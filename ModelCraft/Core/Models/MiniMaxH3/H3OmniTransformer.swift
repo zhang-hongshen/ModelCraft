@@ -7,7 +7,7 @@
 
 
 import Foundation
-import Hub
+import HuggingFace
 import MLX
 import MLXFast
 import MLXNN
@@ -47,7 +47,7 @@ final class H3OmniTransformer: Module {
 
     /// Where the transformer lives, and which file of it this is — the task
     /// preset decides which, so the URL is resolved when a read needs it.
-    private let hub: HubApi
+    private let hub: HubCache
     let configuration: H3Configuration
     private var url: URL {
         get throws { try H3Loader.resolve(
@@ -60,7 +60,7 @@ final class H3OmniTransformer: Module {
     /// stack remains streamed one checkpoint file at a time by `runStack(_:)`.
     init(
         config: H3Configuration,
-        hub: HubApi,
+        hub: HubCache,
         configuration: H3Configuration
     ) throws {
         self.config = config

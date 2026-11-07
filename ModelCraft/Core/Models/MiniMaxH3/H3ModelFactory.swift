@@ -7,12 +7,12 @@
 
 
 import Foundation
-import Hub
+import HuggingFace
 
-/// Lazily downloads and caches each H3 Base task through HubApi.
+/// Lazily downloads and caches each H3 Base task through HubCache.
 ///
 /// Both presets create the same ``H3Base`` type. Their cache entries are
-/// separate because FL2VA and Ref2VA materialize different repository paths.
+/// separate because FL2VA and Ref2VA use different paths in the shared snapshot.
 actor H3ModelFactory {
     private enum LoadState {
         case idle
@@ -23,7 +23,7 @@ actor H3ModelFactory {
     private var states: [H3Configuration.Task: LoadState] = [:]
 
     func load(
-        hub: HubApi = .system,
+        hub: HubCache = .default,
         configuration: H3Configuration,
         progressHandler: @escaping (Progress) -> Void = { _ in }
     ) async throws -> H3Base {

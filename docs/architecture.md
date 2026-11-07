@@ -16,21 +16,22 @@ Read this before changing agent execution, inference, persistence, project knowl
 | Feature UI | `Features/` | SwiftUI presentation and user interaction grouped by Chat, Project, Model, Connector, Schedule, and Settings |
 | Persistent state | `Models/Persistence/`, `ModelContainer.shared` | Projects, chats, messages, model download/delete tasks, schedules, and workday exceptions (SwiftData) |
 | UI/application state | `Models/Plain/`, `GlobalStore`, `UserSettings`, `LocalModelStore` | Selection, navigation, settings, running tasks, and chat models discovered on disk |
-| Chat orchestration | `ChatService` | Request ownership, cancellation, compaction, title/context metadata, and agent invocation. See [Chat](features/chat.md) |
+| Chat orchestration | `ChatService` | Request/Assignment ownership, cancellation, Session compaction, title/context metadata, and agent invocation. See [Chat](features/chat.md) |
 | Agent loop | `Core/Agent/AgentExecutor.swift` | Model steps, tool-call limits, approval, tool execution, results, and continuation |
 | Language models | `ModelService`, `LocalModelStore`, `LMService` | Hugging Face search and download, local discovery, context windows, and chat inference. See [Language models](features/models.md) |
 | Media generation | Media tools, `Core/Models/` families | Image, video, and audio generation runtimes. See [Media generation](features/media-generation.md) |
 | Tools | `Core/Agent/Tools/`, `ToolExecutor` | Model-visible schemas, typed execution, structured results, and platform actions. See [Tools](features/tools.md) and [Computer use](features/computer-use.md) |
 | Project knowledge | `Project`, `ProjectSearchIndex`, `SearchTool` | Working folder, read-only references, and local retrieval for project chats. See [Projects](features/projects.md) |
 | Scheduled tasks | `Scheduler`, `HolidayStore`, `Schedule` | Due-time checks, unattended runs as new chats, and holiday-aware workdays. See [Scheduled tasks](features/schedules.md) |
-| Voice mode | `ChatView`, `STTService`, `TTSService`, `VoiceAudioEngine` | Spoken input and output over the normal chat path. See [Voice mode](features/voice-mode.md) |
+| Voice input | `ChatView`, `STTService`, `AudioRecorder`, `KeyboardShortcuts` | Dictation into the chat draft. See [Voice input](features/voice-input.md) |
+| Quick Entry | `QuickEntry`, `QuickEntryView`, `QuickEntryContext`, `KeyboardShortcuts` | The system-wide panel that sends a request with the user's current context as a new chat. See [Quick Entry](features/quick-entry.md) |
 | Settings | `Features/Settings/`, `UserSettings` | Stored preferences and their consumers. See [Settings](features/settings.md) |
 
 ## Conversation flow
 
 1. A chat view asks `ChatService` to send or resend a persisted user `Message`.
    Promoting the new-chat landing view to its newly persisted `Chat` preserves the same `ChatView` identity so its in-flight `ChatService` and user-interaction coordinator remain attached to the visible conversation.
-2. `ChatService` cancels superseded generation and metadata work, compacts context when required, assembles protocol messages, and invokes `AgentExecutor` with the selected `LocalModel`.
+2. `ChatService` cancels superseded generation and metadata work, persists an Assignment and its input, and invokes `AgentExecutor` with the selected `LocalModel`. Before every model step it checks and compacts the active Ticket's Executor Session, then assembles protocol messages from its checkpoint and retained history.
 3. `AgentExecutor` requests a stream from `LMService` using the current model-visible tool schemas. Text chunks update a generating assistant message; final generation information settles timing and context usage.
 4. A model tool call is persisted as a tool message after the model stream completes. `ToolExecutor` or a special coordinator executes it and returns both a structured `CallToolResult` and a model-facing tool message.
 5. The result is persisted before the next model step. The next request receives the prior assistant tool call and tool result in protocol order.
@@ -48,11 +49,13 @@ Tool execution crosses model JSON, filesystem, process, network, media-runtime, 
 
 ## Persistence and projections
 
-SwiftData entities are the durable source of truth; `DEBUG` builds use an in-memory store. Relationships among `Project`, `Chat`, and `Message` define conversation ownership; changes must preserve existing stores and relationship semantics unless an explicit migration is part of the task.
+SwiftData entities are the durable source of truth; `DEBUG` builds use an in-memory store. A `Chat` is the visible Thread and owns originating Tickets. Its `ChatView` owns the shared Tasks/Files inspector; Tasks is a read-only grouped list. Each Ticket owns one persistent Executor Session and successive Assignments with Inputs and Reports; Project Memory lives separately on `Project`. The existing `ChatService` and `AgentExecutor` execute this model without a second orchestration layer. Relationships among `Project`, `Chat`, and `Message` retain conversation ownership; changes must preserve existing stores and relationship semantics unless an explicit migration is part of the task.
 
 Conversation builders and tool-call summaries are projections for display. They may derive sections and adjacent visual groups but must not mutate or reorder persisted messages. A blank draft is not a completed conversation event, and an intermediate tool success is not final model-stream settlement.
 
 ## Inference and media runtimes
+
+Model files are shared through `HuggingFace.HubCache.default`; `HubClient` downloads directly into its versioned snapshots. All chat and media loaders use only this cache. Storage, discovery, deletion, and direct package dependencies are defined in [Language models](features/models.md).
 
 `LMService` is the shared language-model entry point; [Language models](features/models.md) owns its loading and routing. Inference requests are not globally serialized: each chat and media request enters its model runtime independently, while model-specific loading, caches, and memory profiles remain owned by that model's service or implementation. Resource exhaustion is reported as an inference failure rather than prevented by an application-wide lease.
 

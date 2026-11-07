@@ -7,18 +7,21 @@
 
 import Foundation
 
-import Hub
+import HuggingFace
 import Alamofire
 import MLXLMCommon
+import MLXLLM
+import MLXVLM
 
 enum ModelService {
     
     private static let baseURL = "https://huggingface.co/api"
     
-    static func searchModel(keyword: String, category: ModelCategory, page: Int = 0, pageSize: Int = 20) async throws -> [ModelStoreModel] {
+    static func searchModel(keyword: String, category: ModelCategory, page: Int = 0, pageSize: Int = 20) async throws -> (models: [ModelStoreModel], hasMore: Bool) {
         var parameters: [String: Any] = [
             "author": "mlx-community",
             "filter": "mlx",
+            "config": true,
             "pipeline_tag": category.rawValue,
             "sort": "downloads",
             "direction": "-1",
@@ -30,10 +33,22 @@ enum ModelService {
             parameters["search"] = keyword
         }
         
-        return try await AF.request(baseURL + "/models", method: .get, parameters: parameters)
+        let candidates = try await AF.request(baseURL + "/models", method: .get, parameters: parameters)
                 .validate()
                 .serializingDecodable([ModelStoreModel].self, decoder: JSONDecoder.default)
                 .value
+
+        var supportedModels: [ModelStoreModel] = []
+        for model in candidates {
+            try Task.checkCancellation()
+            guard let modelType = model.config?.modelType else { continue }
+            if await LLMTypeRegistry.shared.contains(modelType) {
+                supportedModels.append(model)
+            } else if await VLMTypeRegistry.shared.contains(modelType) {
+                supportedModels.append(model)
+            }
+        }
+        return (supportedModels, candidates.count == pageSize)
     }
     
     /// The search endpoint cannot return `usedStorage`, so it is requested per model with
@@ -54,13 +69,13 @@ enum ModelService {
         URL(string: baseURL + "/organizations/\(organization)/avatar?redirect=true")
     }
     
-    static func downloadModel(hub: HubApi = .default, modelID: String) -> AsyncThrowingStream<Progress, Error> {
-        let repo = Hub.Repo(id: modelID)
+    static func downloadModel(hub: HubCache = .default, modelID: String) -> AsyncThrowingStream<Progress, Error> {
+        let repo = modelID
         return AsyncThrowingStream { continuation in
             let task = Task {
                 do {
                     
-                    _ = try await hub.snapshot(from: repo) { progress in
+                    _ = try await hub.downloadSnapshot(id: repo) { progress in
                         print("\(modelID) \(progress.fractionCompleted)")
                         continuation.yield(progress)
                     }
@@ -75,9 +90,14 @@ enum ModelService {
         }
     }
     
-    static func deleteModel(hub: HubApi = .default, modelID: String) throws {
-        let modelFolder = hub.localRepoLocation(.init(id: modelID))
-        try FileManager.default.removeItem(at: modelFolder)
+    static func deleteModel(hub: HubCache = .default, modelID: String) throws {
+        guard let repo = Repo.ID(rawValue: modelID) else {
+            throw HubCacheError.cachedPathResolutionFailed(modelID)
+        }
+        let cacheDirectory = hub.repoDirectory(repo: repo, kind: .model)
+        if FileManager.default.fileExists(atPath: cacheDirectory.path) {
+            try FileManager.default.removeItem(at: cacheDirectory)
+        }
     }
     
 }

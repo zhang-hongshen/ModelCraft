@@ -19,6 +19,7 @@ ModelCraft is a local-first SwiftUI personal AI assistant for macOS with multimo
 ## Critical product rules
 
 - **Tool discovery belongs to the tool schema.** Do not encode tool-specific routing in the system prompt. Read [Tools](docs/features/tools.md) before changing tools, schemas, execution, or overlapping agent prompts.
+- **The UI explains itself.** Do not add secondary labels, footers, captions, or hint text that explain how a control works or what to press. Make the control's form, icon, state, and label carry the meaning instead (for example a shortcut drawn as keycaps, a recording state shown on the field itself).
 - **SwiftUI is the default UI technology.** Prefer native SwiftUI and keep AppKit bridges narrow. Read [Design](docs/design.md) before changing views or interaction.
 
 ## Documentation index
@@ -29,8 +30,9 @@ ModelCraft is a local-first SwiftUI personal AI assistant for macOS with multimo
 - [Documentation guide](docs/documentation.md): where durable knowledge belongs and when to update/create docs. Read before documentation changes or durable contract changes.
 - [Tools](docs/features/tools.md): model-visible tool discovery, schemas, execution, results, failures, and UI. Read before Tool changes.
 - [Generative UI](docs/features/generative-ui.md): the `ui` block syntax, supported components, assistant content rendering, and tool-result references. Read before changing the Rich UI prompt section or assistant content rendering.
-- [Chat](docs/features/chat.md): message model, request lifecycle, cancellation/resend, context compaction, titles, composer, approval/user-input prompts, and conversation projection. Read before changing `ChatService`, `AgentExecutor` message handling, chat views, `Chat`, or `Message`.
-- [Voice mode](docs/features/voice-mode.md): listen-send-speak loop, interruption, STT/TTS models, and the shared audio engine. Read before changing voice handling, `STTService`, `TTSService`, or `VoiceAudioEngine`.
+- [Chat](docs/features/chat.md): Thread/Ticket/Assignment and Executor Session models, task inputs/reports, memory boundaries and migration, request lifecycle, cancellation/resend, context compaction, titles, composer, approval/user-input prompts, and conversation projection. Read before changing `ChatService`, `AgentExecutor` message handling, `TaskTool`, chat views, `Chat`, `Message`, or task persistence.
+- [Voice input](docs/features/voice-input.md): dictation into the composer, the speech recognition model, and the voice input hot key. Read before changing voice handling, `STTService`, `AudioRecorder`, or voice-input shortcuts.
+- [Quick Entry](docs/features/quick-entry.md): the system-wide shortcut and panel, context capture from Finder, browsers, and selected text, and how a request becomes a new chat. Read before changing `QuickEntry`, `QuickEntryView`, `QuickEntryContext`, or Quick Entry shortcuts.
 - [Projects](docs/features/projects.md): working folder vs. reference files, project context for the model and tools, and the `search_project` index and ranking. Read before changing `Project`, project views, `ProjectToolContext`, or project search.
 - [Language models](docs/features/models.md): Model Store, download/delete tasks, storage layout, local discovery, context windows, selection, and `LMService` loading and routing. Read before changing chat-model management or inference entry points.
 - [Media generation](docs/features/media-generation.md): image/video/audio tools, media model selection and download, output files, progress, and `Core/Models/` family conventions. Read before changing media tools or a model family.

@@ -6,7 +6,7 @@
 //
 
 import Foundation
-import Hub
+import HuggingFace
 import MLX
 import MLXNN
 
@@ -35,8 +35,8 @@ enum DeepSeekFlashLoader {
         }
     }
 
-    static func resolve(hub: HubApi, path: String) throws -> URL {
-        let url = hub.localRepoLocation(Hub.Repo(id: DeepSeekFlashConfiguration.repositoryID))
+    static func resolve(hub: HubCache, path: String) throws -> URL {
+        let url = try hub.modelDirectory(id: DeepSeekFlashConfiguration.repositoryID)
             .appending(component: path)
         guard FileManager.default.isReadableFile(atPath: url.path) else {
             throw DeepSeekFlashLoaderError.fileNotFound(url)
@@ -44,7 +44,7 @@ enum DeepSeekFlashLoader {
         return url
     }
 
-    static func loadConfiguration(hub: HubApi) throws -> DeepSeekFlashConfiguration {
+    static func loadConfiguration(hub: HubCache) throws -> DeepSeekFlashConfiguration {
         let url = try resolve(hub: hub, path: "config.json")
         do {
             return try JSONDecoder().decode(
@@ -56,7 +56,7 @@ enum DeepSeekFlashLoader {
     }
 
     static func loadTransformer(
-        hub: HubApi,
+        hub: HubCache,
         configuration: DeepSeekFlashConfiguration,
         maximumSequenceLength: Int
     ) throws -> DeepSeekFlashTransformer {
@@ -161,7 +161,7 @@ enum DeepSeekFlashLoader {
 
     /// The shard holding every tensor of the block named by `prefix`, such as `layers.5.`.
     private static func resolveBlockURL(
-        hub: HubApi,
+        hub: HubCache,
         prefix: String,
         weightMap: [String: String],
         indexURL: URL

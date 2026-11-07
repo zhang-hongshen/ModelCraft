@@ -14,9 +14,9 @@ struct MessageView: View {
     
     @Bindable var message: Message
     var showsAssistantButtons = true
+    var onRewind: ((Message) -> Void)?
     
     @State private var isHovering = false
-    @State private var isEditing = false
     
     @Environment(GlobalStore.self) private var globalStore
     @Environment(ChatService.self) private var service
@@ -75,43 +75,19 @@ extension MessageView {
             VStack(alignment: .trailing) {
                 MessageFilesView(message.files)
                     .frame(maxWidth: .infinity, alignment: .trailing)
-                if isEditing {
-                    ChatInputView(
-                        userInput: message,
-                        trailing: {
-                            HStack {
-                                Button(role: .cancel) {
-                                    isEditing = false
-                                } label: {
-                                    Image(systemName: "xmark.circle")
-                                }
-                                Button {
-                                    submitMessage()
-                                    isEditing = false
-                                } label: {
-                                    Image(systemName: "arrow.up")
-                                }.buttonBorderShape(.circle)
-                            }
-                            
-                            .buttonStyle(.borderless)
-                            .imageScale(.large)
-                        })
-                } else {
-                    if !message.content.isEmpty {
-                        UserMessageContentView(message)
-                            .padding()
-                            .background {
-                                RoundedRectangle().fill(.userBubble)
-                            }
-                            .contextMenu {
-                                UserButtons()
-                            }
-                                
-                    }
-                    UserButtons()
-                        .buttonStyle(.borderless)
-                        .opacity(isHovering ? 1 : 0)
+                if !message.content.isEmpty {
+                    UserMessageContentView(message)
+                        .padding()
+                        .background {
+                            RoundedRectangle().fill(.userBubble)
+                        }
+                        .contextMenu {
+                            UserButtons()
+                        }
                 }
+                UserButtons()
+                    .buttonStyle(.borderless)
+                    .opacity(isHovering ? 1 : 0)
                 
             }
             
@@ -123,10 +99,13 @@ extension MessageView {
         HStack {
             CommonButtons(message)
             Button {
-                isEditing = true
+                onRewind?(message)
             } label: {
-                Image(systemName: "square.and.pencil")
+                Label("Rewind", systemImage: "backward.end")
             }
+            .labelStyle(.iconOnly)
+            .help("Rewind")
+            .disabled(onRewind == nil || service.isCompacting)
 
         }
     }
@@ -218,19 +197,6 @@ extension MessageView {
 
 extension MessageView {
     
-    func submitMessage() {
-        guard let chat = message.chat else { return }
-        guard let model = globalStore.selectedModel else {
-            return
-        }
-        Task {
-            try await service.resendMessage(
-                model: model,
-                chat: chat,
-                message: message)
-        }
-    }
-    
     func regenerateAssistantMessage() {
         guard let chat = message.chat, let model = globalStore.selectedModel else { return }
         let messages = chat.conversation
@@ -253,6 +219,7 @@ private struct AssistantContentView: View {
 
     let message: Message
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(GlobalStore.self) private var globalStore
     @Environment(ChatService.self) private var service
 
@@ -266,7 +233,10 @@ private struct AssistantContentView: View {
                 case .thinking(let text, let isFinished):
                     ThinkingView(text: text, isFinished: isFinished)
                 case .markdown(_, let text):
-                    MarkdownView(text: text, config: .modelCraft)
+                    MarkdownView(
+                        text: text,
+                        config: message.status == .generating && !reduceMotion
+                            ? .modelCraftStreaming : .modelCraft)
                         .multilineTextAlignment(.leading)
                 case .ui(_, let source?):
                     GenerativeUIView(

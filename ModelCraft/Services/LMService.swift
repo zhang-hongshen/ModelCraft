@@ -13,7 +13,7 @@ import UniformTypeIdentifiers
 import MLX
 import MLXLLM
 import MLXLMCommon
-import Hub
+import HuggingFace
 import Tokenizers
 
 /// A service class that manages machine learning models for text and vision-language tasks.
@@ -46,7 +46,7 @@ final class LMService {
     /// - Parameter modelID: The model configuration to load
     /// - Returns: A ModelContainer instance containing the loaded model
     /// - Throws: Errors that might occur during model loading
-    private func load(hub: HubApi = .default, model: LocalModel) async throws -> ModelContainer {
+    private func load(hub: HubCache = .default, model: LocalModel) async throws -> ModelContainer {
 
         // Return cached model if available to avoid reloading
         if let container = modelCache.object(forKey: model.id as NSString) {
@@ -56,9 +56,10 @@ final class LMService {
         do {
             // Load model from on-disk file
             container = try await loadModelContainer(
-                from: hub.localRepoLocation(.init(id: model.id)),
+                from: hub.modelDirectory(id: model.id),
                 using: TransformersTokenizerLoader())
         } catch {
+            try Task.checkCancellation()
             // Download model from remote repo
             container = try await loadModelContainer(
                 from: hub,
@@ -109,7 +110,7 @@ final class LMService {
 
     /// Counts the tokens of each text on its own, without chat-template formatting. Uses the
     /// loaded model's tokenizer when there is one; otherwise loads only the tokenizer.
-    func tokenCounts(model: LocalModel, texts: [String], hub: HubApi = .default) async throws -> [Int] {
+    func tokenCounts(model: LocalModel, texts: [String], hub: HubCache = .default) async throws -> [Int] {
         if isDeepSeekFlash(model) {
             return try await deepSeekFlashEvaluator.tokenCounts(texts: texts)
         }
@@ -120,7 +121,7 @@ final class LMService {
             }
         }
         let tokenizer = try await TransformersTokenizerLoader().load(
-            from: hub.localRepoLocation(.init(id: model.id)))
+            from: hub.modelDirectory(id: model.id))
         return texts.map { tokenizer.encode(text: $0, addSpecialTokens: false).count }
     }
 

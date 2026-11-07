@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import KeyboardShortcuts
 import SwiftData
 import AppKit
 import UniformTypeIdentifiers
@@ -21,47 +22,67 @@ struct ChatView: View {
     private var uncompletedDownloadTasks: [ModelTask] = []
     
     @State private var draft = Message(role: .user)
-    @State private var voiceState: VoiceState = .idle
-    @State private var voiceTask: Task<Void, Never>?
-    @State private var composerHeight: CGFloat = 0
+    @State private var isRewinding = false
+    @State private var voiceInputTask: Task<Void, Never>?
+    @State private var voiceInputError: String?
     @State private var skillCommands: [ChatCommand] = []
     @State private var selectedCommand: ChatCommand = .compact
     @State private var composerSelectionLocation = 0
     @State private var slashCommandLocation: Int?
     @State private var projectEdition: Project?
     @State private var requestError: String?
+    @State private var inspectorTab = ChatInspectorTab.tasks
+    @State private var isDropTargeted = false
     @AppStorage(UserDefaults.toolPermissionMode)
     private var toolPermissionMode = UserDefaultSettings.toolPermissionMode
+    @Environment(\.controlActiveState) private var controlActiveState
 
-    enum VoiceState {
-        case idle
-        case loading
-        case listening
-        case responding
-    }
-
-    /// The voice mode phase shown in the composer, or `nil` outside voice mode.
-    var voicePhase: VoicePhase? {
-        switch voiceState {
-        case .idle: nil
-        case .loading: .loading
-        case .listening: sttService.isHearingSpeech ? .hearing : .waiting
-        case .responding: ttsService.isPlaying ? .speaking : .thinking
-        }
-    }
-    
     @Environment(GlobalStore.self) private var globalStore
     @Environment(LocalModelStore.self) private var localModelStore
     @Environment(STTService.self) private var sttService
-    @Environment(TTSService.self) private var ttsService
     
     @State private var chatService = ChatService()
     private static let minWidth: CGFloat = 270
     
     var body: some View {
+        @Bindable var bindableStore = globalStore
         MainView()
             .frame(minWidth: ChatView.minWidth, minHeight: 250)
+            .dropDestination(for: URL.self) { urls, _ in
+                draft.addFiles(urls)
+                return true
+            } isTargeted: {
+                isDropTargeted = $0
+            }
+            .overlay {
+                if isDropTargeted {
+                    RoundedRectangle()
+                        .strokeBorder(.tint, lineWidth: 2)
+                        .background(.tint.opacity(0.08), in: RoundedRectangle())
+                        .padding(6)
+                        .allowsHitTesting(false)
+                }
+            }
             .toolbar(content: ToolbarItems)
+            .inspector(isPresented: $bindableStore.isInspectorPresented) {
+                VStack(spacing: 0) {
+                    ChatInspectorHeader(tab: $inspectorTab, isPresented: $bindableStore.isInspectorPresented)
+                    Divider()
+                    ZStack {
+                        TaskInspectorView(
+                            chat: chat,
+                            project: chat == nil ? globalStore.newChatProject : chat?.project)
+                            .opacity(inspectorTab == .tasks ? 1 : 0)
+                            .allowsHitTesting(inspectorTab == .tasks)
+                            .accessibilityHidden(inspectorTab != .tasks)
+                        FileInspectorView(url: globalStore.previewURL)
+                            .opacity(inspectorTab == .files ? 1 : 0)
+                            .allowsHitTesting(inspectorTab == .files)
+                            .accessibilityHidden(inspectorTab != .files)
+                    }
+                }
+                .inspectorColumnWidth(min: 300, ideal: 400, max: 700)
+            }
             .environment(\.openURL, OpenURLAction(handler: openURL))
             .sheet(item: $projectEdition) { project in
                 ProjectEdition(project: project)
@@ -85,16 +106,48 @@ struct ChatView: View {
                 }
             }
             .onChange(of: chat?.id) {
-                globalStore.isFileInspectorPresented = false
+                cancelVoiceInput()
                 globalStore.previewURL = nil
+                inspectorTab = .tasks
             }
-            .onChange(of: chat?.leafMessage?.content) {
-                guard voiceState == .responding,
-                      let message = chat?.leafMessage,
-                      message.role == .assistant else { return }
-                ttsService.feed(message.content, messageID: message.id)
+            .onChange(of: globalStore.newChatFiles, initial: true) {
+                // Read from the store, not the new value, so with several windows only
+                // the first takes the files.
+                let files = globalStore.newChatFiles
+                guard !files.isEmpty else { return }
+                globalStore.newChatFiles = []
+                draft.addFiles(files)
             }
-            .onDisappear(perform: stopVoiceMode)
+            .onChange(of: globalStore.newChatPrompt, initial: true) {
+                guard let prompt = globalStore.newChatPrompt else { return }
+                globalStore.newChatPrompt = nil
+                if !submitMessage(content: prompt.content, files: prompt.files) {
+                    // No model to send with yet; keep the request in the composer.
+                    draft.content = prompt.content
+                    draft.files.append(contentsOf: prompt.files)
+                }
+            }
+            .alert("Voice Input Failed", isPresented: Binding(
+                get: { voiceInputError != nil },
+                set: { if !$0 { voiceInputError = nil } }
+            )) {
+                Button("OK") { voiceInputError = nil }
+            } message: {
+                Text(voiceInputError ?? "")
+            }
+            .onChange(of: chatService.interactionCoordinator.pendingInteraction?.id) {
+                if chatService.interactionCoordinator.pendingInteraction != nil {
+                    cancelVoiceInput()
+                }
+            }
+            .task(id: controlActiveState == .key) {
+                guard controlActiveState == .key else { return }
+                for await _ in KeyboardShortcuts.events(.keyDown, for: .voiceInput) {
+                    guard !Task.isCancelled, controlActiveState == .key else { return }
+                    toggleVoiceInput()
+                }
+            }
+            .onDisappear(perform: cancelVoiceInput)
     }
 }
 
@@ -124,31 +177,19 @@ private extension ChatView {
 
     @ToolbarContentBuilder
     func ToolbarItems() -> some ToolbarContent {
-        if let chat = chat {
-            ToolbarItemGroup(placement: .primaryAction) {
+        ToolbarItemGroup(placement: .primaryAction) {
+            if chat != nil {
                 Button {
                     globalStore.startNewChat()
                 } label: {
                     Image(systemName: "square.and.pencil")
                 }
-                
-                Menu {
-                    Menu("Move to project") {
-                        ForEach(projects) { project in
-                            Button(project.title) {
-                                chat.project = project
-                            }
-                        }
-                    }
-                    DeleteButton(style: .iconAndText) {
-                        chatService.deleteChat(chat)
-                    }
-                } label: {
-                    Image(systemName: "ellipsis")
-                }
-                .menuIndicator(.hidden)
-                
             }
+            Button("Inspector", systemImage: "sidebar.right") {
+                globalStore.isInspectorPresented.toggle()
+            }
+            .labelStyle(.iconOnly)
+            .help("Inspector")
         }
     }
 
@@ -162,6 +203,7 @@ private extension ChatView {
                     } icon: {
                         Image(systemName: mode.systemImage)
                     }
+                    .tag(mode)
                 }
             }
             .pickerStyle(.inline)
@@ -249,50 +291,51 @@ private extension ChatView {
     }
     
     @ViewBuilder
-    func voiceModeButton() -> some View {
-        Button(action: startVoiceMode) {
-            Image(systemName: "waveform")
+    func VoiceInputButton() -> some View {
+        Button(action: startVoiceInput) {
+            Image(systemName: "mic")
+                .font(.title3)
+                .frame(width: 36, height: 36)
+                .background(.quaternary, in: Circle())
+                .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .disabled(sttService.state != .idle)
+        .help("Voice Input")
+        .accessibilityLabel("Start Voice Input")
+    }
+
+    @ViewBuilder
+    func VoiceInputContent() -> some View {
+        HStack(spacing: 8) {
+            Button(action: cancelVoiceInput) {
+                Image(systemName: "xmark")
+                    .frame(width: 28, height: 28)
+            }
+            .buttonStyle(.plain)
+            .keyboardShortcut(.cancelAction)
+            .accessibilityLabel("Cancel Voice Input")
+
+            VoiceLevelView(sttService: sttService)
+                .frame(maxWidth: .infinity)
+        }
+    }
+
+    @ViewBuilder
+    func FinishVoiceInputButton() -> some View {
+        Button(action: sttService.stop) {
+            Image(systemName: "pause.fill")
+                .font(.title3)
+                .frame(width: 20, height: 20)
         }
         .buttonStyle(.borderedProminent)
         .buttonBorderShape(.circle)
         .controlSize(.large)
-        .disabled(globalStore.selectedModel == nil)
-        .help("Voice Mode")
-        .accessibilityLabel("Start Voice Mode")
+        .frame(width: 36, height: 36)
+        .disabled(sttService.state != .recording)
+        .accessibilityLabel("Stop Recording and Transcribe")
     }
 
-    /// The level bars, mute, and end controls that replace the send button in voice mode.
-    @ViewBuilder
-    func VoiceControls(phase: VoicePhase) -> some View {
-        @Bindable var sttService = self.sttService
-        HStack {
-            VoiceLevelView(phase: phase, level: sttService.level)
-                .padding(.horizontal, 4)
-
-            Toggle(isOn: $sttService.isMuted) {
-                Image(systemName: sttService.isMuted ? "mic.slash.fill" : "mic.fill")
-                    .contentTransition(.symbolEffect(.replace))
-            }
-            .toggleStyle(.button)
-            .buttonBorderShape(.circle)
-            .controlSize(.large)
-            .disabled(phase == .loading)
-            .help(sttService.isMuted ? "Unmute Microphone" : "Mute Microphone")
-            .accessibilityLabel(sttService.isMuted ? "Unmute Microphone" : "Mute Microphone")
-
-            Button(action: stopVoiceMode) {
-                Image(systemName: "xmark")
-            }
-            .buttonStyle(.borderedProminent)
-            .buttonBorderShape(.circle)
-            .controlSize(.large)
-            .keyboardShortcut(.cancelAction)
-            .help("End Voice Mode")
-            .accessibilityLabel("End Voice Mode")
-        }
-    }
-    
-    
     @ViewBuilder
     func StopGeneratingMessageButton() -> some View {
         Button {
@@ -303,40 +346,50 @@ private extension ChatView {
             }
         } label: {
             Image(systemName: "stop.fill")
+                .font(.title3)
+                .frame(width: 20, height: 20)
         }
         .buttonStyle(.borderedProminent)
         .buttonBorderShape(.circle)
         .controlSize(.large)
+        .frame(width: 36, height: 36)
+        .accessibilityLabel("Stop Generating")
     }
     
     @ViewBuilder
     func SubmitMessageButton() -> some View {
-        let disabled = globalStore.selectedModel == nil || draft.content.isEmpty
+        let disabled = globalStore.selectedModel == nil || (draft.content.isEmpty && draft.files.isEmpty) || isRewinding
         Button(action: submitDraft) {
             Image(systemName: "arrow.up")
+                .font(.title3)
+                .frame(width: 20, height: 20)
         }
         .buttonStyle(.borderedProminent)
         .buttonBorderShape(.circle)
         .controlSize(.large)
+        .frame(width: 36, height: 36)
         .disabled(disabled)
+        .accessibilityLabel("Send Message")
     }
     
     @ViewBuilder
     func MainView() -> some View {
         if let chat = chat {
-            ZStack(alignment: .bottom) {
+            VStack(spacing: 0) {
                 let messages = chat.conversation
                 let items = ConversationContentBuilder.items(from: messages)
                 let lastItemID = items.last?.id
+                let bottomTransitionHeight: CGFloat = 32
                 ScrollViewReader { proxy in
                     ScrollView {
-                        ConversationItemsView(items: items)
+                        ConversationItemsView(items: items, onRewind: rewindMessage)
+                            .disabled(isRewinding)
                             .environment(chatService)
                             .safeAreaPadding()
                             .background(SmallScrollerConfigurator())
                     }
                     .contentMargins(.leading, Layout.padding, for: .scrollContent)
-                    .contentMargins(.bottom, composerHeight, for: .scrollContent)
+                    .contentMargins(.bottom, bottomTransitionHeight, for: .scrollContent)
                     .contentMargins(0, for: .scrollIndicators)
                     .onChange(of: messages.last) {
                         scrollToBottom(proxy, lastID: lastItemID)
@@ -347,14 +400,27 @@ private extension ChatView {
                 }
                 .scrollDismissesKeyboard(.interactively)
                 .scrollTargetBehavior(.paging)
+                .overlay(alignment: .bottom) {
+                    Rectangle()
+                        .fill(.ultraThinMaterial)
+                        .frame(height: bottomTransitionHeight)
+                        .mask {
+                            LinearGradient(colors: [.clear, .black], startPoint: .top, endPoint: .bottom)
+                        }
+                        .allowsHitTesting(false)
+                        .accessibilityHidden(true)
+                }
+                .mask {
+                    VStack(spacing: 0) {
+                        Rectangle()
+                        LinearGradient(colors: [.black, .clear], startPoint: .top, endPoint: .bottom)
+                            .frame(height: bottomTransitionHeight)
+                    }
+                }
+                .clipped()
                 ComposerView(showsProjectPicker: false)
                     .shadow(color: Color.primary.opacity(0.1), radius: 8, x: 0, y: -4)
                     .safeAreaPadding()
-                    .onGeometryChange(for: CGFloat.self) { proxy in
-                        proxy.size.height
-                    } action: { composerHeight in
-                        self.composerHeight = composerHeight
-                    }
             }
         } else {
             NewChatLandingView {
@@ -383,40 +449,26 @@ private extension ChatView {
                 ChatInputView(
                     userInput: draft,
                     skillNames: skillCommands.compactMap(\.skillName),
-                    placeholder: voicePhase == nil ? "Type Anything" : "Add text or files to what you say next",
+                    placeholder: "Type Anything",
                     selectionLocation: $composerSelectionLocation,
                     slashCommandLocation: $slashCommandLocation,
                     onCommand: handleEditorCommand,
-                    header: {
-                        // The utterance being recorded, shown until it is sent.
-                        if voicePhase != nil, !sttService.transcript.isEmpty {
-                            Text(verbatim: sttService.transcript)
-                                .textSelection(.enabled)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                        }
-                    },
+                    isVoiceInputActive: voiceInputTask != nil,
+                    voiceContent: { VoiceInputContent() },
                     trailing: {
-                        HStack {
-                            if let chat, let model = globalStore.selectedModel, model.contextWindow > 0 {
-                                ContextWindowUsageView(chat: chat, model: model)
-                            }
-
-                            PermissionModePickerButton()
-
-                            ModelPickerButton()
-
-                            if chatService.isCompacting {
-                                ProgressView()
-                                    .controlSize(.small)
-                            } else if let voicePhase {
-                                VoiceControls(phase: voicePhase)
-                            } else if !draft.content.isEmpty {
-                                SubmitMessageButton()
-                            } else if chat?.isGenerating == true {
+                        if voiceInputTask != nil {
+                            FinishVoiceInputButton()
+                        } else if chatService.isCompacting {
+                            ProgressView()
+                                .controlSize(.small)
+                        } else if draft.content.isEmpty, draft.files.isEmpty {
+                            if chat?.isGenerating == true {
                                 StopGeneratingMessageButton()
                             } else {
-                                voiceModeButton()
+                                VoiceInputButton()
                             }
+                        } else {
+                            SubmitMessageButton()
                         }
                     }
                 )
@@ -442,13 +494,19 @@ private extension ChatView {
                 }
             }
 
-            if showsProjectPicker {
-                HStack {
+            HStack(spacing: 12) {
+                PermissionModePickerButton()
+                ModelPickerButton()
+                if showsProjectPicker {
                     ProjectPickerButton()
-                    Spacer()
                 }
-                .padding(.horizontal)
+                Spacer(minLength: 0)
+                if let chat, let model = globalStore.selectedModel, model.contextWindow > 0 {
+                    ContextWindowUsageView(chat: chat, model: model)
+                }
             }
+            .disabled(voiceInputTask != nil || pendingInteraction != nil)
+            .padding(.horizontal, 12)
         }
     }
 }
@@ -501,7 +559,7 @@ private extension ChatView {
     }
 
     var isCommandPalettePresented: Bool {
-        slashCommandLocation != nil
+        voiceInputTask == nil && slashCommandLocation != nil
     }
 
     var commands: [ChatCommand] {
@@ -547,9 +605,10 @@ private extension ChatView {
 
     /// Return in the text editor runs the selected palette command, or else sends the draft.
     func handleEditorCommand(_ command: ChatComposerCommand) -> Bool {
+        guard voiceInputTask == nil else { return true }
         if handleComposerCommand(command) { return true }
         guard command == .select else { return false }
-        if globalStore.selectedModel != nil, !draft.content.isEmpty {
+        if globalStore.selectedModel != nil, !draft.content.isEmpty || !draft.files.isEmpty {
             submitDraft()
         }
         return true
@@ -616,7 +675,7 @@ private extension ChatView {
     
     func submitMessage(content: String, files: [URL]) -> Bool {
         guard let model = globalStore.selectedModel,
-              !chatService.isCompacting else {
+              !chatService.isCompacting, !isRewinding else {
             return false
         }
         let activeChat = openChat()
@@ -652,88 +711,74 @@ private extension ChatView {
         return newChat
     }
 
+    func rewindMessage(_ message: Message) {
+        guard let chat, !isRewinding, !chatService.isCompacting else { return }
+        isRewinding = true
+        Task {
+            defer { isRewinding = false }
+            do {
+                guard let restoredDraft = try await chatService.rewindMessage(chat: chat, message: message)
+                else { return }
+                draft = restoredDraft
+                composerSelectionLocation = (draft.content as NSString).length
+                slashCommandLocation = nil
+            } catch {
+                requestError = error.localizedDescription
+            }
+        }
+    }
+
     func submitDraft() {
+        guard voiceInputTask == nil else { return }
         if !submitMessage(content: draft.content, files: draft.files) {
             return
         }
         clearDraft()
     }
 
-    /// Runs the voice conversation: listen to one utterance, send it, and speak the response
-    /// while already listening for the next one. Talking over a response interrupts it.
-    func startVoiceMode() {
-        voiceState = .loading
-        voiceTask = Task {
-            await sttService.loadModel()
-            await ttsService.loadModel()
-            guard !Task.isCancelled else { return }
-            // This view value keeps the `chat` it had when voice mode started, so the chat
-            // created by the first turn is remembered here.
-            var voiceChat = chat
-            voiceState = .listening
-            var utterance = await sttService.listen()
-            while !Task.isCancelled,
-                  let text = utterance,
-                  let model = globalStore.selectedModel,
-                  !chatService.isCompacting {
-                if text.isEmpty {
-                    utterance = await sttService.listen()
-                    continue
-                }
-                let chat = voiceChat ?? openChat()
-                voiceChat = chat
+    /// Starts recording, or stops a recording so it is transcribed into the draft.
+    func toggleVoiceInput() {
+        if voiceInputTask == nil {
+            startVoiceInput()
+        } else if sttService.state == .recording {
+            sttService.stop()
+        }
+    }
 
-                voiceState = .responding
-                ttsService.begin()
-                async let nextUtterance = sttService.listen {
-                    interruptVoiceResponse(in: chat)
+    /// Records until stopped and inserts the transcript into the draft at the cursor, where
+    /// it can be edited before sending.
+    func startVoiceInput() {
+        guard voiceInputTask == nil, sttService.state == .idle,
+              !chatService.isCompacting, !isRewinding,
+              chatService.interactionCoordinator.pendingInteraction == nil else { return }
+        voiceInputTask = Task {
+            defer { voiceInputTask = nil }
+            do {
+                let text = try await sttService.record()
+                try Task.checkCancellation()
+                if !text.isEmpty {
+                    insertIntoDraft(text)
                 }
-                // Text and files added to the composer go with the utterance.
-                let note = draft.content.trimmingCharacters(in: .whitespacesAndNewlines)
-                let message = Message(
-                    role: .user,
-                    chat: chat,
-                    content: note.isEmpty ? text : "\(note)\n\n\(text)",
-                    files: draft.files)
-                clearDraft()
-                try? await chatService.sendMessage(model: model, chat: chat, message: message)
-                // Speak the text that arrived after the last streamed change.
-                for reply in chat.conversation.drop(while: { $0 != message }) where reply.role == .assistant {
-                    ttsService.feed(reply.content, messageID: reply.id, isComplete: true)
-                }
-                await ttsService.finish()
+            } catch is CancellationError {
+                // Cancelled by the user or by leaving the view.
+            } catch {
                 guard !Task.isCancelled else { return }
-
-                voiceState = .listening
-                utterance = await nextUtterance
-            }
-            // Ended without `stopVoiceMode()`, for example because recording failed.
-            if !Task.isCancelled {
-                stopVoiceMode()
+                voiceInputError = error.localizedDescription
             }
         }
     }
 
-    /// Stops speaking and generating as soon as the user starts talking over a response,
-    /// including while the model is still compacting, prefilling, or thinking.
-    func interruptVoiceResponse(in chat: Chat) {
-        guard voiceState == .responding else { return }
-        voiceState = .listening
-        ttsService.stop()
-        Task { await chatService.stopGenerating(chat: chat) }
+    /// Discards the recording; cancelling the task stops it.
+    func cancelVoiceInput() {
+        voiceInputTask?.cancel()
+        if voiceInputTask != nil { sttService.cancel() }
     }
 
-    /// Cancelling the voice task also ends any `listen()` in progress.
-    func stopVoiceMode() {
-        guard voiceState != .idle else { return }
-        voiceTask?.cancel()
-        voiceTask = nil
-        ttsService.stop()
-        if voiceState == .responding, let chat {
-            Task { await chatService.stopGenerating(chat: chat) }
-        }
-        sttService.isMuted = false
-        voiceState = .idle
+    func insertIntoDraft(_ text: String) {
+        let content = draft.content as NSString
+        let location = min(composerSelectionLocation, content.length)
+        draft.content = content.replacingCharacters(in: NSRange(location: location, length: 0), with: text)
+        composerSelectionLocation = location + (text as NSString).length
     }
     
     func clearDraft() {
@@ -760,7 +805,8 @@ private extension ChatView {
         }
 
         globalStore.previewURL = url
-        globalStore.isFileInspectorPresented = true
+        inspectorTab = .files
+        globalStore.isInspectorPresented = true
         return .handled
     }
 
@@ -1313,7 +1359,7 @@ private struct ToolApprovalRequestView: View {
                 .padding(8)
                 .background(.quaternary, in: RoundedRectangle(cornerRadius: 8))
 
-                if !request.allowsAlways {
+                if request.toolName == ToolNames.runAppleScript {
                     if detail.localizedCaseInsensitiveContains("do shell script") {
                         Label(
                             "This script can run shell commands with ModelCraft's permissions.",
@@ -1440,13 +1486,14 @@ private final class UserInputFormModel {
 private struct ConversationItemsView: View {
 
     let items: [ConversationContentItem]
+    let onRewind: (Message) -> Void
 
     var body: some View {
         LazyVStack(alignment: .leading, spacing: 10) {
             ForEach(items) { item in
                 switch item {
                 case .message(let message):
-                    MessageView(message: message)
+                    MessageView(message: message, onRewind: onRewind)
                         .scrollTargetLayout()
                 case .assistantTurn(let turn):
                     AssistantTurnView(turn: turn)
@@ -1464,75 +1511,65 @@ private struct ConversationItemsView: View {
 }
 #endif
 
-// MARK: - Voice mode
+// MARK: - Voice input
 
-/// What voice mode is doing, as shown in the composer.
-enum VoicePhase {
-    case loading
-    /// Listening and waiting for the user to start speaking.
-    case waiting
-    /// Recording an utterance.
-    case hearing
-    /// A response is being generated and nothing is spoken yet.
-    case thinking
-    case speaking
-}
-
-/// Bars that follow the microphone while listening, move with the voice while speaking,
-/// and pulse while thinking.
+/// Samples microphone power with Vox's fast attack and slow release. Quiet input
+/// settles to a static baseline; there is no synthetic idle animation.
 struct VoiceLevelView: View {
-
-    let phase: VoicePhase
-    let level: Float
+    let sttService: STTService
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    private static let barCount = 5
-    /// Middle bars react more than the outer ones.
-    private static let barWeights: [Double] = [0.5, 0.8, 1, 0.8, 0.5]
-    private static let minHeight: Double = 4
-    private static let maxHeight: Double = 20
+    @State private var levels = Array(repeating: 0.0, count: 64)
 
     var body: some View {
-        if phase == .loading {
-            ProgressView()
-                .controlSize(.small)
-        } else {
-            TimelineView(.animation(paused: reduceMotion)) { context in
-                let time = context.date.timeIntervalSinceReferenceDate
-                HStack(spacing: 3) {
-                    ForEach(0..<Self.barCount, id: \.self) { index in
-                        Capsule()
-                            .fill(.tint)
-                            .frame(width: 3, height: height(of: index, at: time))
-                            .opacity(opacity(of: index, at: time))
+        HStack {
+            if sttService.state == .recording {
+                Canvas { context, size in
+                    let count = min(levels.count, max(1, Int(size.width / 5)))
+                    let spacing = size.width / Double(count)
+                    for index in 0..<count {
+                        let height = 2 + 26 * levels[levels.count - count + index]
+                        let rect = CGRect(
+                            x: Double(index) * spacing + (spacing - 3) / 2,
+                            y: (size.height - height) / 2,
+                            width: 3, height: height)
+                        context.fill(
+                            Path(roundedRect: rect, cornerRadius: 1.5),
+                            with: .foreground)
                     }
                 }
-                .frame(height: Self.maxHeight)
+                .accessibilityLabel("Listening")
+                .task {
+                    var envelope = 0.0
+                    while !Task.isCancelled {
+                        let input = Double(sttService.level)
+                        envelope += (input - envelope) * (input > envelope ? 0.85 : 0.45)
+                        if envelope < 0.01 { envelope = 0 }
+                        if envelope > 0 || levels.contains(where: { $0 > 0 }) {
+                            if reduceMotion {
+                                levels = Array(repeating: envelope, count: levels.count)
+                            } else {
+                                levels.removeFirst()
+                                levels.append(envelope)
+                            }
+                        }
+                        do {
+                            try await Task.sleep(for: .seconds(1.0 / 30))
+                        } catch { return }
+                    }
+                }
+            } else {
+                ProgressView()
+                    .controlSize(.small)
+                if sttService.state == .transcribing {
+                    Text("Transcribing")
+                } else {
+                    Text("Microphone")
+                }
+                Spacer(minLength: 0)
             }
-            .animation(.easeOut(duration: 0.1), value: level)
-            .accessibilityHidden(true)
         }
-    }
-
-    private func height(of index: Int, at time: TimeInterval) -> Double {
-        let weight = Self.barWeights[index]
-        let phaseOffset = Double(index) * 1.3
-        let amplitude: Double
-        switch phase {
-        case .loading, .thinking:
-            amplitude = 0
-        case .waiting, .hearing:
-            // A slight idle motion keeps the bars alive while the room is quiet.
-            amplitude = max(Double(level), 0.08 + 0.05 * sin(time * 2 + phaseOffset)) * weight
-        case .speaking:
-            amplitude = (0.5 + 0.5 * sin(time * 7 + phaseOffset)) * (0.6 + 0.4 * sin(time * 2.3 + phaseOffset)) * weight
-        }
-        return Self.minHeight + (Self.maxHeight - Self.minHeight) * min(amplitude, 1)
-    }
-
-    private func opacity(of index: Int, at time: TimeInterval) -> Double {
-        guard phase == .thinking else { return 1 }
-        return 0.3 + 0.7 * max(0, sin(time * 4 - Double(index) * 0.6))
+        .frame(height: 36)
+        .accessibilityElement(children: .combine)
     }
 }

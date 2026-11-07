@@ -6,7 +6,7 @@
 //
 
 import Foundation
-import Hub
+import HuggingFace
 import MLXLMCommon
 
 actor DeepSeekFlashModelFactory {
@@ -19,7 +19,7 @@ actor DeepSeekFlashModelFactory {
     private var state = LoadState.idle
 
     func load(
-        hub: HubApi = .default,
+        hub: HubCache = .default,
         maximumSequenceLength: Int
     ) async throws -> DeepSeekFlash {
         try Task.checkCancellation()
@@ -67,7 +67,7 @@ actor DeepSeekFlashModelFactory {
     func tokenCount(
         prompt: String,
         images: [UserInput.Image],
-        hub: HubApi = .default
+        hub: HubCache = .default
     ) async throws -> Int {
         switch state {
         case .loaded(let model):
@@ -78,10 +78,8 @@ actor DeepSeekFlashModelFactory {
             return try model.tokenCount(prompt: prompt, images: images)
         case .idle:
             let configuration = try DeepSeekFlashLoader.loadConfiguration(hub: hub)
-            let directory = hub.localRepoLocation(
-                Hub.Repo(id: DeepSeekFlashConfiguration.repositoryID))
-            let tokenizer = try await DeepSeekFlashTokenizer(
-                hub: hub, directory: directory)
+            let directory = try hub.modelDirectory(id: DeepSeekFlashConfiguration.repositoryID)
+            let tokenizer = try await DeepSeekFlashTokenizer(directory: directory)
             return try DeepSeekFlashImageProcessor.prepare(
                 promptTokenIDs: tokenizer.encode(text: prompt),
                 images: images,
@@ -93,15 +91,12 @@ actor DeepSeekFlashModelFactory {
 
     /// Counts the tokens of each text with the loaded model's tokenizer, or with a tokenizer
     /// loaded alone when the model is not loaded.
-    func tokenCounts(texts: [String], hub: HubApi = .default) async throws -> [Int] {
+    func tokenCounts(texts: [String], hub: HubCache = .default) async throws -> [Int] {
         let tokenizer: DeepSeekFlashTokenizer
         if case .loaded(let model) = state {
             tokenizer = model.tokenizer
         } else {
-            tokenizer = try await DeepSeekFlashTokenizer(
-                hub: hub,
-                directory: hub.localRepoLocation(
-                    Hub.Repo(id: DeepSeekFlashConfiguration.repositoryID)))
+            tokenizer = try await DeepSeekFlashTokenizer(directory: hub.modelDirectory(id: DeepSeekFlashConfiguration.repositoryID))
         }
         return texts.map { tokenizer.encode(text: $0).count }
     }

@@ -6,7 +6,7 @@
 //
 
 import Foundation
-import Hub
+import HuggingFace
 import MLX
 import MLXLMCommon
 
@@ -41,14 +41,13 @@ final class DeepSeekFlash {
     }
 
     init(
-        hub: HubApi,
+        hub: HubCache,
         configuration: DeepSeekFlashConfiguration,
         maximumSequenceLength: Int = 65_536
     ) async throws {
         self.configuration = configuration
-        let directory = hub.localRepoLocation(
-            Hub.Repo(id: DeepSeekFlashConfiguration.repositoryID))
-        tokenizer = try await DeepSeekFlashTokenizer(hub: hub, directory: directory)
+        let directory = try hub.modelDirectory(id: DeepSeekFlashConfiguration.repositoryID)
+        tokenizer = try await DeepSeekFlashTokenizer(directory: directory)
         transformer = try DeepSeekFlashLoader.loadTransformer(
             hub: hub,
             configuration: configuration,

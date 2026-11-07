@@ -33,7 +33,8 @@ final class AgentExecutor {
     func run(
         model: LocalModel,
         chat: Chat,
-        messages: [MLXLMCommon.Chat.Message]
+        assignment: Assignment,
+        prepareMessages: @MainActor () async throws -> [MLXLMCommon.Chat.Message]
     ) async throws -> Void {
         try Task.checkCancellation()
         let project = chat.project
@@ -52,7 +53,8 @@ final class AgentExecutor {
                     try await run(
                         model: model,
                         chat: chat,
-                        messages: messages,
+                        assignment: assignment,
+                        prepareMessages: prepareMessages,
                         lastToolSignature: nil,
                         consecutiveSameToolCalls: 0)
                 }
@@ -64,90 +66,88 @@ final class AgentExecutor {
     private func run(
         model: LocalModel,
         chat: Chat,
-        messages: [MLXLMCommon.Chat.Message],
+        assignment: Assignment,
+        prepareMessages: @MainActor () async throws -> [MLXLMCommon.Chat.Message],
         lastToolSignature: String?,
         consecutiveSameToolCalls: Int
     ) async throws {
+        let messages = try await prepareMessages()
         let availableTools = ToolDefinition.allToolSchema(for: chat)
         let assistantMessage = Message(role: .assistant, chat: chat, status: .new)
+        assignment.ticket?.session?.messages.append(assistantMessage)
+        assignment.ticket?.session?.eventIDs.append(assistantMessage.id)
         ModelContainer.shared.mainContext.persist(assistantMessage)
-        var allMessages = messages
+        var pendingCalls: [(ToolCall, RejectedToolCall?)] = []
         for try await batch in try await LMService.shared.generate(
             model: model,
             messages: messages,
             tools: availableTools
         ) {
             try Task.checkCancellation()
-            
             if let info = batch.info {
                 chat.tokenCount = info.promptTokenCount + info.generationTokenCount
             }
-            
-            // A call the parser rejected is recorded with a failed result, so the model
-            // learns why instead of the call vanishing.
             let rejection = batch.rejectedToolCall
             if let toolCall = batch.toolCall ?? rejection.map(Self.recordedToolCall) {
-                print("ToolCall \(toolCall)")
-                if assistantMessage.content.isEmpty {
-                    // The tool message then follows what the placeholder followed.
-                    chat.deleteMessages([assistantMessage])
-                } else {
-                    allMessages.append(LMService.shared.toMessage(assistantMessage))
-                }
-                
-                let toolMessage = Message(
-                    role: .tool,
-                    chat: chat,
-                    toolCall: toolCall,
-                    status: .generating)
-                ModelContainer.shared.mainContext.persist(toolMessage)
-                
-                let signature = toolCall.signature
-                let newConsecutiveSameToolCalls = signature == lastToolSignature
-                    ? consecutiveSameToolCalls + 1
-                    : 1
-                let duplicateCallBlocked = newConsecutiveSameToolCalls
-                    >= Self.maxConsecutiveIdenticalToolCalls
-                let result: (CallToolResult, MLXLMCommon.Chat.Message)
-                if duplicateCallBlocked {
-                    result = (
-                        .error(Self.duplicateToolCallMessage),
-                        .tool(Self.duplicateToolCallMessage))
-                } else if let rejection {
-                    let message = Self.rejectionMessage(rejection)
-                    result = (.error(message), .tool(message))
-                } else {
-                    // Running media tools report progress into the tool message's content,
-                    // which `Message` decodes until the result arrives.
-                    result = try await ToolExecutionProgressReporter.$imageGeneration.withValue({
-                        toolMessage.content = $0.storedValue
-                    }) {
-                        try await ToolExecutionProgressReporter.$videoGeneration.withValue({
-                            toolMessage.content = $0.storedValue
-                        }) {
-                            try await executeToolCall(
-                                toolCall, signature: signature, chat: chat, model: model)
-                        }
-                    }
-                }
-
-                toolMessage.content = result.1.content
-                toolMessage.toolCallResult = result.0
-                toolMessage.status = result.0.isError ? .failed : .generated
-                LMService.shared.append(toolMessage, to: &allMessages)
-                try await run(
-                    model: model,
-                    chat: chat,
-                    messages: allMessages,
-                    lastToolSignature: signature,
-                    consecutiveSameToolCalls: newConsecutiveSameToolCalls)
+                pendingCalls.append((toolCall, rejection))
             } else if let chunk = batch.chunk {
                 assistantMessage.status = .generating
                 assistantMessage.content.append(chunk)
             }
         }
         assistantMessage.status = .generated
-        
+        if !pendingCalls.isEmpty && assistantMessage.content.isEmpty {
+            chat.deleteMessages([assistantMessage])
+        }
+        try ModelContainer.shared.mainContext.save()
+
+        var lastSignature = lastToolSignature
+        var consecutiveCalls = consecutiveSameToolCalls
+        for (toolCall, rejection) in pendingCalls {
+            try Task.checkCancellation()
+            let toolMessage = Message(
+                role: .tool, chat: chat, toolCall: toolCall, status: .generating)
+            assignment.ticket?.session?.messages.append(toolMessage)
+            assignment.ticket?.session?.eventIDs.append(toolMessage.id)
+            ModelContainer.shared.mainContext.insert(toolMessage)
+            // Commit intent before a tool can cause an external side effect.
+            try ModelContainer.shared.mainContext.save()
+
+            let signature = toolCall.signature
+            consecutiveCalls = signature == lastSignature ? consecutiveCalls + 1 : 1
+            lastSignature = signature
+            let result: (CallToolResult, MLXLMCommon.Chat.Message)
+            if chat.activeTicket?.id != assignment.ticket?.id {
+                let text = "This call was not executed because execution handed off to another task."
+                result = (.error(text), .tool(text))
+            } else if consecutiveCalls >= Self.maxConsecutiveIdenticalToolCalls {
+                result = (.error(Self.duplicateToolCallMessage), .tool(Self.duplicateToolCallMessage))
+            } else if let rejection {
+                let text = Self.rejectionMessage(rejection)
+                result = (.error(text), .tool(text))
+            } else {
+                result = try await ToolExecutionProgressReporter.$imageGeneration.withValue({
+                    toolMessage.content = $0.storedValue
+                }) {
+                    try await ToolExecutionProgressReporter.$videoGeneration.withValue({
+                        toolMessage.content = $0.storedValue
+                    }) {
+                        try await executeToolCall(
+                            toolCall, signature: signature, chat: chat, model: model)
+                    }
+                }
+            }
+            toolMessage.content = result.1.content
+            toolMessage.toolCallResult = result.0
+            toolMessage.status = result.0.isError ? .failed : .generated
+            try ModelContainer.shared.mainContext.save()
+        }
+        if !pendingCalls.isEmpty && chat.activeTicket?.id == assignment.ticket?.id {
+            try await run(
+                model: model, chat: chat, assignment: assignment,
+                prepareMessages: prepareMessages, lastToolSignature: lastSignature,
+                consecutiveSameToolCalls: consecutiveCalls)
+        }
     }
 
     @MainActor
@@ -157,6 +157,23 @@ final class AgentExecutor {
         chat: Chat,
         model: LocalModel
     ) async throws -> (CallToolResult, MLXLMCommon.Chat.Message) {
+        let permissionMode = UserDefaults.standard.string(forKey: UserDefaults.toolPermissionMode)
+            .flatMap(ToolPermissionMode.init(rawValue:))
+            ?? UserDefaultSettings.toolPermissionMode
+        if !isUnattended, permissionMode == .readOnly, !toolCall.isReadOnly {
+            let message = "Read Only mode does not allow this action. Ask the user to change the permission mode if changes are needed."
+            return (.error(message), .tool(message))
+        }
+        if toolCall.function.name == ToolNames.task {
+            do {
+                let output = try await toolCall.execute(with: TaskTool.task(chatID: chat.id))
+                return (.success(content: [.text(TextContent(text: output.content))]), .tool(output.content))
+            } catch is CancellationError {
+                throw CancellationError()
+            } catch {
+                return (.error(error), .tool(error.localizedDescription))
+            }
+        }
         if toolCall.function.name == ToolNames.requestUserInput {
             if isUnattended {
                 let message = "This is a scheduled run and nobody is present to answer. Continue with reasonable assumptions and state them in the reply."
@@ -165,15 +182,23 @@ final class AgentExecutor {
             return try await executeUserInput(toolCall, chat: chat)
         }
 
-        // Nobody can choose a mode for a scheduled run, so it always accepts edits only.
-        let permissionMode: ToolPermissionMode = isUnattended
-            ? .acceptEdits
-            : UserDefaults.standard.string(forKey: UserDefaults.toolPermissionMode)
-                .flatMap(ToolPermissionMode.init(rawValue:))
-                ?? UserDefaultSettings.toolPermissionMode
-        if toolCall.requiresUserApproval,
-           chat.toolAuthorization?.allows(
-            toolCall, signature: signature, mode: permissionMode) != true {
+        let requiresApproval = toolCall.requiresUserApproval
+            || (!isUnattended && permissionMode == .ask
+                && toolCall.function.name == ToolNames.executeCommand)
+        let isAuthorized: Bool
+        if isUnattended {
+            isAuthorized = chat.toolAuthorization?.allowsScheduledRun(toolCall, signature: signature) == true
+        } else {
+            switch permissionMode {
+            case .readOnly, .ask:
+                isAuthorized = false
+            case .auto:
+                isAuthorized = chat.toolAuthorization?.allowsAutomatically(toolCall, signature: signature) == true
+            case .fullAccess:
+                isAuthorized = true
+            }
+        }
+        if requiresApproval, !isAuthorized {
             if isUnattended {
                 let message = "This is a scheduled run and nobody is present to approve this action, so it was not performed. Describe what should be done in the reply instead."
                 return (.error(message), .tool(message))
@@ -188,8 +213,9 @@ final class AgentExecutor {
                     return (.error(error), .tool(error.localizedDescription))
                 }
             }
-            let decision = try await interactionCoordinator.requestApproval(
-                toolCall.approvalRequest)
+            var request = toolCall.approvalRequest
+            request.allowsAlways = permissionMode == .auto && !toolCall.requiresFreshApproval
+            let decision = try await interactionCoordinator.requestApproval(request)
             switch decision {
             case .deny:
                 let message = "The user did not allow this action."
@@ -279,8 +305,7 @@ struct ToolAuthorizationContext: Codable {
         self.chatDirectory = chatDirectory
     }
 
-    /// The working folder and the chat's folder, where edits run without a prompt
-    /// unless the mode is `.ask`.
+    /// The working folder and the chat's folder, where automatic edits are allowed.
     private var workingScopes: [FileScope] {
         [workingDirectory, chatDirectory].compactMap { $0 }.map {
             FileScope(
@@ -289,8 +314,32 @@ struct ToolAuthorizationContext: Codable {
         }
     }
 
-    func allows(_ toolCall: ToolCall, signature: String, mode: ToolPermissionMode) -> Bool {
-        let scopes = mode == .ask ? fileScopes : fileScopes + workingScopes
+    func allowsAutomatically(_ toolCall: ToolCall, signature: String) -> Bool {
+        guard !toolCall.requiresFreshApproval || toolCall.function.name == ToolNames.executeCommand else {
+            return false
+        }
+        switch toolCall.function.name {
+        case ToolNames.applyPatch:
+            let paths = toolCall.patchFileChanges.map(\.path)
+            return !paths.isEmpty && contains(paths, in: fileScopes + workingScopes)
+        case ToolNames.executeCommand:
+            guard let command = toolCall.function.arguments["command"]?.stringValue,
+                  let targets = scopedFileCommandTargets(command, allowsRemoval: false)
+            else { return false }
+            return contains(targets, in: fileScopes + workingScopes)
+        case ToolNames.appClick, ToolNames.appDrag, ToolNames.appType, ToolNames.appKey, ToolNames.appMenu:
+            return allowsScheduledRun(toolCall, signature: signature)
+        default:
+            if Connector(toolName: toolCall.function.name) != nil {
+                return approvedToolSignatures.contains(signature)
+            }
+            return true
+        }
+    }
+
+    /// Scheduled runs retain their bounded file-edit authority independently of the composer.
+    func allowsScheduledRun(_ toolCall: ToolCall, signature: String) -> Bool {
+        let scopes = fileScopes + workingScopes
         switch toolCall.function.name {
         case ToolNames.applyPatch:
             let paths = toolCall.patchFileChanges.map(\.path)
@@ -301,9 +350,7 @@ struct ToolAuthorizationContext: Codable {
                 return true
             }
             guard let command = toolCall.function.arguments["command"]?.stringValue,
-                  let targets = mode == .auto
-                    ? namedPaths(in: command)
-                    : scopedFileCommandTargets(command)
+                  let targets = scopedFileCommandTargets(command)
             else {
                 return false
             }
@@ -311,8 +358,6 @@ struct ToolAuthorizationContext: Codable {
         case ToolNames.runAppleScript:
             // Every script needs a fresh decision.
             return false
-        case _ where mode == .auto:
-            return true
         case ToolNames.appClick, ToolNames.appDrag, ToolNames.appType, ToolNames.appKey, ToolNames.appMenu:
             // Approval covers one application, or any window on screen for coordinates
             // taken from a screenshot of all displays.
@@ -381,67 +426,48 @@ struct ToolAuthorizationContext: Codable {
         }
     }
 
-    /// The paths a command names that could leave its working directory: absolute paths
-    /// and paths through `..`. Nil when the command can reach a location the text does not
-    /// show, through the home directory, a variable, or a substitution.
-    private func namedPaths(in command: String) -> [String]? {
-        guard command.rangeOfCharacter(from: CharacterSet(charactersIn: "~$`")) == nil else {
-            return nil
-        }
-        let separators = CharacterSet.whitespacesAndNewlines
-            .union(CharacterSet(charactersIn: ";|&<>()=\"'"))
-        return command.components(separatedBy: separators).filter { token in
-            token != "/dev/null"
-                && (token.hasPrefix("/") || token.split(separator: "/").contains(".."))
-        }
-    }
-
-    private func scopedFileCommandTargets(_ command: String) -> [String]? {
-        let forbiddenCharacters = CharacterSet(charactersIn: "\n\r;|&><`*?[]")
-        guard command.rangeOfCharacter(from: forbiddenCharacters) == nil,
-              !command.contains("$("),
-              !command.contains("${")
-        else {
+    private func scopedFileCommandTargets(_ command: String, allowsRemoval: Bool = true) -> [String]? {
+        let forbiddenCharacters = CharacterSet(charactersIn: "\n\r;|&><`*?[]$~\\\"'(){}")
+        guard command.rangeOfCharacter(from: forbiddenCharacters) == nil else {
             return nil
         }
 
         let arguments = command.split(whereSeparator: \.isWhitespace).map(String.init)
         guard let first = arguments.first else { return nil }
         let executable = (first as NSString).lastPathComponent
-        guard ["mkdir", "rm", "touch"].contains(executable) else { return nil }
+        guard first == executable || first == "/bin/\(executable)" || first == "/usr/bin/\(executable)",
+              (allowsRemoval ? ["mkdir", "rm", "touch"] : ["mkdir", "touch"]).contains(executable)
+        else { return nil }
 
-        let targets = arguments.dropFirst().filter { !$0.hasPrefix("-") }.map {
-            $0.trimmingCharacters(in: CharacterSet(charactersIn: "\"'"))
-        }
+        let targets = arguments.dropFirst().filter { !$0.hasPrefix("-") }
         return targets.isEmpty ? nil : targets
     }
 }
 
 /// How much the agent may do without asking, chosen in the composer.
 enum ToolPermissionMode: String, CaseIterable, Identifiable {
-    /// Only what the user allowed in the conversation runs without a prompt.
+    case readOnly
     case ask
-    /// Also file edits inside the working folder.
-    case acceptEdits
-    /// Every tool except `run_applescript`, while the paths it names stay inside the
-    /// working folder or what the user allowed.
     case auto
+    case fullAccess
 
     var id: Self { self }
 
     var title: LocalizedStringResource {
         switch self {
-        case .ask: "Ask"
-        case .acceptEdits: "Accept Edits"
+        case .readOnly: "Read Only"
+        case .ask: "Ask Every Time"
         case .auto: "Auto"
+        case .fullAccess: "Full Access"
         }
     }
 
     var systemImage: String {
         switch self {
+        case .readOnly: "eye"
         case .ask: "hand.raised"
-        case .acceptEdits: "pencil"
         case .auto: "bolt"
+        case .fullAccess: "lock.open"
         }
     }
 }

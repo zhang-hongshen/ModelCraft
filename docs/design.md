@@ -48,6 +48,8 @@ Prefer semantic controls and keyboard behavior supplied by SwiftUI. Preserve foc
 
 Tool-call presentation must follow persisted conversation order. Visual grouping is allowed only for adjacent items that already belong together; it must not move calls across assistant turns or imply a backend grouping that does not exist.
 
+Controls explain themselves. Do not add secondary labels, section footers, captions, or hint text that describe how to use a control; express the meaning through the control's form, icons, state, and its own short label. Secondary text is for status and values (progress, "Default"), not instructions.
+
 ## Text, localization, and accessibility
 
 All product copy is localizable. Pass SwiftUI string literals directly to localized view initializers; use `LocalizedStringResource` for user-facing values modeled outside a view. Use format styles for dates, numbers, currencies, and lists, and use leading/trailing alignment so layouts adapt to right-to-left languages.

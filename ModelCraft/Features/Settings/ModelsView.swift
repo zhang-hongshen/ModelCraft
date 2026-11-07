@@ -4,7 +4,7 @@
 //
 
 import SwiftUI
-import Hub
+import HuggingFace
 
 struct ModelsView: View {
     @Environment(UserSettings.self) private var userSettings
@@ -48,7 +48,7 @@ struct ModelsView: View {
         .formStyle(.grouped)
         .task { refreshDownloadedModels() }
         .confirmationDialog(
-            "Delete this model? Its downloaded files will be removed.",
+            "Delete this model? Files in the shared cache may also be used by other apps.",
             isPresented: Binding(
                 get: { modelToDelete != nil },
                 set: { if !$0 { modelToDelete = nil } }
@@ -145,13 +145,13 @@ struct ModelsView: View {
     private var isH3Downloaded: Bool {
         let configuration = H3Configuration.presetH3BaseFL2VA
         guard let indexFile = configuration.files[.transformerWeights] else { return false }
-        let directory = HubApi.system.localRepoLocation(Hub.Repo(id: configuration.id))
+        guard let directory = try? HubCache.default.modelDirectory(id: configuration.id) else { return false }
         return FileManager.default.fileExists(atPath: directory.appending(path: indexFile).path)
     }
 
     private var isLTXVideoDownloaded: Bool {
         let configuration = LTXVideoConfiguration.ltxv2BDistilled
-        let directory = HubApi.system.localRepoLocation(Hub.Repo(id: configuration.id))
+        guard let directory = try? HubCache.default.modelDirectory(id: configuration.id) else { return false }
         return [configuration.files[.transformerWeights], configuration.files[.vaeWeights]]
             .compactMap { $0 }
             .allSatisfy { FileManager.default.fileExists(atPath: directory.appending(path: $0).path) }
@@ -201,7 +201,7 @@ struct ModelsView: View {
         Task {
             do {
                 try await Task.detached(priority: .userInitiated) {
-                    try ModelService.deleteModel(hub: .system, modelID: repositoryID)
+                    try ModelService.deleteModel(hub: .default, modelID: repositoryID)
                 }.value
                 downloadedModelIDs.remove(id)
                 if userSettings.imageGenerationModelID == id {
