@@ -7,3 +7,23 @@ Product/
 docs/superpowers
 
 CLAUDE.md
+
+# Local-only documentation, helpers and Xcode user state
+/Docs/
+/docs/
+/AGENTS.md
+/CLAUDE.md
+/README*
+/script/
+/scripts/
+/Scripts/
+/Patches/
+/Design/
+/design/
+/.script/
+/.scripts/
+/.Scripts/
+/.Patches/
+/.Design/
+/.design/
+xcuserdata/
