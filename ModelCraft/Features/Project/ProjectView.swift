@@ -11,14 +11,14 @@ import SwiftData
 struct ProjectView: View {
     
     enum ProjectViewTab: Hashable {
-        case chat, file
+        case thread, file
     }
     
     @Bindable var project: Project
     
     @State private var folderImporterPresented = false
     @State private var resourceImporterPresented = false
-    @State private var selectedTab: ProjectViewTab = .chat
+    @State private var selectedTab: ProjectViewTab = .thread
     @State private var projectEditionPresented: Bool = false
     
     @Environment(GlobalStore.self)private var globalStore
@@ -76,7 +76,7 @@ extension ProjectView {
                 }
                 DeleteButton(style: .iconAndText) {
                     project.deleteIndex()
-                    project.chats.forEach { $0.deleteDirectory() }
+                    project.threads.forEach { $0.deleteDirectory() }
                     modelContext.delete(project)
                     globalStore.currentTab = nil
                 }
@@ -91,8 +91,8 @@ extension ProjectView {
     func ContentView() -> some View {
         TabView(selection: $selectedTab) {
             
-            ProjectChatView(chats: project.chats)
-                .tag(ProjectViewTab.chat)
+            ProjectThreadView(threads: project.threads)
+                .tag(ProjectViewTab.thread)
                 .tabItem{
                     Text("Chats")
                 }

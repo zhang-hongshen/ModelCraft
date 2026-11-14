@@ -100,7 +100,7 @@ private struct VideoGeneratingView: View {
             Image(systemName: "video.badge.sparkles")
                 .font(.largeTitle)
                 .symbolRenderingMode(.hierarchical)
-                .foregroundStyle(.primary, Color.accent)
+                .foregroundStyle(.primary, .secondary)
 
             progressText
                 .font(.headline)

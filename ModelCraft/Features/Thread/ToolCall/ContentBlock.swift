@@ -118,7 +118,7 @@ struct ResourceLinkBlock: View {
 }
 
 extension View {
-    /// Copy and Show in Finder for a generated file shown in the chat.
+    /// Copy and Show in Finder for a generated file shown in the thread.
     func fileContextMenu(_ url: URL) -> some View {
         contextMenu {
             CopyButton() { Pasteboard.setFile(url) }

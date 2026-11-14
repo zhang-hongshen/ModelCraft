@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import CryptoKit
 import SwiftData
 import SwiftUI
 import MLXLMCommon
@@ -15,11 +16,11 @@ class Message {
     @Attribute(.unique) var id = UUID()
     
     var createdAt: Date = Date.now
-    /// The message this one follows. A chat's conversation is read by walking these links
-    /// up from its leaf, so the order of `Chat.messages` never matters.
+    /// The message this one follows. A thread's conversation is read by walking these links
+    /// up from its leaf, so the order of `Thread.messages` never matters.
     var parentID: UUID?
-    var chat: Chat?
-    var executorSessions: [ExecutorSession] = []
+    var thread: Thread?
+    var tickets: [Ticket] = []
     var role: MessageRole
     var content: String
     var files: [URL]
@@ -68,12 +69,12 @@ class Message {
     }
     var status: MessageStatus
     
-    init(role: MessageRole = .user, chat: Chat? = nil, content: String = "",
+    init(role: MessageRole = .user, thread: Thread? = nil, content: String = "",
          files: [URL] = [], toolCall: ToolCall? = nil, toolCallResult: CallToolResult? = nil,
          status: MessageStatus = .generated) {
-        // Read before joining the chat, while this message is not yet its leaf.
-        self.parentID = chat?.leafMessage?.id
-        self.chat = chat
+        // Read before joining the thread, while this message is not yet its leaf.
+        self.parentID = thread?.leafMessage?.id
+        self.thread = thread
         self.role = role
         self.content = content
         self.files = files
@@ -112,80 +113,37 @@ extension Message {
         return status == .new
     }
     
-    /// Holds attachments of drafts that have no chat yet. Drafts are not persisted, so
+    /// Holds attachments of drafts that have no thread yet. Drafts are not persisted, so
     /// anything left here at launch is abandoned.
     static let draftDirectory = URL.appSupportDirectory.appending(
         path: "Drafts",
         directoryHint: .isDirectory)
 
-    /// Copies the attachments into the chat's folder, or the draft folder before the
-    /// message belongs to a chat.
+    /// Attachments share immutable content; removing a reference never removes the file.
     func addFiles<T>(_ urls: T) where T: Swift.Collection, T.Element == URL {
-        var addedFiles: [URL] = []
-        let fileManager = FileManager.default
-        let directory = chat?.directory ?? Message.draftDirectory
         for url in urls {
-            let destinationURL = directory.appendingPathComponent(url.lastPathComponent)
-            guard url.standardizedFileURL != destinationURL.standardizedFileURL else {
-                addedFiles.append(url)
-                continue
-            }
-
             do {
-                try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
-                if fileManager.fileExists(atPath: destinationURL.path) {
-                    try fileManager.removeItem(at: destinationURL)
-                }
-                try fileManager.copyItem(at: url, to: destinationURL)
-                addedFiles.append(destinationURL)
+                let stored = try ResourceStore.importFile(url)
+                if !files.contains(stored) { files.append(stored) }
             } catch {
-                print("Moving File failed \(url.lastPathComponent): \(error)")
-            }
-        }
-        files.append(contentsOf: addedFiles)
-    }
-
-    /// Moves the attachments into the chat's folder when the message is sent, so the
-    /// model works on them there. Files already in the folder stay where they are.
-    func moveFiles(to directory: URL) {
-        let fileManager = FileManager.default
-        files = files.map { url in
-            let destinationURL = directory.appendingPathComponent(url.lastPathComponent)
-            guard url.standardizedFileURL != destinationURL.standardizedFileURL else {
-                return url
-            }
-            do {
-                try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
-                if fileManager.fileExists(atPath: destinationURL.path) {
-                    try fileManager.removeItem(at: destinationURL)
-                }
-                try fileManager.moveItem(at: url, to: destinationURL)
-                return destinationURL
-            } catch {
-                print("Moving File failed \(url.lastPathComponent): \(error)")
-                return url
+                print("Importing file failed \(url.lastPathComponent): \(error)")
             }
         }
     }
 
     func removeFiles<T>(_ urls: T) where T: Swift.Collection, T.Element == URL {
-        var removedFiles: [URL] = []
-        let fileManager = FileManager.default
-        for url in urls {
-            if fileManager.fileExists(atPath: url.path) {
-                do {
-                    try fileManager.removeItem(at: url)
-                } catch {
-                    print("Removing File failed \(url.lastPathComponent): \(error)")
-                }
-                removedFiles.append(url)
-            }
-        }
-        files.removeAll { removedFiles.contains($0) }
+        let removed = Set(urls)
+        files.removeAll { removed.contains($0) }
     }
+
+    /// Includes textual links as well as structured tool output so copied links stay valid.
+    var resourceReferences: String {
+        content + files.map(\.absoluteString).joined(separator: "\n") + (_toolCallResult ?? "") + (_toolCall ?? "")
+    }
+
 }
 
-/// Lifecycle of a tool call in the chat UI (labels, progress).
+/// Lifecycle of a tool call in the thread UI (labels, progress).
 enum ToolCallStatus: Codable {
     case running
     case completed
@@ -209,4 +167,56 @@ enum MessageRole: Codable {
 
 enum MessageStatus: Codable {
     case new, generating, failed, generated
+}
+
+/// Immutable, content-addressed resources shared by messages and media tools.
+/// Collection runs only at launch, before drafts and generation can hold unsaved references.
+enum ResourceStore {
+#if DEBUG
+    static let directory = URL.appSupportDirectory.appending(path: "Resources-Debug", directoryHint: .isDirectory)
+#else
+    static let directory = URL.appSupportDirectory.appending(path: "Resources", directoryHint: .isDirectory)
+#endif
+    private static let lock = NSLock()
+
+    static func importFile(_ source: URL) throws -> URL {
+        lock.lock()
+        defer { lock.unlock() }
+        let handle = try FileHandle(forReadingFrom: source)
+        defer { try? handle.close() }
+        var hash = SHA256()
+        while let chunk = try handle.read(upToCount: 1024 * 1024), !chunk.isEmpty {
+            hash.update(data: chunk)
+        }
+        let key = hash.finalize().map { String(format: "%02x", $0) }.joined()
+        let folder = directory.appending(path: key, directoryHint: .isDirectory)
+        let manager = FileManager.default
+        if manager.fileExists(atPath: folder.path),
+           let existing = try manager.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil).first {
+            return existing
+        }
+        try manager.createDirectory(at: folder, withIntermediateDirectories: true)
+        let destination = folder.appendingPathComponent(source.lastPathComponent)
+        do {
+            try manager.copyItem(at: source, to: destination)
+        } catch {
+            try? manager.removeItem(at: folder)
+            throw error
+        }
+        return destination
+    }
+
+    @MainActor
+    static func collectUnreferenced() throws {
+        let context = ModelContainer.shared.mainContext
+        let messages = try context.fetch(FetchDescriptor<Message>())
+        let references = messages.map(\.resourceReferences).joined(separator: "\n")
+        let manager = FileManager.default
+        guard manager.fileExists(atPath: directory.path) else { return }
+        for folder in try manager.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil) {
+            if !references.contains(folder.lastPathComponent) {
+                try manager.removeItem(at: folder)
+            }
+        }
+    }
 }

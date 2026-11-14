@@ -99,9 +99,9 @@ extension ModelCard {
         } placeholder: {
             Image(systemName: (model.category ?? .text).systemImage)
                 .font(.system(size: size * 0.42))
-                .foregroundStyle(.tint)
+                .foregroundStyle(.primary)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(.tint.opacity(0.12))
+                .background(.secondary.opacity(0.12))
         }
         .frame(width: size, height: size)
         .clipShape(shape)
@@ -119,29 +119,38 @@ extension ModelCard {
     
     @ViewBuilder
     func ModelMetadata() -> some View {
-        HStack(spacing: 10) {
+        VStack(alignment: .leading, spacing: 4) {
+            Label {
+                Text(model.deviceFit.title)
+            } icon: {
+                Image(systemName: model.deviceFit.systemImage)
+            }
+            .font(.caption)
+            .foregroundStyle(deviceFitColor)
+
             if let size = sizeInBytes {
                 Label {
                     Text(size, format: .byteCount(style: .file))
                 } icon: {
                     Image(systemName: "internaldrive")
                 }
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .labelStyle(.titleAndIcon)
+                .lineLimit(1)
                 .accessibilityLabel(Text("Size \(size.formatted(.byteCount(style: .file)))"))
             }
-            
-            Label {
-                Text(model.downloads, format: .number.notation(.compactName))
-            } icon: {
-                Image(systemName: "arrow.down.circle")
-            }
-            .accessibilityLabel(Text("\(model.downloads) downloads"))
         }
-        .font(.caption)
-        .foregroundStyle(.secondary)
-        .labelStyle(.titleAndIcon)
-        .lineLimit(1)
     }
-    
+
+    private var deviceFitColor: Color {
+        switch model.deviceFit {
+        case .recommended: .green
+        case .limited: .orange
+        case .incompatible: .red
+        }
+    }
+
     @ViewBuilder
     func DownloadActionView() -> some View {
         switch downloadState {
@@ -196,7 +205,7 @@ extension ModelCard {
                     .stroke(.quaternary, lineWidth: 3)
                 Circle()
                     .trim(from: 0, to: fractionCompleted)
-                    .stroke(.tint, style: StrokeStyle(lineWidth: 3, lineCap: .round))
+                    .stroke(.primary, style: StrokeStyle(lineWidth: 3, lineCap: .round))
                     .rotationEffect(.degrees(-90))
                 Image(systemName: systemImage)
                     .font(.system(size: 9, weight: .bold))

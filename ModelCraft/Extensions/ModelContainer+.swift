@@ -11,9 +11,9 @@ extension ModelContainer {
     
     static let shared: ModelContainer = {
         let schema = Schema([
-            Message.self, Chat.self, ModelTask.self,
+            Message.self, Thread.self, ModelTask.self,
             Project.self, Schedule.self, WorkdayException.self,
-            Ticket.self, ExecutorSession.self, Assignment.self, TaskInput.self, TaskReport.self,
+            Ticket.self,
         ])
 #if DEBUG
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)

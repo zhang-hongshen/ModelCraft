@@ -108,7 +108,7 @@ final class LMService {
         }
     }
 
-    /// Counts the tokens of each text on its own, without chat-template formatting. Uses the
+    /// Counts the tokens of each text on its own, without model-template formatting. Uses the
     /// loaded model's tokenizer when there is one; otherwise loads only the tokenizer.
     func tokenCounts(model: LocalModel, texts: [String], hub: HubCache = .default) async throws -> [Int] {
         if isDeepSeekFlash(model) {
@@ -128,7 +128,7 @@ final class LMService {
     /// Generates text based on the provided messages using the specified model.
     /// - Parameters:
     ///   - model: The language model to use for generation
-    ///   - messages: Array of chat messages including user, assistant, and system messages
+    ///   - messages: Array of thread messages including user, assistant, and system messages
     ///   - tools: Array of available tools
     ///   - reusesPromptCache: Whether the request resumes from the prompt prefix the previous
     ///     such request left in memory, and leaves its own for the next one
@@ -226,7 +226,7 @@ final class LMService {
     /// Generates text based on the provided messages using the specified model.
     /// - Parameters:
     ///   - model: The language model to use for generation
-    ///   - messages: Array of chat messages including user, assistant, and system messages
+    ///   - messages: Array of thread messages including user, assistant, and system messages
     ///   - tools: Array of available tools
     /// - Returns: A String of generated text tokens
     /// - Throws: Errors that might occur during generation
@@ -258,7 +258,7 @@ final class LMService {
         return output
     }
     
-    /// Generates a short auxiliary text, such as a chat title or compaction summary.
+    /// Generates a short auxiliary text, such as a thread title or compaction summary.
     /// Apple's on-device model answers when the system offers it; otherwise, or when it
     /// rejects the prompt (context size, language, guardrails), `model` generates it.
     func generateAuxiliary(
@@ -308,7 +308,7 @@ extension LMService {
 
     /// Appends the protocol form of a persisted message. A tool message is preceded by the
     /// assistant tool call that produced it, attached to the preceding assistant text when
-    /// there is one, so chat templates can pair the result with its call. Images and videos
+    /// there is one, so model templates can pair the result with its call. Images and videos
     /// in the tool result are attached to the tool message so the model can see them.
     func append(_ message: Message, to messages: inout [MLXLMCommon.Chat.Message]) {
         guard message.role == .tool, let toolCall = message.toolCall else {

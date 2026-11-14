@@ -8,6 +8,10 @@ import HuggingFace
 import MLXLMCommon
 
 extension HubCache {
+    /// Cache for models downloaded automatically by app features.
+    static let system = HubCache(
+        cacheDirectory: HubCache.default.cacheDirectory.appendingPathComponent(".system", isDirectory: true))
+
     func cachedModelDirectory(id: String, revision: String = "main") -> URL? {
         guard let repo = Repo.ID(rawValue: id),
               let commit = resolveRevision(repo: repo, kind: .model, ref: revision),

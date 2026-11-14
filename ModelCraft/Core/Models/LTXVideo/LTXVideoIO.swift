@@ -10,6 +10,7 @@
 //  ModelCraft
 //
 
+import Foundation
 import AVFoundation
 import CoreVideo
 import Foundation
@@ -95,7 +96,7 @@ public enum LTXVideoIO {
             try Task.checkCancellation()
             while !input.isReadyForMoreMediaData {
                 try Task.checkCancellation()
-                Thread.sleep(forTimeInterval: 0.001)
+                Foundation.Thread.sleep(forTimeInterval: 0.001)
             }
 
             let frame = MLX.clip(

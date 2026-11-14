@@ -31,11 +31,16 @@ struct ModelCraftApp: App {
         _ = NetworkMonitor.shared
         URL.moveLegacyAppSupportDirectory()
         try? FileManager.default.removeItem(at: Message.draftDirectory)
-        Chat.linkLegacyMessages()
+        Thread.linkLegacyMessages()
         do {
-            try Assignment.recoverInterrupted()
+            try ResourceStore.collectUnreferenced()
         } catch {
-            fatalError("Could not recover interrupted assignments: \(error)")
+            print("Resource cleanup failed: \(error)")
+        }
+        do {
+            try Ticket.recoverInterrupted()
+        } catch {
+            fatalError("Could not recover interrupted tasks: \(error)")
         }
         let globalStore = GlobalStore.shared
         let localModelStore = LocalModelStore()
@@ -53,14 +58,13 @@ struct ModelCraftApp: App {
             WindowGroup(id: Self.mainWindowID) {
                 ContentView()
                     .background(.ultraThinMaterial)
-                    .tint(.accent)
                     .applyUserSettings()
-                    // Files dropped on the Dock icon or opened from Finder start a new chat
+                    // Files dropped on the Dock icon or opened from Finder start a new thread
                     // in an open window rather than a new one.
                     .handlesExternalEvents(preferring: ["*"], allowing: ["*"])
                     .onOpenURL { url in
                         guard url.isFileURL else { return }
-                        globalStore.startNewChat(attaching: [url])
+                        globalStore.startNewThread(attaching: [url])
                     }
                     .task {
                         await localModelStore.reload()
@@ -88,7 +92,6 @@ struct ModelCraftApp: App {
             }
             Settings {
                 SettingsView().background(.ultraThinMaterial)
-                    .tint(.accent)
                     .applyUserSettings()
                     .frame(minWidth: 560, idealWidth: 640, maxWidth: 760, minHeight: 200)
             }
@@ -110,7 +113,7 @@ struct ModelCraftApp: App {
     
 }
 
-/// The sidebar's actions in the menu bar: File ▸ New Chat, and New Project…, View ▸ sections, and the Chat menu.
+/// The sidebar's actions in the menu bar: File ▸ New Thread, and New Project…, View ▸ sections, and the Thread menu.
 private struct AppMenuCommands: Commands {
 
     let globalStore: GlobalStore
@@ -120,7 +123,7 @@ private struct AppMenuCommands: Commands {
     var body: some Commands {
         CommandGroup(after: .newItem) {
             Button("New Chat") {
-                globalStore.startNewChat()
+                globalStore.startNewThread()
             }
             .keyboardShortcut("n", modifiers: [.command, .shift])
             Button("New Project…") {
@@ -137,13 +140,13 @@ private struct AppMenuCommands: Commands {
         }
         CommandMenu("Chat") {
             Button("Rename Chat…") {
-                sidebarCommands?.renameChat?()
+                sidebarCommands?.renameThread?()
             }
-            .disabled(sidebarCommands?.renameChat == nil)
+            .disabled(sidebarCommands?.renameThread == nil)
             Button("Delete Chat") {
-                sidebarCommands?.deleteChat?()
+                sidebarCommands?.deleteThread?()
             }
-            .disabled(sidebarCommands?.deleteChat == nil)
+            .disabled(sidebarCommands?.deleteThread == nil)
         }
     }
 

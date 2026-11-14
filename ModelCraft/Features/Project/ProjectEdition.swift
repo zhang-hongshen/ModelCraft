@@ -19,104 +19,78 @@ struct ProjectEdition: View {
     @Environment(\.modelContext) private var modelContext
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Name")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .fontWeight(.medium)
-                
-                TextField("Project Documentation", text: $project.title)
-                    .textFieldStyle(.plain)
-                    .font(.title3)
-                    .padding(Layout.padding)
-                    .background(Color.primary.opacity(0.05))
-                    .overlay(
-                        RoundedRectangle()
-                            .stroke(Color.primary.opacity(0.1), lineWidth: 1)
-                    )
-            }
-            
-            
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Working Folder")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .fontWeight(.medium)
+        VStack(spacing: 0) {
+            VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Name")
+                        .fontWeight(.medium)
+                    TextField("Project Documentation", text: $project.title)
+                        .textFieldStyle(.roundedBorder)
+                        .accessibilityLabel("Name")
+                }
 
-                HStack {
-                    if let workingDirectory = project.workingDirectory {
-                        Label(workingDirectory.lastPathComponent, systemImage: "folder")
-                            .lineLimit(1)
-                            .truncationMode(.middle)
-                    } else {
-                        Label("No Folder", systemImage: "folder")
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Working Folder")
+                        .fontWeight(.medium)
+                    HStack(spacing: 8) {
+                        Image(systemName: "folder")
                             .foregroundStyle(.secondary)
-                    }
-
-                    Spacer()
-
-                    Button("Choose Folder") {
-                        folderImporterPresented = true
+                            .accessibilityHidden(true)
+                        if let workingDirectory = project.workingDirectory {
+                            Text(workingDirectory.path)
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                                .help(workingDirectory.path)
+                        } else {
+                            Text("No Folder")
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer(minLength: 8)
+                        Button("Choose Folder") {
+                            folderImporterPresented = true
+                        }
+                        if project.workingDirectory != nil {
+                            Button("Remove Folder", systemImage: "xmark") {
+                                project.workingDirectory = nil
+                            }
+                            .labelStyle(.iconOnly)
+                            .accessibilityLabel("Remove Folder")
+                        }
                     }
                     .controlSize(.small)
+                    .padding(.vertical, 4)
+                }
 
-                    if project.workingDirectory != nil {
-                        Button("Remove Folder", systemImage: "xmark") {
-                            project.workingDirectory = nil
-                        }
-                        .labelStyle(.iconOnly)
-                        .controlSize(.small)
-                        .accessibilityLabel("Remove Folder")
+                ProjectReferenceFiles(
+                    resources: project.resources,
+                    selection: $selectedFiles,
+                    addFiles: { resourceImporterPresented = true },
+                    removeFiles: {
+                        project.removeResources(selectedFiles)
+                        selectedFiles.removeAll()
                     }
-                }
-                .padding(Layout.padding)
-                .background(Color.primary.opacity(0.05))
-            }
+                )
 
-            VStack(alignment: .leading, spacing: 8) {
-                HStack {
-                    Text("Reference Files")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .fontWeight(.medium)
-                    Spacer()
-                    
-                    Text("\(project.resources.count) items")
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
-                }
-                
-                ZStack {
-                    RoundedRectangle()
-                        .fill(.background.opacity(0.5))
-                        .overlay(
-                            RoundedRectangle()
-                                .stroke(Color.primary.opacity(0.05), lineWidth: 1)
-                        )
-                    
-                    if project.resources.isEmpty {
-                        EmptyFilesView()
-                    } else {
-                        FilesList()
-                    }
-                }
-                .frame(minHeight: 150)
             }
-            
-            DisclosureGroup("Project Memory") {
-                TextEditor(text: $project.memory)
-                    .font(.body)
-                    .frame(minHeight: 100)
-                    .accessibilityLabel("Project Memory")
-            }
+            .padding(20)
 
-            OpearationButtons()
+            HStack(spacing: 8) {
+                Spacer()
+                Button("Cancel") { dismiss() }
+                    .keyboardShortcut(.cancelAction)
+                Button("Save") { save() }
+                    .buttonStyle(.borderedProminent)
+                    .tint(.accentColor)
+                    .keyboardShortcut(.defaultAction)
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 12)
         }
-        .padding()
-        .background(.ultraThinMaterial)
-        .toolbar(content: ToolbarItems)
+        .font(.body)
+        .foregroundStyle(.primary)
+        .frame(minWidth: 480, idealWidth: 520)
+        .fixedSize(horizontal: false, vertical: true)
+        .background(Color(nsColor: .windowBackgroundColor))
         .fileImporter(
             isPresented: $folderImporterPresented,
             allowedContentTypes: [.folder],
@@ -142,81 +116,74 @@ struct ProjectEdition: View {
     }
 }
 
-// MARK: - Subviews
-extension ProjectEdition {
-    
-    @ViewBuilder
-    func FilesList() -> some View {
-        List(project.resources, id: \.self, selection: $selectedFiles) { url in
-            ListCell(url)
-                .listRowBackground(Color.clear)
-                .listRowSeparator(.visible, edges: .bottom)
-        }
-        .listStyle(.plain)
-        .scrollContentBackground(.hidden)
-    }
-    
-    @ViewBuilder
-    func EmptyFilesView() -> some View {
-        VStack(spacing: 12) {
-            Image(systemName: "doc.badge.plus")
-                .font(.largeTitle)
-                .foregroundStyle(.quaternary)
-            Text("No reference files added yet")
-                .font(.callout)
-                .foregroundStyle(.secondary)
-            Button("Browse Files") { resourceImporterPresented = true }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-        }
-    }
+private struct ProjectReferenceFiles: View {
+    let resources: [URL]
+    @Binding var selection: Set<URL>
+    let addFiles: () -> Void
+    let removeFiles: () -> Void
 
-    @ViewBuilder
-    func OpearationButtons() -> some View {
-        HStack {
-            Button {
-                resourceImporterPresented = true
-            } label: {
-                Label("Add Files", systemImage: "plus")
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 8) {
+                Image(systemName: "doc.on.doc")
+                    .foregroundStyle(.secondary)
+                    .accessibilityHidden(true)
+                Text("Reference Files")
+                    .fontWeight(.medium)
+                Text("\(resources.count) items")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Spacer(minLength: 8)
+                Button("Add Files", systemImage: "plus", action: addFiles)
+                Button(role: .destructive, action: removeFiles) {
+                    Label("Remove", systemImage: "trash")
+                }
+                .labelStyle(.iconOnly)
+                .disabled(selection.isEmpty)
             }
-            
-            Button(role: .destructive, action: {
-                project.removeResources(selectedFiles)
-                selectedFiles.removeAll()
-            }) {
-                Label("Remove", systemImage: "trash")
-            }
-            .disabled(selectedFiles.isEmpty)
-            
-            Spacer()
-        }
-        .buttonStyle(.plain)
-        .font(.footnote)
-        .foregroundStyle(.secondary)
-    }
+            .controlSize(.small)
+            .padding(12)
 
-    @ToolbarContentBuilder
-    func ToolbarItems() -> some ToolbarContent {
-        ToolbarItem(placement: .cancellationAction) {
-            Button("Cancel") { dismiss() }
+            Divider()
+
+            Group {
+                if resources.isEmpty {
+                    VStack(spacing: 8) {
+                        Image(systemName: "doc.badge.plus")
+                            .font(.title2)
+                            .accessibilityHidden(true)
+                        Text("No reference files added yet")
+                    }
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.vertical, 24)
+                } else {
+                    List(resources, id: \.self, selection: $selection) { url in
+                        HStack(spacing: 8) {
+                            FileThumbnail(url: url)
+                                .frame(width: 20, height: 20)
+                                .accessibilityHidden(true)
+                            Text(url.lastPathComponent)
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                        }
+                        .help(url.path)
+                        .tag(url)
+                    }
+                    .listStyle(.inset)
+                    .frame(height: 160)
+                }
+            }
         }
-        ToolbarItem(placement: .confirmationAction) {
-            Button("Save") { save() }
-                .buttonStyle(.borderedProminent)
+        .background(Color(nsColor: .controlBackgroundColor))
+        .clipShape(RoundedRectangle(cornerRadius: 6))
+        .overlay {
+            RoundedRectangle(cornerRadius: 6)
+                .strokeBorder(Color(nsColor: .separatorColor), lineWidth: 1)
         }
-    }
-    
-    @ViewBuilder
-    func ListCell(_ url: URL) -> some View {
-        HStack {
-            FileThumbnail(url: url)
-                .frame(width: 20, height: 20)
-            Text(url.lastPathComponent)
-                .font(.subheadline)
-        }
-        .padding(.vertical, 4)
     }
 }
+
 extension ProjectEdition {
     
     func save() {

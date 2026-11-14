@@ -42,13 +42,13 @@ enum ScheduleTool {
             name: ToolNames.createSchedule,
             description:
             """
-                Create a scheduled task: a prompt that ModelCraft sends automatically as a new chat, with the current chat's model and in the current chat's project, at the times a recurrence rule gives (once, hourly, daily, weekly, monthly, or yearly, optionally limited to or moved onto workdays). Use it for recurring or future work such as a morning briefing every workday or a report on the last workday of each month. Requires confirmation.
+                Create a scheduled task: a prompt that ModelCraft sends automatically as a new thread, with the current thread's model and in the current thread's project, at the times a recurrence rule gives (once, hourly, daily, weekly, monthly, or yearly, optionally limited to or moved onto workdays). Use it for recurring or future work such as a morning briefing every workday or a report on the last workday of each month. Requires confirmation.
                 Runs happen only while ModelCraft is open; runs missed while it was closed happen once when it opens. During a run nobody is present, so questions go unanswered and actions that need confirmation are refused; write the prompt so it can be completed without them.
                 \(workdayDefinition)
                 Returns the schedule_id, a description of the rule, and the next run times; check them against the request.
             """,
             parameters: [
-                .required("name", type: .string, description: "A short name for the task, used as the title of each run's chat."),
+                .required("name", type: .string, description: "A short name for the task, used as the title of each run's thread."),
                 .required("prompt", type: .string, description: "The complete, self-contained request sent at each run, written as the user would ask it. It must not depend on this conversation, which the run cannot see."),
                 .required("frequency", type: .string, description: "How often the task repeats.", extraProperties: ["enum": ScheduleRule.Frequency.allCases.map(\.rawValue)]),
                 .required("start_at", type: .string, description: "ISO 8601 date and time of the first possible run, in the user's time zone when it has no offset. Its time of day is the run time of daily and longer schedules; hourly runs step from it. A `once` schedule runs exactly then."),
@@ -120,7 +120,7 @@ enum ScheduleTool {
 
     static let deleteSchedule = Tool<DeleteScheduleInput, DeleteScheduleOutput>(
         name: ToolNames.deleteSchedule,
-        description: "Delete a scheduled task by the schedule_id from schedule_list, so it never runs again. Chats from earlier runs are kept. Requires confirmation. To stop it only for a while, use schedule_update with enabled set to false instead.",
+        description: "Delete a scheduled task by the schedule_id from schedule_list, so it never runs again. Threads from earlier runs are kept. Requires confirmation. To stop it only for a while, use schedule_update with enabled set to false instead.",
         parameters: [
             .required("schedule_id", type: .string, description: "The schedule_id of the task to delete."),
         ]

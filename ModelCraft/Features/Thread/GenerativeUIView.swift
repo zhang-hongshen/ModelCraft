@@ -496,7 +496,7 @@ extension UIInterpreter {
                 let body = try content(call.content)
                 return .view(ScrollView(.horizontal) { body })
             }
-            // The chat already scrolls, so vertical content is laid out in place.
+            // The thread already scrolls, so vertical content is laid out in place.
             let body = try content(call.content)
             return .view(VStack(spacing: nil) { body })
         case "Grid":
@@ -519,7 +519,7 @@ extension UIInterpreter {
             let body = try content(call.content)
             return .view(LazyVGrid(columns: items, alignment: alignment, spacing: spacing) { body })
         case "Form", "List":
-            // Forms and lists are laid out in place, since the chat already scrolls.
+            // Forms and lists are laid out in place, since the thread already scrolls.
             let rows = try anyView(call.unlabeled(0) != nil ? forEach(call) : .group(buildClosure(call.content)), call.node)
             return .view(VStack(alignment: .leading, spacing: 10) { rows })
         case "Section":

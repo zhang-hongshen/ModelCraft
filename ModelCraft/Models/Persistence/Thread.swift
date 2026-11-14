@@ -1,5 +1,5 @@
 //
-//  Chat.swift
+//  Thread.swift
 //  ModelCraft
 //
 //  Created by Hongshen on 22/3/24.
@@ -9,7 +9,7 @@ import Foundation
 import SwiftData
  
 @Model
-class Chat {
+class Thread {
     
     @Attribute(.unique) var id = UUID()
     
@@ -28,13 +28,13 @@ class Chat {
     var tickets: [Ticket] = []
     var project: Project? = nil
 
-    /// The schedule whose run created this chat.
+    /// The schedule whose run created this thread.
     var schedule: Schedule? = nil
 
-    /// The Claude Code or Codex session this chat was imported from.
+    /// Legacy import metadata retained for compatibility with existing stores.
     var importedSessionID: String? = nil
     
-    @Relationship(deleteRule: .cascade, inverse: \Message.chat)
+    @Relationship(deleteRule: .cascade, inverse: \Message.thread)
     var messages: [Message] = []
     
     var tokenCount: Int = 0
@@ -69,17 +69,16 @@ class Chat {
     
 }
 
-extension Chat {
+extension Thread {
 
-    /// The chat's own folder for attachments and generated media. Outside a project it is
-    /// also the working directory for tools.
+    /// The thread's working folder and media staging area. Shared resources live separately.
     var directory: URL {
         URL.appSupportDirectory.appending(
-            path: "Chats/\(id.uuidString)",
+            path: "Threads/\(id.uuidString)",
             directoryHint: .isDirectory)
     }
 
-    /// Removes the chat's folder; called wherever a chat is deleted.
+    /// Removes the thread's folder; called wherever a thread is deleted.
     func deleteDirectory() {
         try? FileManager.default.removeItem(at: directory)
     }
@@ -117,21 +116,21 @@ extension Chat {
         leafMessage?.status == .generating
     }
 
-    /// Removes the messages from the chat right away, so the next message's parent is read
+    /// Removes the messages from the thread right away, so the next message's parent is read
     /// without them, and deletes them. A message that followed a deleted one then follows
     /// what the deleted one followed, so the chain stays unbroken.
     @MainActor
     func deleteMessages(_ messages: [Message]) {
         let deletedIDs = Set(messages.map(\.id))
-        for session in messages.flatMap(\.executorSessions) {
-            let history = session.history
-            if let boundary = session.checkpointThroughID,
+        for ticket in messages.flatMap(\.tickets) {
+            let history = ticket.history
+            if let boundary = ticket.checkpointThroughID,
                let index = history.firstIndex(where: { $0.id == boundary }),
                history.prefix(index + 1).contains(where: { deletedIDs.contains($0.id) }) {
-                session.discardCheckpoint()
+                AgentMemory.discardCheckpoint(ticket)
             }
-            session.messages.removeAll { deletedIDs.contains($0.id) }
-            session.eventIDs.removeAll { deletedIDs.contains($0) }
+            ticket.messages.removeAll { deletedIDs.contains($0.id) }
+            ticket.eventIDs.removeAll { deletedIDs.contains($0) }
         }
         let parentIDs = Dictionary(messages.map { ($0.id, $0.parentID) }) { first, _ in first }
         self.messages.removeAll { parentIDs.keys.contains($0.id) }
@@ -168,27 +167,27 @@ extension Chat {
         deleteMessages(messages.filter { $0.role == .assistant && $0.content.isEmpty && $0.toolCall == nil })
     }
 
-    /// Stores written before messages recorded their parent kept each chat in `createdAt`
-    /// order. Links those chats' messages in that order; a chat whose messages are linked
+    /// Stores written before messages recorded their parent kept each thread in `createdAt`
+    /// order. Links those threads' messages in that order; a thread whose messages are linked
     /// has a single root and is left alone.
     @MainActor
     static func linkLegacyMessages() {
         let context = ModelContainer.shared.mainContext
         let roots = (try? context.fetch(FetchDescriptor<Message>(
             predicate: #Predicate { $0.parentID == nil }))) ?? []
-        let legacyChats = Dictionary(grouping: roots.compactMap(\.chat), by: \.id)
+        let legacyThreads = Dictionary(grouping: roots.compactMap(\.thread), by: \.id)
             .values
             .filter { $0.count > 1 }
             .map { $0[0] }
-        guard !legacyChats.isEmpty else { return }
-        for chat in legacyChats {
-            let messages = chat.messages.sorted { $0.createdAt < $1.createdAt }
+        guard !legacyThreads.isEmpty else { return }
+        for thread in legacyThreads {
+            let messages = thread.messages.sorted { $0.createdAt < $1.createdAt }
             for (parent, message) in zip(messages, messages.dropFirst()) {
                 message.parentID = parent.id
             }
             // Its old boundary was a position that did not survive the migration.
-            if chat.summaryBoundaryID == nil {
-                chat.summary = nil
+            if thread.summaryBoundaryID == nil {
+                thread.summary = nil
             }
         }
         try? context.save()
@@ -203,10 +202,10 @@ extension Chat {
     
 }
 
-/// The chat presentation keeps normal messages and contiguous tool work separate.
+/// The thread presentation keeps normal messages and contiguous tool work separate.
 /// Image generation is intentionally kept as a standalone message so its long-running
 /// visual state can occupy the conversation directly.
-enum ChatContentItem: Identifiable {
+enum ThreadContentItem: Identifiable {
     case message(Message)
     case toolCallGroup([Message])
 
@@ -220,9 +219,9 @@ enum ChatContentItem: Identifiable {
     }
 }
 
-enum ChatContentBuilder {
-    static func items(from messages: [Message]) -> [ChatContentItem] {
-        var items: [ChatContentItem] = []
+enum ThreadContentBuilder {
+    static func items(from messages: [Message]) -> [ThreadContentItem] {
+        var items: [ThreadContentItem] = []
         var pendingToolCalls: [Message] = []
 
         func flushToolCalls() {
@@ -271,8 +270,8 @@ struct AssistantTurn: Identifiable {
         messages.first?.id ?? userMessage?.id ?? UUID()
     }
 
-    var contentItems: [ChatContentItem] {
-        ChatContentBuilder.items(from: messages)
+    var contentItems: [ThreadContentItem] {
+        ThreadContentBuilder.items(from: messages)
     }
 
     var content: String {
@@ -466,17 +465,17 @@ enum ToolCallActivity: Hashable {
     }
 }
 
-extension Chat {
-    static func fetch(limit: Int? = nil, offset: Int? = nil) -> FetchDescriptor<Chat> {
-        var descriptor = FetchDescriptor<Chat>()
+extension Thread {
+    static func fetch(limit: Int? = nil, offset: Int? = nil) -> FetchDescriptor<Thread> {
+        var descriptor = FetchDescriptor<Thread>()
         descriptor.fetchLimit = limit
         descriptor.fetchOffset = offset
         descriptor.sortBy = [.init(\.createdAt, order: .reverse)]
         return descriptor
     }
 
-    static func fetchRecents() -> FetchDescriptor<Chat> {
-        var descriptor = FetchDescriptor<Chat>(
+    static func fetchRecents() -> FetchDescriptor<Thread> {
+        var descriptor = FetchDescriptor<Thread>(
             predicate: #Predicate { $0.project == nil })
         descriptor.sortBy = [.init(\.createdAt, order: .reverse)]
         return descriptor

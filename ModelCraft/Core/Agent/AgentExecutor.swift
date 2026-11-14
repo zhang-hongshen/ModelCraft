@@ -32,121 +32,112 @@ final class AgentExecutor {
     @MainActor
     func run(
         model: LocalModel,
-        chat: Chat,
-        assignment: Assignment,
+        thread: Thread,
+        ticket: Ticket,
         prepareMessages: @MainActor () async throws -> [MLXLMCommon.Chat.Message]
     ) async throws -> Void {
         try Task.checkCancellation()
-        let project = chat.project
+        let project = thread.project
         // Approvals are scoped to the working folder, so changing it starts over.
-        if chat.toolAuthorization.map({ $0.workingDirectory != project?.workingDirectory }) ?? true {
-            chat.toolAuthorization = ToolAuthorizationContext(
+        if thread.toolAuthorization.map({ $0.workingDirectory != project?.workingDirectory }) ?? true {
+            thread.toolAuthorization = ToolAuthorizationContext(
                 workingDirectory: project?.workingDirectory,
-                chatDirectory: chat.directory)
+                threadDirectory: thread.directory)
         }
         try FileManager.default.createDirectory(
-            at: chat.directory, withIntermediateDirectories: true)
+            at: thread.directory, withIntermediateDirectories: true)
 
         try await ProjectToolContext.$workingDirectory.withValue(project?.workingDirectory) {
-            try await ProjectToolContext.$chatDirectory.withValue(chat.directory) {
-                try await ProjectToolContext.$readOnlyFiles.withValue(project?.resources ?? []) {
-                    try await run(
+            try await ProjectToolContext.$threadDirectory.withValue(thread.directory) {
+                try await ProjectToolContext.$readOnlyFiles.withValue((project?.resources ?? []) + [ResourceStore.directory]) {
+                    try await runLoop(
                         model: model,
-                        chat: chat,
-                        assignment: assignment,
-                        prepareMessages: prepareMessages,
-                        lastToolSignature: nil,
-                        consecutiveSameToolCalls: 0)
+                        thread: thread,
+                        ticket: ticket,
+                        prepareMessages: prepareMessages)
                 }
             }
         }
     }
 
     @MainActor
-    private func run(
+    private func runLoop(
         model: LocalModel,
-        chat: Chat,
-        assignment: Assignment,
-        prepareMessages: @MainActor () async throws -> [MLXLMCommon.Chat.Message],
-        lastToolSignature: String?,
-        consecutiveSameToolCalls: Int
+        thread: Thread,
+        ticket: Ticket,
+        prepareMessages: @MainActor () async throws -> [MLXLMCommon.Chat.Message]
     ) async throws {
-        let messages = try await prepareMessages()
-        let availableTools = ToolDefinition.allToolSchema(for: chat)
-        let assistantMessage = Message(role: .assistant, chat: chat, status: .new)
-        assignment.ticket?.session?.messages.append(assistantMessage)
-        assignment.ticket?.session?.eventIDs.append(assistantMessage.id)
-        ModelContainer.shared.mainContext.persist(assistantMessage)
-        var pendingCalls: [(ToolCall, RejectedToolCall?)] = []
-        for try await batch in try await LMService.shared.generate(
-            model: model,
-            messages: messages,
-            tools: availableTools
-        ) {
-            try Task.checkCancellation()
-            if let info = batch.info {
-                chat.tokenCount = info.promptTokenCount + info.generationTokenCount
-            }
-            let rejection = batch.rejectedToolCall
-            if let toolCall = batch.toolCall ?? rejection.map(Self.recordedToolCall) {
-                pendingCalls.append((toolCall, rejection))
-            } else if let chunk = batch.chunk {
-                assistantMessage.status = .generating
-                assistantMessage.content.append(chunk)
-            }
-        }
-        assistantMessage.status = .generated
-        if !pendingCalls.isEmpty && assistantMessage.content.isEmpty {
-            chat.deleteMessages([assistantMessage])
-        }
-        try ModelContainer.shared.mainContext.save()
-
-        var lastSignature = lastToolSignature
-        var consecutiveCalls = consecutiveSameToolCalls
-        for (toolCall, rejection) in pendingCalls {
-            try Task.checkCancellation()
-            let toolMessage = Message(
-                role: .tool, chat: chat, toolCall: toolCall, status: .generating)
-            assignment.ticket?.session?.messages.append(toolMessage)
-            assignment.ticket?.session?.eventIDs.append(toolMessage.id)
-            ModelContainer.shared.mainContext.insert(toolMessage)
-            // Commit intent before a tool can cause an external side effect.
-            try ModelContainer.shared.mainContext.save()
-
-            let signature = toolCall.signature
-            consecutiveCalls = signature == lastSignature ? consecutiveCalls + 1 : 1
-            lastSignature = signature
-            let result: (CallToolResult, MLXLMCommon.Chat.Message)
-            if chat.activeTicket?.id != assignment.ticket?.id {
-                let text = "This call was not executed because execution handed off to another task."
-                result = (.error(text), .tool(text))
-            } else if consecutiveCalls >= Self.maxConsecutiveIdenticalToolCalls {
-                result = (.error(Self.duplicateToolCallMessage), .tool(Self.duplicateToolCallMessage))
-            } else if let rejection {
-                let text = Self.rejectionMessage(rejection)
-                result = (.error(text), .tool(text))
-            } else {
-                result = try await ToolExecutionProgressReporter.$imageGeneration.withValue({
-                    toolMessage.content = $0.storedValue
-                }) {
-                    try await ToolExecutionProgressReporter.$videoGeneration.withValue({
-                        toolMessage.content = $0.storedValue
-                    }) {
-                        try await executeToolCall(
-                            toolCall, signature: signature, chat: chat, model: model)
-                    }
+        var lastSignature: String?
+        var consecutiveCalls = 0
+        while true {
+            let messages = try await prepareMessages()
+            let availableTools = ToolDefinition.allToolSchema(for: thread)
+            let assistantMessage = Message(role: .assistant, thread: thread, status: .new)
+            ticket.append(assistantMessage)
+            ModelContainer.shared.mainContext.persist(assistantMessage)
+            var pendingCalls: [(ToolCall, RejectedToolCall?)] = []
+            for try await batch in try await LMService.shared.generate(
+                model: model,
+                messages: messages,
+                tools: availableTools
+            ) {
+                try Task.checkCancellation()
+                if let info = batch.info {
+                    thread.tokenCount = info.promptTokenCount + info.generationTokenCount
+                }
+                let rejection = batch.rejectedToolCall
+                if let toolCall = batch.toolCall ?? rejection.map(Self.recordedToolCall) {
+                    pendingCalls.append((toolCall, rejection))
+                } else if let chunk = batch.chunk {
+                    assistantMessage.status = .generating
+                    assistantMessage.content.append(chunk)
                 }
             }
-            toolMessage.content = result.1.content
-            toolMessage.toolCallResult = result.0
-            toolMessage.status = result.0.isError ? .failed : .generated
+            assistantMessage.status = .generated
+            if !pendingCalls.isEmpty && assistantMessage.content.isEmpty {
+                thread.deleteMessages([assistantMessage])
+            }
             try ModelContainer.shared.mainContext.save()
-        }
-        if !pendingCalls.isEmpty && chat.activeTicket?.id == assignment.ticket?.id {
-            try await run(
-                model: model, chat: chat, assignment: assignment,
-                prepareMessages: prepareMessages, lastToolSignature: lastSignature,
-                consecutiveSameToolCalls: consecutiveCalls)
+
+            for (toolCall, rejection) in pendingCalls {
+                try Task.checkCancellation()
+                let toolMessage = Message(
+                    role: .tool, thread: thread, toolCall: toolCall, status: .generating)
+                ticket.append(toolMessage)
+                ModelContainer.shared.mainContext.insert(toolMessage)
+                // Commit intent before a tool can cause an external side effect.
+                try ModelContainer.shared.mainContext.save()
+
+                let signature = toolCall.signature
+                consecutiveCalls = signature == lastSignature ? consecutiveCalls + 1 : 1
+                lastSignature = signature
+                let result: (CallToolResult, MLXLMCommon.Chat.Message)
+                if thread.activeTicket?.id != ticket.id {
+                    let text = "This call was not executed because execution handed off to another task."
+                    result = (.error(text), .tool(text))
+                } else if consecutiveCalls >= Self.maxConsecutiveIdenticalToolCalls {
+                    result = (.error(Self.duplicateToolCallMessage), .tool(Self.duplicateToolCallMessage))
+                } else if let rejection {
+                    let text = Self.rejectionMessage(rejection)
+                    result = (.error(text), .tool(text))
+                } else {
+                    result = try await ToolExecutionProgressReporter.$imageGeneration.withValue({
+                        toolMessage.content = $0.storedValue
+                    }) {
+                        try await ToolExecutionProgressReporter.$videoGeneration.withValue({
+                            toolMessage.content = $0.storedValue
+                        }) {
+                            try await executeToolCall(
+                                toolCall, signature: signature, thread: thread, model: model)
+                        }
+                    }
+                }
+                toolMessage.content = result.1.content
+                toolMessage.toolCallResult = result.0
+                toolMessage.status = result.0.isError ? .failed : .generated
+                try ModelContainer.shared.mainContext.save()
+            }
+            if pendingCalls.isEmpty || thread.activeTicket?.id != ticket.id { return }
         }
     }
 
@@ -154,7 +145,7 @@ final class AgentExecutor {
     private func executeToolCall(
         _ toolCall: ToolCall,
         signature: String,
-        chat: Chat,
+        thread: Thread,
         model: LocalModel
     ) async throws -> (CallToolResult, MLXLMCommon.Chat.Message) {
         let permissionMode = UserDefaults.standard.string(forKey: UserDefaults.toolPermissionMode)
@@ -166,7 +157,7 @@ final class AgentExecutor {
         }
         if toolCall.function.name == ToolNames.task {
             do {
-                let output = try await toolCall.execute(with: TaskTool.task(chatID: chat.id))
+                let output = try await toolCall.execute(with: TaskTool.task(threadID: thread.id))
                 return (.success(content: [.text(TextContent(text: output.content))]), .tool(output.content))
             } catch is CancellationError {
                 throw CancellationError()
@@ -179,7 +170,7 @@ final class AgentExecutor {
                 let message = "This is a scheduled run and nobody is present to answer. Continue with reasonable assumptions and state them in the reply."
                 return (.error(message), .tool(message))
             }
-            return try await executeUserInput(toolCall, chat: chat)
+            return try await executeUserInput(toolCall, thread: thread)
         }
 
         let requiresApproval = toolCall.requiresUserApproval
@@ -187,13 +178,13 @@ final class AgentExecutor {
                 && toolCall.function.name == ToolNames.executeCommand)
         let isAuthorized: Bool
         if isUnattended {
-            isAuthorized = chat.toolAuthorization?.allowsScheduledRun(toolCall, signature: signature) == true
+            isAuthorized = thread.toolAuthorization?.allowsScheduledRun(toolCall, signature: signature) == true
         } else {
             switch permissionMode {
             case .readOnly, .ask:
                 isAuthorized = false
             case .auto:
-                isAuthorized = chat.toolAuthorization?.allowsAutomatically(toolCall, signature: signature) == true
+                isAuthorized = thread.toolAuthorization?.allowsAutomatically(toolCall, signature: signature) == true
             case .fullAccess:
                 isAuthorized = true
             }
@@ -223,13 +214,13 @@ final class AgentExecutor {
             case .allowOnce:
                 break
             case .alwaysAllow:
-                chat.toolAuthorization?.authorize(toolCall, signature: signature)
+                thread.toolAuthorization?.authorize(toolCall, signature: signature)
             }
         }
 
         return try await ToolExecutor.dispatch(
             toolCall,
-            projectID: chat.project?.persistentModelID,
+            projectID: thread.project?.persistentModelID,
             modelID: model.id)
     }
 
@@ -266,11 +257,11 @@ final class AgentExecutor {
     @MainActor
     private func executeUserInput(
         _ toolCall: ToolCall,
-        chat: Chat
+        thread: Thread
     ) async throws -> (CallToolResult, MLXLMCommon.Chat.Message) {
         let request = try await toolCall.execute(with: UserInputTool.requestUserInput)
         let output = try await interactionCoordinator.requestUserInput(request)
-        chat.toolAuthorization?.authorize(request: request, output: output)
+        thread.toolAuthorization?.authorize(request: request, output: output)
         let data = try JSONEncoder().encode(output)
         let content = String(decoding: data, as: UTF8.self)
         var result = CallToolResult()
@@ -279,7 +270,7 @@ final class AgentExecutor {
     }
 }
 
-/// Stored on `Chat`, so approvals last as long as the conversation.
+/// Stored on `Thread`, so approvals last as long as the conversation.
 struct ToolAuthorizationContext: Codable {
 
     private struct FileScope: Codable {
@@ -298,16 +289,16 @@ struct ToolAuthorizationContext: Codable {
     private var allowsScreenInteraction = false
     private var approvedToolSignatures: Set<String> = []
     let workingDirectory: URL?
-    private let chatDirectory: URL
+    private let threadDirectory: URL
 
-    init(workingDirectory: URL?, chatDirectory: URL) {
+    init(workingDirectory: URL?, threadDirectory: URL) {
         self.workingDirectory = workingDirectory
-        self.chatDirectory = chatDirectory
+        self.threadDirectory = threadDirectory
     }
 
-    /// The working folder and the chat's folder, where automatic edits are allowed.
+    /// The working folder and the thread's folder, where automatic edits are allowed.
     private var workingScopes: [FileScope] {
-        [workingDirectory, chatDirectory].compactMap { $0 }.map {
+        [workingDirectory, threadDirectory].compactMap { $0 }.map {
             FileScope(
                 url: $0.standardizedFileURL.resolvingSymlinksInPath(),
                 includesDescendants: true)
@@ -415,7 +406,7 @@ struct ToolAuthorizationContext: Codable {
     private func normalizedURL(for path: String) -> URL {
         URL(
             fileURLWithPath: path,
-            relativeTo: workingDirectory ?? chatDirectory
+            relativeTo: workingDirectory ?? threadDirectory
         ).standardizedFileURL.resolvingSymlinksInPath()
     }
 

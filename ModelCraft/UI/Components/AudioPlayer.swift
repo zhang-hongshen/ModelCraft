@@ -42,7 +42,7 @@ struct AudioPlayer: View {
                 Waveform(samples: model.sampleBuffer,
                          start: model.waveformStart,
                          length: Int(model.sampleRate  * windowDuration))
-                    .foregroundStyle(Color.accent)
+                    .foregroundStyle(Color.primary)
         
                 
                 HStack(alignment: .center) {

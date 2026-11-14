@@ -8,7 +8,7 @@
 import Foundation
 import SwiftData
 
-/// A prompt the scheduler sends as a new chat at the times its rule gives.
+/// A prompt the scheduler sends as a new thread at the times its rule gives.
 @Model
 class Schedule {
     @Attribute(.unique) var id = UUID()
@@ -28,8 +28,8 @@ class Schedule {
     var lastError: String?
     var project: Project?
 
-    @Relationship(deleteRule: .nullify, inverse: \Chat.schedule)
-    var chats: [Chat] = []
+    @Relationship(deleteRule: .nullify, inverse: \Thread.schedule)
+    var threads: [Thread] = []
 
     /// Stored encoded, as SwiftData's composite attributes do not reliably hold enums.
     @Transient var rule: ScheduleRule {
@@ -53,8 +53,8 @@ class Schedule {
 
 extension Schedule {
 
-    var sortedChats: [Chat] {
-        chats.sorted { $0.createdAt > $1.createdAt }
+    var sortedThreads: [Thread] {
+        threads.sorted { $0.createdAt > $1.createdAt }
     }
 }
 

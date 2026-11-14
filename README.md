@@ -12,7 +12,7 @@ Local-first AI assistant for macOS with MLX models, agent tools, projects, quick
 - Use agent tools for files, commands, web access, connected apps and screen interaction.
 - Keep conversations and reference files together in projects.
 - Open Quick Entry with a global shortcut and include current files, web pages, selected text or images.
-- Import Claude Code, Codex and WorkBuddy sessions, and inspect delegated tasks and conversation branches.
+- Inspect delegated tasks and conversation branches.
 - Dictate into the composer with local speech recognition.
 - Run scheduled tasks and generate images, audio, music or video with supported models.
 

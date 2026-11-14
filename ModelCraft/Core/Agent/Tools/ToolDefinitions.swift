@@ -48,16 +48,16 @@ enum ToolDefinition {
         ].flatMap { $0 }.map(\.schema)
     }
 
-    /// When tools load on demand, a chat starts with the core tools, the installed connectors'
+    /// When tools load on demand, a thread starts with the core tools, the installed connectors'
     /// tools and `search_tools`, and every tool a search finds is appended in the order it was
     /// found, so the list only grows and earlier requests stay a prefix. Otherwise every tool is
-    /// offered on every request. Project search is added in project chats, which is fixed for the
-    /// life of a chat; connector tools change only when the user installs or uninstalls a
+    /// offered on every request. Project search is added in project threads, which is fixed for the
+    /// life of a thread; connector tools change only when the user installs or uninstalls a
     /// connector, and are never deferred because the user installed them to be used.
-    static func allToolSchema(for chat: Chat?) -> [ToolSpec] {
+    static func allToolSchema(for thread: Thread?) -> [ToolSpec] {
         var tools = coreTools.map(\.schema)
-        if let chat { tools.append(TaskTool.task(chatID: chat.id).schema) }
-        if let projectID = chat?.project?.persistentModelID {
+        if let thread { tools.append(TaskTool.task(threadID: thread.id).schema) }
+        if let projectID = thread?.project?.persistentModelID {
             tools.append(SearchTool.searchProject(projectID: projectID).schema)
             tools.append(ModelCraftTool.projectMemory(projectID: projectID).schema)
         }
@@ -67,7 +67,7 @@ enum ToolDefinition {
             default: UserDefaultSettings.loadToolsWhenNeeded) {
             tools.append(searchTools.schema)
             let deferredTools = deferredTools
-            tools += foundToolNames(in: chat).compactMap { name in
+            tools += foundToolNames(in: thread).compactMap { name in
                 deferredTools.first { toolName(of: $0) == name }
             }
         } else {
@@ -76,12 +76,12 @@ enum ToolDefinition {
         return tools
     }
 
-    /// Names of the tools found by successful `search_tools` calls in the chat, in the order
+    /// Names of the tools found by successful `search_tools` calls in the thread, in the order
     /// they were found.
-    static func foundToolNames(in chat: Chat?) -> [String] {
-        guard let chat else { return [] }
+    static func foundToolNames(in thread: Thread?) -> [String] {
+        guard let thread else { return [] }
         var names: [String] = []
-        for message in chat.activeTicket?.session?.history ?? chat.conversation
+        for message in thread.activeTicket?.history ?? thread.conversation
         where message.role == .tool && message.status == .generated
             && message.toolCall?.function.name == ToolNames.searchTools {
             guard let output = try? JSONDecoder().decode(

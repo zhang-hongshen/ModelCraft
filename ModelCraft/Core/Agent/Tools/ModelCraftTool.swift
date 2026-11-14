@@ -53,11 +53,11 @@ enum ModelCraftTool {
 
     static let updateSettings = Tool<UpdateSettingsInput, SettingsOutput>(
         name: ToolNames.updateSettings,
-        description: "Change ModelCraft's own settings, as the Settings window does: the appearance or theme (light mode, dark mode, or following the system), the interface language, whether tools load when needed, and notifications when scheduled tasks finish. Changes apply at once in every window and persist. Omit settings that stay unchanged. The permission mode cannot be changed here; only the user chooses it in the chat composer. Returns all settings as they now are.",
+        description: "Change ModelCraft's own settings, as the Settings window does: the appearance or theme (light mode, dark mode, or following the system), the interface language, whether tools load when needed, and notifications when scheduled tasks finish. Changes apply at once in every window and persist. Omit settings that stay unchanged. The permission mode cannot be changed here; only the user chooses it in the thread composer. Returns all settings as they now are.",
         parameters: [
             .optional("appearance", type: .string, description: "`system` follows the macOS appearance; `light` or `dark` always uses that one.", extraProperties: ["enum": ["system", "light", "dark"]]),
             .optional("language", type: .string, description: "The interface language, as a localization code from settings_read.", extraProperties: ["enum": languages]),
-            .optional("load_tools_when_needed", type: .bool, description: "`true` starts each chat with essential tools and loads the others through search_tools; `false` offers every tool on every request. Applies from the next request."),
+            .optional("load_tools_when_needed", type: .bool, description: "`true` starts each thread with essential tools and loads the others through search_tools; `false` offers every tool on every request. Applies from the next request."),
             .optional("notify_when_scheduled_tasks_finish", type: .bool, description: "`true` shows a macOS notification when a scheduled task's run completes or fails. Turning it on asks macOS for notification permission if the user has not answered yet."),
         ]
     ) { input in
@@ -88,17 +88,17 @@ enum ModelCraftTool {
 
     static let openPage = Tool<OpenPageInput, OpenPageOutput>(
         name: ToolNames.openPage,
-        description: "Show a page in ModelCraft's main window: an empty new chat, optionally in a project, or the Model Store, Downloaded Models, Connectors, or Scheduled Tasks page. The current conversation stays in the sidebar, where the user can return to it. Call it last in a turn: once the window shows another page, questions and approvals from this conversation are not seen until the user returns. Returns the page now shown.",
+        description: "Show a page in ModelCraft's main window: an empty new thread, optionally in a project, or the Model Store, Downloaded Models, Connectors, or Scheduled Tasks page. The current conversation stays in the sidebar, where the user can return to it. Call it last in a turn: once the window shows another page, questions and approvals from this conversation are not seen until the user returns. Returns the page now shown.",
         parameters: [
-            .required("page", type: .string, description: "`new_chat` opens an empty chat ready for a message; the others open the page of that name.", extraProperties: ["enum": OpenPageInput.Page.allCases.map(\.rawValue)]),
-            .optional("project_id", type: .string, description: "`new_chat` only: the project_id from project_list or project_create of the project to start the chat in. Omit for a chat outside any project."),
+            .required("page", type: .string, description: "`new_thread` opens an empty thread ready for a message; the others open the page of that name.", extraProperties: ["enum": OpenPageInput.Page.allCases.map(\.rawValue)]),
+            .optional("project_id", type: .string, description: "`new_thread` only: the project_id from project_list or project_create of the project to start the thread in. Omit for a thread outside any project."),
         ]
     ) { input in
         try await MainActor.run {
             let store = GlobalStore.shared
             switch input.page {
-            case .newChat:
-                store.startNewChat(in: try input.projectID.map(project(id:)))
+            case .newThread:
+                store.startNewThread(in: try input.projectID.map(project(id:)))
             case .modelStore:
                 store.currentTab = .modelStore
             case .downloadedModels:
@@ -114,7 +114,7 @@ enum ModelCraftTool {
 
     static let listProjects = Tool<ListProjectsInput, [ProjectOutput]>(
         name: ToolNames.listProjects,
-        description: "List the user's ModelCraft projects, newest first, with their project_id, title, working folder, number of reference files, and number of chats. This is read-only; use it to find the project_id that project_update and open_page need.",
+        description: "List the user's ModelCraft projects, newest first, with their project_id, title, working folder, number of reference files, and number of threads. This is read-only; use it to find the project_id that project_update and open_page need.",
         parameters: []
     ) { _ in
         try await MainActor.run {
@@ -124,7 +124,7 @@ enum ModelCraftTool {
 
     static let createProject = Tool<CreateProjectInput, ProjectOutput>(
         name: ToolNames.createProject,
-        description: "Create an empty ModelCraft project with a title. It has no working folder or reference files; the user adds those by editing the project in the sidebar. Returns the new project with its project_id; to start working in it, open a new chat in it with open_page.",
+        description: "Create an empty ModelCraft project with a title. It has no working folder or reference files; the user adds those by editing the project in the sidebar. Returns the new project with its project_id; to start working in it, open a new thread in it with open_page.",
         parameters: [
             .required("title", type: .string, description: "The project's name as shown in the sidebar."),
         ]
@@ -138,7 +138,7 @@ enum ModelCraftTool {
 
     static let updateProject = Tool<UpdateProjectInput, ProjectOutput>(
         name: ToolNames.updateProject,
-        description: "Rename a ModelCraft project by the project_id from project_list or project_create. Its chats, working folder, and reference files are unchanged. Returns the project as it now is.",
+        description: "Rename a ModelCraft project by the project_id from project_list or project_create. Its threads, working folder, and reference files are unchanged. Returns the project as it now is.",
         parameters: [
             .required("project_id", type: .string, description: "The project_id of the project to rename."),
             .required("title", type: .string, description: "The project's new name as shown in the sidebar."),
@@ -201,7 +201,7 @@ extension ModelCraftTool {
             title: project.title,
             workingFolder: project.workingDirectory?.path,
             referenceFileCount: project.resources.count,
-            chatCount: project.chats.count)
+            threadCount: project.threads.count)
     }
 }
 
@@ -264,7 +264,7 @@ struct SettingsOutput: Codable {
 
 struct OpenPageInput: Codable {
     enum Page: String, Codable, CaseIterable {
-        case newChat = "new_chat"
+        case newThread = "new_thread"
         case modelStore = "model_store"
         case downloadedModels = "downloaded_models"
         case connectors
@@ -305,13 +305,13 @@ struct ProjectOutput: Codable {
     let title: String
     let workingFolder: String?
     let referenceFileCount: Int
-    let chatCount: Int
+    let threadCount: Int
 
     enum CodingKeys: String, CodingKey {
         case title
         case projectID = "project_id"
         case workingFolder = "working_folder"
         case referenceFileCount = "reference_file_count"
-        case chatCount = "chat_count"
+        case threadCount = "thread_count"
     }
 }

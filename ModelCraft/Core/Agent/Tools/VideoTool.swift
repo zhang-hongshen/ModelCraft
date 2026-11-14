@@ -57,12 +57,13 @@ enum VideoTool {
         return Tool<TextToVideoInput, TextToVideoOutput>(
             name: "text_to_video",
             description: usesH3
-                ? "Generate an MP4 video with the selected MiniMax H3 model. H3 produces video at its supported 768p canvas. Saves the file in this chat's folder and returns its file URL and MIME type. The app shows the generated file to the user, so do not repeat its path."
-                : "Generate an MP4 video with the selected LTX Video model. Before calling this tool, ask the user with request_user_input to choose aspect ratio, long-edge resolution, and duration. Saves the file in this chat's folder and returns its file URL and MIME type. The app shows the generated file to the user, so do not repeat its path.",
+                ? "Generate an MP4 video with the selected MiniMax H3 model. H3 produces video at its supported 768p canvas. Saves the file in shared resource storage and returns its file URL and MIME type. The app shows the generated file to the user, so do not repeat its path."
+                : "Generate an MP4 video with the selected LTX Video model. Before calling this tool, ask the user with request_user_input to choose aspect ratio, long-edge resolution, and duration. Saves the file in shared resource storage and returns its file URL and MIME type. The app shows the generated file to the user, so do not repeat its path.",
             parameters: parameters
         ) { input in
             let type = UTType.mpeg4Movie
-            let url = ProjectToolContext.chatDirectory.appendingPathComponent(UUID().uuidString, conformingTo: type)
+            let url = ProjectToolContext.threadDirectory.appendingPathComponent(UUID().uuidString, conformingTo: type)
+            defer { try? FileManager.default.removeItem(at: url) }
             guard input.duration >= (usesH3 ? 5 : LTXVideoEvaluateParameters.minimumDuration),
                   input.duration <= (usesH3 ? 15 : LTXVideoEvaluateParameters.maximumDuration) else {
                 throw LTXVideoToolError.unsupportedDuration(input.duration)
@@ -74,7 +75,7 @@ enum VideoTool {
                     videoOutput: url,
                     duration: input.duration)
                 _ = try await h3Evaluator.generate(request)
-                return TextToVideoOutput(videoURL: url, mimeType: type.preferredMIMEType!)
+                return TextToVideoOutput(videoURL: try ResourceStore.importFile(url), mimeType: type.preferredMIMEType!)
             }
             guard let ratioValue = input.ratio,
                   let ratio = LTXVideoAspectRatio(rawValue: ratioValue) else {
@@ -100,7 +101,7 @@ enum VideoTool {
                 fps: LTXVideoEvaluateParameters.frameRate,
                 outputPath: url)
             return TextToVideoOutput(
-                videoURL: url,
+                videoURL: try ResourceStore.importFile(url),
                 mimeType: type.preferredMIMEType!
             )
         }

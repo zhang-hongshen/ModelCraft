@@ -15,9 +15,9 @@ import Tokenizers
 
 final class TagStreamParserTests {
 
-    @Test func chatMessageMarkdownUsesSwiftUIBodySize() {
+    @Test func threadMessageMarkdownUsesSwiftUIBodySize() {
         let bodySize = NSFont.preferredFont(forTextStyle: .body).pointSize
-        let config = ChatMessageMarkdownStyle.config
+        let config = ThreadMessageMarkdownStyle.config
 
         #expect(config.paragraphStyle.textFonts.normal.pointSize == bodySize)
         #expect(config.orderedListStyle.textFonts.normal.pointSize == bodySize)
@@ -26,7 +26,7 @@ final class TagStreamParserTests {
     }
 
     @Test func codeBlocksUseAdaptiveGitHubTheme() {
-        let config = ChatMessageMarkdownStyle.config.codeBlockConfig
+        let config = ThreadMessageMarkdownStyle.config.codeBlockConfig
 
         #expect(config.theme == .github)
         #expect(config.backgroundColor == Color(nsColor: .controlBackgroundColor))
@@ -100,7 +100,7 @@ final class TagStreamParserTests {
             Self.toolMessage(ToolNames.executeCommand)
         ]
 
-        let items = ChatContentBuilder.items(from: messages)
+        let items = ThreadContentBuilder.items(from: messages)
 
         #expect(items.count == 3)
         guard case .toolCallGroup(let firstGroup) = items[0] else {
@@ -133,7 +133,7 @@ final class TagStreamParserTests {
         )
         let lastTool = Self.toolMessage(ToolNames.executeCommand)
 
-        let items = ChatContentBuilder.items(from: [
+        let items = ThreadContentBuilder.items(from: [
             firstTool, assistantText, lastTool
         ])
 
@@ -147,7 +147,7 @@ final class TagStreamParserTests {
     @Test @MainActor
     func toolExecutionPersistsASeparateToolMessage() async throws {
         let model = LocalModel(id: "test-tool-storage", size: 0)
-        let chat = Chat()
+        let thread = ModelCraft.Thread()
         let toolCall = ToolCall(
             function: .init(name: "test_tool", arguments: [:]))
         let toolResult = CallToolResult.success(
@@ -174,10 +174,10 @@ final class TagStreamParserTests {
         try await executor.run(
             model: model,
             projectID: nil,
-            chat: chat,
+            thread: thread,
             messages: [.user("run the tool")])
 
-        let messages = chat.sortedMessages
+        let messages = thread.sortedMessages
         #expect(messages.count == 3)
         guard messages.count == 3 else { return }
         guard case .assistant = messages[0].role else {
@@ -204,7 +204,7 @@ final class TagStreamParserTests {
     @Test @MainActor
     func assistantIsGeneratingBeforeTheFirstTokenArrives() async throws {
         let model = LocalModel(id: "test-initial-generation-status", size: 0)
-        let chat = Chat()
+        let thread = ModelCraft.Thread()
         var streamContinuation: AsyncStream<Generation>.Continuation?
 
         let executor = AgentExecutor(
@@ -222,7 +222,7 @@ final class TagStreamParserTests {
             try await executor.run(
                 model: model,
                 projectID: nil,
-                chat: chat,
+                thread: thread,
                 messages: [.user("hello")])
         }
 
@@ -230,8 +230,8 @@ final class TagStreamParserTests {
             await Task.yield()
         }
 
-        #expect(chat.sortedMessages.last?.status == .generating)
-        #expect(chat.isGenerating)
+        #expect(thread.sortedMessages.last?.status == .generating)
+        #expect(thread.isGenerating)
 
         streamContinuation?.finish()
         try await generationTask.value
@@ -244,7 +244,7 @@ final class TagStreamParserTests {
             Self.toolMessage(ToolNames.executeCommand)
         ]
 
-        let items = ChatContentBuilder.items(from: messages)
+        let items = ThreadContentBuilder.items(from: messages)
 
         #expect(items.count == 3)
         guard case .message(let imageMessage) = items[1] else {

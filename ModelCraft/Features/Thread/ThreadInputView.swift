@@ -1,5 +1,5 @@
 //
-//  ChatInputView.swift
+//  ThreadInputView.swift
 //  ModelCraft
 //
 //  Created by Hongshen on 10/11/25.
@@ -10,21 +10,21 @@ import AppKit
 import PhotosUI
 import UniformTypeIdentifiers
 
-enum ChatComposerCommand {
+enum ThreadComposerCommand {
     case previous
     case next
     case select
     case dismiss
 }
 
-struct ChatInputView<VoiceContent: View, Content: View>: View {
+struct ThreadInputView<VoiceContent: View, Content: View>: View {
     
     @Bindable var userInput: Message
     let skillNames: [String]?
     let placeholder: LocalizedStringKey
     @Binding var selectionLocation: Int
     @Binding var slashCommandLocation: Int?
-    let onCommand: (ChatComposerCommand) -> Bool
+    let onCommand: (ThreadComposerCommand) -> Bool
     let isVoiceInputActive: Bool
     var voiceContent: () -> VoiceContent
     var trailing: () -> Content
@@ -41,7 +41,7 @@ struct ChatInputView<VoiceContent: View, Content: View>: View {
         placeholder: LocalizedStringKey = "Type Anything",
         selectionLocation: Binding<Int> = .constant(0),
         slashCommandLocation: Binding<Int?> = .constant(nil),
-        onCommand: @escaping (ChatComposerCommand) -> Bool = { _ in false },
+        onCommand: @escaping (ThreadComposerCommand) -> Bool = { _ in false },
         isVoiceInputActive: Bool,
         @ViewBuilder voiceContent: @escaping () -> VoiceContent,
         @ViewBuilder trailing: @escaping () -> Content
@@ -88,7 +88,7 @@ struct ChatInputView<VoiceContent: View, Content: View>: View {
     }
 }
 
-extension ChatInputView {
+extension ThreadInputView {
     
     @ViewBuilder
     func MainView() -> some View {
@@ -203,7 +203,7 @@ private struct ModelCraftTextEditor: NSViewRepresentable {
     let isEditable: Bool
     @Binding var selectionLocation: Int
     @Binding var slashCommandLocation: Int?
-    let onCommand: (ChatComposerCommand) -> Bool
+    let onCommand: (ThreadComposerCommand) -> Bool
 
     func makeCoordinator() -> Coordinator {
         Coordinator(parent: self)
@@ -329,7 +329,7 @@ private struct ModelCraftTextEditor: NSViewRepresentable {
                 textView.insertNewlineIgnoringFieldEditor(nil)
                 return true
             }
-            let command: ChatComposerCommand?
+            let command: ThreadComposerCommand?
             switch commandSelector {
             case #selector(NSResponder.moveUp(_:)):
                 command = .previous
@@ -385,7 +385,7 @@ private struct ModelCraftTextEditor: NSViewRepresentable {
             for match in matches.reversed() {
                 attributed.addAttribute(
                     .foregroundColor,
-                    value: NSColor(resource: .accent),
+                    value: NSColor.labelColor,
                     range: match.range)
                 attributed.insert(tokenIcon(), at: match.range.location)
             }
@@ -458,7 +458,7 @@ private struct ModelCraftTextEditor: NSViewRepresentable {
                 systemSymbolName: parent.tokenSystemImage,
                 accessibilityDescription: nil)?.withSymbolConfiguration(
                     NSImage.SymbolConfiguration(
-                        paletteColors: [NSColor(resource: .accent)]))
+                        paletteColors: [NSColor.labelColor]))
             attachment.bounds = CGRect(x: 0, y: -2, width: 14, height: 14)
             attachment.lineLayoutPadding = 1
 
@@ -544,8 +544,8 @@ private extension NSAttributedString.Key {
 
 #if DEBUG
 #Preview(traits: .preview) {
-    ChatInputView(
-        userInput: Message(chat: .preview),
+    ThreadInputView(
+        userInput: Message(thread: .preview),
         isVoiceInputActive: false,
         voiceContent: { EmptyView() },
         trailing: {})

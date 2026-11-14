@@ -1,5 +1,5 @@
 //
-//  ChatView.swift
+//  ThreadView.swift
 //  ModelCraft
 //
 //  Created by Hongshen on 23/3/24.
@@ -12,9 +12,9 @@ import AppKit
 import UniformTypeIdentifiers
 
 
-struct ChatView: View {
+struct ThreadView: View {
 
-    let chat: Chat?
+    let thread: Thread?
     
     @Query(Project.fetch()) private var projects: [Project]
     
@@ -25,13 +25,13 @@ struct ChatView: View {
     @State private var isRewinding = false
     @State private var voiceInputTask: Task<Void, Never>?
     @State private var voiceInputError: String?
-    @State private var skillCommands: [ChatCommand] = []
-    @State private var selectedCommand: ChatCommand = .compact
+    @State private var skillCommands: [ThreadCommand] = []
+    @State private var selectedCommand: ThreadCommand = .compact
     @State private var composerSelectionLocation = 0
     @State private var slashCommandLocation: Int?
     @State private var projectEdition: Project?
     @State private var requestError: String?
-    @State private var inspectorTab = ChatInspectorTab.tasks
+    @State private var inspectorTab = ThreadInspectorTab.tasks
     @State private var isDropTargeted = false
     @AppStorage(UserDefaults.toolPermissionMode)
     private var toolPermissionMode = UserDefaultSettings.toolPermissionMode
@@ -41,13 +41,13 @@ struct ChatView: View {
     @Environment(LocalModelStore.self) private var localModelStore
     @Environment(STTService.self) private var sttService
     
-    @State private var chatService = ChatService()
+    @State private var threadService = ThreadService()
     private static let minWidth: CGFloat = 270
     
     var body: some View {
         @Bindable var bindableStore = globalStore
         MainView()
-            .frame(minWidth: ChatView.minWidth, minHeight: 250)
+            .frame(minWidth: ThreadView.minWidth, minHeight: 250)
             .dropDestination(for: URL.self) { urls, _ in
                 draft.addFiles(urls)
                 return true
@@ -57,8 +57,8 @@ struct ChatView: View {
             .overlay {
                 if isDropTargeted {
                     RoundedRectangle()
-                        .strokeBorder(.tint, lineWidth: 2)
-                        .background(.tint.opacity(0.08), in: RoundedRectangle())
+                        .strokeBorder(.primary, lineWidth: 2)
+                        .background(.primary.opacity(0.08), in: RoundedRectangle())
                         .padding(6)
                         .allowsHitTesting(false)
                 }
@@ -66,12 +66,12 @@ struct ChatView: View {
             .toolbar(content: ToolbarItems)
             .inspector(isPresented: $bindableStore.isInspectorPresented) {
                 VStack(spacing: 0) {
-                    ChatInspectorHeader(tab: $inspectorTab, isPresented: $bindableStore.isInspectorPresented)
+                    ThreadInspectorHeader(tab: $inspectorTab, isPresented: $bindableStore.isInspectorPresented)
                     Divider()
                     ZStack {
                         TaskInspectorView(
-                            chat: chat,
-                            project: chat == nil ? globalStore.newChatProject : chat?.project)
+                            thread: thread,
+                            project: thread == nil ? globalStore.newThreadProject : thread?.project)
                             .opacity(inspectorTab == .tasks ? 1 : 0)
                             .allowsHitTesting(inspectorTab == .tasks)
                             .accessibilityHidden(inspectorTab != .tasks)
@@ -105,22 +105,22 @@ struct ChatView: View {
                     reloadCommands()
                 }
             }
-            .onChange(of: chat?.id) {
+            .onChange(of: thread?.id) {
                 cancelVoiceInput()
                 globalStore.previewURL = nil
                 inspectorTab = .tasks
             }
-            .onChange(of: globalStore.newChatFiles, initial: true) {
+            .onChange(of: globalStore.newThreadFiles, initial: true) {
                 // Read from the store, not the new value, so with several windows only
                 // the first takes the files.
-                let files = globalStore.newChatFiles
+                let files = globalStore.newThreadFiles
                 guard !files.isEmpty else { return }
-                globalStore.newChatFiles = []
+                globalStore.newThreadFiles = []
                 draft.addFiles(files)
             }
-            .onChange(of: globalStore.newChatPrompt, initial: true) {
-                guard let prompt = globalStore.newChatPrompt else { return }
-                globalStore.newChatPrompt = nil
+            .onChange(of: globalStore.newThreadPrompt, initial: true) {
+                guard let prompt = globalStore.newThreadPrompt else { return }
+                globalStore.newThreadPrompt = nil
                 if !submitMessage(content: prompt.content, files: prompt.files) {
                     // No model to send with yet; keep the request in the composer.
                     draft.content = prompt.content
@@ -135,8 +135,8 @@ struct ChatView: View {
             } message: {
                 Text(voiceInputError ?? "")
             }
-            .onChange(of: chatService.interactionCoordinator.pendingInteraction?.id) {
-                if chatService.interactionCoordinator.pendingInteraction != nil {
+            .onChange(of: threadService.interactionCoordinator.pendingInteraction?.id) {
+                if threadService.interactionCoordinator.pendingInteraction != nil {
                     cancelVoiceInput()
                 }
             }
@@ -151,7 +151,7 @@ struct ChatView: View {
     }
 }
 
-private extension ChatView {
+private extension ThreadView {
     
     @ViewBuilder
     func ModelPicker() -> some View {
@@ -178,13 +178,6 @@ private extension ChatView {
     @ToolbarContentBuilder
     func ToolbarItems() -> some ToolbarContent {
         ToolbarItemGroup(placement: .primaryAction) {
-            if chat != nil {
-                Button {
-                    globalStore.startNewChat()
-                } label: {
-                    Image(systemName: "square.and.pencil")
-                }
-            }
             Button("Inspector", systemImage: "sidebar.right") {
                 globalStore.isInspectorPresented.toggle()
             }
@@ -249,9 +242,9 @@ private extension ChatView {
     func ProjectPickerButton() -> some View {
         Menu {
             if !projects.isEmpty {
-                if globalStore.newChatProject != nil {
+                if globalStore.newThreadProject != nil {
                     Button {
-                        globalStore.newChatProject = nil
+                        globalStore.newThreadProject = nil
                     } label: {
                         Text("No Project")
                     }
@@ -261,10 +254,10 @@ private extension ChatView {
 
                 ForEach(projects) { project in
                     Button {
-                        globalStore.newChatProject = project
+                        globalStore.newThreadProject = project
                     } label: {
                         Text(project.title)
-                        if globalStore.newChatProject == project {
+                        if globalStore.newThreadProject == project {
                             Image(systemName: "checkmark")
                         }
                     }
@@ -281,7 +274,7 @@ private extension ChatView {
             }
         } label: {
             Label(
-                globalStore.newChatProject?.title ?? String(localized: "Choose Project"),
+                globalStore.newThreadProject?.title ?? String(localized: "Choose Project"),
                 systemImage: "folder")
                 .lineLimit(1)
                 .truncationMode(.middle)
@@ -340,8 +333,8 @@ private extension ChatView {
     func StopGeneratingMessageButton() -> some View {
         Button {
             Task {
-                if let chat {
-                    await chatService.stopGenerating(chat: chat)
+                if let thread {
+                    await threadService.stopGenerating(thread: thread)
                 }
             }
         } label: {
@@ -374,9 +367,9 @@ private extension ChatView {
     
     @ViewBuilder
     func MainView() -> some View {
-        if let chat = chat {
+        if let thread = thread {
             VStack(spacing: 0) {
-                let messages = chat.conversation
+                let messages = thread.conversation
                 let items = ConversationContentBuilder.items(from: messages)
                 let lastItemID = items.last?.id
                 let bottomTransitionHeight: CGFloat = 32
@@ -384,7 +377,7 @@ private extension ChatView {
                     ScrollView {
                         ConversationItemsView(items: items, onRewind: rewindMessage)
                             .disabled(isRewinding)
-                            .environment(chatService)
+                            .environment(threadService)
                             .safeAreaPadding()
                             .background(SmallScrollerConfigurator())
                     }
@@ -423,7 +416,7 @@ private extension ChatView {
                     .safeAreaPadding()
             }
         } else {
-            NewChatLandingView {
+            NewThreadLandingView {
                 ComposerView(showsProjectPicker: true)
             }
             .safeAreaPadding()
@@ -432,10 +425,10 @@ private extension ChatView {
 
     @ViewBuilder
     func ComposerView(showsProjectPicker: Bool) -> some View {
-        let pendingInteraction = chatService.interactionCoordinator.pendingInteraction
+        let pendingInteraction = threadService.interactionCoordinator.pendingInteraction
         VStack(spacing: 8) {
             if isCommandPalettePresented {
-                ChatCommandPalette(
+                ThreadCommandPalette(
                     skillCommands: skillCommands,
                     selectedCommand: selectedCommand,
                     isEnabled: isCommandEnabled,
@@ -446,7 +439,7 @@ private extension ChatView {
             // child, so the request is as wide as the input, at least as tall, and taller
             // when its content needs it.
             ZStack(alignment: .top) {
-                ChatInputView(
+                ThreadInputView(
                     userInput: draft,
                     skillNames: skillCommands.compactMap(\.skillName),
                     placeholder: "Type Anything",
@@ -458,11 +451,11 @@ private extension ChatView {
                     trailing: {
                         if voiceInputTask != nil {
                             FinishVoiceInputButton()
-                        } else if chatService.isCompacting {
+                        } else if threadService.isCompacting {
                             ProgressView()
                                 .controlSize(.small)
                         } else if draft.content.isEmpty, draft.files.isEmpty {
-                            if chat?.isGenerating == true {
+                            if thread?.isGenerating == true {
                                 StopGeneratingMessageButton()
                             } else {
                                 VoiceInputButton()
@@ -483,8 +476,8 @@ private extension ChatView {
                 if let pendingInteraction {
                     UserInteractionRequestView(
                         pendingInteraction: pendingInteraction,
-                        onSubmitUserInput: chatService.interactionCoordinator.submitUserInput,
-                        onResolveApproval: chatService.interactionCoordinator.resolveApproval)
+                        onSubmitUserInput: threadService.interactionCoordinator.submitUserInput,
+                        onResolveApproval: threadService.interactionCoordinator.resolveApproval)
                     .id(pendingInteraction.id)
                 }
             }
@@ -495,15 +488,15 @@ private extension ChatView {
             }
 
             HStack(spacing: 12) {
-                PermissionModePickerButton()
-                ModelPickerButton()
                 if showsProjectPicker {
                     ProjectPickerButton()
                 }
+                PermissionModePickerButton()
                 Spacer(minLength: 0)
-                if let chat, let model = globalStore.selectedModel, model.contextWindow > 0 {
-                    ContextWindowUsageView(chat: chat, model: model)
+                if let thread, let model = globalStore.selectedModel, model.contextWindow > 0 {
+                    ContextWindowUsageView(thread: thread, model: model)
                 }
+                ModelPickerButton()
             }
             .disabled(voiceInputTask != nil || pendingInteraction != nil)
             .padding(.horizontal, 12)
@@ -511,7 +504,7 @@ private extension ChatView {
     }
 }
 
-private struct NewChatLandingView<Composer: View>: View {
+private struct NewThreadLandingView<Composer: View>: View {
 
     @ViewBuilder let composer: Composer
 
@@ -551,28 +544,28 @@ private struct SmallScrollerConfigurator: NSViewRepresentable {
     }
 }
 
-private extension ChatView {
+private extension ThreadView {
 
     var isAgentExecuting: Bool {
-        guard let chat else { return false }
-        return chat.isGenerating
+        guard let thread else { return false }
+        return thread.isGenerating
     }
 
     var isCommandPalettePresented: Bool {
         voiceInputTask == nil && slashCommandLocation != nil
     }
 
-    var commands: [ChatCommand] {
+    var commands: [ThreadCommand] {
         [.compact] + skillCommands
     }
 
-    func isCommandEnabled(_ command: ChatCommand) -> Bool {
+    func isCommandEnabled(_ command: ThreadCommand) -> Bool {
         switch command {
         case .compact:
-            return chat?.messages.isEmpty == false
+            return thread?.messages.isEmpty == false
                 && globalStore.selectedModel != nil
-                && chat?.isGenerating != true
-                && !chatService.isCompacting
+                && thread?.isGenerating != true
+                && !threadService.isCompacting
         case .skill:
             return true
         }
@@ -587,7 +580,7 @@ private extension ChatView {
     }
 
     func handleCommandKeyPress(_ keyPress: KeyPress) -> KeyPress.Result {
-        let command: ChatComposerCommand
+        let command: ThreadComposerCommand
         switch keyPress.key {
         case .upArrow:
             command = .previous
@@ -604,7 +597,7 @@ private extension ChatView {
     }
 
     /// Return in the text editor runs the selected palette command, or else sends the draft.
-    func handleEditorCommand(_ command: ChatComposerCommand) -> Bool {
+    func handleEditorCommand(_ command: ThreadComposerCommand) -> Bool {
         guard voiceInputTask == nil else { return true }
         if handleComposerCommand(command) { return true }
         guard command == .select else { return false }
@@ -614,7 +607,7 @@ private extension ChatView {
         return true
     }
 
-    func handleComposerCommand(_ command: ChatComposerCommand) -> Bool {
+    func handleComposerCommand(_ command: ThreadComposerCommand) -> Bool {
         guard isCommandPalettePresented else { return false }
         switch command {
         case .previous:
@@ -639,19 +632,19 @@ private extension ChatView {
         selectedCommand = commands[(index + 1) % commands.count]
     }
 
-    func runCommand(_ command: ChatCommand) {
+    func runCommand(_ command: ThreadCommand) {
         guard isCommandEnabled(command) else { return }
 
         switch command {
         case .compact:
             replaceCommandSlash(with: "")
             guard let model = globalStore.selectedModel,
-                  let chat else {
+                  let thread else {
                 return
             }
             Task {
                 do {
-                    try await chatService.compactContext(model: model, chat: chat)
+                    try await threadService.compactContext(model: model, thread: thread)
                 } catch is CancellationError {
                 } catch {
                     requestError = error.localizedDescription
@@ -675,20 +668,20 @@ private extension ChatView {
     
     func submitMessage(content: String, files: [URL]) -> Bool {
         guard let model = globalStore.selectedModel,
-              !chatService.isCompacting, !isRewinding else {
+              !threadService.isCompacting, !isRewinding else {
             return false
         }
-        let activeChat = openChat()
+        let activeThread = openThread()
         let message = Message(
             role: .user,
-            chat: activeChat,
+            thread: activeThread,
             content: content,
             files: files)
         Task {
             do {
-                try await chatService.sendMessage(
+                try await threadService.sendMessage(
                     model: model,
-                    chat: activeChat,
+                    thread: activeThread,
                     message: message
                 )
             } catch is CancellationError {
@@ -700,24 +693,24 @@ private extension ChatView {
         return true
     }
 
-    /// The open chat, or a new chat that becomes the open one.
-    func openChat() -> Chat {
-        if let chat {
-            return chat
+    /// The open thread, or a new thread that becomes the open one.
+    func openThread() -> Thread {
+        if let thread {
+            return thread
         }
-        let newChat = chatService.createChat(project: globalStore.newChatProject)
-        globalStore.currentTab = .chat(newChat)
-        globalStore.newChatProject = nil
-        return newChat
+        let newThread = threadService.createThread(project: globalStore.newThreadProject)
+        globalStore.currentTab = .thread(newThread)
+        globalStore.newThreadProject = nil
+        return newThread
     }
 
     func rewindMessage(_ message: Message) {
-        guard let chat, !isRewinding, !chatService.isCompacting else { return }
+        guard let thread, !isRewinding, !threadService.isCompacting else { return }
         isRewinding = true
         Task {
             defer { isRewinding = false }
             do {
-                guard let restoredDraft = try await chatService.rewindMessage(chat: chat, message: message)
+                guard let restoredDraft = try await threadService.rewindMessage(thread: thread, message: message)
                 else { return }
                 draft = restoredDraft
                 composerSelectionLocation = (draft.content as NSString).length
@@ -749,8 +742,8 @@ private extension ChatView {
     /// it can be edited before sending.
     func startVoiceInput() {
         guard voiceInputTask == nil, sttService.state == .idle,
-              !chatService.isCompacting, !isRewinding,
-              chatService.interactionCoordinator.pendingInteraction == nil else { return }
+              !threadService.isCompacting, !isRewinding,
+              threadService.interactionCoordinator.pendingInteraction == nil else { return }
         voiceInputTask = Task {
             defer { voiceInputTask = nil }
             do {
@@ -811,8 +804,8 @@ private extension ChatView {
     }
 
     func resolvedPreviewURL(for path: String) -> URL? {
-        guard let chat else { return nil }
-        let baseURL = chat.project?.workingDirectory ?? chat.directory
+        guard let thread else { return nil }
+        let baseURL = thread.project?.workingDirectory ?? thread.directory
         let url = URL(
             fileURLWithPath: (path as NSString).expandingTildeInPath,
             relativeTo: baseURL
@@ -826,11 +819,11 @@ private extension ChatView {
             return nil
         }
 
-        guard let project = chat.project else {
+        guard let project = thread.project else {
             return url
         }
 
-        let roots = [project.workingDirectory, chat.directory].compactMap { $0 } + project.resources
+        let roots = [project.workingDirectory, thread.directory, ResourceStore.directory].compactMap { $0 } + project.resources
         guard roots.contains(where: { contains(url, root: $0) }) else {
             return nil
         }
@@ -856,7 +849,7 @@ private extension ChatView {
     }
 }
 
-private enum ChatCommand: Identifiable, Equatable {
+private enum ThreadCommand: Identifiable, Equatable {
     case compact
     case skill(name: String, description: String)
 
@@ -897,16 +890,16 @@ private enum ChatCommand: Identifiable, Equatable {
     }
 }
 
-private struct ChatCommandPalette: View {
+private struct ThreadCommandPalette: View {
 
-    let skillCommands: [ChatCommand]
-    let selectedCommand: ChatCommand
-    let isEnabled: (ChatCommand) -> Bool
-    let onSelect: (ChatCommand) -> Void
+    let skillCommands: [ThreadCommand]
+    let selectedCommand: ThreadCommand
+    let isEnabled: (ThreadCommand) -> Bool
+    let onSelect: (ThreadCommand) -> Void
 
     var body: some View {
         ViewThatFits(in: .vertical) {
-            ChatCommandPaletteContent(
+            ThreadCommandPaletteContent(
                 skillCommands: skillCommands,
                 selectedCommand: selectedCommand,
                 isEnabled: isEnabled,
@@ -914,7 +907,7 @@ private struct ChatCommandPalette: View {
 
             ScrollViewReader { proxy in
                 ScrollView {
-                    ChatCommandPaletteContent(
+                    ThreadCommandPaletteContent(
                         skillCommands: skillCommands,
                         selectedCommand: selectedCommand,
                         isEnabled: isEnabled,
@@ -935,16 +928,16 @@ private struct ChatCommandPalette: View {
     }
 }
 
-private struct ChatCommandPaletteContent: View {
+private struct ThreadCommandPaletteContent: View {
 
-    let skillCommands: [ChatCommand]
-    let selectedCommand: ChatCommand
-    let isEnabled: (ChatCommand) -> Bool
-    let onSelect: (ChatCommand) -> Void
+    let skillCommands: [ThreadCommand]
+    let selectedCommand: ThreadCommand
+    let isEnabled: (ThreadCommand) -> Bool
+    let onSelect: (ThreadCommand) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            ChatCommandSection(
+            ThreadCommandSection(
                 commands: [.compact],
                 selectedCommand: selectedCommand,
                 isEnabled: isEnabled,
@@ -957,7 +950,7 @@ private struct ChatCommandPaletteContent: View {
                     .padding(.horizontal, 10)
                     .padding(.top, 4)
 
-                ChatCommandSection(
+                ThreadCommandSection(
                     commands: skillCommands,
                     selectedCommand: selectedCommand,
                     isEnabled: isEnabled,
@@ -968,12 +961,12 @@ private struct ChatCommandPaletteContent: View {
     }
 }
 
-private struct ChatCommandSection: View {
+private struct ThreadCommandSection: View {
 
-    let commands: [ChatCommand]
-    let selectedCommand: ChatCommand
-    let isEnabled: (ChatCommand) -> Bool
-    let onSelect: (ChatCommand) -> Void
+    let commands: [ThreadCommand]
+    let selectedCommand: ThreadCommand
+    let isEnabled: (ThreadCommand) -> Bool
+    let onSelect: (ThreadCommand) -> Void
 
     var body: some View {
         VStack(spacing: 2) {
@@ -981,7 +974,7 @@ private struct ChatCommandSection: View {
                 Button {
                     onSelect(command)
                 } label: {
-                    ChatCommandRow(
+                    ThreadCommandRow(
                         command: command,
                         isSelected: selectedCommand == command)
                 }
@@ -994,9 +987,9 @@ private struct ChatCommandSection: View {
     }
 }
 
-private struct ChatCommandRow: View {
+private struct ThreadCommandRow: View {
 
-    let command: ChatCommand
+    let command: ThreadCommand
     let isSelected: Bool
 
     var body: some View {
@@ -1014,7 +1007,7 @@ private struct ChatCommandRow: View {
             case .compact:
                 Text(
                     "Compress conversation history to free context space.",
-                    comment: "Description of the slash command that manually compacts chat context.")
+                    comment: "Description of the slash command that manually compacts thread context.")
                     .lineLimit(1)
                     .truncationMode(.tail)
                     .foregroundStyle(.secondary)
@@ -1032,7 +1025,7 @@ private struct ChatCommandRow: View {
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
         .background(
-            isSelected ? Color.accent.opacity(0.14) : Color.clear,
+            isSelected ? Color.primary.opacity(0.14) : Color.clear,
             in: RoundedRectangle(cornerRadius: 6))
     }
 }
@@ -1506,7 +1499,7 @@ private struct ConversationItemsView: View {
 
 #if DEBUG
 #Preview(traits: .preview) {
-    ChatView(chat: .preview)
+    ThreadView(thread: .preview)
         .frame(width: 760, height: 900)
 }
 #endif

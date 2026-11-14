@@ -79,7 +79,7 @@ struct ImageGeneratingView: View {
                 )
 
                 RoundedRectangle(cornerRadius: corner, style: .continuous)
-                    .fill(accentGlow(endRadius: glowEnd, startRadius: s * 0.02))
+                    .fill(glow(endRadius: glowEnd, startRadius: s * 0.02))
                     .blur(radius: blurAmount)
                     .opacity(0.85)
 
@@ -102,7 +102,7 @@ struct ImageGeneratingView: View {
                             .font(.title)
                             .fontWeight(.semibold)
                             .symbolRenderingMode(.hierarchical)
-                            .foregroundStyle(.primary, Color.accent)
+                            .foregroundStyle(.primary, .secondary)
                             .minimumScaleFactor(0.35)
                             .frame(width: badge * 0.62, height: badge * 0.62)
                     }
@@ -141,11 +141,11 @@ struct ImageGeneratingView: View {
         )
     }
 
-    private func accentGlow(endRadius: CGFloat, startRadius: CGFloat) -> RadialGradient {
+    private func glow(endRadius: CGFloat, startRadius: CGFloat) -> RadialGradient {
         RadialGradient(
             colors: [
-                Color.accent.opacity(0.18),
-                Color.accent.opacity(0.05),
+                Color.primary.opacity(0.18),
+                Color.primary.opacity(0.05),
                 .clear
             ],
             center: .center,

@@ -8,7 +8,7 @@ import KeyboardShortcuts
 import SwiftUI
 
 /// The panel a system-wide shortcut opens over any app. It reads what the user was looking
-/// at, takes a typed or spoken request, and sends both as a new chat in the main window.
+/// at, takes a typed or spoken request, and sends both as a new thread in the main window.
 ///
 /// The panel does not activate ModelCraft, so the other app stays frontmost while its
 /// selection is read, and clicking anywhere else closes it.
@@ -62,7 +62,6 @@ final class QuickEntry: NSObject, NSWindowDelegate {
             onClose: { [weak self] in self?.close() }
         )
         .environment(sttService)
-        .tint(.accent)
         .applyUserSettings())
         controller.sizingOptions = .preferredContentSize
         panel.contentViewController = controller
@@ -90,8 +89,8 @@ final class QuickEntry: NSObject, NSWindowDelegate {
 
     private func submit(_ message: String, files: [URL]) {
         close()
-        globalStore.startNewChat()
-        globalStore.newChatPrompt = .init(content: message, files: files)
+        globalStore.startNewThread()
+        globalStore.newThreadPrompt = .init(content: message, files: files)
         NSApp.activate()
         if let window = NSApp.windows.first(where: {
             $0.identifier?.rawValue.hasPrefix(ModelCraftApp.mainWindowID) == true

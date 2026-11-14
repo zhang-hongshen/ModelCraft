@@ -13,8 +13,8 @@ struct AppNavigationView: View {
     @State private var selectedProject: Project? = nil
     @State private var isProjectsExpanded = true
     @State private var isRecentsExpanded = true
-    @State private var chatToRename: Chat?
-    @State private var chatTitle = ""
+    @State private var threadToRename: Thread?
+    @State private var threadTitle = ""
     @State private var isRenamePresented = false
 
     @Query(Project.fetch()) private var projects: [Project]
@@ -26,12 +26,12 @@ struct AppNavigationView: View {
         @Bindable var store = globalStore
         List(selection: $store.currentTab) {
             Button {
-                globalStore.startNewChat()
+                globalStore.startNewThread()
             } label: {
                 Label("New Chat", systemImage: "square.and.pencil")
             }
             .buttonStyle(.borderless)
-            .modifier(FileDropTarget { globalStore.startNewChat(attaching: $0) })
+            .modifier(FileDropTarget { globalStore.startNewThread(attaching: $0) })
 
             Label("Model Store", systemImage: "storefront")
                 .tag(AppNavigationTab.modelStore)
@@ -46,19 +46,19 @@ struct AppNavigationView: View {
                 projects: projects,
                 isExpanded: $isProjectsExpanded,
                 onCreateProject: createProject,
-                onCreateChat: globalStore.startNewChat,
+                onCreateThread: globalStore.startNewThread,
                 onEditProject: editProject,
                 onDeleteProject: deleteProject,
-                onDeleteChat: deleteChat,
-                onRenameChat: beginRenaming,
-                onMoveChat: moveChat)
+                onDeleteThread: deleteThread,
+                onRenameThread: beginRenaming,
+                onMoveThread: moveThread)
 
-            RecentChatsSection(
+            RecentThreadsSection(
                 projects: projects,
                 isExpanded: $isRecentsExpanded,
-                onDeleteChat: deleteChat,
-                onRenameChat: beginRenaming,
-                onMoveChat: moveChat)
+                onDeleteThread: deleteThread,
+                onRenameThread: beginRenaming,
+                onMoveThread: moveThread)
         }
         .listStyle(.sidebar)
         .sheet(item: $selectedProject) { project in
@@ -66,27 +66,27 @@ struct AppNavigationView: View {
                 .presentationDetents([.medium, .large])
         }
         .alert("Rename Chat", isPresented: $isRenamePresented) {
-            TextField("Chat Title", text: $chatTitle)
+            TextField("Chat Title", text: $threadTitle)
             Button("Cancel", role: .cancel) {
-                chatToRename = nil
+                threadToRename = nil
             }
             Button("Rename") {
-                renameChat()
+                renameThread()
             }
-            .disabled(chatTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            .disabled(threadTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         }
         .focusedSceneValue(\.sidebarCommands, sidebarCommands)
     }
 
-    /// The File and Chat menus' actions, the same as the sidebar's buttons and context menus.
+    /// The File and Thread menus' actions, the same as the sidebar's buttons and context menus.
     private var sidebarCommands: SidebarMenuCommands {
-        guard case .chat(let chat) = globalStore.currentTab else {
+        guard case .thread(let thread) = globalStore.currentTab else {
             return SidebarMenuCommands(newProject: createProject)
         }
         return SidebarMenuCommands(
             newProject: createProject,
-            renameChat: { beginRenaming(chat) },
-            deleteChat: { deleteChat(chat) })
+            renameThread: { beginRenaming(thread) },
+            deleteThread: { deleteThread(thread) })
     }
 
     private func createProject() {
@@ -98,40 +98,40 @@ struct AppNavigationView: View {
     }
 
     private func deleteProject(_ project: Project) {
-        if case .chat(let chat) = globalStore.currentTab,
-           chat.project == project {
-            globalStore.startNewChat()
+        if case .thread(let thread) = globalStore.currentTab,
+           thread.project == project {
+            globalStore.startNewThread()
         }
         project.deleteIndex()
-        project.chats.forEach { $0.deleteDirectory() }
+        project.threads.forEach { $0.deleteDirectory() }
         modelContext.delete(project)
         try? modelContext.save()
     }
 
-    private func deleteChat(_ chat: Chat) {
-        if globalStore.currentTab == .chat(chat) {
-            globalStore.startNewChat()
+    private func deleteThread(_ thread: Thread) {
+        if globalStore.currentTab == .thread(thread) {
+            globalStore.startNewThread()
         }
-        chat.deleteDirectory()
-        modelContext.delete(chat)
+        thread.deleteDirectory()
+        modelContext.delete(thread)
         try? modelContext.save()
     }
 
-    private func beginRenaming(_ chat: Chat) {
-        chatToRename = chat
-        chatTitle = chat.title ?? ""
+    private func beginRenaming(_ thread: Thread) {
+        threadToRename = thread
+        threadTitle = thread.title ?? ""
         isRenamePresented = true
     }
 
-    private func renameChat() {
-        guard let chatToRename else { return }
-        chatToRename.title = chatTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+    private func renameThread() {
+        guard let threadToRename else { return }
+        threadToRename.title = threadTitle.trimmingCharacters(in: .whitespacesAndNewlines)
         try? modelContext.save()
-        self.chatToRename = nil
+        self.threadToRename = nil
     }
 
-    private func moveChat(_ chat: Chat, to project: Project?) {
-        chat.project = project
+    private func moveThread(_ thread: Thread, to project: Project?) {
+        thread.project = project
         try? modelContext.save()
     }
 }
@@ -141,12 +141,12 @@ private struct ProjectSidebarSection: View {
     let projects: [Project]
     @Binding var isExpanded: Bool
     let onCreateProject: () -> Void
-    let onCreateChat: (Project?) -> Void
+    let onCreateThread: (Project?) -> Void
     let onEditProject: (Project) -> Void
     let onDeleteProject: (Project) -> Void
-    let onDeleteChat: (Chat) -> Void
-    let onRenameChat: (Chat) -> Void
-    let onMoveChat: (Chat, Project?) -> Void
+    let onDeleteThread: (Thread) -> Void
+    let onRenameThread: (Thread) -> Void
+    let onMoveThread: (Thread, Project?) -> Void
 
     var body: some View {
         Section(isExpanded: $isExpanded) {
@@ -154,12 +154,12 @@ private struct ProjectSidebarSection: View {
                 ProjectSidebarRow(
                     project: project,
                     projects: projects,
-                    onCreateChat: { onCreateChat(project) },
+                    onCreateThread: { onCreateThread(project) },
                     onEdit: { onEditProject(project) },
                     onDelete: { onDeleteProject(project) },
-                    onDeleteChat: onDeleteChat,
-                    onRenameChat: onRenameChat,
-                    onMoveChat: onMoveChat)
+                    onDeleteThread: onDeleteThread,
+                    onRenameThread: onRenameThread,
+                    onMoveThread: onMoveThread)
             }
         } header: {
             HStack {
@@ -180,40 +180,40 @@ private struct ProjectSidebarRow: View {
 
     let project: Project
     let projects: [Project]
-    let onCreateChat: () -> Void
+    let onCreateThread: () -> Void
     let onEdit: () -> Void
     let onDelete: () -> Void
-    let onDeleteChat: (Chat) -> Void
-    let onRenameChat: (Chat) -> Void
-    let onMoveChat: (Chat, Project?) -> Void
+    let onDeleteThread: (Thread) -> Void
+    let onRenameThread: (Thread) -> Void
+    let onMoveThread: (Thread, Project?) -> Void
 
     @State private var isExpanded = true
-    @Query private var chats: [Chat]
+    @Query private var threads: [Thread]
     @Environment(GlobalStore.self) private var globalStore
 
     init(
         project: Project,
         projects: [Project],
-        onCreateChat: @escaping () -> Void,
+        onCreateThread: @escaping () -> Void,
         onEdit: @escaping () -> Void,
         onDelete: @escaping () -> Void,
-        onDeleteChat: @escaping (Chat) -> Void,
-        onRenameChat: @escaping (Chat) -> Void,
-        onMoveChat: @escaping (Chat, Project?) -> Void
+        onDeleteThread: @escaping (Thread) -> Void,
+        onRenameThread: @escaping (Thread) -> Void,
+        onMoveThread: @escaping (Thread, Project?) -> Void
     ) {
         self.project = project
         self.projects = projects
-        self.onCreateChat = onCreateChat
+        self.onCreateThread = onCreateThread
         self.onEdit = onEdit
         self.onDelete = onDelete
-        self.onDeleteChat = onDeleteChat
-        self.onRenameChat = onRenameChat
-        self.onMoveChat = onMoveChat
+        self.onDeleteThread = onDeleteThread
+        self.onRenameThread = onRenameThread
+        self.onMoveThread = onMoveThread
 
         let projectID = project.id
-        _chats = Query(
-            filter: #Predicate<Chat> { chat in
-                chat.project?.id == projectID
+        _threads = Query(
+            filter: #Predicate<Thread> { thread in
+                thread.project?.id == projectID
             },
             sort: \.createdAt,
             order: .reverse)
@@ -221,21 +221,21 @@ private struct ProjectSidebarRow: View {
 
     var body: some View {
         DisclosureGroup(isExpanded: $isExpanded) {
-            ForEach(chats) { chat in
-                Text(chat.title ?? String(localized: "New Chat"))
+            ForEach(threads) { thread in
+                Text(thread.title ?? String(localized: "New Chat"))
                     .lineLimit(1)
-                    .tag(AppNavigationTab.chat(chat))
+                    .tag(AppNavigationTab.thread(thread))
                     .contextMenu {
                         Button("Rename") {
-                            onRenameChat(chat)
+                            onRenameThread(thread)
                         }
 
-                        ChatProjectMenu(projects: projects, currentProject: project) {
-                            onMoveChat(chat, $0)
+                        ThreadProjectMenu(projects: projects, currentProject: project) {
+                            onMoveThread(thread, $0)
                         }
 
                         DeleteButton(style: .textOnly) {
-                            onDeleteChat(chat)
+                            onDeleteThread(thread)
                         }
                     }
             }
@@ -246,13 +246,13 @@ private struct ProjectSidebarRow: View {
 
                 Spacer(minLength: 4)
 
-                Button(action: onCreateChat) {
+                Button(action: onCreateThread) {
                     Image(systemName: "square.and.pencil")
                 }
                 .buttonStyle(.borderless)
                 .help("New Chat")
             }
-            .modifier(FileDropTarget { globalStore.startNewChat(in: project, attaching: $0) })
+            .modifier(FileDropTarget { globalStore.startNewThread(in: project, attaching: $0) })
             .contextMenu {
                 Button("Edit", action: onEdit)
                 DeleteButton(style: .textOnly, action: onDelete)
@@ -261,33 +261,33 @@ private struct ProjectSidebarRow: View {
     }
 }
 
-private struct RecentChatsSection: View {
+private struct RecentThreadsSection: View {
 
     let projects: [Project]
     @Binding var isExpanded: Bool
-    let onDeleteChat: (Chat) -> Void
-    let onRenameChat: (Chat) -> Void
-    let onMoveChat: (Chat, Project?) -> Void
+    let onDeleteThread: (Thread) -> Void
+    let onRenameThread: (Thread) -> Void
+    let onMoveThread: (Thread, Project?) -> Void
 
-    @Query(Chat.fetchRecents()) private var chats: [Chat]
+    @Query(Thread.fetchRecents()) private var threads: [Thread]
 
     var body: some View {
         Section("Recents", isExpanded: $isExpanded) {
-            ForEach(chats) { chat in
-                Text(chat.title ?? String(localized: "New Chat"))
+            ForEach(threads) { thread in
+                Text(thread.title ?? String(localized: "New Chat"))
                     .lineLimit(1)
-                    .tag(AppNavigationTab.chat(chat))
+                    .tag(AppNavigationTab.thread(thread))
                     .contextMenu {
                         Button("Rename") {
-                            onRenameChat(chat)
+                            onRenameThread(thread)
                         }
 
-                        ChatProjectMenu(projects: projects, currentProject: nil) {
-                            onMoveChat(chat, $0)
+                        ThreadProjectMenu(projects: projects, currentProject: nil) {
+                            onMoveThread(thread, $0)
                         }
 
                         DeleteButton(style: .textOnly) {
-                            onDeleteChat(chat)
+                            onDeleteThread(thread)
                         }
                     }
             }
@@ -295,7 +295,7 @@ private struct RecentChatsSection: View {
     }
 }
 
-private struct ChatProjectMenu: View {
+private struct ThreadProjectMenu: View {
 
     let projects: [Project]
     let currentProject: Project?
@@ -333,11 +333,11 @@ private struct ChatProjectMenu: View {
     }
 }
 
-/// Sidebar actions for the menu bar. A `nil` chat action is disabled in the menu.
+/// Sidebar actions for the menu bar. A `nil` thread action is disabled in the menu.
 struct SidebarMenuCommands {
     var newProject: () -> Void
-    var renameChat: (() -> Void)?
-    var deleteChat: (() -> Void)?
+    var renameThread: (() -> Void)?
+    var deleteThread: (() -> Void)?
 }
 
 extension FocusedValues {
@@ -350,7 +350,7 @@ extension FocusedValues {
 }
 #endif
 
-/// Starts a new chat with the files dropped on a sidebar row, highlighting the row while
+/// Starts a new thread with the files dropped on a sidebar row, highlighting the row while
 /// files are over it.
 private struct FileDropTarget: ViewModifier {
 
@@ -363,7 +363,7 @@ private struct FileDropTarget: ViewModifier {
             .background {
                 if isTargeted {
                     RoundedRectangle()
-                        .fill(.tint.opacity(0.15))
+                        .fill(.primary.opacity(0.15))
                         .padding(-4)
                 }
             }

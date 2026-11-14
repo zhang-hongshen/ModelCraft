@@ -19,7 +19,7 @@ enum PromptBuilder {
         return try! String(contentsOf: url, encoding: .utf8)
     }()
 
-    /// The one system message a chat request starts with. Chat templates such as Qwen3.5's
+    /// The one system message a thread request starts with. Model templates such as Qwen3.5's
     /// reject a system message anywhere but first, so the project context and the
     /// conversation summary are sections of it rather than messages of their own.
     static func system(project: Project?, summary: String?, ticket: Ticket? = nil) -> Message {
@@ -30,7 +30,8 @@ enum PromptBuilder {
             <goal>\(ticket.goal)</goal>
             <status>\(ticket.status.rawValue)</status>
             <task_memory>\(ticket.memory)</task_memory>
-            <latest_report>\(ticket.assignments.max { $0.startedAt < $1.startedAt }?.latestReport?.content ?? "")</latest_report>
+            <progress>\(ticket.progress)</progress>
+            <ticket_checkpoint>\(ticket.checkpoint ?? "")</ticket_checkpoint>
             </task_context>
             """
         }
@@ -40,7 +41,7 @@ enum PromptBuilder {
             project.map { environment(project: $0) },
             project.flatMap { $0.memory.isEmpty ? nil : "<project_memory>\($0.memory)</project_memory>" },
             taskContext,
-            summary.map { "<context_checkpoint>\($0)</context_checkpoint>" }
+            summary.map { "<thread_summary>\($0)</thread_summary>" }
         ].compactMap { $0 }
         return Message(role: .system, content: sections.joined(separator: "\n\n"))
     }

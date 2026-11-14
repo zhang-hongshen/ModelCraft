@@ -9,7 +9,7 @@ import AppKit
 import SwiftData
 import UserNotifications
 
-/// Runs due schedules while the app is open. Each run is a new chat that sends the schedule's
+/// Runs due schedules while the app is open. Each run is a new thread that sends the schedule's
 /// prompt with nobody present to answer questions or approve actions.
 @MainActor
 @Observable
@@ -17,8 +17,8 @@ final class Scheduler {
 
     private struct Run {
         let task: Task<Void, Never>
-        let service: ChatService
-        let chat: Chat
+        let service: ThreadService
+        let thread: Thread
     }
 
     private var runs: [UUID: Run] = [:]
@@ -36,8 +36,8 @@ final class Scheduler {
     init(localModelStore: LocalModelStore, globalStore: GlobalStore) {
         self.localModelStore = localModelStore
         self.globalStore = globalStore
-        notificationDelegate.onOpen = { [weak self] chatID in
-            self?.openChat(id: chatID)
+        notificationDelegate.onOpen = { [weak self] threadID in
+            self?.openThread(id: threadID)
         }
         UNUserNotificationCenter.current().delegate = notificationDelegate
     }
@@ -70,19 +70,19 @@ final class Scheduler {
             schedule.lastError = String(localized: "The model \(schedule.modelID) is not downloaded.")
             return
         }
-        let service = ChatService(isUnattended: true)
-        let chat = service.createChat(project: schedule.project)
-        chat.title = schedule.name
-        chat.schedule = schedule
-        let message = Message(role: .user, chat: chat, content: schedule.prompt)
+        let service = ThreadService(isUnattended: true)
+        let thread = service.createThread(project: schedule.project)
+        thread.title = schedule.name
+        thread.schedule = schedule
+        let message = Message(role: .user, thread: thread, content: schedule.prompt)
         let scheduleID = schedule.id
         let task = Task {
             defer { runs[scheduleID] = nil }
             do {
-                try await service.sendMessage(model: model, chat: chat, message: message)
+                try await service.sendMessage(model: model, thread: thread, message: message)
                 schedule.lastError = nil
-                let reply = chat.conversation.last { $0.role == .assistant && !$0.content.isEmpty }
-                notify(chat: chat, title: schedule.name, body: reply.map {
+                let reply = thread.conversation.last { $0.role == .assistant && !$0.content.isEmpty }
+                notify(thread: thread, title: schedule.name, body: reply.map {
                     String($0.content.trimmingCharacters(in: .whitespacesAndNewlines)
                         .prefix(Self.notificationBodyLength))
                 } ?? String(localized: "The run finished."))
@@ -91,17 +91,17 @@ final class Scheduler {
             } catch {
                 schedule.lastError = error.localizedDescription
                 notify(
-                    chat: chat,
+                    thread: thread,
                     title: String(localized: "\(schedule.name) failed"),
                     body: error.localizedDescription)
             }
         }
-        runs[scheduleID] = Run(task: task, service: service, chat: chat)
+        runs[scheduleID] = Run(task: task, service: service, thread: thread)
     }
 
     /// Posts a notification for a finished run when the user turned them on in Settings. A
     /// stopped run is not announced.
-    private func notify(chat: Chat, title: String, body: String) {
+    private func notify(thread: Thread, title: String, body: String) {
         guard UserDefaults.standard.value(
             forKey: UserDefaults.notifyWhenScheduledTasksFinish,
             default: UserDefaultSettings.notifyWhenScheduledTasksFinish)
@@ -110,22 +110,22 @@ final class Scheduler {
         content.title = title
         content.body = body
         content.sound = .default
-        content.userInfo = [NotificationDelegate.chatIDKey: chat.id.uuidString]
+        content.userInfo = [NotificationDelegate.threadIDKey: thread.id.uuidString]
         UNUserNotificationCenter.current().add(UNNotificationRequest(
-            identifier: chat.id.uuidString, content: content, trigger: nil))
+            identifier: thread.id.uuidString, content: content, trigger: nil))
     }
 
-    private func openChat(id: UUID) {
-        guard let chat = try? ModelContainer.shared.mainContext.fetch(FetchDescriptor<Chat>(
-            predicate: #Predicate<Chat> { $0.id == id })).first
+    private func openThread(id: UUID) {
+        guard let thread = try? ModelContainer.shared.mainContext.fetch(FetchDescriptor<Thread>(
+            predicate: #Predicate<Thread> { $0.id == id })).first
         else { return }
-        globalStore.currentTab = .chat(chat)
+        globalStore.currentTab = .thread(thread)
         NSApp.activate()
     }
 
     func stop(_ schedule: Schedule) async {
         guard let run = runs[schedule.id] else { return }
-        await run.service.stopGenerating(chat: run.chat)
+        await run.service.stopGenerating(thread: run.thread)
         run.task.cancel()
     }
 
@@ -165,11 +165,11 @@ final class Scheduler {
     }
 }
 
-/// Shows run notifications while the app is in front and opens a run's chat when one is
+/// Shows run notifications while the app is in front and opens a run's thread when one is
 /// clicked.
 private final class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
 
-    static let chatIDKey = "chatID"
+    static let threadIDKey = "threadID"
 
     var onOpen: (@MainActor (UUID) -> Void)?
 
@@ -184,9 +184,9 @@ private final class NotificationDelegate: NSObject, UNUserNotificationCenterDele
         _ center: UNUserNotificationCenter,
         didReceive response: UNNotificationResponse
     ) async {
-        guard let value = response.notification.request.content.userInfo[Self.chatIDKey] as? String,
-              let chatID = UUID(uuidString: value)
+        guard let value = response.notification.request.content.userInfo[Self.threadIDKey] as? String,
+              let threadID = UUID(uuidString: value)
         else { return }
-        await onOpen?(chatID)
+        await onOpen?(threadID)
     }
 }

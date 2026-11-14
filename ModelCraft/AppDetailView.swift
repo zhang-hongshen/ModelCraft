@@ -13,10 +13,10 @@ struct AppDetailView: View {
     
     var body: some View {
         switch tab {
-        case .chat, .none:
-            let chat = selectedChat
-            ChatView(chat: chat)
-                .navigationTitle(chat?.title ?? String(localized: "New Chat"))
+        case .thread, .none:
+            let thread = selectedThread
+            ThreadView(thread: thread)
+                .navigationTitle(thread?.title ?? String(localized: "New Chat"))
         case .modelStore:
             ModelStore().navigationTitle("Model Store")
         case .downloadedModels:
@@ -28,9 +28,9 @@ struct AppDetailView: View {
         }
     }
 
-    private var selectedChat: Chat? {
-        guard case .chat(let chat) = tab else { return nil }
-        return chat
+    private var selectedThread: Thread? {
+        guard case .thread(let thread) = tab else { return nil }
+        return thread
     }
 }
 

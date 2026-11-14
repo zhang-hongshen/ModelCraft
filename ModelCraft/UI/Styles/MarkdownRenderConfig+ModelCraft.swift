@@ -57,12 +57,12 @@ extension MarkdownRenderConfig {
                 regularTextColor: .primary,
                 headerBackgroundColor: controlBackground,
                 borderColor: separator,
-                actionButtonColor: .accent
+                actionButtonColor: .secondary
             ),
             inlineStyle: .init(
                 boldTextColor: .primary,
                 linkTextFont: bodyFonts.normal,
-                linkTextColor: .accent,
+                linkTextColor: .accentColor,
                 linkUnderlineStyle: [],
                 codeTextFont: codeFonts.normal,
                 codeTextColor: .primary,

@@ -19,7 +19,7 @@ struct MessageView: View {
     @State private var isHovering = false
     
     @Environment(GlobalStore.self) private var globalStore
-    @Environment(ChatService.self) private var service
+    @Environment(ThreadService.self) private var service
     
     private static let columns = Array.init(repeating: GridItem(.flexible()), count: 4)
     
@@ -79,7 +79,7 @@ extension MessageView {
                     UserMessageContentView(message)
                         .padding()
                         .background {
-                            RoundedRectangle().fill(.userBubble)
+                            RoundedRectangle().fill(.quaternary)
                         }
                         .contextMenu {
                             UserButtons()
@@ -101,7 +101,7 @@ extension MessageView {
             Button {
                 onRewind?(message)
             } label: {
-                Label("Rewind", systemImage: "backward.end")
+                Label("Rewind", systemImage: "arrow.clockwise")
             }
             .labelStyle(.iconOnly)
             .help("Rewind")
@@ -198,15 +198,15 @@ extension MessageView {
 extension MessageView {
     
     func regenerateAssistantMessage() {
-        guard let chat = message.chat, let model = globalStore.selectedModel else { return }
-        let messages = chat.conversation
+        guard let thread = message.thread, let model = globalStore.selectedModel else { return }
+        let messages = thread.conversation
         guard let index = messages.firstIndex(of: message),
             let userMessage = messages[..<index].reversed().first(where: { $0.role == .user }) else {
             return
         }
         Task {
             try await service.resendMessage(model: model,
-                                            chat: chat,
+                                            thread: thread,
                                             message: userMessage)
         }
         
@@ -221,7 +221,7 @@ private struct AssistantContentView: View {
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(GlobalStore.self) private var globalStore
-    @Environment(ChatService.self) private var service
+    @Environment(ThreadService.self) private var service
 
     var body: some View {
         let segments = MessageContentSegment.segments(
@@ -250,15 +250,15 @@ private struct AssistantContentView: View {
         }
     }
 
-    /// Sends an action from a `ui` block as the user's next message in this chat.
+    /// Sends an action from a `ui` block as the user's next message in this thread.
     private func send(_ text: String) {
-        guard let chat = message.chat,
+        guard let thread = message.thread,
               let model = globalStore.selectedModel,
               !service.isCompacting
         else { return }
-        let userMessage = Message(role: .user, chat: chat, content: text)
+        let userMessage = Message(role: .user, thread: thread, content: text)
         Task {
-            try await service.sendMessage(model: model, chat: chat, message: userMessage)
+            try await service.sendMessage(model: model, thread: thread, message: userMessage)
         }
     }
 }
@@ -292,7 +292,7 @@ struct AssistantTurnView: View {
     @State private var isHovering = false
 
     @Environment(GlobalStore.self) private var globalStore
-    @Environment(ChatService.self) private var service
+    @Environment(ThreadService.self) private var service
 
     var body: some View {
         HStack(alignment: .top) {
@@ -341,14 +341,14 @@ struct AssistantTurnView: View {
 
     private func regenerateAssistantTurn() {
         guard let userMessage = turn.userMessage,
-              let chat = userMessage.chat,
+              let thread = userMessage.thread,
               let model = globalStore.selectedModel else {
             return
         }
         Task {
             try await service.resendMessage(
                 model: model,
-                chat: chat,
+                thread: thread,
                 message: userMessage
             )
         }

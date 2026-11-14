@@ -1,5 +1,5 @@
 //
-//  ProjectChatView.swift
+//  ProjectThreadView.swift
 //  ModelCraft
 //
 //  Created by Hongshen on 2/4/26.
@@ -7,18 +7,18 @@
 
 import SwiftUI
 
-struct ProjectChatView: View {
+struct ProjectThreadView: View {
     
-    let chats: [Chat]
-    @State private var chat: Chat? = nil
+    let threads: [Thread]
+    @State private var thread: Thread? = nil
     
     var body: some View {
         VStack {
-            ChatView(chat: chat)
-            List(selection: $chat) {
-                ForEach(chats) { chat in
-                    NavigationLink(value: chat) {
-                        ChatCard(chat: chat)
+            ThreadView(thread: thread)
+            List(selection: $thread) {
+                ForEach(threads) { thread in
+                    NavigationLink(value: thread) {
+                        ThreadCard(thread: thread)
                     }
                     .buttonStyle(.plain)
                     .listRowSeparator(.hidden)
@@ -28,38 +28,38 @@ struct ProjectChatView: View {
     }
 }
 
-struct ChatCard: View {
-    let chat: Chat
+struct ThreadCard: View {
+    let thread: Thread
     @State private var isHovered = false
     
     var body: some View {
         HStack {
             ZStack {
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(Color.accent.opacity(0.1))
+                    .fill(Color.primary.opacity(0.1))
                 
                 Image(systemName: "message.fill")
                     .font(.system(size: 16))
-                    .foregroundStyle(Color.accent)
+                    .foregroundStyle(Color.primary)
             }
             .frame(width: 44, height: 44)
             
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
-                    Text(chat.title ?? String(localized: "New Chat"))
+                    Text(thread.title ?? String(localized: "New Chat"))
                         .font(.system(.headline, design: .rounded))
                         .foregroundStyle(Color.primary)
                         .lineLimit(1)
                     
                     Spacer()
                     
-                    Text(chat.displayCreatedAt)
+                    Text(thread.displayCreatedAt)
                         .font(.caption2)
                         .monospacedDigit()
                         .foregroundStyle(Color.secondary)
                 }
                 
-                Text(chat.conversation.first?.content ?? String(localized: "No messages"))
+                Text(thread.conversation.first?.content ?? String(localized: "No messages"))
                     .font(.subheadline)
                     .foregroundStyle(Color.secondary)
                     .lineLimit(1)
@@ -76,6 +76,6 @@ struct ChatCard: View {
 
 #if DEBUG
 #Preview(traits: .preview) {
-    ProjectChatView(chats: Chat.previews)
+    ProjectThreadView(threads: Thread.previews)
 }
 #endif

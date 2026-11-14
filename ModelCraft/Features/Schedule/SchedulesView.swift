@@ -176,12 +176,12 @@ private struct ScheduleCard: View {
                     .foregroundStyle(.red)
             }
 
-            if !schedule.chats.isEmpty {
+            if !schedule.threads.isEmpty {
                 DisclosureGroup("Runs", isExpanded: $isRunsExpanded) {
                     VStack(alignment: .leading, spacing: 4) {
-                        ForEach(schedule.sortedChats.prefix(10)) { chat in
-                            Button(chat.createdAt.formatted(date: .abbreviated, time: .shortened)) {
-                                globalStore.currentTab = .chat(chat)
+                        ForEach(schedule.sortedThreads.prefix(10)) { thread in
+                            Button(thread.createdAt.formatted(date: .abbreviated, time: .shortened)) {
+                                globalStore.currentTab = .thread(thread)
                             }
                             .buttonStyle(.link)
                         }

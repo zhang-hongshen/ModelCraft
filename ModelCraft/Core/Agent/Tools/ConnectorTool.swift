@@ -183,7 +183,7 @@ enum ConnectorTool {
         return attributes?[.modificationDate] as? Date
     }
 
-    /// Chat templates take JSON Schema as nested Swift values.
+    /// Model templates take JSON Schema as nested Swift values.
     private static func sendable(_ value: MCP.Value) -> (any Sendable)? {
         switch value {
         case .null: nil

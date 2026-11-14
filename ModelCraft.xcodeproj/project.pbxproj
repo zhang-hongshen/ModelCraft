@@ -8,7 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		5ED2FF798F381CAEA965C4C2 /* NotificationsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05E31209DECEB97D3CC5B903 /* NotificationsView.swift */; };
-		7001D9B02EC10DEB00047F6B /* ChatInputView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7001D9AF2EC10DEB00047F6B /* ChatInputView.swift */; };
+		7001D9B02EC10DEB00047F6B /* ThreadInputView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7001D9AF2EC10DEB00047F6B /* ThreadInputView.swift */; };
 		7008FD8F2E80414200D62EF6 /* NLEmbedding+.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7008FD8E2E80413E00D62EF6 /* NLEmbedding+.swift */; };
 		70097F7F2D6C04BB00DDDEDF /* MessageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70097F7E2D6C04BB00DDDEDF /* MessageView.swift */; };
 		70097F832D6DA73C00DDDEDF /* RuntimeError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70097F822D6DA73C00DDDEDF /* RuntimeError.swift */; };
@@ -36,7 +36,7 @@
 		702477B42F48A5EA003B72D5 /* ModelContainer+.swift in Sources */ = {isa = PBXBuildFile; fileRef = 702477B32F48A5E6003B72D5 /* ModelContainer+.swift */; };
 		702477B62F48B3E8003B72D5 /* Array+.swift in Sources */ = {isa = PBXBuildFile; fileRef = 702477B52F48B3E4003B72D5 /* Array+.swift */; };
 		70271B5E2BC1A97900E21A6E /* ModelStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70271B5D2BC1A97900E21A6E /* ModelStore.swift */; };
-		702A313B2F7EBA15009CE217 /* ProjectChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 702A313A2F7EBA12009CE217 /* ProjectChatView.swift */; };
+		702A313B2F7EBA15009CE217 /* ProjectThreadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 702A313A2F7EBA12009CE217 /* ProjectThreadView.swift */; };
 		702A313E2F80BD23009CE217 /* MLXAudioCore in Frameworks */ = {isa = PBXBuildFile; productRef = 702A313D2F80BD23009CE217 /* MLXAudioCore */; };
 		702A31402F80BD23009CE217 /* MLXAudioSTT in Frameworks */ = {isa = PBXBuildFile; productRef = 702A313F2F80BD23009CE217 /* MLXAudioSTT */; };
 		702A31422F80BD23009CE217 /* MLXAudioTTS in Frameworks */ = {isa = PBXBuildFile; productRef = 702A31412F80BD23009CE217 /* MLXAudioTTS */; };
@@ -151,11 +151,6 @@
 		70C22FE92BAFD5CA002754C7 /* ImageButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70C22FE82BAFD5CA002754C7 /* ImageButton.swift */; };
 		70C534112E7535A8006E6731 /* SemanticTextSplitter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70C534102E7535A8006E6731 /* SemanticTextSplitter.swift */; };
 		70CA101030CA101000000010 /* HuggingFace in Frameworks */ = {isa = PBXBuildFile; productRef = 70CA100230CA100200000002 /* HuggingFace */; };
-		70CC1A0E2FF1C0DE00C1A0DE /* Chat+ClaudeCode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70CC1A0D2FF1C0DE00C1A0DE /* Chat+ClaudeCode.swift */; };
-		70CC1A102FF1C0DE00C1A0DE /* Chat+Codex.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70CC1A0F2FF1C0DE00C1A0DE /* Chat+Codex.swift */; };
-		70CC1A122FF1C0DE00C1A0DE /* Chat+Import.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70CC1A112FF1C0DE00C1A0DE /* Chat+Import.swift */; };
-		70CC1A142FF1C0DE00C1A0DE /* Chat+WorkBuddy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70CC1A132FF1C0DE00C1A0DE /* Chat+WorkBuddy.swift */; };
-		70CC1A162FF1C0DE00C1A0DE /* SessionImportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70CC1A152FF1C0DE00C1A0DE /* SessionImportView.swift */; };
 		70CE4D292BB83BF500E1DEE2 /* Pasteboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70CE4D282BB83BF500E1DEE2 /* Pasteboard.swift */; };
 		70CE4D2F2BB94C7800E1DEE2 /* Project.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70CE4D2E2BB94C7800E1DEE2 /* Project.swift */; };
 		70CE4D312BB9500000E1DEE2 /* ProjectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70CE4D302BB9500000E1DEE2 /* ProjectView.swift */; };
@@ -172,7 +167,7 @@
 		70CE60BE2BAD60AE00A2D0B0 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70CE60BD2BAD60AE00A2D0B0 /* SettingsView.swift */; };
 		70CE60C32BAD616600A2D0B0 /* GeneralView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70CE60C22BAD616600A2D0B0 /* GeneralView.swift */; };
 		70CE60C62BAD61F600A2D0B0 /* UserDefaults+.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70CE60C52BAD61F600A2D0B0 /* UserDefaults+.swift */; };
-		70CE60C82BAD705E00A2D0B0 /* Chat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70CE60C72BAD705E00A2D0B0 /* Chat.swift */; };
+		70CE60C82BAD705E00A2D0B0 /* Thread.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70CE60C72BAD705E00A2D0B0 /* Thread.swift */; };
 		70D1A0022FD1A00200D1A002 /* Schedule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70D1A0012FD1A00100D1A001 /* Schedule.swift */; };
 		70D1A0042FD1A00400D1A004 /* WorkdayCalendar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70D1A0032FD1A00300D1A003 /* WorkdayCalendar.swift */; };
 		70D1A0062FD1A00600D1A006 /* Scheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70D1A0052FD1A00500D1A005 /* Scheduler.swift */; };
@@ -182,7 +177,7 @@
 		70D1A00E2FD1A00E00D1A00E /* WorkdaysView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70D1A00D2FD1A00D00D1A00D /* WorkdaysView.swift */; };
 		70E0BA8F2F83719C0095DED1 /* STTService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70E0BA8E2F8371980095DED1 /* STTService.swift */; };
 		70E1C0022FE1C00200E1C002 /* ModelCraftTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70E1C0012FE1C00100E1C001 /* ModelCraftTool.swift */; };
-		70E2017B2BAE825A00CFE1D7 /* ChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70E2017A2BAE825A00CFE1D7 /* ChatView.swift */; };
+		70E2017B2BAE825A00CFE1D7 /* ThreadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70E2017A2BAE825A00CFE1D7 /* ThreadView.swift */; };
 		70F0000130F0000100F00001 /* Ticket.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70F0000230F0000200F00002 /* Ticket.swift */; };
 		70F0000330F0000300F00003 /* TaskTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70F0000430F0000400F00004 /* TaskTool.swift */; };
 		70F0000530F0000500F00005 /* TaskInspectorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70F0000630F0000600F00006 /* TaskInspectorView.swift */; };
@@ -205,9 +200,10 @@
 		70FD4B8D304E589400B70A9B /* Prompts in Resources */ = {isa = PBXBuildFile; fileRef = 70FD4B8C304E588900B70A9B /* Prompts */; };
 		70FD4B93304E7A2F00B70A9B /* ProjectModelActor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70FD4B92304E7A2F00B70A9B /* ProjectModelActor.swift */; };
 		70FDA0242F20C21300F9DBD8 /* ToolCall.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70FDA0232F20C21000F9DBD8 /* ToolCall.swift */; };
-		70FE039F2F13EFA20061CCEB /* ChatService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70FE039E2F13EF9D0061CCEB /* ChatService.swift */; };
+		70FE039F2F13EFA20061CCEB /* ThreadService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70FE039E2F13EF9D0061CCEB /* ThreadService.swift */; };
 		91B50E0C0B834320A0205002 /* ModelsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91B50E0C0B834320A0205001 /* ModelsView.swift */; };
 		91B50E0C0B834320A0205004 /* StorageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91B50E0C0B834320A0205003 /* StorageView.swift */; };
+		70F0000730F0000700F00007 /* AgentMemory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70F0000830F0000800F00008 /* AgentMemory.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -252,7 +248,7 @@
 
 /* Begin PBXFileReference section */
 		05E31209DECEB97D3CC5B903 /* NotificationsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationsView.swift; sourceTree = "<group>"; };
-		7001D9AF2EC10DEB00047F6B /* ChatInputView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatInputView.swift; sourceTree = "<group>"; };
+		7001D9AF2EC10DEB00047F6B /* ThreadInputView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThreadInputView.swift; sourceTree = "<group>"; };
 		7008FD8E2E80413E00D62EF6 /* NLEmbedding+.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NLEmbedding+.swift"; sourceTree = "<group>"; };
 		70097F7E2D6C04BB00DDDEDF /* MessageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageView.swift; sourceTree = "<group>"; };
 		70097F822D6DA73C00DDDEDF /* RuntimeError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RuntimeError.swift; sourceTree = "<group>"; };
@@ -277,7 +273,7 @@
 		702477B32F48A5E6003B72D5 /* ModelContainer+.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ModelContainer+.swift"; sourceTree = "<group>"; };
 		702477B52F48B3E4003B72D5 /* Array+.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Array+.swift"; sourceTree = "<group>"; };
 		70271B5D2BC1A97900E21A6E /* ModelStore.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ModelStore.swift; sourceTree = "<group>"; };
-		702A313A2F7EBA12009CE217 /* ProjectChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectChatView.swift; sourceTree = "<group>"; };
+		702A313A2F7EBA12009CE217 /* ProjectThreadView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectThreadView.swift; sourceTree = "<group>"; };
 		702A31452F815854009CE217 /* AudioRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioRecorder.swift; sourceTree = "<group>"; };
 		702BDA3F2FC29F4000438AEB /* AudioTool.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioTool.swift; sourceTree = "<group>"; };
 		702E50602F54AD0700FE28FD /* LocalModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalModel.swift; sourceTree = "<group>"; };
@@ -366,11 +362,6 @@
 		70C22FE62BAFD5C2002754C7 /* DefaultImageView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DefaultImageView.swift; sourceTree = "<group>"; };
 		70C22FE82BAFD5CA002754C7 /* ImageButton.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ImageButton.swift; sourceTree = "<group>"; };
 		70C534102E7535A8006E6731 /* SemanticTextSplitter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SemanticTextSplitter.swift; sourceTree = "<group>"; };
-		70CC1A0D2FF1C0DE00C1A0DE /* Chat+ClaudeCode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Chat+ClaudeCode.swift"; sourceTree = "<group>"; };
-		70CC1A0F2FF1C0DE00C1A0DE /* Chat+Codex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Chat+Codex.swift"; sourceTree = "<group>"; };
-		70CC1A112FF1C0DE00C1A0DE /* Chat+Import.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Chat+Import.swift"; sourceTree = "<group>"; };
-		70CC1A132FF1C0DE00C1A0DE /* Chat+WorkBuddy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Chat+WorkBuddy.swift"; sourceTree = "<group>"; };
-		70CC1A152FF1C0DE00C1A0DE /* SessionImportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionImportView.swift; sourceTree = "<group>"; };
 		70CE4D282BB83BF500E1DEE2 /* Pasteboard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pasteboard.swift; sourceTree = "<group>"; };
 		70CE4D2E2BB94C7800E1DEE2 /* Project.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Project.swift; sourceTree = "<group>"; };
 		70CE4D302BB9500000E1DEE2 /* ProjectView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectView.swift; sourceTree = "<group>"; };
@@ -391,7 +382,7 @@
 		70CE60BD2BAD60AE00A2D0B0 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		70CE60C22BAD616600A2D0B0 /* GeneralView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeneralView.swift; sourceTree = "<group>"; };
 		70CE60C52BAD61F600A2D0B0 /* UserDefaults+.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "UserDefaults+.swift"; sourceTree = "<group>"; };
-		70CE60C72BAD705E00A2D0B0 /* Chat.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Chat.swift; sourceTree = "<group>"; };
+		70CE60C72BAD705E00A2D0B0 /* Thread.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Thread.swift; sourceTree = "<group>"; };
 		70D1A0012FD1A00100D1A001 /* Schedule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Schedule.swift; sourceTree = "<group>"; };
 		70D1A0032FD1A00300D1A003 /* WorkdayCalendar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkdayCalendar.swift; sourceTree = "<group>"; };
 		70D1A0052FD1A00500D1A005 /* Scheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Scheduler.swift; sourceTree = "<group>"; };
@@ -401,7 +392,7 @@
 		70D1A00D2FD1A00D00D1A00D /* WorkdaysView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkdaysView.swift; sourceTree = "<group>"; };
 		70E0BA8E2F8371980095DED1 /* STTService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = STTService.swift; sourceTree = "<group>"; };
 		70E1C0012FE1C00100E1C001 /* ModelCraftTool.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelCraftTool.swift; sourceTree = "<group>"; };
-		70E2017A2BAE825A00CFE1D7 /* ChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatView.swift; sourceTree = "<group>"; };
+		70E2017A2BAE825A00CFE1D7 /* ThreadView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThreadView.swift; sourceTree = "<group>"; };
 		70F0000230F0000200F00002 /* Ticket.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Ticket.swift; sourceTree = "<group>"; };
 		70F0000430F0000400F00004 /* TaskTool.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskTool.swift; sourceTree = "<group>"; };
 		70F0000630F0000600F00006 /* TaskInspectorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskInspectorView.swift; sourceTree = "<group>"; };
@@ -424,9 +415,10 @@
 		70FD4B8C304E588900B70A9B /* Prompts */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Prompts; sourceTree = "<group>"; };
 		70FD4B92304E7A2F00B70A9B /* ProjectModelActor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectModelActor.swift; sourceTree = "<group>"; };
 		70FDA0232F20C21000F9DBD8 /* ToolCall.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolCall.swift; sourceTree = "<group>"; };
-		70FE039E2F13EF9D0061CCEB /* ChatService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatService.swift; sourceTree = "<group>"; };
+		70FE039E2F13EF9D0061CCEB /* ThreadService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThreadService.swift; sourceTree = "<group>"; };
 		91B50E0C0B834320A0205001 /* ModelsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelsView.swift; sourceTree = "<group>"; };
 		91B50E0C0B834320A0205003 /* StorageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StorageView.swift; sourceTree = "<group>"; };
+		70F0000830F0000800F00008 /* AgentMemory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentMemory.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -545,7 +537,7 @@
 				70E0BA8E2F8371980095DED1 /* STTService.swift */,
 				70823EC72F520F6F0011DF58 /* ModelService.swift */,
 				7078AA112F4B79DF00711940 /* LMService.swift */,
-				70FE039E2F13EF9D0061CCEB /* ChatService.swift */,
+				70FE039E2F13EF9D0061CCEB /* ThreadService.swift */,
 				70D1A0052FD1A00500D1A005 /* Scheduler.swift */,
 				70D1A0032FD1A00300D1A003 /* WorkdayCalendar.swift */,
 			);
@@ -606,12 +598,8 @@
 				70C0DE0330C4A00100C0DE03 /* CodeStructureParser.swift */,
 				702E50602F54AD0700FE28FD /* LocalModel.swift */,
 				70CE60A12BAD386E00A2D0B0 /* Message.swift */,
-				70CE60C72BAD705E00A2D0B0 /* Chat.swift */,
+				70CE60C72BAD705E00A2D0B0 /* Thread.swift */,
 				70F0000230F0000200F00002 /* Ticket.swift */,
-				70CC1A0D2FF1C0DE00C1A0DE /* Chat+ClaudeCode.swift */,
-				70CC1A0F2FF1C0DE00C1A0DE /* Chat+Codex.swift */,
-				70CC1A132FF1C0DE00C1A0DE /* Chat+WorkBuddy.swift */,
-				70CC1A112FF1C0DE00C1A0DE /* Chat+Import.swift */,
 				70CE4D2E2BB94C7800E1DEE2 /* Project.swift */,
 				70D1A0012FD1A00100D1A001 /* Schedule.swift */,
 				70C0DE0130C4A00100C0DE01 /* ProjectSearchIndex.swift */,
@@ -626,6 +614,7 @@
 			children = (
 				708C5EE62F0B9D5900127118 /* AgentExecutor.swift */,
 				701954262BC8D9ED00CD2ED3 /* PromptBuilder.swift */,
+				70F0000830F0000800F00008 /* AgentMemory.swift */,
 				7014F9A92F5C87C400552108 /* SkillDiscovery.swift */,
 				7014F9AD2F5C885400552108 /* SkillManager.swift */,
 				7014F9AB2F5C880D00552108 /* SkillParser.swift */,
@@ -684,7 +673,7 @@
 		70CE4D2D2BB94C4300E1DEE2 /* Project */ = {
 			isa = PBXGroup;
 			children = (
-				702A313A2F7EBA12009CE217 /* ProjectChatView.swift */,
+				702A313A2F7EBA12009CE217 /* ProjectThreadView.swift */,
 				70B13D122BBC66FC00A42F3C /* ProjectFileView.swift */,
 				70CE4D302BB9500000E1DEE2 /* ProjectView.swift */,
 				70CE4D322BB9522F00E1DEE2 /* ProjectEdition.swift */,
@@ -799,7 +788,7 @@
 		70CE60C92BAD7A4700A2D0B0 /* Features */ = {
 			isa = PBXGroup;
 			children = (
-				70E201792BAE825100CFE1D7 /* Chat */,
+				70E201792BAE825100CFE1D7 /* Thread */,
 				70CE4D2D2BB94C4300E1DEE2 /* Project */,
 				70AE000530AE000000000001 /* QuickEntry */,
 				7078AB302BB510A1004B3819 /* Model */,
@@ -819,7 +808,6 @@
 				70AA100430AA100400000004 /* PermissionsView.swift */,
 				05E31209DECEB97D3CC5B903 /* NotificationsView.swift */,
 				70B1E0012FB1E00100B1E001 /* ShortcutsView.swift */,
-				70CC1A152FF1C0DE00C1A0DE /* SessionImportView.swift */,
 				70CE60BD2BAD60AE00A2D0B0 /* SettingsView.swift */,
 			);
 			path = Settings;
@@ -835,13 +823,13 @@
 			path = Schedule;
 			sourceTree = "<group>";
 		};
-		70E201792BAE825100CFE1D7 /* Chat */ = {
+		70E201792BAE825100CFE1D7 /* Thread */ = {
 			isa = PBXGroup;
 			children = (
 				70FD4B1F304DA50000B70A9B /* ContextWindowUsageView.swift */,
 				70FB39DA2FB6C7840029EFDB /* ToolCall */,
-				7001D9AF2EC10DEB00047F6B /* ChatInputView.swift */,
-				70E2017A2BAE825A00CFE1D7 /* ChatView.swift */,
+				7001D9AF2EC10DEB00047F6B /* ThreadInputView.swift */,
+				70E2017A2BAE825A00CFE1D7 /* ThreadView.swift */,
 				70F0000630F0000600F00006 /* TaskInspectorView.swift */,
 				70097F7E2D6C04BB00DDDEDF /* MessageView.swift */,
 				70AC100130AC100100000001 /* GenerativeUIParser.swift */,
@@ -849,7 +837,7 @@
 				70AC100330AC100300000003 /* GenerativeUIInterpreter.swift */,
 				7067E8232BCD1AE600FF2797 /* MessageFileView.swift */,
 			);
-			path = Chat;
+			path = Thread;
 			sourceTree = "<group>";
 		};
 		70FB39DA2FB6C7840029EFDB /* ToolCall */ = {
@@ -1161,7 +1149,6 @@
 				70AA101430AA101400000014 /* PermissionsView.swift in Sources */,
 				5ED2FF798F381CAEA965C4C2 /* NotificationsView.swift in Sources */,
 				70B1E0022FB1E00200B1E002 /* ShortcutsView.swift in Sources */,
-				70CC1A162FF1C0DE00C1A0DE /* SessionImportView.swift in Sources */,
 				70B1E0042FB1E00400B1E004 /* Shortcuts.swift in Sources */,
 				70AE000330AE000000000002 /* QuickEntryView.swift in Sources */,
 				70AE000230AE000000000002 /* QuickEntryContext.swift in Sources */,
@@ -1171,19 +1158,15 @@
 				70FD4B93304E7A2F00B70A9B /* ProjectModelActor.swift in Sources */,
 				70B13D062BBBDC2100A42F3C /* FileThumbnail.swift in Sources */,
 				7071E37D2F26998000CACB8B /* LocationManager.swift in Sources */,
-				7001D9B02EC10DEB00047F6B /* ChatInputView.swift in Sources */,
+				7001D9B02EC10DEB00047F6B /* ThreadInputView.swift in Sources */,
 				7008FD8F2E80414200D62EF6 /* NLEmbedding+.swift in Sources */,
 				70FB39D92FB6C6D10029EFDB /* FileToolRenderer.swift in Sources */,
 				70B4A00430C3A00100B4A001 /* WebToolRenderer.swift in Sources */,
-				70CE60C82BAD705E00A2D0B0 /* Chat.swift in Sources */,
+				70CE60C82BAD705E00A2D0B0 /* Thread.swift in Sources */,
 				70F0000130F0000100F00001 /* Ticket.swift in Sources */,
-				70CC1A0E2FF1C0DE00C1A0DE /* Chat+ClaudeCode.swift in Sources */,
-				70CC1A102FF1C0DE00C1A0DE /* Chat+Codex.swift in Sources */,
-				70CC1A142FF1C0DE00C1A0DE /* Chat+WorkBuddy.swift in Sources */,
-				70CC1A122FF1C0DE00C1A0DE /* Chat+Import.swift in Sources */,
 				70FD4B20304DA50300B70A9B /* ContextWindowUsageView.swift in Sources */,
 				701954252BC8286E00CD2ED3 /* FixedLengthTextSplitter.swift in Sources */,
-				70FE039F2F13EFA20061CCEB /* ChatService.swift in Sources */,
+				70FE039F2F13EFA20061CCEB /* ThreadService.swift in Sources */,
 				70097F7F2D6C04BB00DDDEDF /* MessageView.swift in Sources */,
 				70AC101130AC101100000011 /* GenerativeUIParser.swift in Sources */,
 				70AC101230AC101200000012 /* GenerativeUIView.swift in Sources */,
@@ -1214,7 +1197,7 @@
 				702E50612F54AD0A00FE28FD /* LocalModel.swift in Sources */,
 				7014F9AC2F5C881000552108 /* SkillParser.swift in Sources */,
 				70C22FC62BAECD10002754C7 /* ViewExtensions.swift in Sources */,
-				702A313B2F7EBA15009CE217 /* ProjectChatView.swift in Sources */,
+				702A313B2F7EBA15009CE217 /* ProjectThreadView.swift in Sources */,
 				70CE4D392BB9718900E1DEE2 /* FileManager+.swift in Sources */,
 				70CE60C62BAD61F600A2D0B0 /* UserDefaults+.swift in Sources */,
 				70C22FD72BAFD1B6002754C7 /* NSImage+.swift in Sources */,
@@ -1235,7 +1218,7 @@
 				70D1A00E2FD1A00E00D1A00E /* WorkdaysView.swift in Sources */,
 				70C22FCC2BAEE24C002754C7 /* Image+.swift in Sources */,
 				705483F82BBE992800256094 /* DeleteButton.swift in Sources */,
-				70E2017B2BAE825A00CFE1D7 /* ChatView.swift in Sources */,
+				70E2017B2BAE825A00CFE1D7 /* ThreadView.swift in Sources */,
 				70F0000530F0000500F00005 /* TaskInspectorView.swift in Sources */,
 				70E0BA8F2F83719C0095DED1 /* STTService.swift in Sources */,
 				70CE60BE2BAD60AE00A2D0B0 /* SettingsView.swift in Sources */,
@@ -1272,6 +1255,7 @@
 				7078AB162F4F7C3800711940 /* JSONValue+.swift in Sources */,
 				706943DB2F7C21D700B271AA /* SkillTool.swift in Sources */,
 				701954272BC8D9ED00CD2ED3 /* PromptBuilder.swift in Sources */,
+				70F0000730F0000700F00007 /* AgentMemory.swift in Sources */,
 				7078AA122F4B79E000711940 /* LMService.swift in Sources */,
 				70B13D132BBC66FC00A42F3C /* ProjectFileView.swift in Sources */,
 				704DEF652F63C94C00BA7F4C /* ViewMode.swift in Sources */,
@@ -1474,7 +1458,6 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				CODE_SIGN_ENTITLEMENTS = ModelCraft/ModelCraft.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
@@ -1518,7 +1501,6 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				CODE_SIGN_ENTITLEMENTS = ModelCraft/ModelCraft.entitlements;
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";

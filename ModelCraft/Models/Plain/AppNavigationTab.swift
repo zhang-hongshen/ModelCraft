@@ -6,6 +6,6 @@
 //
 
 enum AppNavigationTab: Hashable {
-    case chat(Chat)
+    case thread(Thread)
     case modelStore, downloadedModels, connectors, schedules
 }

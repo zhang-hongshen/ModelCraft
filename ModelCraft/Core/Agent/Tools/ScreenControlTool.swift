@@ -95,7 +95,7 @@ struct AppZoomInput: Codable {
 }
 
 struct ScreenshotOutput: Codable {
-    /// The JPEG saved in the chat's folder, like other media the tools produce.
+    /// The JPEG saved in the thread's folder, like other media the tools produce.
     let imageURL: URL
     let mimeType: String
     let width: Int
@@ -106,7 +106,7 @@ struct ScreenshotOutput: Codable {
     init(_ image: CGImage, title: String) throws {
         guard let data = image.data(type: .jpeg) else { throw ScreenControlToolError.encodingFailed }
         let type = UTType.jpeg
-        imageURL = ProjectToolContext.chatDirectory.appendingPathComponent(UUID().uuidString, conformingTo: type)
+        imageURL = ProjectToolContext.threadDirectory.appendingPathComponent(UUID().uuidString, conformingTo: type)
         try data.write(to: imageURL)
         mimeType = type.preferredMIMEType!
         width = image.width

@@ -9,25 +9,27 @@ import SwiftUI
 
 struct ContextWindowUsageView: View {
 
-    let chat: Chat
+    let thread: Thread
     let model: LocalModel
 
     @State private var isHovering = false
     @State private var usage: ContextUsage?
 
-    private var tokenCount: Int { chat.tokenCount }
+    private var tokenCount: Int { thread.tokenCount }
     private var contextWindow: Int { model.contextWindow }
 
     var body: some View {
         let fraction = min(Double(tokenCount) / Double(contextWindow), 1)
 
-        // A circular ProgressView ignores the tint and draws a dark track that reads as full;
-        // the capacity gauge is drawn by SwiftUI, so it takes the tint and scales to icon size.
-        Gauge(value: fraction) {}
-            .gaugeStyle(.accessoryCircularCapacity)
-            .tint(tint(for: fraction))
-            .scaleEffect(0.4)
-            .frame(width: 22, height: 22)
+        ZStack {
+            Circle()
+                .stroke(.quaternary, lineWidth: 2)
+            Circle()
+                .trim(from: 0, to: fraction)
+                .stroke(tint(for: fraction), style: StrokeStyle(lineWidth: 2, lineCap: .round))
+                .rotationEffect(.degrees(-90))
+        }
+            .frame(width: 14, height: 14)
             .onHover { hovering in
                 isHovering = hovering
             }
@@ -56,7 +58,7 @@ struct ContextWindowUsageView: View {
                 }
                 .padding()
                 .task(id: tokenCount) {
-                    usage = try? await ContextUsage.measure(chat: chat, model: model)
+                    usage = try? await ContextUsage.measure(thread: thread, model: model)
                 }
             }
             .accessibilityLabel("Context window usage")
@@ -66,7 +68,7 @@ struct ContextWindowUsageView: View {
     }
 
     private func breakdown(_ usage: ContextUsage) -> some View {
-        // Messages are the rest of the prompt, including chat-template formatting and media.
+        // Messages are the rest of the prompt, including model-template formatting and media.
         let rows: [(title: LocalizedStringKey, tokens: Int, color: Color)] = [
             ("System prompt", usage.systemPrompt, .orange),
             ("Tools", usage.tools, .green),
@@ -106,7 +108,7 @@ struct ContextWindowUsageView: View {
         switch fraction {
         case 0.9...: .red
         case 0.75...: .orange
-        default: .accent
+        default: .primary
         }
     }
 

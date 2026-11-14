@@ -20,14 +20,15 @@ enum AudioTool {
     
     static let textToAudio = Tool<TextToAudioInput, TextToAudioOutput>(
             name: "text_to_audio",
-            description: "Generate a new WAV music or audio clip from a text description with the local audio model. Saves the file in this chat's folder and returns its file URL and MIME type. The app shows the generated file to the user, so do not repeat its path.",
+            description: "Generate a new WAV music or audio clip from a text description with the local audio model. Saves the file in shared resource storage and returns its file URL and MIME type. The app shows the generated file to the user, so do not repeat its path.",
             parameters: [
                 .required("prompt", type: .string, description: "Describe the desired sound, including genre or source, mood, instruments, rhythm, and other audible qualities that matter.")
             ]
         ) { input in
             try Task.checkCancellation()
             let type = UTType.wav
-            let url = ProjectToolContext.chatDirectory.appendingPathComponent(UUID().uuidString, conformingTo: type)
+            let url = ProjectToolContext.threadDirectory.appendingPathComponent(UUID().uuidString, conformingTo: type)
+            defer { try? FileManager.default.removeItem(at: url) }
             let audio = try await evaluator.generate(prompt: input.prompt)
             try Task.checkCancellation()
             do {
@@ -38,7 +39,7 @@ enum AudioTool {
                 throw error
             }
             return TextToAudioOutput(
-                audioURL: url,
+                audioURL: try ResourceStore.importFile(url),
                 mimeType: type.preferredMIMEType!
             )
         }

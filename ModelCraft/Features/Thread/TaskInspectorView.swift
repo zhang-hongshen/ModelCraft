@@ -1,19 +1,19 @@
 import SwiftUI
 import SwiftData
 
-enum ChatInspectorTab: String {
+enum ThreadInspectorTab: String {
     case tasks, files
 }
 
-struct ChatInspectorHeader: View {
-    @Binding var tab: ChatInspectorTab
+struct ThreadInspectorHeader: View {
+    @Binding var tab: ThreadInspectorTab
     @Binding var isPresented: Bool
 
     var body: some View {
         HStack {
             Picker("Inspector", selection: $tab) {
-                Text("Tasks").tag(ChatInspectorTab.tasks)
-                Text("Files").tag(ChatInspectorTab.files)
+                Text("Tasks").tag(ThreadInspectorTab.tasks)
+                Text("Files").tag(ThreadInspectorTab.files)
             }
             .pickerStyle(.segmented)
             .labelsHidden()
@@ -27,12 +27,12 @@ struct ChatInspectorHeader: View {
 }
 
 struct TaskInspectorView: View {
-    let chat: Chat?
+    let thread: Thread?
     @Query private var tickets: [Ticket]
 
-    init(chat: Chat?, project: Project?) {
-        self.chat = chat
-        _tickets = Query(Ticket.fetch(chat: chat, project: project))
+    init(thread: Thread?, project: Project?) {
+        self.thread = thread
+        _tickets = Query(Ticket.fetch(thread: thread, project: project))
     }
 
     var body: some View {
@@ -43,14 +43,14 @@ struct TaskInspectorView: View {
             if !inProgress.isEmpty {
                 Section("In Progress") {
                     ForEach(inProgress) { ticket in
-                        TaskInspectorRow(ticket: ticket, isCurrent: ticket.id == chat?.activeTicket?.id)
+                        TaskInspectorRow(ticket: ticket, isCurrent: ticket.id == thread?.activeTicket?.id)
                     }
                 }
             }
             if !completed.isEmpty {
                 Section("Completed") {
                     ForEach(completed) { ticket in
-                        TaskInspectorRow(ticket: ticket, isCurrent: ticket.id == chat?.activeTicket?.id)
+                        TaskInspectorRow(ticket: ticket, isCurrent: ticket.id == thread?.activeTicket?.id)
                     }
                 }
             }

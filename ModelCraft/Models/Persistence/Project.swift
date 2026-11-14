@@ -14,8 +14,8 @@ class Project {
     var createdAt: Date = Date.now
     var title: String
     
-    @Relationship(deleteRule: .cascade, inverse: \Chat.project)
-    var chats: [Chat] = []
+    @Relationship(deleteRule: .cascade, inverse: \Thread.project)
+    var threads: [Thread] = []
 
     @Relationship(deleteRule: .cascade, inverse: \Schedule.project)
     var schedules: [Schedule] = []
@@ -40,33 +40,6 @@ extension Project {
         descriptor.fetchOffset = offset
         descriptor.sortBy = [.init(\.createdAt, order: .reverse)]
         return descriptor
-    }
-}
-
-extension Project {
-
-    /// The project for an imported session that ran in `path`: the project with that working
-    /// folder, or a new one named after the folder. Sessions run in the home folder, in an
-    /// app's folder under `~/Library` (such as an agent's scratch workspace), or in a folder
-    /// that no longer exists stay outside projects. A new project joins `projects` so later
-    /// sessions in the same folder reuse it.
-    @MainActor
-    static func forImportedSession(workingDirectory path: String, projects: inout [Project]) -> Project? {
-        let directory = URL(filePath: path, directoryHint: .isDirectory).standardizedFileURL
-        if let project = projects.first(where: { $0.workingDirectory?.path == directory.path }) {
-            return project
-        }
-        var isDirectory: ObjCBool = false
-        let home = URL.homeDirectory.standardizedFileURL
-        guard directory.path != home.path,
-              !directory.path.hasPrefix(home.appending(path: "Library").path + "/"),
-              FileManager.default.fileExists(atPath: directory.path, isDirectory: &isDirectory),
-              isDirectory.boolValue
-        else { return nil }
-        let project = Project(title: directory.lastPathComponent, workingDirectory: directory)
-        ModelContainer.shared.mainContext.insert(project)
-        projects.append(project)
-        return project
     }
 }
 

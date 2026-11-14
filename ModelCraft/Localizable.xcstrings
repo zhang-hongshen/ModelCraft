@@ -62,9 +62,6 @@
     "%@s" : {
 
     },
-    "%lld downloads" : {
-
-    },
     "%lld items" : {
 
     },
@@ -132,6 +129,9 @@
           }
         }
       }
+    },
+    "All" : {
+
     },
     "Allow for This Task" : {
       "extractionState" : "stale",
@@ -377,6 +377,7 @@
 
     },
     "Browse Files" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -432,36 +433,6 @@
     },
     "Changing settings" : {
 
-    },
-    "Chat" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "对话"
-          }
-        }
-      }
-    },
-    "Chat Title" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "对话标题"
-          }
-        }
-      }
-    },
-    "Chats" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "对话"
-          }
-        }
-      }
     },
     "Checked ModelCraft" : {
 
@@ -607,7 +578,7 @@
       }
     },
     "Compress conversation history to free context space." : {
-      "comment" : "Description of the slash command that manually compacts chat context.",
+      "comment" : "Description of the slash command that manually compacts thread context.",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -868,16 +839,6 @@
         }
       }
     },
-    "Delete Chat" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "删除对话"
-          }
-        }
-      }
-    },
     "Delete Model" : {
       "localizations" : {
         "zh-Hans" : {
@@ -915,6 +876,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "确定删除此模型吗？已下载的模型文件也会删除。"
+          }
+        }
+      }
+    },
+    "Delete Chat" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "删除对话"
           }
         }
       }
@@ -973,6 +944,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "拒绝"
+          }
+        }
+      }
+    },
+    "Device Fit" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "设备适配"
           }
         }
       }
@@ -1558,36 +1539,22 @@
     "Image in %@:" : {
 
     },
-    "Import Claude Code Session…" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "导入 Claude Code 会话…"
-          }
-        }
-      }
-    },
-    "Import Failed" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "导入失败"
-          }
-        }
-      }
-    },
-    "Import from" : {
-
-    },
     "In Progress" : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "进行中"
+          }
+        }
+      }
+    },
+    "Incompatible" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "不兼容"
           }
         }
       }
@@ -1709,9 +1676,6 @@
 
     },
     "Listing running applications" : {
-
-    },
-    "Load" : {
 
     },
     "Load tools when needed" : {
@@ -1918,16 +1882,6 @@
         }
       }
     },
-    "New Chat" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "新建对话"
-          }
-        }
-      }
-    },
     "New Project" : {
       "localizations" : {
         "zh-Hans" : {
@@ -1958,6 +1912,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "新建任务"
+          }
+        }
+      }
+    },
+    "New Chat" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "新建对话"
           }
         }
       }
@@ -2176,6 +2140,16 @@
         }
       }
     },
+    "Performance Limited" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "性能受限"
+          }
+        }
+      }
+    },
     "Permission Mode" : {
 
     },
@@ -2241,6 +2215,7 @@
       }
     },
     "Project Memory" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -2476,7 +2451,14 @@
 
     },
     "Recommended" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "推荐"
+          }
+        }
+      }
     },
     "Reference Files" : {
 
@@ -3004,25 +2986,6 @@
     "The end must be after the start." : {
 
     },
-    "The file has no Claude Code conversation." : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "该文件中没有 Claude Code 对话。"
-          }
-        }
-      }
-    },
-    "The file has no Codex conversation." : {
-
-    },
-    "The file has no WorkBuddy conversation." : {
-
-    },
-    "The file is a subagent session." : {
-
-    },
     "the first workday" : {
 
     },
@@ -3061,6 +3024,7 @@
 
     },
     "The session ended before this tool returned." : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -3112,6 +3076,36 @@
     },
     "Thought" : {
 
+    },
+    "Chat" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "对话"
+          }
+        }
+      }
+    },
+    "Chat Title" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "对话标题"
+          }
+        }
+      }
+    },
+    "Chats" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "对话"
+          }
+        }
+      }
     },
     "Time" : {
 

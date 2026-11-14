@@ -7,7 +7,7 @@
 
 import Foundation
 
-/// The fixed parts of a chat's prompt, counted from each part's text alone. The rest of the
+/// The fixed parts of a thread's prompt, counted from each part's text alone. The rest of the
 /// prompt is the conversation's messages.
 struct ContextUsage: Equatable {
     var systemPrompt = 0
@@ -16,10 +16,10 @@ struct ContextUsage: Equatable {
 
 extension ContextUsage {
 
-    /// Measures the system prompt and tool schemas the chat's next request would send.
+    /// Measures the system prompt and tool schemas the thread's next request would send.
     @MainActor
-    static func measure(chat: Chat, model: LocalModel) async throws -> ContextUsage {
-        let toolSchemas = ToolDefinition.allToolSchema(for: chat).compactMap { tool -> String? in
+    static func measure(thread: Thread, model: LocalModel) async throws -> ContextUsage {
+        let toolSchemas = ToolDefinition.allToolSchema(for: thread).compactMap { tool -> String? in
             guard JSONSerialization.isValidJSONObject(tool),
                   let data = try? JSONSerialization.data(withJSONObject: tool, options: [.sortedKeys])
             else {
@@ -30,9 +30,7 @@ extension ContextUsage {
         let counts = try await LMService.shared.tokenCounts(
             model: model,
             texts: [
-                PromptBuilder.system(project: chat.project,
-                                     summary: chat.activeTicket == nil ? chat.summary : chat.activeTicket?.session?.checkpoint,
-                                     ticket: chat.activeTicket).content,
+                AgentMemory.system(thread: thread, ticket: thread.activeTicket).content,
                 toolSchemas.joined(separator: "\n")
             ])
         return ContextUsage(systemPrompt: counts[0], tools: counts[1])

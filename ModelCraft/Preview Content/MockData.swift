@@ -29,40 +29,40 @@ enum PreviewResources: String, CaseIterable, Identifiable {
 
 extension Message {
     static let preview = Message(role: .user,
-                                 chat: .preview,
+                                 thread: .preview,
                                  content:"First...")
     
     static let previews = [
         preview,
         Message(role: .assistant,
-                chat: .preview,
+                thread: .preview,
                 content: "First...")
     ]
 }
 
-extension Chat {
+extension Thread {
     
     static let previews = [
         preview,
-        Chat(title: "Tech Stack of ModelCraft", project: .preview)
+        Thread(title: "Tech Stack of ModelCraft", project: .preview)
     ]
 
-    static let preview: Chat = {
-        let chat = Chat(title: "Tool Call Workflow", project: .preview)
+    static let preview: Thread = {
+        let thread = Thread(title: "Tool Call Workflow", project: .preview)
         let messages = [
             Message(
                 role: .user,
-                chat: chat,
+                thread: thread,
                 content: "Please update the project and generate a preview image."
             ),
             Message(
                 role: .assistant,
-                chat: chat,
+                thread: thread,
                 content: "I’ll inspect the relevant files first."
             ),
             Message(
                 role: .tool,
-                chat: chat,
+                thread: thread,
                 toolCall: ToolCall(function: .init(
                     name: ToolNames.readFile,
                     arguments: ["path": "Sources/App.swift"]
@@ -71,7 +71,7 @@ extension Chat {
             ),
             Message(
                 role: .tool,
-                chat: chat,
+                thread: thread,
                 toolCall: ToolCall(function: .init(
                     name: ToolNames.applyPatch,
                     arguments: [
@@ -89,12 +89,12 @@ extension Chat {
             ),
             Message(
                 role: .assistant,
-                chat: chat,
+                thread: thread,
                 content: "The source file has been updated."
             ),
             Message(
                 role: .tool,
-                chat: chat,
+                thread: thread,
                 toolCall: ToolCall(function: .init(
                     name: ToolNames.textToImage,
                     arguments: ["prompt": "A quiet mountain landscape"]
@@ -107,8 +107,8 @@ extension Chat {
         for (parent, message) in zip(messages, messages.dropFirst()) {
             message.parentID = parent.id
         }
-        chat.messages = messages
-        return chat
+        thread.messages = messages
+        return thread
     }()
 }
 
@@ -152,7 +152,7 @@ extension LocalModel {
 extension SwiftData.ModelContainer {
     static var preview: SwiftData.ModelContainer = {
         let schema = Schema([
-            Message.self, Chat.self, ModelTask.self,
+            Message.self, Thread.self, ModelTask.self,
             Project.self, Schedule.self, WorkdayException.self,
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
@@ -170,14 +170,14 @@ struct PreviewEnvironment: PreviewModifier {
     
     static func makeSharedContext() async throws -> SwiftData.ModelContainer {
         let container = try SwiftData.ModelContainer(for:
-                                            Message.self, Chat.self, ModelTask.self,
+                                            Message.self, Thread.self, ModelTask.self,
                                            Project.self, Schedule.self, WorkdayException.self,
                                            configurations: .init(isStoredInMemoryOnly: true))
         
         let context = container.mainContext
 
         context.insert(Project.previews)
-        context.insert(Chat.previews)
+        context.insert(Thread.previews)
         context.insert(Message.previews)
         context.insert(ModelTask.previews)
         try context.save()

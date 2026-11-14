@@ -35,9 +35,9 @@ final class STTService {
 
     init() {}
 
-    /// Loads a Qwen3-ASR model from the shared cache, downloading it there when absent.
+    /// Loads a Qwen3-ASR model from the system cache, downloading it there when absent.
     nonisolated static func loadModel(id: String) async throws -> Qwen3ASRModel {
-        try await HubCache.default.loadModel(
+        try await HubCache.system.loadModel(
             id: id,
             matching: ["*.safetensors", "*.json", "*.txt"],
             using: Qwen3ASRModel.fromModelDirectory)
@@ -92,10 +92,10 @@ private actor VoiceRecognizer {
         if let model {
             recognizer = model
         } else {
-            recognizer = try await HubCache.default.loadModel(
+            recognizer = try await HubCache.system.loadModel(
                 id: "mlx-community/whisper-large-v3-turbo-4bit",
                 matching: ["*.safetensors", "*.json", "*.txt", "*.model"],
-                using: { try await WhisperModel.fromDirectory($0) })
+                using: Self.loadWhisper)
             model = recognizer
         }
         try Task.checkCancellation()
@@ -115,5 +115,36 @@ private actor VoiceRecognizer {
             if !text.isEmpty { parts.append(text) }
         }
         return parts.joined(separator: " ")
+    }
+
+    private static func loadWhisper(from directory: URL) async throws -> WhisperModel {
+        let files = FileManager.default
+        if files.fileExists(atPath: directory.appendingPathComponent("tokenizer.json").path) {
+            return try await WhisperModel.fromDirectory(directory)
+        }
+
+        // Install tokenizer.json last: its presence marks a complete asset merge.
+        let tokenizerFiles = [
+            "tokenizer_config.json", "special_tokens_map.json", "added_tokens.json",
+            "vocab.json", "merges.txt", "normalizer.json", "generation_config.json",
+            "tokenizer.json",
+        ]
+        let tokenizerID = "openai/whisper-large-v3"
+        let cached = HubCache.system.cachedModelDirectory(id: tokenizerID)
+        let client = HubClient(cache: nil)
+        for name in tokenizerFiles {
+            try Task.checkCancellation()
+            let target = directory.appendingPathComponent(name)
+            guard !files.fileExists(atPath: target.path) else { continue }
+            if let source = cached?.appendingPathComponent(name),
+               files.fileExists(atPath: source.path) {
+                try files.copyItem(at: source, to: target)
+            } else {
+                _ = try await client.downloadFile(
+                    at: name, from: "openai/whisper-large-v3", to: target)
+            }
+        }
+        try Task.checkCancellation()
+        return try await WhisperModel.fromDirectory(directory)
     }
 }

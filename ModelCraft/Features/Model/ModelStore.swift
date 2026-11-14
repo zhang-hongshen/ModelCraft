@@ -12,10 +12,13 @@ struct ModelStore: View {
     
     @State private var viewMode: ViewMode = .list
     @State private var category: ModelCategory = .text
+    @State private var deviceFits: Set<ModelDeviceFit> = []
     
     @State private var models: [ModelStoreModel] = []
-    @State private var sizes: [String: Int64] = [:]
+    @State private var visibleModels: [ModelStoreModel] = []
     
+    @State private var requestID = UUID()
+    @State private var isLoadingMore = false
     @State private var isLoading = false
     @State private var canLoadMore = true
     @State private var searchText = ""
@@ -34,19 +37,19 @@ struct ModelStore: View {
 
         ScrollView {
             ModelStoreContent(
-                models: models,
-                sizes: sizes,
+                models: visibleModels,
+                paginationID: models.last?.id,
                 downloadTasksByModelID: downloadTasksByModelID,
                 viewMode: viewMode,
                 isLoading: isLoading,
                 canLoadMore: canLoadMore,
-                onLoadMore: loadMoreModels,
-                onLoadSize: loadSize)
+                onLoadMore: loadMoreModels)
                 .padding()
                 .toolbar(content: ToolbarItems)
         }
         .searchable(text: $searchText)
         .refreshable { await reloadModels() }
+        .onChange(of: deviceFits) { _, _ in updateVisibleModels() }
         .task(id: SearchRequest(keyword: searchText, category: category)) {
             if !searchText.isEmpty {
                 try? await Task.sleep(for: .milliseconds(500))
@@ -69,6 +72,28 @@ extension ModelStore {
                 }
             }
             .pickerStyle(.segmented)
+
+            Menu("Device Fit") {
+                Toggle("All", isOn: Binding(
+                    get: { deviceFits.isEmpty },
+                    set: { _ in deviceFits.removeAll() }
+                ))
+                Divider()
+                ForEach(ModelDeviceFit.allCases) { fit in
+                    Toggle(isOn: Binding(
+                        get: { deviceFits.contains(fit) },
+                        set: { isSelected in
+                            if isSelected {
+                                deviceFits.insert(fit)
+                            } else {
+                                deviceFits.remove(fit)
+                            }
+                        }
+                    )) {
+                        Text(fit.title)
+                    }
+                }
+            }
             
             Menu {
                 Picker("", selection: $viewMode) {
@@ -103,13 +128,12 @@ private struct SearchRequest: Hashable {
 
 private struct ModelStoreContent: View {
     let models: [ModelStoreModel]
-    let sizes: [String: Int64]
+    let paginationID: String?
     let downloadTasksByModelID: [String: ModelTask]
     let viewMode: ViewMode
     let isLoading: Bool
     let canLoadMore: Bool
     let onLoadMore: () async -> Void
-    let onLoadSize: (String) async -> Void
 
     var body: some View {
         switch viewMode {
@@ -136,71 +160,83 @@ private struct ModelStoreContent: View {
             ForEach(models) { model in
                 ModelCard(
                     model: model,
-                    sizeInBytes: sizes[model.id],
+                    sizeInBytes: model.downloadSizeInBytes,
                     viewMode: viewMode,
                     downloadTask: downloadTasksByModelID[model.id])
-                .task { await onLoadSize(model.id) }
             }
             if canLoadMore {
                 ProgressView()
                     .frame(maxWidth: .infinity)
-                    .task { await onLoadMore() }
+                    .task(id: paginationID) { await onLoadMore() }
             }
         }
     }
 }
 
 extension ModelStore {
+
+    func updateVisibleModels() {
+        visibleModels = models.filter { deviceFits.isEmpty || deviceFits.contains($0.deviceFit) }
+    }
     
-    func fetchModels() async throws -> [ModelStoreModel] {
+    private func fetchModels(
+        keyword: String, category: ModelCategory, startingAt page: Int
+    ) async throws -> (models: [ModelStoreModel], page: Int, hasMore: Bool) {
+        var nextPage = page
         while true {
             let result = try await ModelService.searchModel(
-                keyword: searchText,
-                category: category,
-                page: page,
-                pageSize: ModelStore.pageSize)
+                keyword: keyword, category: category,
+                page: nextPage, pageSize: ModelStore.pageSize)
             try Task.checkCancellation()
-            canLoadMore = result.hasMore
             if !result.models.isEmpty || !result.hasMore {
-                return result.models
+                return (result.models, nextPage, result.hasMore)
             }
-            // A full Hub page can contain only unsupported architectures.
-            page += 1
+            // Skip pages containing only unsupported or non-conversational models.
+            nextPage += 1
         }
     }
-    
+
     func reloadModels() async {
-        page = 0
+        let identifier = UUID()
+        requestID = identifier
+        let request = SearchRequest(keyword: searchText, category: category)
         isLoading = true
-        canLoadMore = true
-        defer { isLoading = false }
+        isLoadingMore = false
+        defer {
+            if requestID == identifier { isLoading = false }
+        }
         do {
-            models = try await fetchModels()
+            let result = try await fetchModels(keyword: request.keyword, category: request.category, startingAt: 0)
+            guard requestID == identifier,
+                  request == SearchRequest(keyword: searchText, category: category) else { return }
+            models = result.models
+            page = result.page
+            canLoadMore = result.hasMore
+            updateVisibleModels()
         } catch {
-            
+            // Keep the previous results available when a refresh fails.
         }
     }
-    
-    /// Loads a size when its card appears; sizes are kept across reloads of this view.
-    func loadSize(for modelID: String) async {
-        guard sizes[modelID] == nil else { return }
-        do {
-            sizes[modelID] = try await ModelService.fetchUsedStorage(modelID: modelID)
-        } catch {
-            guard !Task.isCancelled else { return }
-            print("size fetch failed for \(modelID): \(error)")
-        }
-    }
-    
+
     func loadMoreModels() async {
-        let previousPage = page
-        page += 1
-        do {
-            models.append(contentsOf: try await fetchModels())
-        } catch {
-            page = previousPage
+        guard !isLoading, !isLoadingMore, canLoadMore else { return }
+        let identifier = requestID
+        let request = SearchRequest(keyword: searchText, category: category)
+        isLoadingMore = true
+        defer {
+            if requestID == identifier { isLoadingMore = false }
         }
-        
+        do {
+            let result = try await fetchModels(keyword: request.keyword, category: request.category, startingAt: page + 1)
+            guard requestID == identifier,
+                  request == SearchRequest(keyword: searchText, category: category) else { return }
+            models.append(contentsOf: result.models)
+            page = result.page
+            canLoadMore = result.hasMore
+            updateVisibleModels()
+        } catch {
+            // Pagination advances only when the request succeeds.
+        }
     }
 
 }

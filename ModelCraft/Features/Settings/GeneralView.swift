@@ -38,10 +38,6 @@ struct GeneralView: View {
             Section {
                 Toggle("Load tools when needed", isOn: $userSettings.loadToolsWhenNeeded)
             }
-
-            Section {
-                SessionImportView()
-            }
         }
         .formStyle(.grouped)
     }
@@ -77,11 +73,11 @@ private struct AppearanceOptionButton: View {
             .frame(width: 112)
             .background {
                 RoundedRectangle(cornerRadius: 10)
-                    .fill(isSelected ? Color.accent.opacity(0.1) : Color.clear)
+                    .fill(isSelected ? Color.primary.opacity(0.1) : Color.clear)
             }
             .overlay {
                 RoundedRectangle(cornerRadius: 10)
-                    .strokeBorder(isSelected ? Color.accent : Color.secondary.opacity(0.2), lineWidth: 1)
+                    .strokeBorder(isSelected ? Color.primary : Color.secondary.opacity(0.2), lineWidth: 1)
             }
             .contentShape(RoundedRectangle(cornerRadius: 10))
         }

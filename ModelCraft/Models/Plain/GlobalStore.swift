@@ -15,29 +15,29 @@ class GlobalStore {
 
     var selectedModel: LocalModel? = nil
     var currentTab: AppNavigationTab? = nil
-    var newChatProject: Project? = nil
+    var newThreadProject: Project? = nil
     var runningTasks: [String: Task<Void, Never>] = [:]
     /// The file shown in the window's trailing inspector.
     var previewURL: URL? = nil
     var isInspectorPresented = false
-    /// Files for the new chat's composer to attach, handed over from outside it: dropped on
+    /// Files for the new thread's composer to attach, handed over from outside it: dropped on
     /// the Dock icon or a sidebar row, or opened from Finder.
-    var newChatFiles: [URL] = []
-    /// A message for the new chat to send as soon as it shows, from Quick Entry.
-    var newChatPrompt: ChatRequest? = nil
+    var newThreadFiles: [URL] = []
+    /// A message for the new thread to send as soon as it shows, from Quick Entry.
+    var newThreadPrompt: ThreadRequest? = nil
 
-    struct ChatRequest: Equatable {
+    struct ThreadRequest: Equatable {
         let content: String
         let files: [URL]
     }
 
-    func startNewChat(in project: Project? = nil) {
-        newChatProject = project
+    func startNewThread(in project: Project? = nil) {
+        newThreadProject = project
         currentTab = nil
     }
 
-    func startNewChat(in project: Project? = nil, attaching files: [URL]) {
-        startNewChat(in: project)
-        newChatFiles.append(contentsOf: files)
+    func startNewThread(in project: Project? = nil, attaching files: [URL]) {
+        startNewThread(in: project)
+        newThreadFiles.append(contentsOf: files)
     }
 }
