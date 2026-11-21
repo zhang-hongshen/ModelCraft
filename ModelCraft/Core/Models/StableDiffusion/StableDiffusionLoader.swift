@@ -100,7 +100,8 @@ public class StableDiffusionLoader {
 
         let vocabulary = try JSONDecoder().decode(
             [String: Int].self, from: Data(contentsOf: vocabularyURL))
-        let merges = try String(contentsOf: mergesURL)
+        var detectedEncoding = String.Encoding.utf8
+        let merges = try String(contentsOf: mergesURL, usedEncoding: &detectedEncoding)
             .components(separatedBy: .newlines)
             // first line is a comment
             .dropFirst()

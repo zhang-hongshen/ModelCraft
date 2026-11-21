@@ -17,6 +17,12 @@ final class ThreadService {
     private let executor: AgentExecutor
 
     private var currentTask: Task<Void, any Error>? = nil
+    private var executionTask: Task<Void, any Error>?
+    private var immediateMessageID: UUID?
+    private(set) var queuedMessages: [Message] = []
+
+    var isRunning: Bool { currentTask != nil }
+
     private var metadataTask: Task<Void, Never>? = nil
     private var currentRequestID: UUID?
 
@@ -38,10 +44,62 @@ final class ThreadService {
         guard let task = currentTask else { return }
         let requestID = currentRequestID
         task.cancel()
+        interactionCoordinator.cancel()
         _ = try? await task.value
         guard currentRequestID == requestID else { return }
-        currentTask = nil
         currentRequestID = nil
+    }
+
+    func enqueue(_ message: Message) {
+        queuedMessages.append(message)
+    }
+
+    func removeQueuedMessage(_ message: Message) {
+        queuedMessages.removeAll { $0.id == message.id }
+    }
+
+    /// Cancels only the executor, preserving the request and its Ticket for re-reasoning.
+    func sendQueuedMessageImmediately(_ message: Message) {
+        guard isRunning,
+              queuedMessages.contains(where: { $0.id == message.id }) else { return }
+        immediateMessageID = message.id
+        executionTask?.cancel()
+        interactionCoordinator.cancel()
+    }
+
+    private func insertQueuedMessages(thread: Thread, ticket: Ticket) throws {
+        let messages = immediateMessageID.map { id in
+            queuedMessages.filter { $0.id == id }
+        } ?? queuedMessages
+        guard !messages.isEmpty else {
+            immediateMessageID = nil
+            return
+        }
+        let context = ModelContainer.shared.mainContext
+        let ticket = thread.activeTicket ?? ticket
+        // Leave queue drafts untouched until all conversation and Ticket links save.
+        var inserted: [Message] = []
+        for draft in messages {
+            let message = Message(
+                role: .user, thread: thread, content: draft.content, files: draft.files)
+            ticket.append(message)
+            context.insert(message)
+            inserted.append(message)
+        }
+        let previousStatus = ticket.status
+        let previousUpdate = ticket.updatedAt
+        ticket.update(.working, progress: ticket.progress)
+        do {
+            try context.save()
+        } catch {
+            ticket.status = previousStatus
+            ticket.updatedAt = previousUpdate
+            thread.deleteMessages(inserted)
+            throw error
+        }
+        let ids = Set(messages.map(\.id))
+        queuedMessages.removeAll { ids.contains($0.id) }
+        immediateMessageID = nil
     }
 
     func deleteThread(_ thread: Thread) {
@@ -62,14 +120,37 @@ final class ThreadService {
     ) async throws {
         metadataTask?.cancel()
         metadataTask = nil
-        await cancelCurrentGeneration()
+        if isRunning {
+            if queuedMessages.contains(where: { $0.id == message.id }) {
+                sendQueuedMessageImmediately(message)
+            } else {
+                enqueue(message)
+            }
+            return
+        }
 
         let requestID = UUID()
         currentRequestID = requestID
 
-        ModelContainer.shared.mainContext.persist(message)
+        let context = ModelContainer.shared.mainContext
+        let queued = queuedMessages.contains { $0.id == message.id }
+        let input = queued
+            ? Message(role: .user, content: message.content, files: message.files)
+            : message
+        if input.thread == nil {
+            input.parentID = thread.leafMessage?.id
+            input.thread = thread
+        }
+        context.insert(input)
+        do {
+            try context.save()
+        } catch {
+            if queued { thread.deleteMessages([input]) }
+            throw error
+        }
+        removeQueuedMessage(message)
         let generationTask = Task {
-            try await runTickets(model: model, thread: thread, message: message)
+            try await runTickets(model: model, thread: thread, message: input)
         }
         currentTask = generationTask
         do {
@@ -80,11 +161,11 @@ final class ThreadService {
             }
         } catch {
             if currentRequestID == requestID {
-                currentTask = nil
                 thread.settleInterruptedMessages()
             }
             throw error
         }
+        guard currentRequestID == requestID else { return }
         metadataTask = Task(priority: .background) { @MainActor in
             do {
                 try Task.checkCancellation()
@@ -95,8 +176,6 @@ final class ThreadService {
                 // Metadata is best effort and must not affect the thread turn.
             }
         }
-        guard currentRequestID == requestID else { return }
-        currentTask = nil
     }
 
     func resendMessage(
@@ -144,6 +223,12 @@ final class ThreadService {
     }
 
     private func runTickets(model: LocalModel, thread: Thread, message: Message) async throws {
+        // End queue admission in the same main-actor turn as Ticket settlement.
+        defer {
+            executionTask = nil
+            immediateMessageID = nil
+            currentTask = nil
+        }
         let context = ModelContainer.shared.mainContext
         if thread.activeTicket == nil {
             thread.settleInterruptedMessages()
@@ -166,18 +251,52 @@ final class ThreadService {
             let firstExecutionEvent = ticket.eventIDs.count
             do {
                 try context.save()
-                try await executor.run(model: model, thread: thread, ticket: ticket) {
-                    var prompt = AgentMemory.prompt(thread: thread, ticket: ticket)
-                    let count = try await LMService.shared.tokenCount(
-                        model: model, messages: prompt, tools: ToolDefinition.allToolSchema(for: thread))
-                    if count >= Int(Self.compressionTrigger * Double(model.contextWindow)) {
-                        self.isCompacting = true
-                        defer { self.isCompacting = false }
-                        try await AgentMemory.compact(model: model, thread: thread, ticket: ticket)
-                        prompt = AgentMemory.prompt(thread: thread, ticket: ticket)
+                while true {
+                    let execution = Task {
+                        try await self.executor.run(
+                            model: model, thread: thread, ticket: ticket,
+                            hasQueuedMessages: { !self.queuedMessages.isEmpty },
+                            insertQueuedMessages: {
+                                try self.insertQueuedMessages(thread: thread, ticket: ticket)
+                            }, prepareMessages: {
+                                var prompt = AgentMemory.prompt(thread: thread, ticket: ticket)
+                                let count = try await LMService.shared.tokenCount(
+                                    model: model, messages: prompt, tools: ToolDefinition.allToolSchema(for: thread))
+                                if count >= Int(Self.compressionTrigger * Double(model.contextWindow)) {
+                                    self.isCompacting = true
+                                    defer { self.isCompacting = false }
+                                    try await AgentMemory.compact(model: model, thread: thread, ticket: ticket)
+                                    prompt = AgentMemory.prompt(thread: thread, ticket: ticket)
+                                }
+                                try Task.checkCancellation()
+                                return prompt
+                            })
                     }
+                    executionTask = execution
+                    if immediateMessageID != nil { execution.cancel() }
+                    do {
+                        try await withTaskCancellationHandler {
+                            try await execution.value
+                        } onCancel: {
+                            execution.cancel()
+                        }
+                    } catch {
+                        executionTask = nil
+                        try Task.checkCancellation()
+                        guard execution.isCancelled, immediateMessageID != nil else { throw error }
+                        thread.settleInterruptedMessages()
+                        try insertQueuedMessages(thread: thread, ticket: ticket)
+                        if thread.activeTicket?.id != ticket.id { break }
+                        continue
+                    }
+                    executionTask = nil
                     try Task.checkCancellation()
-                    return prompt
+                    // Cover input arriving as the executor returns from its final boundary.
+                    if !queuedMessages.isEmpty {
+                        try insertQueuedMessages(thread: thread, ticket: ticket)
+                        if thread.activeTicket?.id == ticket.id { continue }
+                    }
+                    break
                 }
                 try Task.checkCancellation()
                 let switchedTask = thread.activeTicket?.id != ticket.id
@@ -211,11 +330,10 @@ final class ThreadService {
     }
 
     func stopGenerating(thread: Thread) async {
-        interactionCoordinator.cancel()
         metadataTask?.cancel()
         metadataTask = nil
         await cancelCurrentGeneration()
-        thread.settleInterruptedMessages()
+        if !isRunning { thread.settleInterruptedMessages() }
     }
 
 }

@@ -3,7 +3,6 @@
 //  ModelCraft
 //
 
-import AppKit
 import ApplicationServices
 import CoreGraphics
 import EventKit
@@ -11,6 +10,7 @@ import SwiftUI
 
 struct PermissionsView: View {
 
+    @Environment(\.openURL) private var openURL
     @State private var calendarState: PermissionState = .notDetermined
     @State private var remindersState: PermissionState = .notDetermined
     @State private var notesState: PermissionState = .applicationNotRunning
@@ -130,7 +130,7 @@ struct PermissionsView: View {
         guard let url = URL(string:
             "x-apple.systempreferences:com.apple.preference.security?\(pane)")
         else { return }
-        NSWorkspace.shared.open(url)
+        openURL(url)
     }
 }
 

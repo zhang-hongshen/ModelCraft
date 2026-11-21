@@ -24,21 +24,22 @@ struct ToolNames {
 
     // MARK: Search Tool
     static let searchMap = "search_map"
+    static let searchProjectHistory = "search_project_history"
     static let searchProject = "search_project"
     static let searchRelevantDocuments = "search_relevant_documents"
-    static let webFetch = "web_fetch"
+    static let webFetch = "web_search"
 
     // MARK: Screen Control Tool
-    static let appScreenshot = "app_screenshot"
-    static let appZoom = "app_zoom"
+    static let appScreenshot = "take_screenshot"
+    static let appZoom = "zoom_screenshot"
 
     // MARK: Skill Tool
     static let activateSkill = "activate_skill"
 
     // MARK: Tool Search
     static let searchTools = "search_tools"
-    static let task = "task"
-    static let projectMemory = "project_memory"
+    static let task = "manage_task"
+    static let setProjectMemory = "set_project_memory"
 
     // MARK: Image Tool
     static let textToImage = "text_to_image"
@@ -52,47 +53,56 @@ struct ToolNames {
     // MARK: Computer Use Tool
     static let listApps = "list_apps"
     static let openApp = "open_app"
-    static let appFind = "app_find"
-    static let appClick = "app_click"
-    static let appType = "app_type"
-    static let appKey = "app_key"
-    static let appScroll = "app_scroll"
-    static let appDrag = "app_drag"
-    static let appMenu = "app_menu"
+    static let appFind = "find_elements"
+    static let appClick = "click"
+    static let appType = "type_text"
+    static let appKey = "press_key"
+    static let appScroll = "scroll"
+    static let appDrag = "drag"
+    static let appMenu = "select_menu_item"
 
     // MARK: Native Application Tool
-    static let searchNotes = "notes_search"
-    static let readNote = "notes_read"
-    static let createNote = "notes_create"
-    static let updateNote = "notes_update"
-    static let searchCalendar = "calendar_search"
-    static let readCalendarEvent = "calendar_read"
-    static let createCalendarEvent = "calendar_create"
-    static let updateCalendarEvent = "calendar_update"
-    static let searchReminders = "reminders_search"
-    static let readReminder = "reminders_read"
-    static let createReminder = "reminders_create"
-    static let updateReminder = "reminders_update"
-    static let searchMail = "mail_search"
-    static let readMail = "mail_read"
-    static let createMailDraft = "mail_create_draft"
+    static let searchNotes = "search_notes"
+    static let readNote = "read_note"
+    static let createNote = "create_note"
+    static let updateNote = "update_note"
+    static let searchCalendar = "search_calendar_events"
+    static let readCalendarEvent = "read_calendar_event"
+    static let createCalendarEvent = "create_calendar_event"
+    static let updateCalendarEvent = "update_calendar_event"
+    static let searchReminders = "search_reminders"
+    static let readReminder = "read_reminder"
+    static let createReminder = "create_reminder"
+    static let updateReminder = "update_reminder"
+    static let searchMail = "search_mail"
+    static let readMail = "read_mail"
+    static let createMailDraft = "create_mail_draft"
     static let runAppleScript = "run_applescript"
 
     // MARK: Schedule Tool
-    static let createSchedule = "schedule_create"
-    static let listSchedules = "schedule_list"
-    static let updateSchedule = "schedule_update"
-    static let deleteSchedule = "schedule_delete"
-    static let listWorkdays = "workdays_list"
-    static let setWorkday = "workdays_set"
+    static let createSchedule = "create_schedule"
+    static let listSchedules = "list_schedules"
+    static let updateSchedule = "update_schedule"
+    static let deleteSchedule = "delete_schedule"
+    static let listWorkdays = "list_workdays"
+    static let setWorkday = "set_workday"
 
     // MARK: ModelCraft Tool
-    static let readSettings = "settings_read"
-    static let updateSettings = "settings_update"
+    static let listThreads = "list_thread"
+    static let readCurrentThread = "read_current_thread"
+    static let readThread = "read_thread"
+    static let createThread = "create_thread"
+    static let updateThread = "update_thread"
+    static let openThread = "open_thread"
+    static let deleteThread = "delete_thread"
+    static let deleteThreadMessages = "delete_thread_messages"
+
+    static let readSettings = "read_settings"
+    static let updateSettings = "update_settings"
     static let openPage = "open_page"
-    static let listProjects = "project_list"
-    static let createProject = "project_create"
-    static let updateProject = "project_update"
+    static let listProjects = "list_projects"
+    static let createProject = "create_project"
+    static let updateProject = "update_project"
 }
 
 typealias VideoGenerationProgressHandler = @MainActor @Sendable (LTXVideoProgress) -> Void
@@ -283,6 +293,7 @@ extension ToolCall {
              ToolNames.createSchedule,
              ToolNames.updateSchedule,
              ToolNames.deleteSchedule,
+             ToolNames.deleteThread, ToolNames.deleteThreadMessages,
              ToolNames.setWorkday:
             true
         case ToolNames.executeCommand:
@@ -298,9 +309,8 @@ extension ToolCall {
         switch function.name {
         case ToolNames.task:
             return ["list", "read"].contains(function.arguments["action"]?.stringValue ?? "")
-        case ToolNames.projectMemory:
-            return function.arguments["memory"]?.stringValue == nil
-        case ToolNames.textToImage, ToolNames.textToVideo, ToolNames.textToAudio,
+        case ToolNames.setProjectMemory, ToolNames.textToImage, ToolNames.textToVideo, ToolNames.textToAudio,
+             ToolNames.createThread, ToolNames.updateThread, ToolNames.openThread,
              ToolNames.updateSettings, ToolNames.createProject, ToolNames.updateProject:
             return false
         default:
@@ -311,7 +321,8 @@ extension ToolCall {
     /// A remembered approval must not suppress confirmation for these actions.
     var requiresFreshApproval: Bool {
         switch function.name {
-        case ToolNames.executeCommand, ToolNames.runAppleScript, ToolNames.deleteSchedule:
+        case ToolNames.executeCommand, ToolNames.runAppleScript, ToolNames.deleteSchedule,
+             ToolNames.deleteThread, ToolNames.deleteThreadMessages:
             return true
         case ToolNames.applyPatch:
             let patch = function.arguments["patch"]?.stringValue ?? ""
@@ -377,6 +388,11 @@ extension ToolCall {
             return "\(name)\n\(prompt)"
         case ToolNames.updateSchedule, ToolNames.deleteSchedule:
             return function.arguments["schedule_id"]?.stringValue
+        case ToolNames.deleteThread, ToolNames.deleteThreadMessages:
+            let threadID = function.arguments["thread_id"]?.stringValue ?? ""
+            let messageID = function.arguments["message_id"]?.stringValue
+            return messageID.map { String(localized: "Chat: \(threadID)\nDelete from user message \($0) through the end.") }
+                ?? String(localized: "Chat: \(threadID)\nDelete all messages, originating tasks and the thread folder.")
         case ToolNames.setWorkday:
             let date = function.arguments["date"]?.stringValue ?? ""
             let kind = function.arguments["kind"]?.stringValue ?? ""
@@ -632,6 +648,20 @@ extension ToolCall {
             return nativeDescription(status, running: "Checking workdays", completed: "Checked workdays", failed: "Workday check failed")
         case ToolNames.setWorkday:
             return nativeDescription(status, running: "Updating workdays", completed: "Updated workdays", failed: "Workday update failed")
+        case ToolNames.listThreads:
+            return nativeDescription(status, running: "Reading chats", completed: "Read chats", failed: "Chat operation failed")
+        case ToolNames.readCurrentThread, ToolNames.readThread, ToolNames.searchProjectHistory:
+            return nativeDescription(status, running: "Reading chat messages", completed: "Read chat messages", failed: "Chat operation failed")
+        case ToolNames.createThread:
+            return nativeDescription(status, running: "Creating a chat", completed: "Created a chat", failed: "Chat operation failed")
+        case ToolNames.updateThread:
+            return nativeDescription(status, running: "Renaming a chat", completed: "Renamed a chat", failed: "Chat operation failed")
+        case ToolNames.openThread:
+            return nativeDescription(status, running: "Opening a chat", completed: "Opened a chat", failed: "Chat operation failed")
+        case ToolNames.deleteThread:
+            return nativeDescription(status, running: "Deleting a chat", completed: "Deleted a chat", failed: "Chat operation failed")
+        case ToolNames.deleteThreadMessages:
+            return nativeDescription(status, running: "Deleting chat messages", completed: "Deleted chat messages", failed: "Chat operation failed")
         case ToolNames.readSettings:
             return nativeDescription(status, running: "Reading settings", completed: "Read settings", failed: "Reading settings failed")
         case ToolNames.updateSettings:
@@ -711,6 +741,9 @@ extension ToolCall {
              ToolNames.updateSchedule, ToolNames.deleteSchedule: "clock.arrow.circlepath"
         case ToolNames.listWorkdays, ToolNames.setWorkday: "calendar.badge.clock"
         case ToolNames.readSettings, ToolNames.updateSettings: "gearshape"
+        case ToolNames.listThreads, ToolNames.readCurrentThread, ToolNames.readThread, ToolNames.searchProjectHistory, ToolNames.createThread,
+             ToolNames.updateThread, ToolNames.openThread, ToolNames.deleteThread,
+             ToolNames.deleteThreadMessages: "bubble.left.and.bubble.right"
         case ToolNames.openPage: "sidebar.left"
         case ToolNames.listProjects, ToolNames.createProject, ToolNames.updateProject: "folder.badge.gearshape"
         default: "exclamationmark.triangle"
@@ -736,7 +769,7 @@ extension ToolCall {
             return [(.runCommand, id)]
         case ToolNames.runAppleScript:
             return [(.runScript, id)]
-        case ToolNames.searchMap, ToolNames.searchProject,
+        case ToolNames.searchMap, ToolNames.searchProject, ToolNames.searchProjectHistory,
              ToolNames.searchRelevantDocuments, ToolNames.searchTools:
             return [(.search, id)]
         case ToolNames.webFetch:
@@ -772,9 +805,11 @@ extension ToolCall {
         case ToolNames.createSchedule, ToolNames.updateSchedule,
              ToolNames.deleteSchedule, ToolNames.setWorkday:
             return [(.changeSchedule, function.arguments["schedule_id"]?.stringValue ?? id)]
-        case ToolNames.readSettings, ToolNames.listProjects:
+        case ToolNames.listThreads, ToolNames.readCurrentThread, ToolNames.readThread, ToolNames.readSettings, ToolNames.listProjects:
             return [(.checkModelCraft, id)]
-        case ToolNames.updateSettings, ToolNames.openPage,
+        case ToolNames.createThread, ToolNames.updateThread, ToolNames.openThread,
+             ToolNames.deleteThread, ToolNames.deleteThreadMessages,
+             ToolNames.updateSettings, ToolNames.openPage,
              ToolNames.createProject, ToolNames.updateProject:
             return [(.changeModelCraft, id)]
         default:

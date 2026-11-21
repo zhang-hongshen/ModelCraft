@@ -15,6 +15,7 @@ enum ToolExecutor {
     static func dispatch(
         _ toolCall: ToolCall,
         projectID: PersistentIdentifier?,
+        threadID: UUID,
         modelID: String
     ) async throws -> (CallToolResult, MLXLMCommon.Chat.Message) {
         try Task.checkCancellation()
@@ -29,9 +30,13 @@ enum ToolExecutor {
 
         do  {
             switch toolCall.function.name {
-            case ToolNames.projectMemory:
+            case ToolNames.searchProjectHistory:
                 guard let projectID else { throw ToolExecutorError.projectUnavailable }
-                reply(try await toolCall.execute(with: ModelCraftTool.projectMemory(projectID: projectID)).content)
+                reply(try await toolCall.execute(with: ModelCraftTool.searchProjectHistory(
+                    projectID: projectID, excluding: threadID)).toolResult)
+            case ToolNames.setProjectMemory:
+                guard let projectID else { throw ToolExecutorError.projectUnavailable }
+                reply(try await toolCall.execute(with: ModelCraftTool.setProjectMemory(projectID: projectID)).content)
             case ToolNames.readFile:
                 // The model gets the file text as is: JSON escaping (`\/`, `\"`, `\n`) gets
                 // copied into `apply_patch` lines, which then no longer match the file.
@@ -156,6 +161,25 @@ enum ToolExecutor {
                 reply(try await toolCall.execute(with: ScheduleTool.listWorkdays).toolResult)
             case ToolNames.setWorkday:
                 reply(try await toolCall.execute(with: ScheduleTool.setWorkday).toolResult)
+            case ToolNames.listThreads:
+                reply(try await toolCall.execute(with: ModelCraftTool.listThreads).toolResult)
+            case ToolNames.readCurrentThread:
+                let result = try await ModelCraftTool.$currentThreadID.withValue(threadID) {
+                    try await toolCall.execute(with: ModelCraftTool.readCurrentThread)
+                }
+                reply(result.toolResult)
+            case ToolNames.readThread:
+                reply(try await toolCall.execute(with: ModelCraftTool.readThread).toolResult)
+            case ToolNames.createThread:
+                reply(try await toolCall.execute(with: ModelCraftTool.createThread).toolResult)
+            case ToolNames.updateThread:
+                reply(try await toolCall.execute(with: ModelCraftTool.updateThread).toolResult)
+            case ToolNames.openThread:
+                reply(try await toolCall.execute(with: ModelCraftTool.openThread).toolResult)
+            case ToolNames.deleteThread:
+                reply(try await toolCall.execute(with: ModelCraftTool.deleteThread).toolResult)
+            case ToolNames.deleteThreadMessages:
+                reply(try await toolCall.execute(with: ModelCraftTool.deleteThreadMessages).toolResult)
             case ToolNames.readSettings:
                 reply(try await toolCall.execute(with: ModelCraftTool.readSettings).toolResult)
             case ToolNames.updateSettings:

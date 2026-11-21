@@ -57,9 +57,10 @@ enum ToolDefinition {
     static func allToolSchema(for thread: Thread?) -> [ToolSpec] {
         var tools = coreTools.map(\.schema)
         if let thread { tools.append(TaskTool.task(threadID: thread.id).schema) }
-        if let projectID = thread?.project?.persistentModelID {
+        if let thread, let projectID = thread.project?.persistentModelID {
+            tools.append(ModelCraftTool.searchProjectHistory(projectID: projectID, excluding: thread.id).schema)
             tools.append(SearchTool.searchProject(projectID: projectID).schema)
-            tools.append(ModelCraftTool.projectMemory(projectID: projectID).schema)
+            tools.append(ModelCraftTool.setProjectMemory(projectID: projectID).schema)
         }
         tools += Connector.allCases.flatMap(ConnectorTool.schemas(of:))
         if UserDefaults.standard.value(

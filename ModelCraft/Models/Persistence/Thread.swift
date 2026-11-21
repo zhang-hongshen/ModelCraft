@@ -78,6 +78,25 @@ extension Thread {
             directoryHint: .isDirectory)
     }
 
+    @MainActor
+    func rename(to title: String) throws {
+        self.title = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        try ModelContainer.shared.mainContext.save()
+    }
+
+    /// Shared sidebar/tool deletion, including navigation and owned files.
+    @MainActor
+    func deleteFromApp() throws {
+        let context = ModelContainer.shared.mainContext
+        let directory = self.directory
+        if GlobalStore.shared.currentTab == .thread(self) {
+            GlobalStore.shared.startNewThread()
+        }
+        context.delete(self)
+        try context.save()
+        try? FileManager.default.removeItem(at: directory)
+    }
+
     /// Removes the thread's folder; called wherever a thread is deleted.
     func deleteDirectory() {
         try? FileManager.default.removeItem(at: directory)

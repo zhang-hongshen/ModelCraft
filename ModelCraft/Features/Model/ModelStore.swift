@@ -106,16 +106,23 @@ extension ModelStore {
                 Image(systemName: viewMode.systemImage)
             }
 
-            if isLoading {
-                ProgressView()
-                    .controlSize(.small)
-            } else {
-                Button("Refresh", systemImage: "arrow.triangle.2.circlepath") {
-                    Task {
-                        await reloadModels()
+            Button {
+                Task { await reloadModels() }
+            } label: {
+                Label("Refresh", systemImage: "arrow.triangle.2.circlepath")
+                    .labelStyle(.iconOnly)
+                    .frame(width: 20, height: 20)
+                    .opacity(isLoading ? 0 : 1)
+                    .overlay {
+                        if isLoading {
+                            ProgressView()
+                                .controlSize(.small)
+                        }
                     }
-                }
             }
+            .buttonBorderShape(.circle)
+            .accessibilityLabel("Refresh")
+            .disabled(isLoading)
         }
     }
     

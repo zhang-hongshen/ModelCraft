@@ -18,18 +18,24 @@ struct GenerativeUIView: View {
     let send: ((String) -> Void)?
 
     @State private var runtime = GenerativeUIRuntime()
+    @State private var parsedProgram: Result<GenerativeUIProgram, Error>?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            switch Result(catching: { try GenerativeUIProgram(source: source) }) {
+            switch parsedProgram {
             case .success(let program):
                 InterpretedView(program: program, runtime: runtime, send: send)
             case .failure(let error):
                 GenerativeUIErrorView(error: GenerativeUIError(error), send: send)
+            case nil:
+                EmptyView()
             }
             if let error = runtime.actionError {
                 GenerativeUIErrorView(error: error, send: send)
             }
+        }
+        .onChange(of: source, initial: true) {
+            parsedProgram = Result { try GenerativeUIProgram(source: source) }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .environment(\.openURL, OpenURLAction { url in

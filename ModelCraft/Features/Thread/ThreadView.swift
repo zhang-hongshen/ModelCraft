@@ -303,7 +303,7 @@ private extension ThreadView {
         HStack(spacing: 8) {
             Button(action: cancelVoiceInput) {
                 Image(systemName: "xmark")
-                    .frame(width: 28, height: 28)
+                    .frame(width: 36, height: 36)
             }
             .buttonStyle(.plain)
             .keyboardShortcut(.cancelAction)
@@ -427,6 +427,13 @@ private extension ThreadView {
     func ComposerView(showsProjectPicker: Bool) -> some View {
         let pendingInteraction = threadService.interactionCoordinator.pendingInteraction
         VStack(spacing: 8) {
+            if !threadService.queuedMessages.isEmpty {
+                QueuedMessagesView(
+                    messages: threadService.queuedMessages,
+                    onSend: sendQueuedMessageImmediately,
+                    onEdit: editQueuedMessage,
+                    onDelete: threadService.removeQueuedMessage)
+            }
             if isCommandPalettePresented {
                 ThreadCommandPalette(
                     skillCommands: skillCommands,
@@ -435,57 +442,45 @@ private extension ThreadView {
                     onSelect: runCommand)
             }
 
-            // A pending request covers the input. The ZStack is as large as its larger
-            // child, so the request is as wide as the input, at least as tall, and taller
-            // when its content needs it.
-            ZStack(alignment: .top) {
-                ThreadInputView(
-                    userInput: draft,
-                    skillNames: skillCommands.compactMap(\.skillName),
-                    placeholder: "Type Anything",
-                    selectionLocation: $composerSelectionLocation,
-                    slashCommandLocation: $slashCommandLocation,
-                    onCommand: handleEditorCommand,
-                    isVoiceInputActive: voiceInputTask != nil,
-                    voiceContent: { VoiceInputContent() },
-                    trailing: {
-                        if voiceInputTask != nil {
-                            FinishVoiceInputButton()
-                        } else if threadService.isCompacting {
-                            ProgressView()
-                                .controlSize(.small)
-                        } else if draft.content.isEmpty, draft.files.isEmpty {
-                            if thread?.isGenerating == true {
-                                StopGeneratingMessageButton()
-                            } else {
-                                VoiceInputButton()
-                            }
-                        } else {
-                            SubmitMessageButton()
-                        }
-                    }
-                )
-                .onKeyPress(
-                    keys: [.upArrow, .downArrow, .return, .escape],
-                    phases: [.down, .repeat],
-                    action: handleCommandKeyPress)
-                .opacity(pendingInteraction == nil ? 1 : 0)
-                .disabled(pendingInteraction != nil)
-                .accessibilityHidden(pendingInteraction != nil)
+            if let pendingInteraction {
+                UserInteractionRequestView(
+                    pendingInteraction: pendingInteraction,
+                    onSubmitUserInput: threadService.interactionCoordinator.submitUserInput,
+                    onResolveApproval: threadService.interactionCoordinator.resolveApproval)
+                .id(pendingInteraction.id)
+                .background(.surface, in: RoundedRectangle())
+            }
 
-                if let pendingInteraction {
-                    UserInteractionRequestView(
-                        pendingInteraction: pendingInteraction,
-                        onSubmitUserInput: threadService.interactionCoordinator.submitUserInput,
-                        onResolveApproval: threadService.interactionCoordinator.resolveApproval)
-                    .id(pendingInteraction.id)
+            ThreadInputView(
+                userInput: draft,
+                skillNames: skillCommands.compactMap(\.skillName),
+                placeholder: "Type Anything",
+                selectionLocation: $composerSelectionLocation,
+                slashCommandLocation: $slashCommandLocation,
+                onCommand: handleEditorCommand,
+                isVoiceInputActive: voiceInputTask != nil,
+                voiceContent: { VoiceInputContent() },
+                trailing: {
+                    if voiceInputTask != nil {
+                        FinishVoiceInputButton()
+                    } else if threadService.isCompacting && !threadService.isRunning {
+                        ProgressView()
+                            .controlSize(.small)
+                    } else if draft.content.isEmpty, draft.files.isEmpty {
+                        if threadService.isRunning {
+                            StopGeneratingMessageButton()
+                        } else {
+                            VoiceInputButton()
+                        }
+                    } else {
+                        SubmitMessageButton()
+                    }
                 }
-            }
-            .background {
-                if pendingInteraction != nil {
-                    RoundedRectangle().fill(.surface)
-                }
-            }
+            )
+            .onKeyPress(
+                keys: [.upArrow, .downArrow, .return, .escape],
+                phases: [.down, .repeat],
+                action: handleCommandKeyPress)
 
             HStack(spacing: 12) {
                 if showsProjectPicker {
@@ -501,6 +496,60 @@ private extension ThreadView {
             .disabled(voiceInputTask != nil || pendingInteraction != nil)
             .padding(.horizontal, 12)
         }
+    }
+}
+
+private struct QueuedMessagesView: View {
+    let messages: [Message]
+    let onSend: (Message) -> Void
+    let onEdit: (Message) -> Void
+    let onDelete: (Message) -> Void
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 8) {
+                ForEach(messages) { message in
+                    QueuedMessageRow(
+                        content: message.content,
+                        onSend: { onSend(message) },
+                        onEdit: { onEdit(message) },
+                        onDelete: { onDelete(message) })
+                }
+            }
+        }
+        .frame(maxHeight: 180)
+        .fixedSize(horizontal: false, vertical: true)
+    }
+}
+
+private struct QueuedMessageRow: View {
+    let content: String
+    let onSend: () -> Void
+    let onEdit: () -> Void
+    let onDelete: () -> Void
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Text(content)
+                .lineLimit(1)
+                .truncationMode(.tail)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            Button("Send Immediately", systemImage: "arrow.up", action: onSend)
+                .labelStyle(.iconOnly)
+                .fontWeight(.semibold)
+                .help("Send Immediately")
+            Button("Edit", systemImage: "pencil", action: onEdit)
+                .labelStyle(.iconOnly)
+                .fontWeight(.semibold)
+                .help("Edit")
+            Button("Delete", systemImage: "trash", role: .destructive, action: onDelete)
+                .labelStyle(.iconOnly)
+                .fontWeight(.semibold)
+                .help("Delete")
+        }
+        .buttonStyle(.plain)
+        .padding(10)
+        .background(.surface, in: RoundedRectangle())
     }
 }
 
@@ -564,7 +613,7 @@ private extension ThreadView {
         case .compact:
             return thread?.messages.isEmpty == false
                 && globalStore.selectedModel != nil
-                && thread?.isGenerating != true
+                && !threadService.isRunning
                 && !threadService.isCompacting
         case .skill:
             return true
@@ -668,15 +717,15 @@ private extension ThreadView {
     
     func submitMessage(content: String, files: [URL]) -> Bool {
         guard let model = globalStore.selectedModel,
-              !threadService.isCompacting, !isRewinding else {
+              (!threadService.isCompacting || threadService.isRunning), !isRewinding else {
             return false
         }
         let activeThread = openThread()
-        let message = Message(
-            role: .user,
-            thread: activeThread,
-            content: content,
-            files: files)
+        let message = Message(role: .user, content: content, files: files)
+        if threadService.isRunning {
+            threadService.enqueue(message)
+            return true
+        }
         Task {
             do {
                 try await threadService.sendMessage(
@@ -691,6 +740,32 @@ private extension ThreadView {
             }
         }
         return true
+    }
+
+    func editQueuedMessage(_ message: Message) {
+        threadService.removeQueuedMessage(message)
+        cancelVoiceInput()
+        draft = Message(role: .user, content: message.content, files: message.files)
+        composerSelectionLocation = (draft.content as NSString).length
+        slashCommandLocation = nil
+    }
+
+    func sendQueuedMessageImmediately(_ message: Message) {
+        if threadService.isRunning {
+            threadService.sendQueuedMessageImmediately(message)
+            return
+        }
+        guard let model = globalStore.selectedModel, let thread,
+              !threadService.isCompacting else { return }
+        Task {
+            do {
+                guard threadService.queuedMessages.contains(where: { $0.id == message.id }) else { return }
+                try await threadService.sendMessage(model: model, thread: thread, message: message)
+            } catch is CancellationError {
+            } catch {
+                requestError = error.localizedDescription
+            }
+        }
     }
 
     /// The open thread, or a new thread that becomes the open one.

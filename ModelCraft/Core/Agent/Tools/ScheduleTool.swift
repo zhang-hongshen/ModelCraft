@@ -20,7 +20,7 @@ enum ScheduleTool {
         ]
     }
 
-    private static let workdayDefinition = "A workday is a day outside the locale's weekend, adjusted for the public holidays and makeup workdays of the holiday region the user chose and for the user's own exceptions; workdays_list shows them."
+    private static let workdayDefinition = "A workday is a day outside the locale's weekend, adjusted for the public holidays and makeup workdays of the holiday region the user chose and for the user's own exceptions; list_workdays shows them."
 
     private static var ruleParameters: [ToolParameter] {
         [
@@ -74,7 +74,7 @@ enum ScheduleTool {
 
     static let listSchedules = Tool<ListSchedulesInput, [ScheduleOutput]>(
         name: ToolNames.listSchedules,
-        description: "List the user's scheduled tasks with their schedule_id, prompt, rule, whether they are enabled, the next run times, and the latest run's time and error. This is read-only; use it to find the schedule_id that schedule_update and schedule_delete need.",
+        description: "List the user's scheduled tasks with their schedule_id, prompt, rule, whether they are enabled, the next run times, and the latest run's time and error. This is read-only; use it to find the schedule_id that update_schedule and delete_schedule need.",
         parameters: []
     ) { _ in
         try await MainActor.run {
@@ -88,7 +88,7 @@ enum ScheduleTool {
         name: ToolNames.updateSchedule,
         description:
         """
-            Change a scheduled task by the schedule_id from schedule_list or schedule_create: rename it, replace its prompt, pause or resume it, or replace its rule. Requires confirmation. Omit fields that stay unchanged. Giving any rule field replaces the whole rule, so frequency and start_at are then required and omitted rule fields take their defaults. Runs due before the change do not happen.
+            Change a scheduled task by the schedule_id from list_schedules or create_schedule: rename it, replace its prompt, pause or resume it, or replace its rule. Requires confirmation. Omit fields that stay unchanged. Giving any rule field replaces the whole rule, so frequency and start_at are then required and omitted rule fields take their defaults. Runs due before the change do not happen.
             \(workdayDefinition)
             Returns the updated task with its next run times.
         """,
@@ -120,7 +120,7 @@ enum ScheduleTool {
 
     static let deleteSchedule = Tool<DeleteScheduleInput, DeleteScheduleOutput>(
         name: ToolNames.deleteSchedule,
-        description: "Delete a scheduled task by the schedule_id from schedule_list, so it never runs again. Threads from earlier runs are kept. Requires confirmation. To stop it only for a while, use schedule_update with enabled set to false instead.",
+        description: "Delete a scheduled task by the schedule_id from list_schedules, so it never runs again. Threads from earlier runs are kept. Requires confirmation. To stop it only for a while, use update_schedule with enabled set to false instead.",
         parameters: [
             .required("schedule_id", type: .string, description: "The schedule_id of the task to delete."),
         ]
@@ -345,7 +345,7 @@ enum ScheduleToolError: LocalizedError {
         case .invalidDate(let value):
             "`\(value)` is not a valid date. Use ISO 8601, such as 2026-10-26T09:00:00+08:00, or yyyy-MM-dd for a day."
         case .scheduleNotFound(let id):
-            "No scheduled task has the schedule_id \(id). Call schedule_list for the current identifiers."
+            "No scheduled task has the schedule_id \(id). Call list_schedules for the current identifiers."
         }
     }
 }

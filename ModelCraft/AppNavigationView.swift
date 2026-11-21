@@ -109,12 +109,7 @@ struct AppNavigationView: View {
     }
 
     private func deleteThread(_ thread: Thread) {
-        if globalStore.currentTab == .thread(thread) {
-            globalStore.startNewThread()
-        }
-        thread.deleteDirectory()
-        modelContext.delete(thread)
-        try? modelContext.save()
+        try? thread.deleteFromApp()
     }
 
     private func beginRenaming(_ thread: Thread) {
@@ -125,8 +120,7 @@ struct AppNavigationView: View {
 
     private func renameThread() {
         guard let threadToRename else { return }
-        threadToRename.title = threadTitle.trimmingCharacters(in: .whitespacesAndNewlines)
-        try? modelContext.save()
+        try? threadToRename.rename(to: threadTitle)
         self.threadToRename = nil
     }
 

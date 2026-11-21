@@ -111,11 +111,11 @@ public final class H3Base: @unchecked Sendable {
 
         // The text stage is the largest component in the pipeline and is never
         // read again after this call, so it always gives its memory back.
-        let conditioning = try encodeText(for: request, geometry: geometry)
+        let conditioning = try await encodeText(for: request, geometry: geometry)
         releaseTextStage()
         if Task.isCancelled { throw CancellationError() }
 
-        let conditions = try encodeReferences(for: request, geometry: geometry, seed: seed)
+        let conditions = try await encodeReferences(for: request, geometry: geometry, seed: seed)
         releaseReferenceEncodingBuffers()
         if Task.isCancelled { throw CancellationError() }
 
@@ -153,7 +153,7 @@ public final class H3Base: @unchecked Sendable {
     private func encodeText(
         for request: H3EvaluatorRequest,
         geometry: H3LatentGeometry
-    ) throws -> H3TextConditioningData {
+    ) async throws -> H3TextConditioningData {
         let encoder = try self.encoder
             ?? H3Loader.loadEncoder(hub: hub, configuration: configuration)
         self.encoder = encoder
@@ -203,7 +203,7 @@ public final class H3Base: @unchecked Sendable {
             var audioIndex = 0
 
             for reference in request.references {
-                switch try H3IO.decode(reference) {
+                switch try await H3IO.decode(reference) {
                 case .image(let image):
                     pictureIndex += 1
                     let (block, grid) = try encoder.encodeVisual(pixels: image.encoderPixels)
@@ -252,7 +252,7 @@ public final class H3Base: @unchecked Sendable {
         for request: H3EvaluatorRequest,
         geometry: H3LatentGeometry,
         seed: UInt64
-    ) throws -> H3Conditions {
+    ) async throws -> H3Conditions {
         let visualVAE = try self.visualVAE
             ?? H3Loader.loadVisualVAE(hub: hub, configuration: configuration)
         self.visualVAE = visualVAE
@@ -286,7 +286,7 @@ public final class H3Base: @unchecked Sendable {
             var blocks: [H3ReferenceSequenceBlock] = []
 
             for reference in request.references {
-                switch try H3IO.decode(reference) {
+                switch try await H3IO.decode(reference) {
                 case .image(let image):
                     let latent = try visualVAE.encode(
                         image.visualVAEPixels,

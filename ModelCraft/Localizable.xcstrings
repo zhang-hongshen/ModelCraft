@@ -434,6 +434,52 @@
     "Changing settings" : {
 
     },
+    "Chat" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "对话"
+          }
+        }
+      }
+    },
+    "Chat operation failed" : {
+
+    },
+    "Chat Title" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "对话标题"
+          }
+        }
+      }
+    },
+    "Chat: %@\nDelete all messages, originating tasks and the thread folder." : {
+
+    },
+    "Chat: %@\nDelete from user message %@ through the end." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Chat: %1$@\nDelete from user message %2$@ through the end."
+          }
+        }
+      }
+    },
+    "Chats" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "对话"
+          }
+        }
+      }
+    },
     "Checked ModelCraft" : {
 
     },
@@ -661,6 +707,9 @@
     "Create" : {
 
     },
+    "Created a chat" : {
+
+    },
     "Created a project" : {
 
     },
@@ -726,6 +775,9 @@
           }
         }
       }
+    },
+    "Creating a chat" : {
+
     },
     "Creating a project" : {
 
@@ -839,6 +891,16 @@
         }
       }
     },
+    "Delete Chat" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "删除对话"
+          }
+        }
+      }
+    },
     "Delete Model" : {
       "localizations" : {
         "zh-Hans" : {
@@ -880,20 +942,13 @@
         }
       }
     },
-    "Delete Chat" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "删除对话"
-          }
-        }
-      }
-    },
     "Deleted" : {
 
     },
     "Deleted %@" : {
+
+    },
+    "Deleted a chat" : {
 
     },
     "Deleted a file" : {
@@ -907,6 +962,9 @@
       }
     },
     "Deleted a scheduled task" : {
+
+    },
+    "Deleted chat messages" : {
 
     },
     "Deleted files" : {
@@ -925,7 +983,13 @@
     "Deleting %@" : {
 
     },
+    "Deleting a chat" : {
+
+    },
     "Deleting a scheduled task" : {
+
+    },
+    "Deleting chat messages" : {
 
     },
     "Deleting..." : {
@@ -1882,6 +1946,16 @@
         }
       }
     },
+    "New Chat" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "新建对话"
+          }
+        }
+      }
+    },
     "New Project" : {
       "localizations" : {
         "zh-Hans" : {
@@ -1912,16 +1986,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "新建任务"
-          }
-        }
-      }
-    },
-    "New Chat" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "新建对话"
           }
         }
       }
@@ -2115,6 +2179,9 @@
     "Opened %@" : {
 
     },
+    "Opened a chat" : {
+
+    },
     "Opened a page" : {
 
     },
@@ -2122,6 +2189,9 @@
 
     },
     "Opening %@ failed" : {
+
+    },
+    "Opening a chat" : {
 
     },
     "Opening a page" : {
@@ -2261,6 +2331,17 @@
     "Put sung vocals on pitch and export the corrected audio." : {
 
     },
+    "Queued" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "排队中"
+          }
+        }
+      }
+    },
     "Quick Entry" : {
 
     },
@@ -2353,6 +2434,12 @@
     "Read Calendar" : {
 
     },
+    "Read chat messages" : {
+
+    },
+    "Read chats" : {
+
+    },
     "Read files" : {
       "localizations" : {
         "zh-Hans" : {
@@ -2405,6 +2492,12 @@
 
     },
     "Reading Calendar" : {
+
+    },
+    "Reading chat messages" : {
+
+    },
+    "Reading chats" : {
 
     },
     "Reading Mail" : {
@@ -2548,7 +2641,13 @@
         }
       }
     },
+    "Renamed a chat" : {
+
+    },
     "Renamed a project" : {
+
+    },
+    "Renaming a chat" : {
 
     },
     "Renaming a project" : {
@@ -2777,6 +2876,16 @@
     },
     "Selected in %@:" : {
 
+    },
+    "Send Immediately" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "立即发送"
+          }
+        }
+      }
     },
     "Send Message" : {
       "localizations" : {
@@ -3076,36 +3185,6 @@
     },
     "Thought" : {
 
-    },
-    "Chat" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "对话"
-          }
-        }
-      }
-    },
-    "Chat Title" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "对话标题"
-          }
-        }
-      }
-    },
-    "Chats" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "对话"
-          }
-        }
-      }
     },
     "Time" : {
 

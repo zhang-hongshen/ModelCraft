@@ -28,7 +28,7 @@ enum ComputerUseTool {
 
     static let appDescription = "The application: its name as list_apps shows it, such as `Safari`, or its bundle identifier, such as `com.apple.Safari`. A running application is brought to the front; an installed one that is not running is opened."
 
-    static let optionalAppDescription = "The application whose latest app_screenshot the coordinates refer to; it is brought to the front first. Omit it only for coordinates from an app_screenshot of the full screen."
+    static let optionalAppDescription = "The application whose latest take_screenshot the coordinates refer to; it is brought to the front first. Omit it only for coordinates from an take_screenshot of the full screen."
 
     // MARK: - List Apps
 
@@ -53,7 +53,7 @@ enum ComputerUseTool {
 
     static let openApp = Tool<OpenAppInput, OpenAppOutput>(
         name: ToolNames.openApp,
-        description: "Open an application, or bring it to the front when it is already running, without acting in it. Returns its name, bundle identifier, and the titles of its windows. To see or operate its contents, follow with app_screenshot or app_find.",
+        description: "Open an application, or bring it to the front when it is already running, without acting in it. Returns its name, bundle identifier, and the titles of its windows. To see or operate its contents, follow with take_screenshot or find_elements.",
         parameters: [
             .required("app", type: .string, description: appDescription)
         ]
@@ -74,8 +74,8 @@ enum ComputerUseTool {
         name: ToolNames.appFind,
         description: """
             Find UI elements in an application's windows and menu bar through the macOS Accessibility API. Returns one line per element with its role, title, value, and advertised actions. Read-only.
-            Interactive lines start with a numeric index, as in `3[:]<AXButton title=Save actions=AXPress path=...>[interactive]`; pass that index as `element` to app_click, app_type, or app_scroll. Lines starting with `_` carry text and context only. An index is valid until the next app_find of the same application, and any change in the interface can make it stale.
-            Web page content in browsers and Electron applications often exposes few elements; use app_screenshot for those. For Notes, Reminders, Calendar, or Mail data, prefer their typed tools.
+            Interactive lines start with a numeric index, as in `3[:]<AXButton title=Save actions=AXPress path=...>[interactive]`; pass that index as `element` to click, type_text, or scroll. Lines starting with `_` carry text and context only. An index is valid until the next find_elements of the same application, and any change in the interface can make it stale.
+            Web page content in browsers and Electron applications often exposes few elements; use take_screenshot for those. For Notes, Reminders, Calendar, or Mail data, prefer their typed tools.
             """,
         parameters: [
             .required("app", type: .string, description: appDescription),
@@ -93,7 +93,7 @@ enum ComputerUseTool {
             maxDepth: input.maxDepth ?? 30
         )
         guard !lines.isEmpty else {
-            return ["No accessible UI elements were found for this application. Use app_screenshot to see it."]
+            return ["No accessible UI elements were found for this application. Use take_screenshot to see it."]
         }
         let terms = input.query?.lowercased().split(whereSeparator: \.isWhitespace) ?? []
         guard !terms.isEmpty else { return lines }
@@ -110,16 +110,16 @@ enum ComputerUseTool {
 
     static let appClick = Tool<AppClickInput, ActionOutput>(
         name: ToolNames.appClick,
-        description: "Click in an application, either on an element from app_find or at a pixel of the latest app_screenshot of that application. With an element and a plain single left click, its accessibility press action is used, which works even when the element is covered; otherwise the click is posted at the element's center. The user's own pointer does not move. Use `button` for a context menu and `clicks` for a double or triple click. The click takes effect immediately; check the outcome with app_screenshot or app_find before reporting success.",
+        description: "Click in an application, either on an element from find_elements or at a pixel of the latest take_screenshot of that application. With an element and a plain single left click, its accessibility press action is used, which works even when the element is covered; otherwise the click is posted at the element's center. The user's own pointer does not move. Use `button` for a context menu and `clicks` for a double or triple click. The click takes effect immediately; check the outcome with take_screenshot or find_elements before reporting success.",
         parameters: [
             .optional("app", type: .string, description: "\(appDescription) Required with `element`. \(optionalAppDescription)"),
-            .optional("element", type: .int, description: "An interactive element index from the latest app_find of this application."),
-            .optional("x", type: .double, description: "Pixels from the left edge of the latest app_screenshot. Required with `y` when `element` is omitted."),
-            .optional("y", type: .double, description: "Pixels from the top edge of the latest app_screenshot. Required with `x` when `element` is omitted."),
+            .optional("element", type: .int, description: "An interactive element index from the latest find_elements of this application."),
+            .optional("x", type: .double, description: "Pixels from the left edge of the latest take_screenshot. Required with `y` when `element` is omitted."),
+            .optional("y", type: .double, description: "Pixels from the top edge of the latest take_screenshot. Required with `x` when `element` is omitted."),
             .optional("button", type: .string, description: "The mouse button. Defaults to `left`; `right` opens a context menu.", extraProperties: ["enum": ["left", "right"]]),
             .optional("clicks", type: .int, description: "1 for a single click (the default), 2 for a double click, 3 for a triple click."),
             .optional("modifiers", type: .array(elementType: .string), description: "Keys held during the click: `cmd`, `shift`, `option`, `ctrl`. Omit for none."),
-            .optional("action", type: .string, description: "With `element` only: an accessibility action advertised by the element in app_find, such as `AXShowMenu` or `AXIncrement`, performed instead of a click.")
+            .optional("action", type: .string, description: "With `element` only: an accessibility action advertised by the element in find_elements, such as `AXShowMenu` or `AXIncrement`, performed instead of a click.")
         ]
     ) { input in
         try checkAccessibilityPermission()
@@ -135,7 +135,7 @@ enum ComputerUseTool {
             if let action = input.action {
                 guard element.performAction(action) else {
                     throw ComputerUseToolError.actionFailed(
-                        "Element \(index) did not perform \(action). Use an action listed for it by app_find.")
+                        "Element \(index) did not perform \(action). Use an action listed for it by find_elements.")
                 }
                 return ActionOutput(result: "Performed \(action) on element \(index).")
             }
@@ -155,11 +155,11 @@ enum ComputerUseTool {
 
     static let appType = Tool<AppTypeInput, ActionOutput>(
         name: ToolNames.appType,
-        description: "Type text into an application as keyboard input, at its focused element or into an element from app_find, which is focused first. Line breaks are typed as Return. With `replace`, the field's current contents are replaced instead of typed into at the insertion point. Use app_key for shortcuts and special keys. Check the outcome with app_find or app_screenshot before reporting success.",
+        description: "Type text into an application as keyboard input, at its focused element or into an element from find_elements, which is focused first. Line breaks are typed as Return. With `replace`, the field's current contents are replaced instead of typed into at the insertion point. Use press_key for shortcuts and special keys. Check the outcome with find_elements or take_screenshot before reporting success.",
         parameters: [
             .required("app", type: .string, description: appDescription),
             .required("text", type: .string, description: "The text to type."),
-            .optional("element", type: .int, description: "An editable element index from the latest app_find of this application. Omit it to type into whatever has keyboard focus."),
+            .optional("element", type: .int, description: "An editable element index from the latest find_elements of this application. Omit it to type into whatever has keyboard focus."),
             .optional("replace", type: .bool, description: "`true` replaces the field's whole contents: the value is set directly when the element allows it, otherwise everything is selected with Command-A first. Defaults to `false`, which types at the insertion point.")
         ]
     ) { input in
@@ -192,7 +192,7 @@ enum ComputerUseTool {
 
     static let appKey = Tool<AppKeyInput, ActionOutput>(
         name: ToolNames.appKey,
-        description: "Press a key or keyboard shortcut in an application, such as `return`, `escape`, `tab`, `down`, `cmd+a`, `cmd+shift+t`, or `ctrl+tab`. The application is brought to the front and receives the keys as if typed. Use app_type for text. Check the outcome with app_screenshot or app_find before reporting success.",
+        description: "Press a key or keyboard shortcut in an application, such as `return`, `escape`, `tab`, `down`, `cmd+a`, `cmd+shift+t`, or `ctrl+tab`. The application is brought to the front and receives the keys as if typed. Use type_text for text. Check the outcome with take_screenshot or find_elements before reporting success.",
         parameters: [
             .required("app", type: .string, description: appDescription),
             .required("keys", type: .string, description: "A key, optionally preceded by modifiers joined with `+`. Modifiers: `cmd`, `shift`, `option` (or `alt`), `ctrl`, `fn`. Keys: a letter, digit, or punctuation character, `return`, `enter`, `tab`, `space`, `delete` (backspace), `forward_delete`, `escape`, `up`, `down`, `left`, `right`, `home`, `end`, `page_up`, `page_down`, or `f1` to `f12`."),
@@ -219,14 +219,14 @@ enum ComputerUseTool {
 
     static let appScroll = Tool<AppScrollInput, ActionOutput>(
         name: ToolNames.appScroll,
-        description: "Scroll with the scroll wheel at an element from app_find, at a pixel of the latest app_screenshot, or, when neither is given, at the center of the application's focused window. The user's own pointer does not move. Check the outcome with app_screenshot or app_find.",
+        description: "Scroll with the scroll wheel at an element from find_elements, at a pixel of the latest take_screenshot, or, when neither is given, at the center of the application's focused window. The user's own pointer does not move. Check the outcome with take_screenshot or find_elements.",
         parameters: [
             .optional("app", type: .string, description: "\(appDescription) Required with `element` or when no position is given. \(optionalAppDescription)"),
             .required("direction", type: .string, description: "Which way the view moves through the content.", extraProperties: ["enum": ["up", "down", "left", "right"]]),
             .optional("amount", type: .int, description: "How many scroll-wheel notches, each about 40 points. Defaults to 5."),
-            .optional("element", type: .int, description: "An element index from the latest app_find of this application to scroll inside."),
-            .optional("x", type: .double, description: "Pixels from the left edge of the latest app_screenshot."),
-            .optional("y", type: .double, description: "Pixels from the top edge of the latest app_screenshot.")
+            .optional("element", type: .int, description: "An element index from the latest find_elements of this application to scroll inside."),
+            .optional("x", type: .double, description: "Pixels from the left edge of the latest take_screenshot."),
+            .optional("y", type: .double, description: "Pixels from the top edge of the latest take_screenshot.")
         ]
     ) { input in
         try checkAccessibilityPermission()
@@ -265,13 +265,13 @@ enum ComputerUseTool {
 
     static let appDrag = Tool<AppDragInput, ActionOutput>(
         name: ToolNames.appDrag,
-        description: "Press the left mouse button at one pixel of the latest app_screenshot and drag to another, to move, resize, select, or reorder. The user's own pointer does not move. Check the outcome with app_screenshot before reporting success.",
+        description: "Press the left mouse button at one pixel of the latest take_screenshot and drag to another, to move, resize, select, or reorder. The user's own pointer does not move. Check the outcome with take_screenshot before reporting success.",
         parameters: [
             .optional("app", type: .string, description: optionalAppDescription),
-            .required("from_x", type: .double, description: "Starting pixels from the left edge of the latest app_screenshot."),
-            .required("from_y", type: .double, description: "Starting pixels from the top edge of the latest app_screenshot."),
-            .required("to_x", type: .double, description: "Ending pixels from the left edge of the latest app_screenshot."),
-            .required("to_y", type: .double, description: "Ending pixels from the top edge of the latest app_screenshot.")
+            .required("from_x", type: .double, description: "Starting pixels from the left edge of the latest take_screenshot."),
+            .required("from_y", type: .double, description: "Starting pixels from the top edge of the latest take_screenshot."),
+            .required("to_x", type: .double, description: "Ending pixels from the left edge of the latest take_screenshot."),
+            .required("to_y", type: .double, description: "Ending pixels from the top edge of the latest take_screenshot.")
         ]
     ) { input in
         try checkAccessibilityPermission()
@@ -286,7 +286,7 @@ enum ComputerUseTool {
 
     static let appMenu = Tool<AppMenuInput, ActionOutput>(
         name: ToolNames.appMenu,
-        description: "Choose a command from an application's menu bar by its path of titles, such as [`File`, `Export…`] or [`View`, `Sort By`, `Name`]; a path of one title opens that menu. Titles match ignoring case, and `...` matches `…`. When a title is not found, the error lists the titles available at that level, so a failed call shows the menu's contents. Check the outcome with app_screenshot or app_find before reporting success.",
+        description: "Choose a command from an application's menu bar by its path of titles, such as [`File`, `Export…`] or [`View`, `Sort By`, `Name`]; a path of one title opens that menu. Titles match ignoring case, and `...` matches `…`. When a title is not found, the error lists the titles available at that level, so a failed call shows the menu's contents. Check the outcome with take_screenshot or find_elements before reporting success.",
         parameters: [
             .required("app", type: .string, description: appDescription),
             .required("path", type: .array(elementType: .string), description: "Menu titles from the menu bar to the command, such as [`Edit`, `Find`, `Find…`].")
@@ -327,7 +327,7 @@ enum ComputerUseTool {
 
     // MARK: - Helpers
 
-    /// Virtual key codes for the key names app_key accepts.
+    /// Virtual key codes for the key names press_key accepts.
     static let keyCodes: [String: Int] = {
         var codes: [String: Int] = [
             "return": kVK_Return, "enter": kVK_ANSI_KeypadEnter, "tab": kVK_Tab,
@@ -382,7 +382,7 @@ enum ComputerUseTool {
         }
     }
 
-    /// The key app_find caches an application's element indexes under.
+    /// The key find_elements caches an application's element indexes under.
     private static func cacheKey(of app: NSRunningApplication) -> String {
         app.bundleIdentifier ?? String(app.processIdentifier)
     }
@@ -474,11 +474,11 @@ enum ComputerUseToolError: Error, LocalizedError {
         case .accessibilityPermissionNotGranted:
             "Accessibility permission not granted. Enable in System Settings > Privacy & Security > Accessibility."
         case .uiElementNotFound(let index):
-            "Element \(index) is not in the latest app_find of this application. Call app_find again and use a current index."
+            "Element \(index) is not in the latest find_elements of this application. Call find_elements again and use a current index."
         case .elementHasNoFrame(let index):
-            "Element \(index) has no position on screen. Call app_find again, or use app_screenshot coordinates."
+            "Element \(index) has no position on screen. Call find_elements again, or use take_screenshot coordinates."
         case .elementNeedsApp:
-            "`element` requires `app`, the application its app_find listed it for."
+            "`element` requires `app`, the application its find_elements listed it for."
         case .actionFailed(let reason):
             "Action failed: \(reason)"
         case .appNotFound(let name):
@@ -490,9 +490,9 @@ enum ComputerUseToolError: Error, LocalizedError {
         case .invalidDirection(let direction):
             "`\(direction)` is not a direction. Use `up`, `down`, `left`, or `right`."
         case .missingPosition:
-            "Give a position: `element` with `app`, or both `x` and `y` from app_screenshot."
+            "Give a position: `element` with `app`, or both `x` and `y` from take_screenshot."
         case .screenshotRequired:
-            "There is no screenshot to take coordinates from. Call app_screenshot with the same `app` first."
+            "There is no screenshot to take coordinates from. Call take_screenshot with the same `app` first."
         case .outsideScreenshot(let size):
             "The position is outside the latest screenshot, which is \(Int(size.width))x\(Int(size.height)) pixels."
         case .menuItemNotFound(let title, let available):

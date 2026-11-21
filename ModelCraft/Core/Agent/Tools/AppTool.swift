@@ -19,7 +19,7 @@ enum AppTool {
 
     static let searchNotes = Tool<SearchNotesInput, [NoteSummary]>(
         name: ToolNames.searchNotes,
-        description: "Search Apple Notes by title or plain-text content and return matching note identifiers, folders, modification dates, and excerpts. This is read-only and should be preferred over accessibility or screenshots for Notes. Use notes_read with a returned note_id to retrieve the full content.",
+        description: "Search Apple Notes by title or plain-text content and return matching note identifiers, folders, modification dates, and excerpts. This is read-only and should be preferred over accessibility or screenshots for Notes. Use read_note with a returned note_id to retrieve the full content.",
         parameters: [
             .required("query", type: .string, description: "Text to find in note titles or plain-text content. Use an empty string only when listing notes in a known folder."),
             .optional("folder", type: .string, description: "Exact Notes folder name to search. Omit to search all folders."),
@@ -72,9 +72,9 @@ enum AppTool {
 
     static let readNote = Tool<ReadNoteInput, NoteDetail>(
         name: ToolNames.readNote,
-        description: "Read one Apple Note by the stable note_id returned from notes_search. This is read-only and returns the full plain-text content plus note metadata.",
+        description: "Read one Apple Note by the stable note_id returned from search_notes. This is read-only and returns the full plain-text content plus note metadata.",
         parameters: [
-            .required("note_id", type: .string, description: "Stable Notes identifier returned by notes_search.")
+            .required("note_id", type: .string, description: "Stable Notes identifier returned by search_notes.")
         ]
     ) { input in
         let noteID = AppleScriptLiteral.string(input.noteID)
@@ -145,9 +145,9 @@ enum AppTool {
 
     static let updateNote = Tool<UpdateNoteInput, NoteMutationResult>(
         name: ToolNames.updateNote,
-        description: "Update the title and/or plain-text body of an existing Apple Note. This writes user data and requires confirmation before execution. Pass a note_id returned by notes_search; omit fields that should remain unchanged.",
+        description: "Update the title and/or plain-text body of an existing Apple Note. This writes user data and requires confirmation before execution. Pass a note_id returned by search_notes; omit fields that should remain unchanged.",
         parameters: [
-            .required("note_id", type: .string, description: "Stable Notes identifier returned by notes_search."),
+            .required("note_id", type: .string, description: "Stable Notes identifier returned by search_notes."),
             .optional("title", type: .string, description: "Replacement title. Omit to preserve the current title."),
             .optional("body", type: .string, description: "Replacement plain-text body. Omit to preserve the current body.")
         ]
@@ -185,7 +185,7 @@ enum AppTool {
 
     static let searchMail = Tool<SearchMailInput, [MailSummary]>(
         name: ToolNames.searchMail,
-        description: "Search Apple Mail message subjects and senders, optionally within one account or mailbox. This is read-only and should be preferred over accessibility or screenshots for Mail. It returns message identifiers and excerpts; use mail_read with the returned message_id, account, and mailbox for full content.",
+        description: "Search Apple Mail message subjects and senders, optionally within one account or mailbox. This is read-only and should be preferred over accessibility or screenshots for Mail. It returns message identifiers and excerpts; use read_mail with the returned message_id, account, and mailbox for full content.",
         parameters: [
             .required("query", type: .string, description: "Text to find in message subjects or sender values."),
             .optional("account", type: .string, description: "Exact Mail account name. Omit to search all accounts."),
@@ -249,9 +249,9 @@ enum AppTool {
 
     static let readMail = Tool<ReadMailInput, MailDetail>(
         name: ToolNames.readMail,
-        description: "Read one Apple Mail message by the message_id, account, and mailbox returned from mail_search. This is read-only and does not change the message read status. It returns headers, mailbox location, and bounded message content.",
+        description: "Read one Apple Mail message by the message_id, account, and mailbox returned from search_mail. This is read-only and does not change the message read status. It returns headers, mailbox location, and bounded message content.",
         parameters: [
-            .required("message_id", type: .string, description: "Mail message identifier returned by mail_search."),
+            .required("message_id", type: .string, description: "Mail message identifier returned by search_mail."),
             .required("account", type: .string, description: "Exact Mail account name returned with the search result."),
             .required("mailbox", type: .string, description: "Exact mailbox name returned with the search result."),
             .optional("max_content_length", type: .int, description: "Maximum number of message characters to return. Omit to use 12000; values are clamped to 1 through 50000.")
@@ -370,7 +370,7 @@ enum AppTool {
 
     static let searchCalendar = Tool<SearchCalendarInput, [CalendarEventOutput]>(
         name: ToolNames.searchCalendar,
-        description: "Search macOS Calendar through EventKit within a required time range. This is read-only and should be preferred over Calendar UI automation. It returns stable event identifiers and event details for calendar_read or calendar_update.",
+        description: "Search macOS Calendar through EventKit within a required time range. This is read-only and should be preferred over Calendar UI automation. It returns stable event identifiers and event details for read_calendar_event or update_calendar_event.",
         parameters: [
             .required("start_at", type: .string, description: "Inclusive ISO 8601 start date and time with a time zone."),
             .required("end_at", type: .string, description: "Exclusive ISO 8601 end date and time with a time zone; it must be later than start_at."),
@@ -384,9 +384,9 @@ enum AppTool {
 
     static let readCalendarEvent = Tool<ReadCalendarEventInput, CalendarEventOutput>(
         name: ToolNames.readCalendarEvent,
-        description: "Read one Calendar event through EventKit by the event_id returned from calendar_search. This is read-only.",
+        description: "Read one Calendar event through EventKit by the event_id returned from search_calendar_events. This is read-only.",
         parameters: [
-            .required("event_id", type: .string, description: "Stable Calendar event identifier returned by calendar_search.")
+            .required("event_id", type: .string, description: "Stable Calendar event identifier returned by search_calendar_events.")
         ]
     ) { input in
         try await NativeEventStore.shared.readEvent(identifier: input.eventID)
@@ -412,7 +412,7 @@ enum AppTool {
         name: ToolNames.updateCalendarEvent,
         description: "Update an existing Calendar event through EventKit. This writes calendar data and requires confirmation before execution. For a recurring event, span controls whether only this occurrence or this and future occurrences change.",
         parameters: [
-            .required("event_id", type: .string, description: "Stable Calendar event identifier returned by calendar_search."),
+            .required("event_id", type: .string, description: "Stable Calendar event identifier returned by search_calendar_events."),
             .optional("title", type: .string, description: "Replacement event title."),
             .optional("start_at", type: .string, description: "Replacement ISO 8601 start date and time with a time zone."),
             .optional("end_at", type: .string, description: "Replacement ISO 8601 end date and time with a time zone."),
@@ -443,9 +443,9 @@ enum AppTool {
 
     static let readReminder = Tool<ReadReminderInput, ReminderOutput>(
         name: ToolNames.readReminder,
-        description: "Read one reminder through EventKit by the reminder_id returned from reminders_search. This is read-only.",
+        description: "Read one reminder through EventKit by the reminder_id returned from search_reminders. This is read-only.",
         parameters: [
-            .required("reminder_id", type: .string, description: "Stable reminder identifier returned by reminders_search.")
+            .required("reminder_id", type: .string, description: "Stable reminder identifier returned by search_reminders.")
         ]
     ) { input in
         try await NativeEventStore.shared.readReminder(identifier: input.reminderID)
@@ -469,7 +469,7 @@ enum AppTool {
         name: ToolNames.updateReminder,
         description: "Update an existing reminder through EventKit. This writes reminder data and requires confirmation before execution. Omit fields that should remain unchanged.",
         parameters: [
-            .required("reminder_id", type: .string, description: "Stable reminder identifier returned by reminders_search."),
+            .required("reminder_id", type: .string, description: "Stable reminder identifier returned by search_reminders."),
             .optional("title", type: .string, description: "Replacement reminder title."),
             .optional("list", type: .string, description: "Exact destination reminder-list title."),
             .optional("notes", type: .string, description: "Replacement notes. Pass an empty string to clear them."),

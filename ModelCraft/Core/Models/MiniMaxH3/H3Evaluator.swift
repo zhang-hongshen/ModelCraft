@@ -78,7 +78,7 @@ enum H3ReferenceMediaKind: Sendable {
 }
 
 extension H3EvaluatorRequest {
-    private func validateReferences() throws {
+    private func validateReferences() async throws {
         guard references.count <= 12 else {
             throw H3EvaluatorError.invalidRequest(
                 rule: "too many references",
@@ -90,7 +90,7 @@ extension H3EvaluatorRequest {
         var videos = 0
         var audio = 0
         for reference in references {
-            switch try H3IO.inspect(reference) {
+            switch try await H3IO.inspect(reference) {
             case .image: images += 1
             case .video: videos += 1
             case .audio: audio += 1
@@ -235,12 +235,12 @@ public struct H3EvaluatorRequest: Sendable {
     }
 
     /// Performs cheap validation for the checkpoint selected by this request.
-    public func validate() throws {
-        try validate(for: task)
+    public func validate() async throws {
+        try await validate(for: task)
     }
 
     /// Performs cheap validation before the selected model's weights are loaded.
-    public func validate(for task: H3Configuration.Task) throws {
+    public func validate(for task: H3Configuration.Task) async throws {
         guard task == self.task else {
             throw H3EvaluatorError.invalidRequest(
                 rule: "mismatched H3 Base task",
@@ -288,7 +288,7 @@ public struct H3EvaluatorRequest: Sendable {
                     detail: "FL2VA first/last frames cannot be combined with Ref2VA references",
                     remedy: "use first/last frames or ordered references, but not both.")
             }
-            try validateReferences()
+            try await validateReferences()
         }
 
         let aligned = alignedFrameCount
@@ -317,7 +317,7 @@ public actor H3Evaluator {
 
     @discardableResult
     public func generate(_ request: H3EvaluatorRequest) async throws -> H3EvaluatorResult {
-        try request.validate()
+        try await request.validate()
         if Task.isCancelled { throw CancellationError() }
 
         let configuration = switch request.task {

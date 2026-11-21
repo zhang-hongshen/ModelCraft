@@ -181,6 +181,7 @@
 		70F0000130F0000100F00001 /* Ticket.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70F0000230F0000200F00002 /* Ticket.swift */; };
 		70F0000330F0000300F00003 /* TaskTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70F0000430F0000400F00004 /* TaskTool.swift */; };
 		70F0000530F0000500F00005 /* TaskInspectorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70F0000630F0000600F00006 /* TaskInspectorView.swift */; };
+		70F0000730F0000700F00007 /* AgentMemory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70F0000830F0000800F00008 /* AgentMemory.swift */; };
 		70F78FEF2FDBF990003C8737 /* ComputerUseTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70F78FEE2FDBF98A003C8737 /* ComputerUseTool.swift */; };
 		70F78FF12FDD2AF1003C8737 /* ComputerUseToolTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70F78FF02FDD2AF1003C8737 /* ComputerUseToolTests.swift */; };
 		70F78FF32FDE2DB9003C8737 /* UIManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70F78FF22FDE2DB6003C8737 /* UIManager.swift */; };
@@ -203,7 +204,6 @@
 		70FE039F2F13EFA20061CCEB /* ThreadService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70FE039E2F13EF9D0061CCEB /* ThreadService.swift */; };
 		91B50E0C0B834320A0205002 /* ModelsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91B50E0C0B834320A0205001 /* ModelsView.swift */; };
 		91B50E0C0B834320A0205004 /* StorageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91B50E0C0B834320A0205003 /* StorageView.swift */; };
-		70F0000730F0000700F00007 /* AgentMemory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70F0000830F0000800F00008 /* AgentMemory.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -396,6 +396,7 @@
 		70F0000230F0000200F00002 /* Ticket.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Ticket.swift; sourceTree = "<group>"; };
 		70F0000430F0000400F00004 /* TaskTool.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskTool.swift; sourceTree = "<group>"; };
 		70F0000630F0000600F00006 /* TaskInspectorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskInspectorView.swift; sourceTree = "<group>"; };
+		70F0000830F0000800F00008 /* AgentMemory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentMemory.swift; sourceTree = "<group>"; };
 		70F78FEE2FDBF98A003C8737 /* ComputerUseTool.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComputerUseTool.swift; sourceTree = "<group>"; };
 		70F78FF02FDD2AF1003C8737 /* ComputerUseToolTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComputerUseToolTests.swift; sourceTree = "<group>"; };
 		70F78FF22FDE2DB6003C8737 /* UIManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UIManager.swift; sourceTree = "<group>"; usesTabs = 0; };
@@ -418,7 +419,6 @@
 		70FE039E2F13EF9D0061CCEB /* ThreadService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThreadService.swift; sourceTree = "<group>"; };
 		91B50E0C0B834320A0205001 /* ModelsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelsView.swift; sourceTree = "<group>"; };
 		91B50E0C0B834320A0205003 /* StorageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StorageView.swift; sourceTree = "<group>"; };
-		70F0000830F0000800F00008 /* AgentMemory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentMemory.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -1711,8 +1711,6 @@
 				kind = upToNextMajorVersion;
 				minimumVersion = 1.3.0;
 			};
-			traits = (
-			);
 		};
 		70C0DE1030C4A00100C0DE10 /* XCRemoteSwiftPackageReference "swift-syntax" */ = {
 			isa = XCRemoteSwiftPackageReference;

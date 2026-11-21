@@ -503,7 +503,7 @@ extension H3IO {
     private static let frameRate = H3Configuration.presetH3BaseRef2VA.frameRate
     private static let sampleRate = H3Configuration.presetH3BaseRef2VA.audioSampleRate
 
-    static func inspect(_ url: URL) throws -> H3ReferenceMediaKind {
+    static func inspect(_ url: URL) async throws -> H3ReferenceMediaKind {
         guard url.isFileURL,
               FileManager.default.isReadableFile(atPath: url.path) else {
             throw H3EvaluatorError.unreadable(
@@ -522,17 +522,17 @@ extension H3IO {
             return .image
         } else if type.conforms(to: .movie) || type.conforms(to: .video) {
             let asset = AVURLAsset(url: url)
-            guard !asset.tracks(withMediaType: .video).isEmpty else {
+            guard (try? await asset.loadTracks(withMediaType: .video))?.isEmpty == false else {
                 throw H3EvaluatorError.unreadable(path: url.path, reason: "no decodable video track")
             }
-            _ = try validateDuration(of: asset, path: url.path, kind: "video")
+            _ = try await validateDuration(of: asset, path: url.path, kind: "video")
             return .video
         } else if type.conforms(to: .audio) {
             let asset = AVURLAsset(url: url)
-            guard !asset.tracks(withMediaType: .audio).isEmpty else {
+            guard (try? await asset.loadTracks(withMediaType: .audio))?.isEmpty == false else {
                 throw H3EvaluatorError.unreadable(path: url.path, reason: "no decodable audio track")
             }
-            _ = try validateDuration(of: asset, path: url.path, kind: "audio")
+            _ = try await validateDuration(of: asset, path: url.path, kind: "audio")
             return .audio
         }
         throw H3EvaluatorError.unreadable(
@@ -543,12 +543,12 @@ extension H3IO {
     static func decode(
         _ url: URL,
         fit: (width: Int, height: Int)? = nil
-    ) throws -> H3DecodedReference {
-        switch try inspect(url) {
+    ) async throws -> H3DecodedReference {
+        switch try await inspect(url) {
         case .image:
             return H3DecodedReference.image(try image(at: url, fit: fit))
         case .video:
-            return H3DecodedReference.video(try video(at: url, fit: fit))
+            return H3DecodedReference.video(try await video(at: url, fit: fit))
         case .audio:
             return H3DecodedReference.audio(try audio(at: url))
         }
@@ -573,19 +573,22 @@ extension H3IO {
     private static func video(
         at url: URL,
         fit: (width: Int, height: Int)?
-    ) throws -> H3DecodedVideo {
+    ) async throws -> H3DecodedVideo {
         let asset = AVURLAsset(url: url)
-        guard let track = asset.tracks(withMediaType: .video).first else {
+        guard let track = (try? await asset.loadTracks(withMediaType: .video))?.first else {
             throw H3EvaluatorError.unreadable(path: url.path, reason: "no decodable video track")
         }
-        let duration = try validateDuration(of: asset, path: url.path, kind: "video")
-        let fitted = try fittedVideoSize(track: track, path: url.path, fit: fit)
+        let duration = try await validateDuration(of: asset, path: url.path, kind: "video")
+        let fitted = try await fittedVideoSize(track: track, path: url.path, fit: fit)
         let size = H3VisionPreprocess.videoGrid(
             width: fitted.width,
             height: fitted.height)
-        let reportedFrameRate = reportedFrameRate(for: track)
-        let decodedAudio = try asset.tracks(withMediaType: .audio).first.map {
-            try audio(from: asset, track: $0, path: url.path)
+        let reportedFrameRate = await reportedFrameRate(for: track)
+        let decodedAudio: H3DecodedAudio?
+        if let audioTrack = (try? await asset.loadTracks(withMediaType: .audio))?.first {
+            decodedAudio = try await audio(from: asset, track: audioTrack, path: url.path)
+        } else {
+            decodedAudio = nil
         }
 
         let reader: AVAssetReader
@@ -605,30 +608,47 @@ extension H3IO {
         guard reader.canAdd(output) else {
             throw H3EvaluatorError.unreadable(path: url.path, reason: "video decoder cannot read this track")
         }
-        reader.add(output)
-        guard reader.startReading() else {
-            throw H3EvaluatorError.unreadable(
-                path: url.path,
-                reason: "video decoder could not start: \(reader.error?.localizedDescription ?? "unknown error")")
-        }
-
         let targetFrameCount = max(1, Int((duration * Double(frameRate)).rounded(.down)))
         let targetInterval = 1.0 / Double(frameRate)
         var nextTargetTime = 0.0
         var latestFrame: MLXArray?
         var frames: [MLXArray] = []
-
-        while let sample = output.copyNextSampleBuffer() {
+        func consume(_ sample: CMSampleBuffer) throws {
             defer { CMSampleBufferInvalidate(sample) }
-            guard let pixelBuffer = CMSampleBufferGetImageBuffer(sample) else { continue }
+            guard let pixelBuffer = CMSampleBufferGetImageBuffer(sample) else { return }
             let currentFrame = try rgbFrame(from: pixelBuffer, path: url.path)
             latestFrame = currentFrame
             let timestamp = CMSampleBufferGetPresentationTimeStamp(sample).seconds
-            guard timestamp.isFinite else { continue }
+            guard timestamp.isFinite else { return }
             while nextTargetTime <= timestamp + targetInterval / 2, frames.count < targetFrameCount {
                 frames.append(currentFrame)
                 nextTargetTime += targetInterval
             }
+        }
+        if #available(macOS 26, iOS 26, tvOS 26, visionOS 26, *) {
+            let provider = reader.outputProvider(for: output)
+            do {
+                try reader.start()
+            } catch {
+                throw H3EvaluatorError.unreadable(
+                    path: url.path, reason: "video decoder could not start: \(error.localizedDescription)")
+            }
+            do {
+                while let sample = try await provider.next() {
+                    try sample.withUnsafeSampleBuffer { try consume($0) }
+                }
+            } catch let error as H3EvaluatorError {
+                throw error
+            } catch {
+                throw H3EvaluatorError.unreadable(path: url.path, reason: "video decoding failed: \(error.localizedDescription)")
+            }
+        } else {
+            reader.add(output)
+            guard reader.startReading() else {
+                throw H3EvaluatorError.unreadable(
+                    path: url.path, reason: "video decoder could not start: \(reader.error?.localizedDescription ?? "unknown error")")
+            }
+            while let sample = output.copyNextSampleBuffer() { try consume(sample) }
         }
 
         guard reader.status == .completed else {
@@ -726,7 +746,7 @@ extension H3IO {
         from asset: AVAsset,
         track: AVAssetTrack,
         path: String
-    ) throws -> H3DecodedAudio {
+    ) async throws -> H3DecodedAudio {
         let reader: AVAssetReader
         do {
             reader = try AVAssetReader(asset: asset)
@@ -747,20 +767,13 @@ extension H3IO {
         guard reader.canAdd(output) else {
             throw H3EvaluatorError.unreadable(path: path, reason: "audio decoder cannot read this video track")
         }
-        reader.add(output)
-        guard reader.startReading() else {
-            throw H3EvaluatorError.unreadable(
-                path: path,
-                reason: "audio decoder could not start: \(reader.error?.localizedDescription ?? "unknown error")")
-        }
-
         var left: [Float] = []
         var right: [Float] = []
-        while let sample = output.copyNextSampleBuffer() {
+        func consume(_ sample: CMSampleBuffer) throws {
             defer { CMSampleBufferInvalidate(sample) }
-            guard let blockBuffer = CMSampleBufferGetDataBuffer(sample) else { continue }
+            guard let blockBuffer = CMSampleBufferGetDataBuffer(sample) else { return }
             let byteCount = CMBlockBufferGetDataLength(blockBuffer)
-            guard byteCount > 0 else { continue }
+            guard byteCount > 0 else { return }
             var bytes = [UInt8](repeating: 0, count: byteCount)
             let copyStatus = bytes.withUnsafeMutableBytes { destination in
                 CMBlockBufferCopyDataBytes(
@@ -783,6 +796,31 @@ extension H3IO {
                 }
             }
         }
+        if #available(macOS 26, iOS 26, tvOS 26, visionOS 26, *) {
+            let provider = reader.outputProvider(for: output)
+            do {
+                try reader.start()
+            } catch {
+                throw H3EvaluatorError.unreadable(
+                    path: path, reason: "audio decoder could not start: \(error.localizedDescription)")
+            }
+            do {
+                while let sample = try await provider.next() {
+                    try sample.withUnsafeSampleBuffer { try consume($0) }
+                }
+            } catch let error as H3EvaluatorError {
+                throw error
+            } catch {
+                throw H3EvaluatorError.unreadable(path: path, reason: "video audio decoding failed: \(error.localizedDescription)")
+            }
+        } else {
+            reader.add(output)
+            guard reader.startReading() else {
+                throw H3EvaluatorError.unreadable(
+                    path: path, reason: "audio decoder could not start: \(reader.error?.localizedDescription ?? "unknown error")")
+            }
+            while let sample = output.copyNextSampleBuffer() { try consume(sample) }
+        }
         guard reader.status == .completed, !left.isEmpty else {
             throw H3EvaluatorError.unreadable(
                 path: path,
@@ -790,12 +828,12 @@ extension H3IO {
         }
         return H3DecodedAudio(
             samples: [left, right],
-            sourceSampleRate: reportedSampleRate(for: track),
+            sourceSampleRate: await reportedSampleRate(for: track),
             sampleRate: sampleRate)
     }
 
-    private static func validateDuration(of asset: AVAsset, path: String, kind: String) throws -> Double {
-        let seconds = asset.duration.seconds
+    private static func validateDuration(of asset: AVAsset, path: String, kind: String) async throws -> Double {
+        let seconds = (try? await asset.load(.duration))?.seconds ?? .nan
         guard seconds.isFinite, (minimumDuration ... maximumDuration).contains(seconds) else {
             throw H3EvaluatorError.invalidRequest(
                 rule: "\(kind) reference duration out of range",
@@ -818,9 +856,9 @@ extension H3IO {
         track: AVAssetTrack,
         path: String,
         fit: (width: Int, height: Int)?
-    ) throws -> (width: Int, height: Int) {
+    ) async throws -> (width: Int, height: Int) {
         if let fit { return fit }
-        let naturalSize = track.naturalSize
+        let naturalSize = (try? await track.load(.naturalSize)) ?? .zero
         let size = (width: Int(abs(naturalSize.width)), height: Int(abs(naturalSize.height)))
         guard size.width > 0, size.height > 0 else {
             throw H3EvaluatorError.unreadable(path: path, reason: "video has no pixel dimensions")
@@ -832,18 +870,18 @@ extension H3IO {
         (max(32, size.width / 32 * 32), max(32, size.height / 32 * 32))
     }
 
-    private static func reportedFrameRate(for track: AVAssetTrack) -> Double {
-        let nominalFrameRate = Double(track.nominalFrameRate)
+    private static func reportedFrameRate(for track: AVAssetTrack) async -> Double {
+        let nominalFrameRate = Double((try? await track.load(.nominalFrameRate)) ?? 0)
         guard nominalFrameRate > 0 else { return Double(frameRate) }
         return nominalFrameRate
     }
 
-    private static func reportedSampleRate(for track: AVAssetTrack) -> Double {
-        guard let description = track.formatDescriptions.first else {
+    private static func reportedSampleRate(for track: AVAssetTrack) async -> Double {
+        guard let description = (try? await track.load(.formatDescriptions))?.first else {
             return Double(sampleRate)
         }
         // This helper is called only for an AVMediaType.audio track.
-        let audioDescription = description as! CMAudioFormatDescription
+        let audioDescription = description
         guard let streamDescription = CMAudioFormatDescriptionGetStreamBasicDescription(audioDescription),
               streamDescription.pointee.mSampleRate > 0 else {
             return Double(sampleRate)

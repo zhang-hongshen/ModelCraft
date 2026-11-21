@@ -34,7 +34,9 @@ final class AgentExecutor {
         model: LocalModel,
         thread: Thread,
         ticket: Ticket,
-        prepareMessages: @MainActor () async throws -> [MLXLMCommon.Chat.Message]
+        hasQueuedMessages: @escaping @MainActor () -> Bool,
+        insertQueuedMessages: @escaping @MainActor () throws -> Void,
+        prepareMessages: @escaping @MainActor () async throws -> [MLXLMCommon.Chat.Message]
     ) async throws -> Void {
         try Task.checkCancellation()
         let project = thread.project
@@ -54,6 +56,8 @@ final class AgentExecutor {
                         model: model,
                         thread: thread,
                         ticket: ticket,
+                        hasQueuedMessages: hasQueuedMessages,
+                        insertQueuedMessages: insertQueuedMessages,
                         prepareMessages: prepareMessages)
                 }
             }
@@ -65,79 +69,114 @@ final class AgentExecutor {
         model: LocalModel,
         thread: Thread,
         ticket: Ticket,
-        prepareMessages: @MainActor () async throws -> [MLXLMCommon.Chat.Message]
+        hasQueuedMessages: @escaping @MainActor () -> Bool,
+        insertQueuedMessages: @escaping @MainActor () throws -> Void,
+        prepareMessages: @escaping @MainActor () async throws -> [MLXLMCommon.Chat.Message]
     ) async throws {
         var lastSignature: String?
         var consecutiveCalls = 0
         while true {
+            try Task.checkCancellation()
             let messages = try await prepareMessages()
             let availableTools = ToolDefinition.allToolSchema(for: thread)
             let assistantMessage = Message(role: .assistant, thread: thread, status: .new)
             ticket.append(assistantMessage)
             ModelContainer.shared.mainContext.persist(assistantMessage)
             var pendingCalls: [(ToolCall, RejectedToolCall?)] = []
-            for try await batch in try await LMService.shared.generate(
-                model: model,
-                messages: messages,
-                tools: availableTools
-            ) {
-                try Task.checkCancellation()
-                if let info = batch.info {
-                    thread.tokenCount = info.promptTokenCount + info.generationTokenCount
-                }
-                let rejection = batch.rejectedToolCall
-                if let toolCall = batch.toolCall ?? rejection.map(Self.recordedToolCall) {
-                    pendingCalls.append((toolCall, rejection))
-                } else if let chunk = batch.chunk {
-                    assistantMessage.status = .generating
-                    assistantMessage.content.append(chunk)
-                }
-            }
-            assistantMessage.status = .generated
-            if !pendingCalls.isEmpty && assistantMessage.content.isEmpty {
-                thread.deleteMessages([assistantMessage])
-            }
-            try ModelContainer.shared.mainContext.save()
-
-            for (toolCall, rejection) in pendingCalls {
-                try Task.checkCancellation()
-                let toolMessage = Message(
-                    role: .tool, thread: thread, toolCall: toolCall, status: .generating)
-                ticket.append(toolMessage)
-                ModelContainer.shared.mainContext.insert(toolMessage)
-                // Commit intent before a tool can cause an external side effect.
-                try ModelContainer.shared.mainContext.save()
-
-                let signature = toolCall.signature
-                consecutiveCalls = signature == lastSignature ? consecutiveCalls + 1 : 1
-                lastSignature = signature
-                let result: (CallToolResult, MLXLMCommon.Chat.Message)
-                if thread.activeTicket?.id != ticket.id {
-                    let text = "This call was not executed because execution handed off to another task."
-                    result = (.error(text), .tool(text))
-                } else if consecutiveCalls >= Self.maxConsecutiveIdenticalToolCalls {
-                    result = (.error(Self.duplicateToolCallMessage), .tool(Self.duplicateToolCallMessage))
-                } else if let rejection {
-                    let text = Self.rejectionMessage(rejection)
-                    result = (.error(text), .tool(text))
-                } else {
-                    result = try await ToolExecutionProgressReporter.$imageGeneration.withValue({
-                        toolMessage.content = $0.storedValue
-                    }) {
-                        try await ToolExecutionProgressReporter.$videoGeneration.withValue({
-                            toolMessage.content = $0.storedValue
-                        }) {
-                            try await executeToolCall(
-                                toolCall, signature: signature, thread: thread, model: model)
-                        }
+            do {
+                for try await batch in try await LMService.shared.generate(
+                    model: model,
+                    messages: messages,
+                    tools: availableTools
+                ) {
+                    try Task.checkCancellation()
+                    if let info = batch.info {
+                        thread.tokenCount = info.promptTokenCount + info.generationTokenCount
+                    }
+                    let rejection = batch.rejectedToolCall
+                    if let toolCall = batch.toolCall ?? rejection.map(Self.recordedToolCall) {
+                        pendingCalls.append((toolCall, rejection))
+                    } else if let chunk = batch.chunk {
+                        assistantMessage.status = .generating
+                        assistantMessage.content.append(chunk)
                     }
                 }
-                toolMessage.content = result.1.content
-                toolMessage.toolCallResult = result.0
-                toolMessage.status = result.0.isError ? .failed : .generated
+                try Task.checkCancellation()
+                assistantMessage.status = .generated
+                if !pendingCalls.isEmpty && assistantMessage.content.isEmpty {
+                    thread.deleteMessages([assistantMessage])
+                }
                 try ModelContainer.shared.mainContext.save()
+
+                let hadToolCalls = !pendingCalls.isEmpty
+                while !pendingCalls.isEmpty {
+                    try Task.checkCancellation()
+                    let (toolCall, rejection) = pendingCalls.removeFirst()
+                    let toolMessage = Message(
+                        role: .tool, thread: thread, toolCall: toolCall, status: .generating)
+                    ticket.append(toolMessage)
+                    ModelContainer.shared.mainContext.insert(toolMessage)
+                    // Commit intent before a tool can cause an external side effect.
+                    try ModelContainer.shared.mainContext.save()
+
+                    let signature = toolCall.signature
+                    consecutiveCalls = signature == lastSignature ? consecutiveCalls + 1 : 1
+                    lastSignature = signature
+                    let result: (CallToolResult, MLXLMCommon.Chat.Message)
+                    if thread.activeTicket?.id != ticket.id {
+                        let text = "This call was not executed because execution handed off to another task."
+                        result = (.error(text), .tool(text))
+                    } else if consecutiveCalls >= Self.maxConsecutiveIdenticalToolCalls {
+                        result = (.error(Self.duplicateToolCallMessage), .tool(Self.duplicateToolCallMessage))
+                    } else if let rejection {
+                        let text = Self.rejectionMessage(rejection)
+                        result = (.error(text), .tool(text))
+                    } else {
+                        result = try await ToolExecutionProgressReporter.$imageGeneration.withValue({
+                            toolMessage.content = $0.storedValue
+                        }) {
+                            try await ToolExecutionProgressReporter.$videoGeneration.withValue({
+                                toolMessage.content = $0.storedValue
+                            }) {
+                                try await executeToolCall(
+                                    toolCall, signature: signature, thread: thread, model: model)
+                            }
+                        }
+                    }
+                    toolMessage.content = result.1.content
+                    toolMessage.toolCallResult = result.0
+                    toolMessage.status = result.0.isError ? .failed : .generated
+                    try ModelContainer.shared.mainContext.save()
+                }
+                try Task.checkCancellation()
+                if hasQueuedMessages() {
+                    try insertQueuedMessages()
+                    if thread.activeTicket?.id != ticket.id { return }
+                    lastSignature = nil
+                    consecutiveCalls = 0
+                    continue
+                }
+                if !hadToolCalls || thread.activeTicket?.id != ticket.id { return }
+            } catch {
+                // Preserve completed results and distinguish interrupted work from calls
+                // that never started, including calls emitted before a cancelled stream.
+                thread.settleInterruptedMessages()
+                recordUnexecutedCalls(pendingCalls.map { $0.0 }, thread: thread, ticket: ticket)
+                try ModelContainer.shared.mainContext.save()
+                throw error
             }
-            if pendingCalls.isEmpty || thread.activeTicket?.id != ticket.id { return }
+        }
+    }
+
+    @MainActor
+    private func recordUnexecutedCalls(_ calls: [ToolCall], thread: Thread, ticket: Ticket) {
+        let text = "This call was not executed because execution was interrupted or a new user request superseded the previous plan."
+        for call in calls {
+            let message = Message(
+                role: .tool, thread: thread, content: text, toolCall: call,
+                toolCallResult: .error(text), status: .failed)
+            ticket.append(message)
+            ModelContainer.shared.mainContext.insert(message)
         }
     }
 
@@ -221,6 +260,7 @@ final class AgentExecutor {
         return try await ToolExecutor.dispatch(
             toolCall,
             projectID: thread.project?.persistentModelID,
+            threadID: thread.id,
             modelID: model.id)
     }
 

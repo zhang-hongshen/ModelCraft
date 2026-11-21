@@ -107,8 +107,9 @@ extension ThreadInputView {
             }
             
             HStack(alignment: .center, spacing: 8) {
-                UploadButton()
-                    .disabled(isVoiceInputActive)
+                if !isVoiceInputActive {
+                    UploadButton()
+                }
 
                 ZStack {
                     Editor()
@@ -267,16 +268,20 @@ private struct ModelCraftTextEditor: NSViewRepresentable {
         // SwiftUI also proposes an infinite width to measure the maximum size; sizing
         // the text view to it is invalid geometry, so only a finite width is measured.
         guard let width = proposal.width, width.isFinite,
-              let textView = nsView.documentView as? NSTextView,
-              let layoutManager = textView.layoutManager,
-              let textContainer = textView.textContainer else {
+              let textView = nsView.documentView as? NSTextView else {
             return nil
         }
 
-        textView.frame.size.width = width
-        textContainer.containerSize = NSSize(
+        // Proposals are measurements, not the final viewport size. Keep them out
+        // of the live editor so a narrower probe cannot change its wrapping width.
+        let textStorage = NSTextStorage(attributedString: textView.attributedString())
+        let layoutManager = NSLayoutManager()
+        let textContainer = NSTextContainer(size: NSSize(
             width: width,
-            height: .greatestFiniteMagnitude)
+            height: .greatestFiniteMagnitude))
+        textContainer.lineFragmentPadding = 0
+        layoutManager.addTextContainer(textContainer)
+        textStorage.addLayoutManager(layoutManager)
         layoutManager.ensureLayout(for: textContainer)
 
         let lineHeight = layoutManager.defaultLineHeight(for: Self.font)
